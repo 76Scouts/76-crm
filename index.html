@@ -65,6 +65,22 @@
   .sens{background:#fff7cc;border:1px solid #e8d98a;border-radius:8px;padding:8px;font-size:13px;margin:8px 0}
   .modal-actions{display:flex;justify-content:space-between;margin-top:14px;gap:8px}
   .tag-list{font-size:12px;color:var(--muted)}
+  .col.Σύστημα h3{background:var(--sys)}
+  .chip.sp{background:#4a7a2a;color:#fff;font-weight:700}
+  .chip.sp7{background:#ff8fb3;color:#5a1230;font-weight:700}
+  .chip.net{background:var(--diktyo);color:#fff}
+  .chip.loc{background:#fff;border:1px solid var(--line);color:var(--muted)}
+  .role{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:var(--accent);border-radius:4px;padding:1px 5px;margin-left:5px;vertical-align:middle}
+  .role.head{background:#c0392b}
+  .col li{align-items:flex-start}
+  .dnum{flex:none;width:22px;text-align:right;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;padding-top:2px}
+  .dbody{flex:1;min-width:0}
+  .col .pname{font-weight:600;line-height:1.25;font-size:13px}
+  .dmeta{font-size:11px;color:var(--muted);word-break:break-word}
+  .col .catlabel{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:6px 6px 1px;border-top:1px dashed var(--line)}
+  .col .subhead{font-size:10px;font-weight:700;color:#fff;background:var(--diktyo);border-radius:4px;display:inline-block;padding:0 6px;margin:5px 0 1px 6px}
+  .col details{margin:2px 6px} .col summary{cursor:pointer;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;padding:5px 2px;border-top:1px dashed var(--line)}
+  .asband{margin-bottom:12px} .archband{margin-top:12px}
 </style>
 </head>
 <body>
@@ -205,17 +221,62 @@ function renderCRM(){
   h+='</tbody></table>';
   $('crm').innerHTML=h;
 }
+const SEC_EMAIL={'Αγέλη':'76ageli@gmail.com','Ομάδα':'76omada@gmail.com','Κοινότητα':'aka76scouts@gmail.com'};
+function blockNum(i,count){const p=i+1;let b=(p<=2)?p:(p===3?4:p);if(count>=8){if(b===6)b=7;else if(b===7)b=6;}return b;}
+function bySurname(a){return a.slice().sort((x,y)=>(x.last_name||'').localeCompare(y.last_name||'','el'));}
+function chipsFor(p,sec){let c='';
+  if(p.special==='7')c+='<span class="chip sp7">7η</span>';else if(p.special==='Σ')c+='<span class="chip sp">Σ</span>';
+  if(p.location)c+=`<span class="chip loc">${p.location}</span>`;
+  if(p.is_network&&sec!=='Δίκτυο')c+='<span class="chip net">Δίκτυο</span>';
+  return c;}
+function personRow(p,label,sec){
+  const hide=(p.category==='YOLO'||p.category==='Δίκτυο');
+  let em=[]; if(!hide){ if(p.email)em.push(p.email); if(p.category==='Αρχηγός'&&SEC_EMAIL[sec])em.push(SEC_EMAIL[sec]); }
+  let badge='';
+  if(p.category==='Αρχηγός'||p.category==='ΑΣ')badge=`<span class="role head">${p.headrole||'Αρχ.'}</span>`;
+  else if(p.category==='Υπεύθυνος Δικτύου')badge='<span class="role" style="background:var(--diktyo)">Υπ. Δικτύου</span>';
+  const cross=p.firstaid_ok?' <span class="cross" title="Ενεργές Α΄Βοήθειες">✚</span>':'';
+  const meta=(!hide&&(em.length||p.phone))?`<div class="dmeta">${em.join(' · ')}${p.phone?(em.length?' · ':'')+p.phone:''}</div>`:'';
+  return `<li onclick="detail('${p.id}')"><span class="dnum">${label==null?'':label}</span><span class="dbody"><span class="pname">${p.first_name} <b>${p.last_name}</b>${p.scout_name?` <span class="scout">«${p.scout_name}»</span>`:''} ${eligDot(p)}${cross}${badge}${chipsFor(p,sec)}</span>${meta}</span></li>`;
+}
+function collap(title,arr,sec){let b='';arr.forEach((p,i)=>b+=personRow(p,blockNum(i,arr.length),sec));
+  return `<details><summary>▸ ${title} (${arr.length})</summary><ul class="people" style="padding:0 0 4px">${b}</ul></details>`;}
+function diaCol(sec){
+  const primary=DATA.filter(p=>p.section===sec);
+  const extra=DATA.filter(p=>p.section!==sec&&(p.extra_sections||[]).includes(sec));
+  let inner='';
+  if(sec==='Δίκτυο'){
+    const resp=bySurname(primary.filter(p=>p.category==='Υπεύθυνος Δικτύου'));
+    const plain=bySurname(primary.filter(p=>p.category==='Δίκτυο'));
+    if(resp.length){inner+='<div class="catlabel">Υπεύθυνοι Δικτύου</div>';resp.forEach((p,i)=>inner+=personRow(p,blockNum(i,resp.length),sec));}
+    if(plain.length){inner+='<div class="catlabel">Δίκτυο</div>';
+      const gs={};plain.forEach(p=>{const c=(p.location||'— χωρίς περιοχή').split('-')[0];(gs[c]=gs[c]||[]).push(p);});
+      let gi=0;Object.keys(gs).sort((a,b)=>a.localeCompare(b)).forEach(c=>{inner+=`<span class="subhead">${c}</span>`;gs[c].forEach(p=>{inner+=personRow(p,blockNum(gi,plain.length),sec);gi++;});});
+    }
+    if(extra.length)inner+=collap('Άτομα δικτύου στα τμήματα',bySurname(extra),sec);
+  } else {
+    const heads=bySurname(primary.filter(p=>p.category==='Αρχηγός'));
+    const vath=bySurname(primary.filter(p=>p.category==='Βαθμοφόρος'));
+    const yolo=bySurname(primary.filter(p=>p.category==='YOLO'));
+    const active=heads.concat(vath);let ai=0;
+    if(heads.length){inner+='<div class="catlabel">Αρχηγός</div>';heads.forEach(p=>{inner+=personRow(p,blockNum(ai,active.length),sec);ai++;});}
+    if(vath.length){inner+='<div class="catlabel">Βαθμοφόροι</div>';vath.forEach(p=>{inner+=personRow(p,blockNum(ai,active.length),sec);ai++;});}
+    if(yolo.length){inner+='<div class="catlabel">YOLO</div>';yolo.forEach((p,i)=>inner+=personRow(p,blockNum(i,yolo.length),sec));}
+    if(extra.length)inner+=collap('Κοινά μέλη',bySurname(extra),sec);
+  }
+  const cnt=DATA.filter(p=>p.section===sec||(p.extra_sections||[]).includes(sec)).length;
+  return `<div class="col ${sec}"><h3>${SECLOGO[sec]?`<img src="${SECLOGO[sec]}">`:''}${sec} (${cnt})</h3><ul class="people">${inner||'<li class="dmeta" style="padding:8px">—</li>'}</ul></div>`;
+}
 function renderDia(){
   $('crm').style.display='none'; $('diarthrosi').style.display='block';
-  let h='<div class="grid">';
-  ['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].forEach(sec=>{
-    const ppl=DATA.filter(p=>p.section===sec||(p.extra_sections||[]).includes(sec))
-      .sort((a,b)=>a.last_name.localeCompare(b.last_name,'el'));
-    h+=`<div class="col ${sec}"><h3>${SECLOGO[sec]?`<img src="${SECLOGO[sec]}">`:''}${sec} (${ppl.length})</h3><ul>`;
-    ppl.forEach(p=>{h+=`<li onclick="detail('${p.id}')">${eligDot(p)}<span><b>${p.last_name}</b> ${p.first_name} ${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}</span></li>`;});
-    h+='</ul></div>';
-  });
-  h+='</div>'; $('diarthrosi').innerHTML=h;
+  const as=DATA.find(p=>p.category==='ΑΣ'); let h='';
+  if(as)h+=`<div class="asband"><div class="col Σύστημα"><h3>ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</h3><ul class="people">${personRow(as,null,'Σύστημα')}</ul></div></div>`;
+  h+='<div class="grid">'+['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(diaCol).join('')+'</div>';
+  const arch=bySurname(DATA.filter(p=>p.status==='Αρχειοθετημένος'||p.category==='Αρχειοθετημένος'));
+  if(arch.length){let b='';arch.forEach((p,i)=>b+=personRow(p,blockNum(i,arch.length),''));
+    h+=`<div class="archband"><div class="col Σύστημα"><h3>ΑΡΧΕΙΟΘΕΤΗΜΕΝΟΙ ΒΑΘΜΟΦΟΡΟΙ (${arch.length})</h3><details><summary style="padding:8px 6px">▸ Εμφάνιση</summary><ul class="people">${b}</ul></details></div></div>`;
+  }
+  $('diarthrosi').innerHTML=h;
 }
 
 /* ---------- detail / edit ---------- */
