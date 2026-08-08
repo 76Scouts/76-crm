@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>76 — CRM Βαθμοφόρων</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{--ink:#1d2733;--muted:#6b7885;--line:#d7dee6;--bg:#eef2f6;--card:#fff;--accent:#1b5e9c;--accent2:#0f3d68;
+    --ageli:#f4c20d;--omada:#1e7a34;--koin:#3498db;--diktyo:#8e44ad;--sys:#334155;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  header.top{position:sticky;top:0;z-index:20;background:var(--accent2);color:#fff;padding:9px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  header.top h1{font-size:15px;margin:0 10px 0 0;font-weight:700;white-space:nowrap}
+  .who{font-size:12px;opacity:.9;margin-right:auto}
+  .badge-role{background:#2ecc71;color:#0b3d1e;border-radius:10px;padding:1px 8px;font-weight:700;font-size:11px}
+  .badge-role.viewer{background:#95a5a6;color:#fff}
+  .btn{border:0;border-radius:6px;padding:6px 10px;font-size:13px;cursor:pointer;background:#2c6aa0;color:#fff;font-weight:600}
+  .btn:hover{filter:brightness(1.08)} .btn.ghost{background:rgba(255,255,255,.15)} .btn.on{background:#2ecc71;color:#0b3d1e}
+  .btn.sm{padding:3px 8px;font-size:12px}
+  input,select{padding:6px 9px;border:1px solid var(--line);border-radius:7px;font:inherit}
+  .wrap{padding:12px;max-width:1600px;margin:0 auto}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+  .count{font-size:12px;color:var(--muted)}
+  /* login */
+  #login{max-width:380px;margin:8vh auto;background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.12)}
+  #login h2{margin:0 0 4px;color:var(--accent2)} #login p{color:var(--muted);margin:0 0 16px;font-size:13px}
+  #login .field{margin-bottom:10px} #login input{width:100%}
+  #login .btn{width:100%;padding:9px} .msg{font-size:12px;margin-top:8px;min-height:16px}
+  .msg.err{color:#c0392b}.msg.ok{color:#1e7a34}
+  /* table */
+  table{border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{padding:6px 9px;text-align:left;border-bottom:1px solid var(--line);font-size:13px;white-space:nowrap}
+  th{background:#f4f7fa;position:sticky;top:52px;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);cursor:pointer}
+  tr:hover td{background:#f7fafc;cursor:pointer}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:middle;border:1px solid rgba(0,0,0,.2)}
+  .scout{color:var(--accent);font-weight:700;font-size:11px}
+  .cross{color:#e74c3c;font-weight:800}
+  .exp-red{color:#c0392b;font-weight:700}.exp-yel{color:#a9791a;font-weight:700}
+  .chip{display:inline-block;font-size:10px;border-radius:4px;padding:0 5px;margin-left:3px;background:#eef2f6;color:var(--muted)}
+  .sec-Αγέλη{border-left:4px solid var(--ageli)} .sec-Ομάδα{border-left:4px solid var(--omada)}
+  .sec-Κοινότητα{border-left:4px solid var(--koin)} .sec-Δίκτυο{border-left:4px solid var(--diktyo)}
+  .sec-Σύστημα{border-left:4px solid var(--sys)}
+  /* diarthrosi */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
+  .col{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .col h3{margin:0;padding:8px;color:#fff;font-size:13px;text-align:center}
+  .col.Αγέλη h3{background:var(--ageli);color:#4a3b00}.col.Ομάδα h3{background:var(--omada)}
+  .col.Κοινότητα h3{background:var(--koin)}.col.Δίκτυο h3{background:var(--diktyo)}
+  .col ul{list-style:none;margin:0;padding:4px 6px} .col li{padding:4px;border-radius:6px;display:flex;gap:6px;align-items:center}
+  .col li:hover{background:#f4f7fa;cursor:pointer}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(15,25,40,.5);display:none;align-items:flex-start;justify-content:center;z-index:50;padding:24px 12px;overflow:auto}
+  .overlay.show{display:flex}
+  .modal{background:#fff;border-radius:12px;width:100%;max-width:520px;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .modal h3{margin:0 0 10px} .row{display:flex;gap:8px;flex-wrap:wrap}
+  .f{margin-bottom:8px;flex:1;min-width:120px} .f label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px}
+  .f input,.f select{width:100%}
+  .sens{background:#fff7cc;border:1px solid #e8d98a;border-radius:8px;padding:8px;font-size:13px;margin:8px 0}
+  .modal-actions{display:flex;justify-content:space-between;margin-top:14px;gap:8px}
+  .tag-list{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <h2>76 — CRM</h2>
+  <p>Μητρώο Βαθμοφόρων. Σύνδεση με το email σου.</p>
+  <div class="field"><input id="email" type="email" placeholder="email" autocomplete="email"></div>
+  <button class="btn" id="sendBtn">Στείλε κωδικό / σύνδεσμο</button>
+  <div id="otpBox" style="display:none;margin-top:10px">
+    <div class="field"><input id="code" inputmode="numeric" placeholder="6ψήφιος κωδικός από email"></div>
+    <button class="btn" id="verifyBtn">Σύνδεση</button>
+  </div>
+  <div class="msg" id="loginMsg"></div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+<header class="top">
+  <h1>76 — CRM Βαθμοφόρων</h1>
+  <span class="who" id="who"></span>
+  <button class="btn ghost sm" id="viewToggle">🗂 Διάρθρωση</button>
+  <button class="btn ghost sm" id="logout">Έξοδος</button>
+</header>
+<div class="wrap">
+  <div class="toolbar">
+    <input id="search" placeholder="🔍 Αναζήτηση..." style="min-width:200px">
+    <select id="fSection"><option value="">Όλα τα τμήματα</option></select>
+    <select id="fStatus"><option value="">Όλες οι καταστάσεις</option><option>Ενεργός</option><option>Αρχειοθετημένος</option></select>
+    <label style="font-size:12px;color:var(--muted);display:flex;gap:4px;align-items:center"><input type="checkbox" id="fExpired"> ληγμένα σεξόχαρτα</label>
+    <span class="count" id="count"></span>
+  </div>
+  <div id="crm"></div>
+  <div id="diarthrosi" style="display:none"></div>
+</div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="ov"><div class="modal">
+  <h3 id="dTitle"></h3>
+  <div id="dBody"></div>
+  <div class="modal-actions">
+    <button class="btn ghost sm" style="background:#e6ebf0;color:#333" id="dClose">Κλείσιμο</button>
+    <div><button class="btn sm" id="dSens" style="background:#a5822f">🔒 Ευαίσθητα</button>
+    <button class="btn sm" id="dEdit">✎ Επεξεργασία</button></div>
+  </div>
+</div></div>
+
+<script>
+const SB_URL='https://cofiscmvdagizlchrian.supabase.co';
+const SB_KEY='sb_publishable_OvYhjMAqZ9ty6T2De2by-g_uJ6mnm50';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+let ME={email:null,role:'viewer'}, DATA=[], EDIT_ID=null, VIEW='crm';
+const SECCOLOR={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)'};
+const SECS=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'];
+const CATS=['ΑΣ','Αρχηγός','Βαθμοφόρος','YOLO','Υπεύθυνος Δικτύου','Δίκτυο','Αρχειοθετημένος'];
+
+/* ---------- auth ---------- */
+const $=id=>document.getElementById(id);
+$('sendBtn').onclick=async()=>{
+  const email=$('email').value.trim(); if(!email){msg('Δώσε email','err');return;}
+  msg('Αποστολή...','');
+  const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href,shouldCreateUser:true}});
+  if(error){msg(error.message,'err');return;}
+  $('otpBox').style.display='block'; msg('Στάλθηκε email. Πάτα τον σύνδεσμο ή βάλε τον 6ψήφιο κωδικό.','ok');
+};
+$('verifyBtn').onclick=async()=>{
+  const email=$('email').value.trim(), token=$('code').value.trim();
+  const {error}=await sb.auth.verifyOtp({email,token,type:'email'});
+  if(error){msg(error.message,'err');}
+};
+$('logout').onclick=async()=>{ await sb.auth.signOut(); location.reload(); };
+function msg(t,c){const m=$('loginMsg');m.textContent=t;m.className='msg '+(c||'');}
+
+sb.auth.onAuthStateChange((_e,session)=>{ if(session) start(session); });
+sb.auth.getSession().then(({data})=>{ if(data.session) start(data.session); });
+
+async function start(session){
+  ME.email=session.user.email;
+  const {data:prof}=await sb.from('profiles').select('role').eq('id',session.user.id).maybeSingle();
+  ME.role=prof?.role||'viewer';
+  $('login').style.display='none'; $('app').style.display='block';
+  $('who').innerHTML=`${ME.email} <span class="badge-role ${ME.role!=='admin'?'viewer':''}">${ME.role}</span>`;
+  $('dSens').style.display=ME.role==='admin'?'inline-block':'none';
+  $('dEdit').style.display=ME.role==='admin'?'inline-block':'none';
+  SECS.forEach(s=>$('fSection').insertAdjacentHTML('beforeend',`<option>${s}</option>`));
+  await load();
+  sb.channel('bh').on('postgres_changes',{event:'*',schema:'public',table:'badgeholders'},load).subscribe();
+}
+
+/* ---------- data ---------- */
+async function load(){
+  const {data,error}=await sb.from('v_status').select('*').order('last_name');
+  if(error){alert(error.message);return;}
+  DATA=data||[]; render();
+}
+function eligDot(p){
+  if(p.is_commissioner) return dot('#8e44ad','Έφορος');
+  const hasData=p.sexoxarto_date||p.has_prok||p.own_basic;
+  if(!hasData) return dot('#c7ced6','Χωρίς στοιχεία');
+  const sexC=p.sex_ok?'#27ae60':(p.sexoxarto_expiry?'#e74c3c':'#e74c3c');
+  const trC=p.own_basic?'#27ae60':(p.has_prok?'#f4c20d':'#e74c3c');
+  const can=(p.sex_ok&&p.own_basic)?'Εντολή':((p.sex_ok&&p.has_prok)?'Ανάθεση':'—');
+  return `<span class="dot" title="Σεξόχαρτο ${p.sex_ok?'✓':'✗'} · Εκπ. ${p.own_basic?'Βασική':(p.has_prok?'Προκ.':'—')} → ${can}" style="background:linear-gradient(90deg,${sexC} 0 50%,${trC} 50% 100%)"></span>`;
+}
+function dot(c,t){return `<span class="dot" title="${t}" style="background:${c}"></span>`;}
+function expCell(d){ if(!d) return ''; const x=new Date(d),now=new Date(),soon=new Date();soon.setDate(now.getDate()+90);
+  const cls=x<now?'exp-red':(x<soon?'exp-yel':''); return `<span class="${cls}">${d.split('-').reverse().join('/')}</span>`; }
+function filtered(){
+  const q=$('search').value.trim().toLowerCase(), sec=$('fSection').value, st=$('fStatus').value, ex=$('fExpired').checked;
+  return DATA.filter(p=>{
+    if(sec&&p.section!==sec)return false;
+    if(st&&p.status!==st)return false;
+    if(ex&&!(p.sexoxarto_expiry&&new Date(p.sexoxarto_expiry)<new Date()))return false;
+    if(q){const s=(p.first_name+' '+p.last_name+' '+(p.scout_name||'')+' '+(p.location||'')).toLowerCase();if(!s.includes(q))return false;}
+    return true;
+  });
+}
+function render(){ VIEW==='crm'?renderCRM():renderDia(); }
+function renderCRM(){
+  $('crm').style.display='block'; $('diarthrosi').style.display='none';
+  const rows=filtered();
+  $('count').textContent=`${rows.length} / ${DATA.length}`;
+  let h=`<table><thead><tr><th></th><th>Επίθετο</th><th>Όνομα</th><th>Προσκοπικό</th><th>Τμήμα</th><th>Κατηγορία</th><th>Τοποθεσία</th><th>Τηλέφωνο</th><th>Σεξόχαρτο λήξη</th><th>Α'Β</th></tr></thead><tbody>`;
+  rows.forEach(p=>{ h+=`<tr class="sec-${p.section}" onclick="detail('${p.id}')">
+    <td>${eligDot(p)}${p.firstaid_ok?' <span class="cross" title="Ενεργές Α΄Βοήθειες">✚</span>':''}</td>
+    <td><b>${p.last_name}</b></td><td>${p.first_name}</td>
+    <td>${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}</td>
+    <td>${p.section||''}${p.is_network&&p.section!=='Δίκτυο'?'<span class="chip">δίκτυο</span>':''}</td>
+    <td>${p.category}${p.special?`<span class="chip">${p.special==='7'?'7η':'Σ'}</span>`:''}</td>
+    <td>${p.location||''}</td><td>${p.phone||''}</td>
+    <td>${expCell(p.sexoxarto_expiry)}</td><td>${p.firstaid_ok?'✚':''}</td></tr>`; });
+  h+='</tbody></table>';
+  $('crm').innerHTML=h;
+}
+function renderDia(){
+  $('crm').style.display='none'; $('diarthrosi').style.display='block';
+  let h='<div class="grid">';
+  ['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].forEach(sec=>{
+    const ppl=DATA.filter(p=>p.section===sec||(p.extra_sections||[]).includes(sec))
+      .sort((a,b)=>a.last_name.localeCompare(b.last_name,'el'));
+    h+=`<div class="col ${sec}"><h3>${sec} (${ppl.length})</h3><ul>`;
+    ppl.forEach(p=>{h+=`<li onclick="detail('${p.id}')">${eligDot(p)}<span><b>${p.last_name}</b> ${p.first_name} ${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}</span></li>`;});
+    h+='</ul></div>';
+  });
+  h+='</div>'; $('diarthrosi').innerHTML=h;
+}
+
+/* ---------- detail / edit ---------- */
+async function detail(id){
+  EDIT_ID=id; const p=DATA.find(x=>x.id===id); if(!p)return;
+  $('dTitle').innerHTML=`${p.first_name} ${p.last_name} ${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}`;
+  const {data:tr}=await sb.from('trainings').select('type,section,date').eq('person_id',id);
+  const schools=(tr||[]).map(t=>t.type+(t.section?` (${t.section})`:'')+(t.date?` ${t.date}`:'')).join(' · ')||'—';
+  $('dBody').innerHTML=`
+    <div class="row"><div class="f"><label>Τμήμα</label>${p.section||'—'}</div>
+      <div class="f"><label>Κατηγορία</label>${p.category}</div>
+      <div class="f"><label>Καθήκοντα</label>${p.headrole||p.appointment||'—'}</div></div>
+    <div class="row"><div class="f"><label>Τοποθεσία</label>${p.location||'—'}</div>
+      <div class="f"><label>Τηλέφωνο</label>${p.phone||'—'}</div>
+      <div class="f"><label>Email</label>${p.email||'—'}</div></div>
+    <div class="row"><div class="f"><label>Έφορος</label>${p.is_commissioner?'Ναι':'Όχι'}</div>
+      <div class="f"><label>Δίκτυο</label>${p.is_network?'Ναι':'Όχι'}</div>
+      <div class="f"><label>Ένδειξη</label>${p.special||'—'}</div></div>
+    <div class="row"><div class="f"><label>Σεξόχαρτο λήξη</label>${expCell(p.sexoxarto_expiry)||'—'}</div>
+      <div class="f"><label>Α΄ Βοήθειες λήξη</label>${expCell(p.firstaid_expiry)||'—'}</div>
+      <div class="f"><label>Καταλληλότητα</label>${eligDot(p)} ${(p.sex_ok&&p.own_basic)?'Εντολή':(p.sex_ok&&p.has_prok)?'Ανάθεση':'—'}</div></div>
+    <div class="f"><label>Σχολές</label><span class="tag-list">${schools}</span></div>
+    <div id="sensBox"></div>`;
+  $('ov').classList.add('show');
+}
+$('dClose').onclick=()=>$('ov').classList.remove('show');
+$('dSens').onclick=async()=>{
+  const {data,error}=await sb.from('sensitive').select('adt,dob').eq('person_id',EDIT_ID).maybeSingle();
+  const box=$('sensBox');
+  if(error||!data){box.innerHTML=`<div class="sens">Χωρίς πρόσβαση ή χωρίς στοιχεία.</div>`;return;}
+  box.innerHTML=`<div class="sens">🔒 Α.Δ.Τ.: <b>${data.adt||'—'}</b> · Ημ. Γέννησης: <b>${data.dob?data.dob.split('-').reverse().join('/'):'—'}</b></div>`;
+};
+$('dEdit').onclick=()=>{
+  const p=DATA.find(x=>x.id===EDIT_ID);
+  $('dBody').innerHTML=`
+   <div class="row"><div class="f"><label>Όνομα</label><input id="e_first" value="${p.first_name||''}"></div>
+     <div class="f"><label>Επίθετο</label><input id="e_last" value="${p.last_name||''}"></div>
+     <div class="f"><label>Προσκοπικό</label><input id="e_scout" value="${p.scout_name||''}"></div></div>
+   <div class="row"><div class="f"><label>Τμήμα</label><select id="e_sec"><option value="">—</option>${SECS.map(s=>`<option ${s===p.section?'selected':''}>${s}</option>`).join('')}</select></div>
+     <div class="f"><label>Κατηγορία</label><select id="e_cat">${CATS.map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></div>
+     <div class="f"><label>Καθήκοντα</label><input id="e_head" value="${p.headrole||''}"></div></div>
+   <div class="row"><div class="f"><label>Τοποθεσία</label><input id="e_loc" value="${p.location||''}"></div>
+     <div class="f"><label>Τηλέφωνο</label><input id="e_phone" value="${p.phone||''}"></div>
+     <div class="f"><label>Email</label><input id="e_email" value="${p.email||''}"></div></div>
+   <div class="row"><div class="f"><label>Έφορος</label><select id="e_efor"><option value="false">Όχι</option><option value="true" ${p.is_commissioner?'selected':''}>Ναι</option></select></div>
+     <div class="f"><label>Κατάσταση</label><select id="e_status"><option ${p.status==='Ενεργός'?'selected':''}>Ενεργός</option><option ${p.status==='Αρχειοθετημένος'?'selected':''}>Αρχειοθετημένος</option></select></div></div>
+   <button class="btn" id="e_save" style="width:100%;margin-top:6px">💾 Αποθήκευση</button>
+   <div class="msg" id="e_msg"></div>`;
+  $('e_save').onclick=save;
+};
+async function save(){
+  const upd={first_name:$('e_first').value.trim(),last_name:$('e_last').value.trim(),scout_name:$('e_scout').value.trim()||null,
+    section:$('e_sec').value||null,category:$('e_cat').value,headrole:$('e_head').value.trim()||null,
+    location:$('e_loc').value.trim()||null,phone:$('e_phone').value.trim()||null,email:$('e_email').value.trim()||null,
+    is_commissioner:$('e_efor').value==='true',status:$('e_status').value};
+  const {error}=await sb.from('badgeholders').update(upd).eq('id',EDIT_ID);
+  const m=$('e_msg');
+  if(error){m.className='msg err';m.textContent=error.message;return;}
+  m.className='msg ok';m.textContent='Αποθηκεύτηκε ✓'; await load(); setTimeout(()=>$('ov').classList.remove('show'),600);
+}
+
+/* ---------- ui ---------- */
+['search','fSection','fStatus','fExpired'].forEach(id=>$(id).addEventListener('input',render));
+$('viewToggle').onclick=()=>{ VIEW=VIEW==='crm'?'dia':'crm'; $('viewToggle').textContent=VIEW==='crm'?'🗂 Διάρθρωση':'📋 CRM'; $('viewToggle').classList.toggle('on',VIEW==='dia'); render(); };
+$('ov').addEventListener('click',e=>{if(e.target===$('ov'))$('ov').classList.remove('show');});
+window.detail=detail;
+</script>
+</body>
+</html>
