@@ -81,6 +81,19 @@
   .col .subhead{font-size:10px;font-weight:700;color:#fff;background:var(--diktyo);border-radius:4px;display:inline-block;padding:0 6px;margin:5px 0 1px 6px}
   .col details{margin:2px 6px} .col summary{cursor:pointer;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;padding:5px 2px;border-top:1px dashed var(--line)}
   .asband{margin-bottom:12px} .archband{margin-top:12px}
+  /* sub-lists in modal (trainings + service history) */
+  .seclabel{font-size:11px;font-weight:800;color:var(--accent2);margin:12px 0 3px;text-transform:uppercase;letter-spacing:.03em;border-top:1px solid var(--line);padding-top:8px}
+  .subs{list-style:none;margin:2px 0;padding:0}
+  .subs li{padding:4px 2px;border-bottom:1px dashed var(--line);font-size:13px;line-height:1.35}
+  .subs li b{color:var(--accent)}
+  .delx{color:#c0392b;cursor:pointer;font-weight:800;float:right;padding:0 3px}
+  .delx:hover{color:#e74c3c}
+  .addrow{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+  .addrow input,.addrow select{padding:4px 7px;font-size:12px}
+  .yr{font-weight:800;color:var(--accent2)}
+  /* floating new-person button */
+  #newBtn{position:fixed;right:20px;bottom:20px;z-index:40;width:54px;height:54px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:28px;line-height:1;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+  #newBtn:hover{filter:brightness(1.1)}
 </style>
 </head>
 <body>
@@ -107,6 +120,7 @@
   <h1>76 — CRM Βαθμοφόρων</h1>
   <span class="who" id="who"></span>
   <button class="btn ghost sm" id="viewToggle">🗂 Διάρθρωση</button>
+  <button class="btn ghost sm" id="expToggle">⏳ Λήξεις</button>
   <button class="btn ghost sm" id="logout">Έξοδος</button>
 </header>
 <div class="wrap">
@@ -119,7 +133,9 @@
   </div>
   <div id="crm"></div>
   <div id="diarthrosi" style="display:none"></div>
+  <div id="exp" style="display:none"></div>
 </div>
+<button id="newBtn" title="Νέο άτομο" style="display:none">＋</button>
 </div>
 
 <!-- DETAIL MODAL -->
@@ -171,6 +187,7 @@ async function start(session){
   $('who').innerHTML=`${ME.email} <span class="badge-role ${ME.role!=='admin'?'viewer':''}">${ME.role}</span>`;
   $('dSens').style.display=ME.role==='admin'?'inline-block':'none';
   $('dEdit').style.display=ME.role==='admin'?'inline-block':'none';
+  $('newBtn').style.display=ME.role==='admin'?'block':'none';
   SECS.forEach(s=>$('fSection').insertAdjacentHTML('beforeend',`<option>${s}</option>`));
   await load();
   sb.channel('bh').on('postgres_changes',{event:'*',schema:'public',table:'badgeholders'},load).subscribe();
@@ -204,7 +221,12 @@ function filtered(){
     return true;
   });
 }
-function render(){ VIEW==='crm'?renderCRM():renderDia(); }
+function render(){
+  $('crm').style.display     = VIEW==='crm'?'block':'none';
+  $('diarthrosi').style.display = VIEW==='dia'?'block':'none';
+  $('exp').style.display     = VIEW==='exp'?'block':'none';
+  if(VIEW==='crm')renderCRM(); else if(VIEW==='dia')renderDia(); else renderExp();
+}
 function renderCRM(){
   $('crm').style.display='block'; $('diarthrosi').style.display='none';
   const rows=filtered();
@@ -274,17 +296,30 @@ function renderDia(){
   h+='<div class="grid">'+['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(diaCol).join('')+'</div>';
   const arch=bySurname(DATA.filter(p=>p.status==='Αρχειοθετημένος'||p.category==='Αρχειοθετημένος'));
   if(arch.length){let b='';arch.forEach((p,i)=>b+=personRow(p,blockNum(i,arch.length),''));
-    h+=`<div class="archband"><div class="col Σύστημα"><h3>ΑΡΧΕΙΟΘΕΤΗΜΕΝΟΙ ΒΑΘΜΟΦΟΡΟΙ (${arch.length})</h3><details><summary style="padding:8px 6px">▸ Εμφάνιση</summary><ul class="people">${b}</ul></details></div></div>`;
+    h+=`<div class="archband"><div class="col Σύστημα"><h3>ΑΡΧΕΙΟΘΕΤΗμΕΝΟΙ ΒΑΘΜΟΦΟΡΟΙ (${arch.length})</h3><details><summary style="padding:8px 6px">▸ Εμφάνιση</summary><ul class="people">${b}</ul></details></div></div>`;
   }
   $('diarthrosi').innerHTML=h;
+}
+function renderExp(){
+  const now=new Date(), soon=new Date(); soon.setDate(now.getDate()+90);
+  const rows=DATA.filter(p=>p.sexoxarto_expiry||p.firstaid_expiry).map(p=>{
+    const ds=[p.sexoxarto_expiry,p.firstaid_expiry].filter(Boolean).map(d=>new Date(d));
+    return {p,min:new Date(Math.min.apply(null,ds))};
+  }).sort((a,b)=>a.min-b.min);
+  const expired=rows.filter(r=>r.min<now).length, soonN=rows.filter(r=>r.min>=now&&r.min<soon).length;
+  let h=`<div class="toolbar"><span class="count">⏳ ${expired} ληγμένα · ${soonN} λήγουν σε 90 ημέρες · ${rows.length} με ημερομηνία</span></div>
+    <table><thead><tr><th></th><th>Επίθετο</th><th>Όνομα</th><th>Τμήμα</th><th>Σεξόχαρτο</th><th>Α΄Βοήθειες</th></tr></thead><tbody>`;
+  rows.forEach(({p})=>{ h+=`<tr class="sec-${p.section}" onclick="detail('${p.id}')">
+    <td>${eligDot(p)}</td><td><b>${p.last_name}</b></td><td>${p.first_name}</td>
+    <td>${p.section||''}</td><td>${expCell(p.sexoxarto_expiry)||'—'}</td><td>${expCell(p.firstaid_expiry)||'—'}</td></tr>`; });
+  h+='</tbody></table>';
+  $('exp').innerHTML=h;
 }
 
 /* ---------- detail / edit ---------- */
 async function detail(id){
   EDIT_ID=id; const p=DATA.find(x=>x.id===id); if(!p)return;
   $('dTitle').innerHTML=`${p.first_name} ${p.last_name} ${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}`;
-  const {data:tr}=await sb.from('trainings').select('type,section,date').eq('person_id',id);
-  const schools=(tr||[]).map(t=>t.type+(t.section?` (${t.section})`:'')+(t.date?` ${t.date}`:'')).join(' · ')||'—';
   $('dBody').innerHTML=`
     <div class="row"><div class="f"><label>Τμήμα</label>${p.section||'—'}</div>
       <div class="f"><label>Κατηγορία</label>${p.category}</div>
@@ -298,10 +333,57 @@ async function detail(id){
     <div class="row"><div class="f"><label>Σεξόχαρτο λήξη</label>${expCell(p.sexoxarto_expiry)||'—'}</div>
       <div class="f"><label>Α΄ Βοήθειες λήξη</label>${expCell(p.firstaid_expiry)||'—'}</div>
       <div class="f"><label>Καταλληλότητα</label>${eligDot(p)} ${(p.sex_ok&&p.own_basic)?'Εντολή':(p.sex_ok&&p.has_prok)?'Ανάθεση':'—'}</div></div>
-    <div class="f"><label>Σχολές</label><span class="tag-list">${schools}</span></div>
+    <div id="shBox"></div>
+    <div id="trBox"></div>
     <div id="sensBox"></div>`;
   $('ov').classList.add('show');
+  loadSubs(id);
 }
+/* ----- sub-lists: service history (Εντολές ανά χρονιά) + trainings (σχολές) ----- */
+function fmtD(d){return d?d.split('-').reverse().join('/'):'';}
+async function loadSubs(id){
+  const admin=ME.role==='admin';
+  const [{data:sh},{data:tr}]=await Promise.all([
+    sb.from('service_history').select('id,scout_year,section,appointment,appointment_no,role').eq('person_id',id).order('scout_year',{ascending:false}),
+    sb.from('trainings').select('id,type,section,date').eq('person_id',id).order('date',{ascending:true,nullsFirst:true})
+  ]);
+  $('shBox').innerHTML=historyHTML(sh||[],admin);
+  $('trBox').innerHTML=trainingsHTML(tr||[],admin);
+}
+function historyHTML(list,admin){
+  let rows=list.map(t=>`<li><span class="yr">${t.scout_year}</span> — <b>${t.appointment||'—'}</b>${t.section?` · ${t.section}`:''}${t.appointment_no?` <span class="chip">αρ. ${t.appointment_no}</span>`:''}${t.role?` <span class="dmeta">${t.role}</span>`:''}${admin?` <span class="delx" onclick="delHistory('${t.id}')">✕</span>`:''}</li>`).join('')||'<li class="dmeta">— καμία καταχώρηση —</li>';
+  const secOpts=SECS.filter(s=>s!=='Σύστημα').map(s=>`<option>${s}</option>`).join('');
+  const add=admin?`<div class="addrow">
+    <input id="sh_year" placeholder="χρονιά π.χ. 2025-26" style="flex:1.4">
+    <select id="sh_app"><option>Εντολή</option><option>Ανάθεση</option></select>
+    <select id="sh_sec"><option value="">τμήμα</option>${secOpts}</select>
+    <input id="sh_no" placeholder="αρ." style="width:60px">
+    <input id="sh_role" placeholder="ρόλος" style="flex:1">
+    <button class="btn sm" onclick="addHistory()">＋</button></div>`:'';
+  return `<div class="seclabel">🎖 Ιστορικό Εντολών / Αναθέσεων</div><ul class="subs">${rows}</ul>${add}`;
+}
+function trainingsHTML(list,admin){
+  let rows=list.map(t=>`<li>${t.type}${t.section?` <span class="chip">${t.section}</span>`:''}${t.date?` <span class="dmeta">${fmtD(t.date)}</span>`:''}${admin?` <span class="delx" onclick="delTraining('${t.id}')">✕</span>`:''}</li>`).join('')||'<li class="dmeta">— καμία σχολή —</li>';
+  const add=admin?`<div class="addrow">
+    <input id="tr_type" placeholder="σχολή π.χ. Βασική" style="flex:2">
+    <input id="tr_sec" placeholder="τμήμα/κλάδος" style="flex:1">
+    <input id="tr_date" type="date" style="flex:1">
+    <button class="btn sm" onclick="addTraining()">＋</button></div>`:'';
+  return `<div class="seclabel">📚 Σχολές / Εκπαιδεύσεις</div><ul class="subs">${rows}</ul>${add}`;
+}
+async function addHistory(){
+  const y=$('sh_year').value.trim(); if(!y){return;}
+  const {error}=await sb.from('service_history').insert({person_id:EDIT_ID,scout_year:y,appointment:$('sh_app').value,
+    section:$('sh_sec').value||null,appointment_no:$('sh_no').value.trim()||null,role:$('sh_role').value.trim()||null});
+  if(error){alert(error.message);return;} loadSubs(EDIT_ID);
+}
+async function delHistory(id){ const {error}=await sb.from('service_history').delete().eq('id',id); if(error){alert(error.message);return;} loadSubs(EDIT_ID); }
+async function addTraining(){
+  const type=$('tr_type').value.trim(); if(!type){return;}
+  const {error}=await sb.from('trainings').insert({person_id:EDIT_ID,type,section:$('tr_sec').value.trim()||null,date:$('tr_date').value||null});
+  if(error){alert(error.message);return;} loadSubs(EDIT_ID);
+}
+async function delTraining(id){ const {error}=await sb.from('trainings').delete().eq('id',id); if(error){alert(error.message);return;} loadSubs(EDIT_ID); }
 $('dClose').onclick=()=>$('ov').classList.remove('show');
 $('dSens').onclick=async()=>{
   const {data,error}=await sb.from('sensitive').select('adt,dob').eq('person_id',EDIT_ID).maybeSingle();
@@ -340,9 +422,22 @@ async function save(){
 
 /* ---------- ui ---------- */
 ['search','fSection','fStatus','fExpired'].forEach(id=>$(id).addEventListener('input',render));
-$('viewToggle').onclick=()=>{ VIEW=VIEW==='crm'?'dia':'crm'; $('viewToggle').textContent=VIEW==='crm'?'🗂 Διάρθρωση':'📋 CRM'; $('viewToggle').classList.toggle('on',VIEW==='dia'); render(); };
+function setView(v){
+  VIEW=(VIEW===v?'crm':v);
+  $('viewToggle').classList.toggle('on',VIEW==='dia');
+  $('expToggle').classList.toggle('on',VIEW==='exp');
+  render();
+}
+$('viewToggle').onclick=()=>setView('dia');
+$('expToggle').onclick=()=>setView('exp');
+$('newBtn').onclick=async()=>{
+  const {data,error}=await sb.from('badgeholders').insert({first_name:'Νέο',last_name:'Άτομο',category:'Βαθμοφόρος',status:'Ενεργός'}).select('id').single();
+  if(error){alert(error.message);return;}
+  await load(); if(VIEW!=='crm')setView('crm'); await detail(data.id); $('dEdit').click();
+};
 $('ov').addEventListener('click',e=>{if(e.target===$('ov'))$('ov').classList.remove('show');});
 window.detail=detail;
+window.addHistory=addHistory;window.delHistory=delHistory;window.addTraining=addTraining;window.delTraining=delTraining;
 </script>
 </body>
 </html>
