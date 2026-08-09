@@ -6,6 +6,126 @@
 <title>76 — CRM Βαθμοφόρων</title>
 <link rel="icon" href="https://76.life/wp-content/uploads/2024/08/cropped-76icon3-32x32.jpg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+/* matcherCore — αυτούσια λογική αντιστοίχισης από το standalone camp-members-matcher.html
+   (Layer-2 projector). Κρατιέται συνεπής με το standalone· μην την αλλάζεις μονομερώς. */
+(function(){
+  const TH_GREEN=0.90, TH_AMBER=0.70, TH_BLOCK=0.62;
+  function collapseSpaces(s){ return String(s).trim().replace(/\s+/g,' '); }
+  function stripDiacritics(s){ return s.normalize('NFD').replace(/[̀-ͯ]/g,'').normalize('NFC'); }
+  function greekUpper(s){ return stripDiacritics(collapseSpaces(s)).toUpperCase().replace(/΄/g,''); }
+  function finalSigma(s){ return s.replace(/ς/g,'σ'); }
+  function greekCanon(s){ let t=greekUpper(finalSigma(String(s).toLowerCase())); t=t.replace(/[^Α-ΩA-Z0-9 ]/g,''); return collapseSpaces(t); }
+  function greekToLatin(input){
+    let s=stripDiacritics(collapseSpaces(String(input))).toLowerCase();
+    s=s.replace(/ς/g,'σ');
+    const dg=[['ου','u'],['αυ','af'],['ευ','ef'],['ηυ','if'],['τσ','ts'],['τζ','tz'],['αι','e'],['ει','i'],['οι','i'],['υι','i']];
+    for(const [a,b] of dg) s=s.split(a).join(b);
+    const map={'α':'a','β':'v','γ':'g','δ':'d','ε':'e','ζ':'z','η':'i','θ':'th','ι':'i','κ':'k','λ':'l','μ':'m','ν':'n','ξ':'x','ο':'o','π':'p','ρ':'r','σ':'s','τ':'t','υ':'i','φ':'f','χ':'x','ψ':'ps','ω':'o'};
+    let out=''; for(const ch of s) out+=(map[ch]!==undefined?map[ch]:ch); return out;
+  }
+  function phonKey(input){
+    let s=String(input).toLowerCase();
+    if(/[α-ω]/.test(s)) s=greekToLatin(s); else s=stripDiacritics(s);
+    s=s.replace(/8/g,'th').replace(/3/g,'ks').replace(/9/g,'th');
+    s=s.replace(/ph/g,'f').replace(/gh/g,'g').replace(/ch/g,'x').replace(/ck/g,'k');
+    s=s.replace(/ps/g,'ps').replace(/th/g,'8');
+    s=s.replace(/ou/g,'u').replace(/ai/g,'e');
+    s=s.replace(/y/g,'i').replace(/w/g,'o').replace(/j/g,'g');
+    s=s.replace(/h/g,''); s=s.replace(/c/g,'k'); s=s.replace(/[^a-z8]/g,''); s=s.replace(/(.)\1+/g,'$1');
+    return s;
+  }
+  function lev(a,b){ if(a===b)return 0; const m=a.length,n=b.length; if(!m)return n; if(!n)return m;
+    let prev=new Array(n+1); for(let j=0;j<=n;j++)prev[j]=j;
+    for(let i=1;i<=m;i++){ let cur=[i]; for(let j=1;j<=n;j++){ const c=a[i-1]===b[j-1]?0:1; cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+c);} prev=cur; } return prev[n]; }
+  function ratio(a,b){ if(!a&&!b)return 1; const L=Math.max(a.length,b.length); if(!L)return 1; return 1-lev(a,b)/L; }
+  function tokenSort(s){ return s.split(' ').filter(Boolean).sort().join(' '); }
+  function extractYear(s){ const m=String(s||'').match(/(19|20)\d{2}/); return m?parseInt(m[0]):null; }
+  function firstLetterCanon(s){ const c=greekCanon(s); return c?c[0]:''; }
+  const DIMINUTIVES=[
+    ['ΑΘΑΝΑΣΙΟΣ','ΘΑΝΑΣΗΣ','ΣΑΚΗΣ','ΝΑΣΟΣ'],
+    ['ΧΑΡΑΛΑΜΠΟΣ','ΜΠΑΜΠΗΣ','ΧΑΡΗΣ'],
+    ['ΚΩΝΣΤΑΝΤΙΝΟΣ','ΚΩΣΤΑΣ','ΝΤΙΝΟΣ','ΚΩΝΣΤΑΝΤΙΝΑ','ΝΤΙΝΑ'],
+    ['ΓΕΩΡΓΙΟΣ','ΓΙΩΡΓΟΣ','ΓΙΩΡΓΗΣ','ΤΖΩΡΤΖΟΣ'],
+    ['ΔΗΜΗΤΡΙΟΣ','ΔΗΜΗΤΡΗΣ','ΜΗΤΣΟΣ','ΤΑΚΗΣ','ΔΗΜΗΤΡΑ'],
+    ['ΕΜΜΑΝΟΥΗΛ','ΜΑΝΟΣ','ΜΑΝΩΛΗΣ'],
+    ['ΙΩΑΝΝΗΣ','ΓΙΑΝΝΗΣ','ΝΤΖΟΝ','ΙΩΑΝΝΑ','ΓΙΑΝΝΑ'],
+    ['ΒΑΣΙΛΕΙΟΣ','ΒΑΣΙΛΗΣ','ΒΑΣΟΣ','ΒΑΣΙΛΙΚΗ','ΒΑΣΩ'],
+    ['ΝΙΚΟΛΑΟΣ','ΝΙΚΟΣ','ΝΙΚΟΛΑΣ','ΝΙΚΟΛΕΤΑ'],
+    ['ΠΑΝΑΓΙΩΤΗΣ','ΠΑΝΟΣ','ΠΑΝΙΚΟΣ','ΤΑΚΗΣ','ΠΑΝΑΓΙΩΤΑ','ΓΙΩΤΑ'],
+    ['ΕΛΕΝΗ','ΕΛΕΝΑ','ΛΕΝΑ','ΛΕΝΙΑ'],
+    ['ΕΛΕΥΘΕΡΙΟΣ','ΛΕΥΤΕΡΗΣ','ΤΕΡΗΣ'],
+    ['ΑΝΑΣΤΑΣΙΟΣ','ΤΑΣΟΣ','ΑΝΑΣΤΑΣΙΑ','ΝΑΤΑΣΑ','ΣΟΥΛΑ'],
+    ['ΑΝΔΡΕΑΣ','ΑΝΤΡΕΑΣ'],
+    ['ΑΛΕΞΑΝΔΡΟΣ','ΑΛΕΞΗΣ','ΑΛΕΞΑΝΔΡΑ'],
+    ['ΕΥΑΓΓΕΛΟΣ','ΒΑΓΓΕΛΗΣ','ΕΥΑΓΓΕΛΙΑ','ΕΥΗ'],
+    ['ΣΤΑΥΡΟΣ','ΣΤΑΥΡΟΥΛΑ','ΡΟΥΛΑ'],
+    ['ΘΕΟΔΩΡΟΣ','ΘΟΔΩΡΗΣ','ΝΤΟΡΟΣ','ΘΕΟΔΩΡΑ','ΝΤΟΡΑ'],
+    ['ΧΡΙΣΤΙΝΑ','ΧΡΙΣΤΙΑΝΑ']
+  ];
+  const DIM_MAP={}; DIMINUTIVES.forEach((grp,gi)=>grp.forEach(n=>{ DIM_MAP[greekCanon(n)]=gi; }));
+  function sameGivenGroup(a,b){ const ga=DIM_MAP[greekCanon(a)],gb=DIM_MAP[greekCanon(b)]; return ga!==undefined&&ga===gb; }
+  function parseNameExtras(first,last){
+    let init=null,rank=null;
+    const clean=s=>collapseSpaces(s).split(' ').filter(Boolean).filter(t=>{
+      const c=t.replace(/[.·]/g,'');
+      if(/^(jr|jnr|junior)$/i.test(c)){rank='jr';return false;}
+      if(/^(sr|snr|senior|πρεσβ)$/i.test(c)){rank='sr';return false;}
+      if(c.length===1&&/[a-zα-ωά-ώ]/i.test(c)){ if(!init)init=greekCanon(c); return false; }
+      return true;
+    }).join(' ');
+    return {first:clean(first),last:clean(last),init,rank};
+  }
+  function allPhonTokens(person){ if(person._toks)return person._toks;
+    return person._toks=(String(person.first)+' '+String(person.last)).split(/\s+/).map(s=>s.trim()).filter(Boolean).map(phonKey).filter(Boolean); }
+  function makePerson(first,last,extra){
+    extra=extra||{}; first=collapseSpaces(first||''); last=collapseSpaces(last||'');
+    let pInit=null,rank=null;
+    if(extra.parseName){ const e=parseNameExtras(first,last); first=e.first; last=e.last; pInit=e.init; rank=e.rank; }
+    const gLF=greekCanon(last+' '+first);
+    return { first,last, display:extra.orig?collapseSpaces(extra.orig):(last?last+' ':'')+first,
+      gCanonFL:greekCanon(first+' '+last), gCanonLF:gLF, gFirst:greekCanon(first), gLast:greekCanon(last),
+      pFirst:phonKey(first), pLast:phonKey(last), pSort:tokenSort(phonKey(first)+' '+phonKey(last)),
+      father:extra.father||'', fatherInit:firstLetterCanon(extra.father||''),
+      birth:extra.birth||'', birthYear:extractYear(extra.birth), pInit, rank,
+      aliasKey:gLF+(pInit?'|π'+pInit:'')+(rank?'|'+rank:''), id:extra.id!==undefined?extra.id:null, extra:extra };
+  }
+  function tokenSetSim(p,r){ const a=allPhonTokens(p),b=allPhonTokens(r); if(!a.length||!b.length)return 0;
+    const dir=(x,y)=>x.reduce((s,t)=>s+Math.max.apply(null,y.map(u=>ratio(t,u))),0)/x.length; return Math.min(dir(a,b),dir(b,a)); }
+  function personSim(p,r){
+    if(p.gCanonFL&&(p.gCanonFL===r.gCanonFL||p.gCanonFL===r.gCanonLF))return 1;
+    if(p.gCanonLF&&(p.gCanonLF===r.gCanonFL||p.gCanonLF===r.gCanonLF))return 1;
+    if(p.pSort&&p.pSort===r.pSort)return 1;
+    const surn=Math.max(ratio(p.pLast,r.pLast),ratio(p.pLast,r.pFirst));
+    if(surn>=0.86&&(sameGivenGroup(p.first,r.first)||sameGivenGroup(p.first,r.last)))return 0.97;
+    let best=ratio(p.pSort,r.pSort);
+    best=Math.max(best,ratio(p.pFirst+p.pLast,r.pFirst+r.pLast));
+    best=Math.max(best,ratio(p.pFirst+p.pLast,r.pLast+r.pFirst));
+    best=Math.max(best,tokenSetSim(p,r)); return best;
+  }
+  function matchOne(p,R,aliasMap){
+    const ak=p.aliasKey||p.gCanonLF;
+    if(aliasMap&&aliasMap[ak]!==undefined){ const idx=aliasMap[ak]; if(R[idx])return {status:'g',pick:idx,sim:1,cands:[{i:idx,s:1}],alias:true}; }
+    let scored=R.map((_,i)=>({i,s:personSim(p,R[i])})); scored.sort((a,b)=>b.s-a.s);
+    const top=scored[0]||{i:-1,s:0};
+    const cands=scored.filter(x=>x.s>=TH_BLOCK-0.1).slice(0,6); if(!cands.length&&top.i>=0)cands.push(top);
+    const ties=scored.filter(x=>x.s>=TH_GREEN);
+    if(ties.length>1){
+      if(p.pInit){ const byInit=ties.filter(t=>R[t.i].fatherInit&&R[t.i].fatherInit===p.pInit);
+        if(byInit.length===1)return {status:'g',pick:byInit[0].i,sim:byInit[0].s,cands,reason:'πατρώνυμο'};
+        if(byInit.length>1)return {status:'y',pick:byInit[0].i,sim:byInit[0].s,cands:byInit,ambiguous:true}; }
+      if(p.rank){ const wy=ties.filter(t=>R[t.i].birthYear); if(wy.length>=2){ wy.sort((a,b)=>R[a.i].birthYear-R[b.i].birthYear);
+        const pk=p.rank==='jr'?wy[wy.length-1].i:wy[0].i; return {status:'g',pick:pk,sim:1,cands,reason:(p.rank==='jr'?'νεότερος':'μεγαλύτερος')}; } }
+      return {status:'y',pick:top.i,sim:top.s,cands:ties,ambiguous:true};
+    }
+    let status,pick;
+    if(top.s>=TH_GREEN){status='g';pick=top.i;} else if(top.s>=TH_AMBER){status='y';pick=top.i;} else {status='r';pick=-1;}
+    return {status,pick,sim:top.s,cands};
+  }
+  window.matcherCore={ TH_GREEN,TH_AMBER,TH_BLOCK, makePerson, matchOne, personSim, greekCanon };
+})();
+</script>
 <style>
   :root{--ink:#1d2733;--muted:#6b7885;--line:#d7dee6;--bg:#eef2f6;--card:#fff;--accent:#1b5e9c;--accent2:#0f3d68;
     --ageli:#f4c20d;--omada:#1e7a34;--koin:#3498db;--diktyo:#8e44ad;--sys:#334155;}
@@ -126,6 +246,7 @@
   <button class="btn ghost sm" id="viewToggle">🗂 Διάρθρωση</button>
   <button class="btn ghost sm" id="expToggle">⏳ Λήξεις</button>
   <button class="btn ghost sm" id="calToggle">🔔 Ημερολόγιο</button>
+  <button class="btn ghost sm" id="draToggle">🎯 Δράσεις</button>
   <button class="btn ghost sm" id="logout">Έξοδος</button>
 </header>
 <div class="wrap">
@@ -141,10 +262,21 @@
   <div id="diarthrosi" style="display:none"></div>
   <div id="exp" style="display:none"></div>
   <div id="cal" style="display:none"></div>
+  <div id="dra" style="display:none"></div>
 </div>
 <div id="newMenu"><button class="btn sm" id="newMember">＋ Μέλος</button><button class="btn sm" id="newBadge">＋ Βαθμοφόρος</button></div>
 <button id="newBtn" title="Νέο άτομο" style="display:none">＋</button>
 </div>
+
+<!-- EVENT (ΦΑΚΕΛΟΣ ΔΡΑΣΗΣ) MODAL -->
+<div class="overlay" id="ev"><div class="modal" style="max-width:720px">
+  <h3 id="evTitle">Φάκελος Δράσης</h3>
+  <div id="evBody"></div>
+  <div class="modal-actions">
+    <button class="btn ghost sm" style="background:#e6ebf0;color:#333" id="evClose">Κλείσιμο</button>
+    <div id="evExports"></div>
+  </div>
+</div></div>
 
 <!-- DETAIL MODAL -->
 <div class="overlay" id="ov"><div class="modal">
@@ -162,6 +294,10 @@ const SB_URL='https://cofiscmvdagizlchrian.supabase.co';
 const SB_KEY='sb_publishable_OvYhjMAqZ9ty6T2De2by-g_uJ6mnm50';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 let ME={email:null,role:'viewer'}, DATA=[], EDIT_ID=null, VIEW='crm', CATALOG=[];
+let EVENTS=[], EDIT_EVENT=null, REG_PERSONS=null, IMPORT_RES=null;
+const EV_TYPES=['Συνάντηση','Εκδρομή','Διήμερο','Τριήμερο','Κατασκήνωση','ΜΔΥ','Εκδήλωση','Άλλο'];
+const DUTIES=['Αρχηγός Δράσης','Α΄ Βοηθός','Οδηγός','Υπεύθυνος Υλικού','Υπεύθυνος Προγράμματος','Υπεύθυνος Ασφαλείας','Ταμίας','Βοηθός'];
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 const SECCOLOR={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)'};
 const SECS=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'];
 const SECLOGO={'Αγέλη':'https://76.life/wp-content/uploads/2024/08/76ageliLogo-150x150.png','Ομάδα':'https://76.life/wp-content/uploads/2024/08/76omadaLogo-150x150.png','Κοινότητα':'https://76.life/wp-content/uploads/2024/08/76koinotitaLogo-150x150.png'};
@@ -250,7 +386,9 @@ function render(){
   $('diarthrosi').style.display = VIEW==='dia'?'block':'none';
   $('exp').style.display     = VIEW==='exp'?'block':'none';
   $('cal').style.display     = VIEW==='cal'?'block':'none';
-  if(VIEW==='crm')renderCRM(); else if(VIEW==='dia')renderDia(); else if(VIEW==='exp')renderExp(); else renderCal();
+  $('dra').style.display     = VIEW==='dra'?'block':'none';
+  const tb=$('crm').parentElement.querySelector('.toolbar'); if(tb)tb.style.display=(VIEW==='crm')?'flex':'none';
+  if(VIEW==='crm')renderCRM(); else if(VIEW==='dia')renderDia(); else if(VIEW==='exp')renderExp(); else if(VIEW==='cal')renderCal(); else renderDra();
 }
 function renderCRM(){
   $('crm').style.display='block'; $('diarthrosi').style.display='none';
@@ -406,6 +544,7 @@ async function detail(id){
       <div class="f"><label>Καταλληλότητα</label>${eligDot(p)} ${(p.sex_ok&&p.own_basic)?'Εντολή':(p.sex_ok&&p.has_prok)?'Ανάθεση':'—'}</div></div>
     <div id="shBox"></div>
     <div id="trBox"></div>
+    <div id="dpBox"></div>
     <div id="sensBox"></div>`;
   $('ov').classList.add('show');
   loadSubs(id);
@@ -428,6 +567,7 @@ function memberBody(p){
      <div class="f"><label>Υπόσχεση</label><span id="m_promise">—</span></div></div>
    <div id="myBox"></div>
    <div id="progBox"></div>
+   <div id="dpBox"></div>
    <div id="sensBox"></div>`;
 }
 function ageFrom(dob){ const b=new Date(dob),n=new Date();let a=n.getFullYear()-b.getFullYear();const m=n.getMonth()-b.getMonth();if(m<0||(m===0&&n.getDate()<b.getDate()))a--;return a; }
@@ -455,6 +595,7 @@ async function loadMember(id){
   if($('m_move'))$('m_move').textContent=tgt?('→ '+tgt):'—';
   const {data:pr}=await sb.from('member_progress').select('*').eq('person_id',id).order('date',{ascending:true,nullsFirst:true});
   if($('progBox'))$('progBox').innerHTML=progressHTML(pr||[],sec,admin);
+  loadParticip(id);
 }
 function progressHTML(list,section,admin){
   const line=t=>`<li><b>${t.label}</b>${t.date?` <span class="dmeta">${fmtD(t.date)}</span>`:''}${admin?` <span class="delx" onclick="delProgress('${t.id}')">✕</span>`:''}</li>`;
@@ -542,6 +683,7 @@ async function loadSubs(id){
   ]);
   $('shBox').innerHTML=historyHTML(sh||[],admin);
   $('trBox').innerHTML=trainingsHTML(tr||[],admin);
+  loadParticip(id);
 }
 function historyHTML(list,admin){
   let rows=list.map(t=>`<li><span class="yr">${t.scout_year}</span> — <b>${t.appointment||'—'}</b>${t.section?` · ${t.section}`:''}${t.appointment_no?` <span class="chip">αρ. ${t.appointment_no}</span>`:''}${t.role?` <span class="dmeta">${t.role}</span>`:''}${admin?` <span class="delx" onclick="delHistory('${t.id}')">✕</span>`:''}</li>`).join('')||'<li class="dmeta">— καμία καταχώρηση —</li>';
@@ -614,6 +756,185 @@ async function save(){
   m.className='msg ok';m.textContent='Αποθηκεύτηκε ✓'; await load(); setTimeout(()=>$('ov').classList.remove('show'),600);
 }
 
+/* ================= ΔΡΑΣΕΙΣ (φάκελος δράσης) ================= */
+async function loadEvents(){
+  const {data,error}=await sb.from('events').select('*, participations(count)').order('event_date',{ascending:false,nullsFirst:false});
+  if(error){alert(error.message);return;} EVENTS=data||[];
+}
+function evCount(e){ return (e.participations&&e.participations[0])?e.participations[0].count:0; }
+function renderDra(){
+  const admin=ME.role==='admin';
+  let h=`<div class="toolbar"><span class="count">🎯 ${EVENTS.length} δράσεις</span>${admin?'<button class="btn sm" onclick="newEvent()">＋ Νέα δράση</button>':''}</div>`;
+  if(!EVENTS.length){ $('dra').innerHTML=h+'<div class="dmeta" style="padding:8px">— καμία δράση ακόμη —</div>'; return; }
+  h+='<table><thead><tr><th>Ημ/νία</th><th>Δράση</th><th>Είδος</th><th>Τμήμα</th><th>Άτομα</th></tr></thead><tbody>';
+  EVENTS.forEach(e=>{ h+=`<tr class="sec-${e.section||''}" onclick="openEvent('${e.id}')"><td>${e.event_date?fmtD(e.event_date):'—'}</td><td><b>${esc(e.title)}</b></td><td>${esc(e.type||'')}</td><td>${esc(e.section||'')}</td><td>${evCount(e)}</td></tr>`; });
+  $('dra').innerHTML=h+'</tbody></table>';
+}
+async function newEvent(){
+  const {data,error}=await sb.from('events').insert({title:'Νέα δράση',type:'Συνάντηση'}).select('id').single();
+  if(error){alert(error.message);return;} await loadEvents(); renderDra(); openEvent(data.id);
+}
+async function openEvent(id){
+  EDIT_EVENT=id;
+  const {data:e}=await sb.from('events').select('*').eq('id',id).maybeSingle(); if(!e)return;
+  $('evTitle').textContent='Φάκελος Δράσης — '+(e.title||'');
+  $('evExports').innerHTML=`<button class="btn sm" onclick="exportGenika()">⤓ ΓΕΝΙΚΑ</button> <button class="btn sm" onclick="exportSymmetoxes()">⤓ ΣΥΜΜΕΤΟΧΕΣ</button> <button class="btn sm" onclick="exportPistopoiitika()">⤓ ΠΙΣΤΟΠΟΙΗΤΙΚΑ</button>`;
+  $('evBody').innerHTML=genikaHTML(e)+`<div id="evParts"></div>`;
+  $('ev').classList.add('show'); await loadParts(id);
+}
+function genikaHTML(e){
+  const admin=ME.role==='admin';
+  if(!admin){
+    return `<div class="seclabel">📋 ΓΕΝΙΚΑ</div>
+     <div class="row"><div class="f"><label>Δράση</label>${esc(e.title)}</div><div class="f"><label>Είδος</label>${esc(e.type||'—')}</div><div class="f"><label>Τμήμα</label>${esc(e.section||'—')}</div></div>
+     <div class="row"><div class="f"><label>Από</label>${e.event_date?fmtD(e.event_date):'—'}</div><div class="f"><label>Έως</label>${e.end_date?fmtD(e.end_date):'—'}</div><div class="f"><label>Διαν/σεις</label>${e.nights||0}</div></div>
+     <div class="row"><div class="f"><label>Τόπος</label>${esc(e.place||'—')}</div><div class="f"><label>Δικαίωμα €</label>${e.fee!=null?e.fee:'—'}</div></div>
+     ${e.purpose?`<div class="f"><label>Σκοπός</label>${esc(e.purpose)}</div>`:''}`;
+  }
+  const secOpt=['','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'].map(s=>`<option ${s===(e.section||'')?'selected':''}>${s}</option>`).join('');
+  const tyOpt=EV_TYPES.map(s=>`<option ${s===(e.type||'')?'selected':''}>${s}</option>`).join('');
+  return `<div class="seclabel">📋 ΓΕΝΙΚΑ</div>
+   <div class="row"><div class="f"><label>Δράση</label><input id="ev_title" value="${esc(e.title)}"></div>
+     <div class="f"><label>Είδος</label><select id="ev_type">${tyOpt}</select></div>
+     <div class="f"><label>Τμήμα</label><select id="ev_section"><option value=""></option>${secOpt}</select></div></div>
+   <div class="row"><div class="f"><label>Από</label><input id="ev_start" type="date" value="${e.event_date||''}"></div>
+     <div class="f"><label>Έως</label><input id="ev_end" type="date" value="${e.end_date||''}"></div>
+     <div class="f"><label>Διαν/σεις</label><input id="ev_nights" type="number" min="0" value="${e.nights||0}" style="width:70px"></div></div>
+   <div class="row"><div class="f"><label>Τόπος / Διαμονή</label><input id="ev_place" value="${esc(e.place||'')}"></div>
+     <div class="f"><label>Δικαίωμα συμμ. €</label><input id="ev_fee" type="number" step="0.01" value="${e.fee!=null?e.fee:''}" style="width:110px"></div></div>
+   <div class="f"><label>Σκοπός</label><input id="ev_purpose" value="${esc(e.purpose||'')}"></div>
+   <button class="btn sm" onclick="saveGenika()">💾 Αποθήκευση ΓΕΝΙΚΑ</button> <span class="msg" id="ev_msg" style="display:inline"></span>`;
+}
+async function saveGenika(){
+  const upd={title:$('ev_title').value.trim()||'Δράση',type:$('ev_type').value||null,section:$('ev_section').value||null,
+    event_date:$('ev_start').value||null,end_date:$('ev_end').value||null,nights:parseInt($('ev_nights').value||'0')||0,
+    place:$('ev_place').value.trim()||null,fee:($('ev_fee').value!==''?parseFloat($('ev_fee').value):null),purpose:$('ev_purpose').value.trim()||null};
+  const {error}=await sb.from('events').update(upd).eq('id',EDIT_EVENT);
+  const m=$('ev_msg'); if(error){m.className='msg err';m.textContent=error.message;return;}
+  m.className='msg ok';m.textContent='✓ αποθηκεύτηκε'; $('evTitle').textContent='Φάκελος Δράσης — '+upd.title; await loadEvents();
+}
+async function loadParts(id){
+  const {data:parts}=await sb.from('participations').select('*').eq('event_id',id);
+  const admin=ME.role==='admin';
+  const arr=(parts||[]).map(pt=>({pt,p:DATA.find(x=>x.id===pt.person_id)}))
+    .sort((a,b)=>((a.p&&a.p.last_name)||'').localeCompare((b.p&&b.p.last_name)||'','el'));
+  const list=arr.map(({pt,p})=>{
+    const nm=p?`${p.first_name} <b>${p.last_name}</b>`:'<i>άγνωστο</i>'; const sec=p?(p.section||''):'';
+    if(!admin) return `<li class="sec-${sec}">${nm}${pt.is_staff?' <span class="role head">επιτελείο</span>':''}${pt.role?` <span class="chip">${esc(pt.role)}</span>`:''}${pt.role2?` <span class="chip">${esc(pt.role2)}</span>`:''}</li>`;
+    const dutyOpt=`<option value="">— καθήκον —</option>`+DUTIES.map(d=>`<option ${d===pt.role?'selected':''}>${d}</option>`).join('');
+    return `<li class="sec-${sec}">${nm}
+      <label style="font-size:11px;margin-left:6px"><input type="checkbox" ${pt.is_staff?'checked':''} onchange="setPart('${pt.id}','is_staff',this.checked)"> επιτ.</label>
+      <select onchange="setPart('${pt.id}','role',this.value)" style="padding:2px 5px;font-size:12px">${dutyOpt}</select>
+      <input placeholder="2ο καθήκον" value="${esc(pt.role2||'')}" style="width:110px;padding:3px 6px;font-size:12px" onchange="setPart('${pt.id}','role2',this.value)">
+      <span class="delx" onclick="delPart('${pt.id}')">✕</span></li>`;
+  }).join('')||'<li class="dmeta">— κανένας συμμετέχων —</li>';
+  const admAdd=admin?`<div class="addrow">
+     <input id="pk_name" list="allNames" placeholder="πρόσθεσε από μητρώο (Όνομα Επίθετο)" style="flex:2">
+     <button class="btn sm" onclick="addPartFromCrm()">＋</button>
+     <datalist id="allNames">${DATA.map(p=>`<option value="${esc(p.first_name+' '+p.last_name)}">`).join('')}</datalist></div>
+   <div class="seclabel">⤒ Εισαγωγή από Smartespot (αντιστοίχιση με μητρώο)</div>
+   <div class="addrow"><input id="impFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn sm" onclick="runImport()">Τρέξε αντιστοίχιση</button></div>
+   <div id="impRes"></div>`:'';
+  $('evParts').innerHTML=`<div class="seclabel">👥 ΣΥΜΜΕΤΕΧΟΝΤΕΣ (${arr.length})</div><ul class="subs">${list}</ul>${admAdd}`;
+}
+async function setPart(id,field,val){ const patch={}; patch[field]=(val===''?null:val); const {error}=await sb.from('participations').update(patch).eq('id',id); if(error)alert(error.message); }
+async function delPart(id){ const {error}=await sb.from('participations').delete().eq('id',id); if(error){alert(error.message);return;} await loadEvents(); loadParts(EDIT_EVENT); }
+async function addPartFromCrm(){
+  const v=$('pk_name').value.trim(); if(!v)return;
+  const p=DATA.find(x=>(x.first_name+' '+x.last_name)===v);
+  if(!p){ alert('Δεν βρέθηκε ακριβές όνομα στο μητρώο.'); return; }
+  const {error}=await sb.from('participations').upsert({event_id:EDIT_EVENT,person_id:p.id,status:'Παρών',matched_via:'crm'},{onConflict:'person_id,event_id',ignoreDuplicates:true});
+  if(error){alert(error.message);return;} $('pk_name').value=''; await loadEvents(); loadParts(EDIT_EVENT);
+}
+function buildReg(){ return DATA.map(p=>matcherCore.makePerson(p.first_name,p.last_name,{id:p.id})); }
+function parseParticipants(rows){
+  if(!rows.length)return [];
+  let hIdx=-1,ci={};
+  for(let i=0;i<Math.min(rows.length,10);i++){
+    const r=rows[i].map(x=>String(x).toLowerCase().trim());
+    const fo=r.findIndex(x=>/(όνομα|ονομα|first)/.test(x)&&!/(επ[ίι]θ|επων|last|surname|πατ)/.test(x));
+    const lo=r.findIndex(x=>/(επ[ίι]θ|επων|last|surname)/.test(x));
+    const full=r.findIndex(x=>/ονοματεπ/.test(x));
+    if(lo>=0&&fo>=0){ hIdx=i; ci={first:fo,last:lo}; break; }
+    if(full>=0){ hIdx=i; ci={full:full}; break; }
+  }
+  const out=[]; const start=hIdx>=0?hIdx+1:0;
+  for(let i=start;i<rows.length;i++){
+    const r=rows[i]; if(!r)continue; let first='',last='',orig='';
+    if(ci.full!==undefined){ orig=String(r[ci.full]||'').trim(); const p=orig.split(/\s+/); last=p.shift()||''; first=p.join(' '); }
+    else if(ci.first!==undefined){ first=String(r[ci.first]||'').trim(); last=String(r[ci.last]||'').trim(); orig=(last+' '+first).trim(); }
+    else { orig=String(r[0]||'').trim(); const p=orig.split(/\s+/); last=p.shift()||''; first=p.join(' '); }
+    if(!first&&!last)continue; out.push({first,last,orig});
+  }
+  return out;
+}
+async function runImport(){
+  const f=$('impFile').files[0]; if(!f){alert('Διάλεξε αρχείο export από Smartespot.');return;}
+  const buf=await f.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  const parsed=parseParticipants(rows);
+  if(!parsed.length){ $('impRes').innerHTML='<div class="dmeta">Δεν βρέθηκαν ονόματα (στήλες Όνομα/Επίθετο ή Ονοματεπώνυμο).</div>'; return; }
+  const R=buildReg();
+  window.__R=R;
+  IMPORT_RES=parsed.map(nm=>{ const per=matcherCore.makePerson(nm.first,nm.last,{parseName:true,orig:nm.orig}); const m=matcherCore.matchOne(per,R,{}); return {nm,m}; });
+  renderImport(R);
+}
+function renderImport(R){
+  const badge=s=>s==='g'?'<span class="chip" style="background:#2ecc71;color:#0b3d1e">Πράσινο</span>':s==='y'?'<span class="chip" style="background:#f4c20d;color:#4a3b00">Κίτρινο</span>':'<span class="chip" style="background:#e74c3c;color:#fff">Κόκκινο</span>';
+  const g=IMPORT_RES.filter(x=>x.m.status==='g').length,y=IMPORT_RES.filter(x=>x.m.status==='y').length,r=IMPORT_RES.filter(x=>x.m.status==='r').length;
+  let h=`<div class="dmeta">${IMPORT_RES.length} ονόματα · 🟢 ${g} · 🟡 ${y} · 🔴 ${r}. Έλεγξε τα κίτρινα/κόκκινα και πάτα Αποθήκευση.</div><ul class="subs">`;
+  IMPORT_RES.forEach((it,idx)=>{
+    const opts=`<option value="">— κανένα —</option>`+it.m.cands.map(c=>`<option value="${R[c.i].id}" ${(it.m.pick===c.i)?'selected':''}>${esc(R[c.i].display)} (${Math.round(c.s*100)}%)</option>`).join('');
+    h+=`<li>${badge(it.m.status)} <b>${esc(it.nm.orig||(it.nm.last+' '+it.nm.first))}</b> → <select id="imp_${idx}" style="min-width:230px">${opts}</select></li>`;
+  });
+  $('impRes').innerHTML=h+`</ul><button class="btn sm" onclick="confirmImport()">💾 Αποθήκευση συμμετοχών</button> <span class="msg" id="imp_msg" style="display:inline"></span>`;
+}
+async function confirmImport(){
+  const recs=[];
+  IMPORT_RES.forEach((it,idx)=>{ const sel=$('imp_'+idx); if(sel&&sel.value){ recs.push({event_id:EDIT_EVENT,person_id:sel.value,status:'Παρών',matched_via:it.m.status==='g'?(it.m.alias?'alias':'auto'):'manual'}); } });
+  if(!recs.length){ const m=$('imp_msg'); m.className='msg err'; m.textContent='Τίποτα επιλεγμένο.'; return; }
+  const seen={}, uniq=recs.filter(x=>seen[x.person_id]?false:(seen[x.person_id]=true));
+  const {error}=await sb.from('participations').upsert(uniq,{onConflict:'person_id,event_id',ignoreDuplicates:true});
+  const m=$('imp_msg'); if(error){m.className='msg err';m.textContent=error.message;return;}
+  m.className='msg ok';m.textContent=`✓ ${uniq.length} συμμετοχές`; await loadEvents(); loadParts(EDIT_EVENT);
+}
+async function eventBundle(){
+  const {data:e}=await sb.from('events').select('*').eq('id',EDIT_EVENT).maybeSingle();
+  const {data:parts}=await sb.from('participations').select('*').eq('event_id',EDIT_EVENT);
+  return {e:e||{},parts:parts||[]};
+}
+function partsSorted(parts){ return parts.map(pt=>({pt,p:DATA.find(x=>x.id===pt.person_id)})).sort((a,b)=>((a.p&&a.p.last_name)||'').localeCompare((b.p&&b.p.last_name)||'','el')); }
+async function exportGenika(){
+  const {e}=await eventBundle();
+  const aoa=[['ΓΕΝΙΚΑ ΔΡΑΣΗΣ'],['Δράση',e.title||''],['Είδος',e.type||''],['Τμήμα',e.section||''],['Από',e.event_date||''],['Έως',e.end_date||''],['Διανυκτερεύσεις',e.nights||0],['Τόπος / Διαμονή',e.place||''],['Δικαίωμα συμμετοχής (€)',e.fee!=null?e.fee:''],['Σκοπός',e.purpose||'']];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'ΓΕΝΙΚΑ'); XLSX.writeFile(wb,`ΓΕΝΙΚΑ - ${(e.title||'δράση')}.xlsx`);
+}
+async function exportSymmetoxes(){
+  const {e,parts}=await eventBundle();
+  const aoa=[['Α/Α','Επίθετο','Όνομα','Τμήμα','Επιτελείο','Κύριο Καθήκον','Δεύτερο Καθήκον','Κατάσταση']];
+  partsSorted(parts).forEach((r,i)=>{const p=r.p||{};aoa.push([i+1,p.last_name||'',p.first_name||'',p.section||'',r.pt.is_staff?'ΝΑΙ':'',r.pt.role||'',r.pt.role2||'',r.pt.status||'']);});
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'ΣΥΜΜΕΤΟΧΕΣ'); XLSX.writeFile(wb,`ΣΥΜΜΕΤΟΧΕΣ - ${(e.title||'δράση')}.xlsx`);
+}
+async function exportPistopoiitika(){
+  const {e,parts}=await eventBundle();
+  const staff=parts.filter(pt=>pt.is_staff); const ids=staff.map(s=>s.person_id);
+  let certs=[]; if(ids.length){ const {data}=await sb.from('certifications').select('*').in('person_id',ids); certs=data||[]; }
+  const cOf={}; certs.forEach(c=>cOf[c.person_id]=c);
+  const aoa=[['Επίθετο','Όνομα','Σεξόχαρτο (λήξη)','Α΄ Βοηθειών (λήξη)','Δίπλωμα','Πιστ. Οχήματος']];
+  const arr=staff.map(pt=>({pt,p:DATA.find(x=>x.id===pt.person_id),c:cOf[pt.person_id]||{}})).sort((a,b)=>((a.p&&a.p.last_name)||'').localeCompare((b.p&&b.p.last_name)||'','el'));
+  arr.forEach(r=>{const p=r.p||{},c=r.c;aoa.push([p.last_name||'',p.first_name||'',c.sexoxarto_expiry||'',c.firstaid_expiry||'',c.driving_license||'',c.vehicle_cert||'']);});
+  if(!staff.length)aoa.push(['— δεν έχει οριστεί επιτελείο (βάλε ✔ επιτ. στους βαθμοφόρους) —']);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'ΠΙΣΤΟΠΟΙΗΤΙΚΑ'); XLSX.writeFile(wb,`ΠΙΣΤΟΠΟΙΗΤΙΚΑ - ${(e.title||'δράση')}.xlsx`);
+}
+async function loadParticip(id){
+  const box=$('dpBox'); if(!box)return;
+  const {data}=await sb.from('v_participations').select('*').eq('person_id',id).order('event_date',{ascending:false,nullsFirst:false});
+  const list=(data||[]).map(v=>`<li><span class="yr">${v.event_date?fmtD(v.event_date):'—'}</span> — <b>${esc(v.title)}</b>${v.type?` <span class="chip">${esc(v.type)}</span>`:''}${v.is_staff?' <span class="role head">επιτελείο</span>':''}${v.role?` <span class="dmeta">${esc(v.role)}</span>`:''}${v.place?` <span class="dmeta">· ${esc(v.place)}</span>`:''}</li>`).join('')||'<li class="dmeta">— καμία δράση —</li>';
+  box.innerHTML=`<div class="seclabel">🎯 Ιστορικό δράσεων</div><ul class="subs">${list}</ul>`;
+}
+$('evClose').onclick=()=>$('ev').classList.remove('show');
+$('ev').addEventListener('click',e=>{if(e.target===$('ev'))$('ev').classList.remove('show');});
+
 /* ---------- ui ---------- */
 ['search','fSection','fStatus','fExpired','fKind'].forEach(id=>$(id).addEventListener('input',render));
 function setView(v){
@@ -621,11 +942,13 @@ function setView(v){
   $('viewToggle').classList.toggle('on',VIEW==='dia');
   $('expToggle').classList.toggle('on',VIEW==='exp');
   $('calToggle').classList.toggle('on',VIEW==='cal');
+  $('draToggle').classList.toggle('on',VIEW==='dra');
   render();
 }
 $('viewToggle').onclick=()=>setView('dia');
 $('expToggle').onclick=()=>setView('exp');
 $('calToggle').onclick=()=>setView('cal');
+$('draToggle').onclick=async()=>{ if(VIEW!=='dra'){await loadEvents();} setView('dra'); };
 $('newBtn').onclick=()=>$('newMenu').classList.toggle('show');
 async function createPerson(kind){
   $('newMenu').classList.remove('show');
@@ -644,6 +967,10 @@ window.detail=detail;
 window.addHistory=addHistory;window.delHistory=delHistory;window.addTraining=addTraining;window.delTraining=delTraining;
 window.addMemberYear=addMemberYear;window.delMemberYear=delMemberYear;
 window.addProgress=addProgress;window.delProgress=delProgress;
+window.newEvent=newEvent;window.openEvent=openEvent;window.saveGenika=saveGenika;
+window.setPart=setPart;window.delPart=delPart;window.addPartFromCrm=addPartFromCrm;
+window.runImport=runImport;window.confirmImport=confirmImport;
+window.exportGenika=exportGenika;window.exportSymmetoxes=exportSymmetoxes;window.exportPistopoiitika=exportPistopoiitika;
 </script>
 </body>
 </html>
