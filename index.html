@@ -247,6 +247,7 @@
   <button class="btn ghost sm" id="expToggle">⏳ Λήξεις</button>
   <button class="btn ghost sm" id="calToggle">🔔 Ημερολόγιο</button>
   <button class="btn ghost sm" id="draToggle">🎯 Δράσεις</button>
+  <button class="btn ghost sm" id="attToggle">✅ Παρουσίες</button>
   <button class="btn ghost sm" id="logout">Έξοδος</button>
 </header>
 <div class="wrap">
@@ -263,6 +264,7 @@
   <div id="exp" style="display:none"></div>
   <div id="cal" style="display:none"></div>
   <div id="dra" style="display:none"></div>
+  <div id="att" style="display:none"></div>
 </div>
 <div id="newMenu"><button class="btn sm" id="newMember">＋ Μέλος</button><button class="btn sm" id="newBadge">＋ Βαθμοφόρος</button></div>
 <button id="newBtn" title="Νέο άτομο" style="display:none">＋</button>
@@ -295,6 +297,7 @@ const SB_KEY='sb_publishable_OvYhjMAqZ9ty6T2De2by-g_uJ6mnm50';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 let ME={email:null,role:'viewer'}, DATA=[], EDIT_ID=null, VIEW='crm', CATALOG=[];
 let EVENTS=[], EDIT_EVENT=null, REG_PERSONS=null, IMPORT_RES=null;
+let ATT_SEC='Αγέλη', ATT_DATE=(new Date()).toISOString().slice(0,10), ATT_SESSION=null, ATT_ROSTER=[], ATT_PRESENT=new Set(), ATT_VIEW='grp';
 const EV_TYPES=['Συνάντηση','Εκδρομή','Διήμερο','Τριήμερο','Κατασκήνωση','ΜΔΥ','Εκδήλωση','Άλλο'];
 const DUTIES=['Αρχηγός Δράσης','Α΄ Βοηθός','Οδηγός','Υπεύθυνος Υλικού','Υπεύθυνος Προγράμματος','Υπεύθυνος Ασφαλείας','Ταμίας','Βοηθός'];
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -387,8 +390,9 @@ function render(){
   $('exp').style.display     = VIEW==='exp'?'block':'none';
   $('cal').style.display     = VIEW==='cal'?'block':'none';
   $('dra').style.display     = VIEW==='dra'?'block':'none';
+  $('att').style.display     = VIEW==='att'?'block':'none';
   const tb=$('crm').parentElement.querySelector('.toolbar'); if(tb)tb.style.display=(VIEW==='crm')?'flex':'none';
-  if(VIEW==='crm')renderCRM(); else if(VIEW==='dia')renderDia(); else if(VIEW==='exp')renderExp(); else if(VIEW==='cal')renderCal(); else renderDra();
+  if(VIEW==='crm')renderCRM(); else if(VIEW==='dia')renderDia(); else if(VIEW==='exp')renderExp(); else if(VIEW==='cal')renderCal(); else if(VIEW==='att')renderAtt(); else renderDra();
 }
 function renderCRM(){
   $('crm').style.display='block'; $('diarthrosi').style.display='none';
@@ -610,7 +614,19 @@ function progressHTML(list,section,admin){
       <input id="pr_date" type="date">
       <button class="btn sm" onclick="addProgress()">＋</button></div>`;
   }
-  return `<div class="seclabel">🎽 Προσκοπική πρόοδος${section?` — ${section}`:''}</div><ul class="subs">${stgH}${spcH}</ul>${add}`;
+  return `<div class="seclabel">🎽 Προσκοπική πρόοδος${section?` — ${section}`:''}</div>${stageStepper(list,section)}<ul class="subs">${stgH}${spcH}</ul>${add}`;
+}
+function stageStepper(list,section){
+  const stages=CATALOG.filter(c=>c.section===section&&c.item_kind!=='ειδικότητα').sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+  if(!stages.length)return '';
+  const dId=new Set(list.filter(x=>x.item_kind!=='ειδικότητα').map(x=>x.catalog_id));
+  const dLb=new Set(list.filter(x=>x.item_kind!=='ειδικότητα').map(x=>x.label));
+  const isDone=s=>dId.has(s.id)||dLb.has(s.label);
+  const n=stages.filter(isDone).length, pct=Math.round(n/stages.length*100);
+  const chips=stages.map(s=>{const ok=isDone(s);return `<span title="${esc(s.label)}" style="flex:1;min-width:0;text-align:center;font-size:9px;line-height:1.1;color:${ok?'#1f7a3a':'#9aa78e'};font-weight:${ok?'600':'400'}">${ok?'●':'○'}<br>${esc(s.label)}</span>`;}).join('');
+  return `<div style="margin:2px 0 8px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#7a8a70;margin-bottom:3px"><span>Στάδια</span><span>${n}/${stages.length}</span></div>
+    <div style="height:8px;border-radius:5px;background:#eef0ea;overflow:hidden;margin-bottom:5px"><i style="display:block;height:100%;width:${pct}%;background:linear-gradient(90deg,#2e9e4f,#66c97f)"></i></div>
+    <div style="display:flex;gap:2px">${chips}</div></div>`;
 }
 async function addProgress(){
   const sel=$('pr_cat'); if(!sel||!sel.value)return;
@@ -935,6 +951,120 @@ async function loadParticip(id){
 $('evClose').onclick=()=>$('ev').classList.remove('show');
 $('ev').addEventListener('click',e=>{if(e.target===$('ev'))$('ev').classList.remove('show');});
 
+/* ---------- ΠΑΡΟΥΣΙΕΣ (attendance) ---------- */
+async function attReload(){ await attLoadRoster(); await attLoadSession(); }
+async function attLoadRoster(){
+  const mems=DATA.filter(p=>p.kind==='Μέλος'&&p.section===ATT_SEC);
+  const ids=mems.map(p=>p.id); let gmap={},ymap={};
+  if(ids.length){
+    const {data:my}=await sb.from('member_year').select('id,person_id,scout_year,group_name').in('person_id',ids).order('scout_year',{ascending:false});
+    (my||[]).forEach(r=>{ if(gmap[r.person_id]===undefined){ gmap[r.person_id]=r.group_name||null; ymap[r.person_id]=r.id; } });
+  }
+  ATT_ROSTER=mems.map(p=>({id:p.id,name:(p.first_name+' '+p.last_name),group:gmap[p.id]||null,myId:ymap[p.id]||null}))
+    .sort((a,b)=>a.name.localeCompare(b.name,'el'));
+}
+async function attLoadSession(){
+  const {data}=await sb.from('sessions').select('*').eq('section',ATT_SEC).eq('session_date',ATT_DATE).maybeSingle();
+  ATT_SESSION=data||null; ATT_PRESENT=new Set();
+  if(ATT_SESSION){ const {data:att}=await sb.from('attendance').select('person_id,status').eq('session_id',ATT_SESSION.id);
+    (att||[]).forEach(a=>{ if(a.status==='Παρών')ATT_PRESENT.add(a.person_id); }); }
+}
+function attGroups(){
+  const order=EXADES; const gs=[...new Set(ATT_ROSTER.map(r=>r.group||'Χωρίς εξάδα'))];
+  gs.sort((a,b)=>{ if(a==='Χωρίς εξάδα')return 1; if(b==='Χωρίς εξάδα')return -1;
+    const ia=order.indexOf(a),ib=order.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'el'); });
+  return gs;
+}
+function attRowHTML(r){
+  const on=ATT_PRESENT.has(r.id);
+  const mv=ME.role==='admin'?`<select onclick="event.stopPropagation()" onchange="attMove('${r.id}',this.value)" style="margin-left:auto;font-size:11px;padding:3px;border-radius:6px;color:#7a8a70;border:1px solid #dfe4d8;background:#fafbf8">
+    <option value="${esc(r.group||'')}">${esc(r.group||'⇄')}</option>${EXADES.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('')}<option value="">Χωρίς εξάδα</option></select>`:'';
+  return `<div onclick="attToggleP('${r.id}')" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid #f2f4ee;cursor:pointer;background:${on?'#eafaef':'#fff'}">
+    <span style="width:24px;height:24px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;border:2px solid ${on?'#2e9e4f':'#cdd7c4'};background:${on?'#2e9e4f':'#fff'}">${on?'✓':''}</span>
+    <span style="font-size:14px;color:${on?'#1f7a3a':'#33402a'};font-weight:${on?'600':'400'}">${esc(r.name)}</span>${mv}</div>`;
+}
+function renderAtt(){
+  const admin=ME.role==='admin';
+  const secSel=`<select onchange="attPickSec(this.value)" style="padding:6px">${MSECS.map(s=>`<option ${s===ATT_SEC?'selected':''}>${s}</option>`).join('')}</select>`;
+  const dateInp=`<input type="date" value="${ATT_DATE}" onchange="attPickDate(this.value)" style="padding:5px">`;
+  let h=`<div class="toolbar"><span class="count">✅ Παρουσίες</span>${secSel}${dateInp}</div>`;
+  if(!ATT_SESSION){
+    h+=`<div class="dmeta" style="padding:8px">Δεν υπάρχει γεγονός για <b>${esc(ATT_SEC)}</b> στις ${fmtD(ATT_DATE)}.</div>`;
+    if(admin) h+=`<div class="addrow" style="padding:0 8px 10px">
+      <button class="btn sm" onclick="attCreate('Συγκέντρωση')">🟢 Συγκέντρωση</button>
+      <button class="btn sm" style="background:#2f6fb0" onclick="attCreate('Δράση')">🔵 Δράση</button>
+      <button class="btn sm" style="background:#8a94a3" onclick="attCreate('Δεν έγινε')">⚪ Δεν έγινε</button></div>`;
+    else h+=`<div class="dmeta" style="padding:0 8px">Μόνο ο διαχειριστής/αρχηγός δημιουργεί γεγονός.</div>`;
+    $('att').innerHTML=h; return;
+  }
+  const s=ATT_SESSION, isNo=s.status==='δεν έγινε', isDra=s.session_type==='Δράση';
+  h+=`<div style="padding:6px 8px;display:flex;align-items:center;gap:8px">
+    <span class="chip" style="background:${isNo?'#e6e9ee':(isDra?'#dce9f7':'#ddf5e4')};color:#333">${isNo?'⚪ Δεν έγινε':(isDra?'🔵 Δράση':'🟢 Συγκέντρωση')}</span>
+    ${isDra?'<span class="dmeta">Οι παρουσίες μετρούν στη δράση.</span>':''}
+    ${admin?`<span class="delx" style="margin-left:auto" onclick="attDeleteSession()" title="Διαγραφή γεγονότος">✕</span>`:''}</div>`;
+  if(isNo){ $('att').innerHTML=h+`<div class="dmeta" style="padding:8px">Σημειώθηκε ότι δεν πραγματοποιήθηκε συγκέντρωση.</div>`; return; }
+  const total=ATT_ROSTER.length, pres=ATT_PRESENT.size, gt=GROUPTERM[ATT_SEC]||'ομάδα';
+  h+=`<div class="toolbar"><span class="count">${pres}/${total} παρόντες</span>
+    <button class="btn ghost sm ${ATT_VIEW==='grp'?'on':''}" onclick="attSetView('grp')">Ανά ${gt}</button>
+    <button class="btn ghost sm ${ATT_VIEW==='abc'?'on':''}" onclick="attSetView('abc')">Αλφαβητικά</button></div>`;
+  h+='<div style="padding:0 4px">';
+  if(!total){ h+='<div class="dmeta" style="padding:8px">— κανένα μέλος στο τμήμα (χρειάζεται εγγραφή/χρονιά) —</div>'; }
+  else if(ATT_VIEW==='abc'){ h+=`<div class="subs" style="padding:0">${[...ATT_ROSTER].sort((a,b)=>a.name.localeCompare(b.name,'el')).map(attRowHTML).join('')}</div>`; }
+  else { attGroups().forEach(g=>{ const mem=ATT_ROSTER.filter(r=>(r.group||'Χωρίς εξάδα')===g); if(!mem.length)return;
+      const pc=mem.filter(r=>ATT_PRESENT.has(r.id)).length;
+      h+=`<div class="seclabel" style="display:flex"><span>${esc(g)}</span><span style="margin-left:auto">${pc}/${mem.length}</span></div><div class="subs" style="padding:0">${mem.map(attRowHTML).join('')}</div>`; }); }
+  h+='</div>';
+  if(admin){
+    h+=`<div style="padding:8px"><button class="btn" style="width:100%" onclick="attSave()">✓ Καταχώρηση παρουσιών</button> <span class="msg" id="att_msg" style="display:inline"></span></div>`;
+    const opts=CATALOG.filter(c=>c.section===ATT_SEC).map(c=>`<option value="${c.id}" data-kind="${c.item_kind}">${c.item_kind==='ειδικότητα'?'• ':''}${esc(c.label)}</option>`).join('');
+    h+=`<div class="seclabel">⚡ Καταχώρηση προόδου στους παρόντες</div>
+      <div class="addrow" style="padding:0 8px 8px">
+        <select id="att_cat" style="flex:2">${opts||'<option value="">— όρισε κατάλογο —</option>'}</select>
+        <input id="att_cat_date" type="date" value="${ATT_DATE}">
+        <button class="btn sm" onclick="attBulkAward()">＋ στους ${pres}</button></div>
+      <div class="dmeta" id="att_award_msg" style="padding:0 8px 10px"></div>`;
+  }
+  $('att').innerHTML=h;
+}
+async function attPickSec(v){ ATT_SEC=v; await attReload(); renderAtt(); }
+async function attPickDate(v){ ATT_DATE=v; await attReload(); renderAtt(); }
+async function attCreate(type){
+  const status=(type==='Δεν έγινε')?'δεν έγινε':'πραγματοποιήθηκε';
+  const st=(type==='Δεν έγινε')?'Συγκέντρωση':type;
+  const {data,error}=await sb.from('sessions').upsert({section:ATT_SEC,session_date:ATT_DATE,session_type:st,status,scout_year:CUR_YEAR},{onConflict:'section,session_date'}).select('*').single();
+  if(error){alert(error.message);return;} ATT_SESSION=data; ATT_PRESENT=new Set(); renderAtt();
+}
+async function attDeleteSession(){
+  if(!ATT_SESSION||!confirm('Διαγραφή γεγονότος και των παρουσιών του;'))return;
+  await sb.from('attendance').delete().eq('session_id',ATT_SESSION.id);
+  await sb.from('sessions').delete().eq('id',ATT_SESSION.id);
+  ATT_SESSION=null; ATT_PRESENT=new Set(); renderAtt();
+}
+function attToggleP(id){ if(ATT_PRESENT.has(id))ATT_PRESENT.delete(id); else ATT_PRESENT.add(id); renderAtt(); }
+function attSetView(v){ ATT_VIEW=v; renderAtt(); }
+async function attMove(id,group){
+  const r=ATT_ROSTER.find(x=>x.id===id); if(!r)return; r.group=group||null;
+  if(r.myId){ await sb.from('member_year').update({group_name:r.group}).eq('id',r.myId); }
+  else { const {data}=await sb.from('member_year').insert({person_id:id,scout_year:CUR_YEAR,section:ATT_SEC,group_name:r.group,registered:false}).select('id').maybeSingle(); if(data)r.myId=data.id; }
+  renderAtt();
+}
+async function attSave(){
+  if(!ATT_SESSION)return; const m=$('att_msg');
+  const present=[...ATT_PRESENT], absent=ATT_ROSTER.map(r=>r.id).filter(id=>!ATT_PRESENT.has(id));
+  if(present.length){ const {error}=await sb.rpc('mark_attendance',{p_session:ATT_SESSION.id,p_persons:present,p_status:'Παρών'}); if(error){m.className='msg err';m.textContent=error.message;return;} }
+  if(absent.length){ const {error}=await sb.rpc('mark_attendance',{p_session:ATT_SESSION.id,p_persons:absent,p_status:'Απών'}); if(error){m.className='msg err';m.textContent=error.message;return;} }
+  m.className='msg ok'; m.textContent='✓ '+present.length+' παρόντες / '+absent.length+' απόντες';
+}
+async function attBulkAward(){
+  const sel=$('att_cat'), msg=$('att_award_msg'); if(!sel||!sel.value){return;}
+  const present=[...ATT_PRESENT]; if(!present.length){ msg.textContent='Δεν υπάρχουν παρόντες.'; return; }
+  const opt=sel.options[sel.selectedIndex], label=opt.textContent.replace(/^• /,''), kind=opt.getAttribute('data-kind')||'στάδιο', date=$('att_cat_date').value||ATT_DATE;
+  const rows=present.map(pid=>({person_id:pid,catalog_id:sel.value,label,item_kind:kind,date,session_id:ATT_SESSION.id}));
+  const {error}=await sb.from('member_progress').insert(rows);
+  if(error){ msg.textContent=error.message; return; }
+  msg.style.color='#1f7a3a'; msg.textContent='✓ «'+label+'» καταχωρήθηκε σε '+present.length+' μέλη.';
+}
+
 /* ---------- ui ---------- */
 ['search','fSection','fStatus','fExpired','fKind'].forEach(id=>$(id).addEventListener('input',render));
 function setView(v){
@@ -943,12 +1073,14 @@ function setView(v){
   $('expToggle').classList.toggle('on',VIEW==='exp');
   $('calToggle').classList.toggle('on',VIEW==='cal');
   $('draToggle').classList.toggle('on',VIEW==='dra');
+  $('attToggle').classList.toggle('on',VIEW==='att');
   render();
 }
 $('viewToggle').onclick=()=>setView('dia');
 $('expToggle').onclick=()=>setView('exp');
 $('calToggle').onclick=()=>setView('cal');
 $('draToggle').onclick=async()=>{ if(VIEW!=='dra'){await loadEvents();} setView('dra'); };
+$('attToggle').onclick=async()=>{ if(VIEW!=='att'){await attReload();} setView('att'); };
 $('newBtn').onclick=()=>$('newMenu').classList.toggle('show');
 async function createPerson(kind){
   $('newMenu').classList.remove('show');
@@ -971,6 +1103,8 @@ window.newEvent=newEvent;window.openEvent=openEvent;window.saveGenika=saveGenika
 window.setPart=setPart;window.delPart=delPart;window.addPartFromCrm=addPartFromCrm;
 window.runImport=runImport;window.confirmImport=confirmImport;
 window.exportGenika=exportGenika;window.exportSymmetoxes=exportSymmetoxes;window.exportPistopoiitika=exportPistopoiitika;
+window.attPickSec=attPickSec;window.attPickDate=attPickDate;window.attCreate=attCreate;window.attDeleteSession=attDeleteSession;
+window.attToggleP=attToggleP;window.attSetView=attSetView;window.attMove=attMove;window.attSave=attSave;window.attBulkAward=attBulkAward;
 </script>
 </body>
 </html>
