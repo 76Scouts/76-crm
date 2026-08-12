@@ -248,6 +248,8 @@
   <button class="btn ghost sm" id="calToggle">🔔 Ημερολόγιο</button>
   <button class="btn ghost sm" id="draToggle">🎯 Δράσεις</button>
   <button class="btn ghost sm" id="attToggle">✅ Παρουσίες</button>
+  <button class="btn ghost sm" id="orgToggle">🧭 Οργανόγραμμα</button>
+  <select id="yearSel" class="btn ghost sm" style="padding:5px 8px" title="Προσκοπική χρονιά"></select>
   <button class="btn ghost sm" id="logout">Έξοδος</button>
 </header>
 <div class="wrap">
@@ -265,6 +267,7 @@
   <div id="cal" style="display:none"></div>
   <div id="dra" style="display:none"></div>
   <div id="att" style="display:none"></div>
+  <div id="org" style="display:none"></div>
 </div>
 <div id="newMenu"><button class="btn sm" id="newMember">＋ Μέλος</button><button class="btn sm" id="newBadge">＋ Βαθμοφόρος</button></div>
 <button id="newBtn" title="Νέο άτομο" style="display:none">＋</button>
@@ -312,6 +315,8 @@ const GROUPTERM={'Αγέλη':'Εξάδα','Ομάδα':'Ενωμοτία','Κο
 const EXADES=['Κοκκινωποί','Πορτοκαλωποί','Κιτρινωποί','Πρασινωποί','Γαλαζωποί','Μωβιδεροί','Γκριζωποί','Καφετιοί','Ταύροι','Γύπες','Λαγοί','Σκαντζόχοιροι','Αλεπούδες','Αγρίνα'];
 const YROLES=['Εξάρχης','Υποεξάρχης','Ενωμοτάρχης','Υπενωμοτάρχης','Ομιλάρχης','Υπομιλάρχης'];
 const CUR_YEAR=(()=>{const d=new Date(),y=d.getFullYear(),s=(d.getMonth()>=7)?y:y-1;return s+'-'+String((s+1)%100).padStart(2,'0');})();
+let SEL_YEAR=CUR_YEAR;
+const YEARS=[0,1,2,3].map(k=>{const d=new Date(),s=((d.getMonth()>=7)?d.getFullYear():d.getFullYear()-1)-k;return s+'-'+String((s+1)%100).padStart(2,'0');});
 const GRADES=['Α΄ Δημ.','Β΄ Δημ.','Γ΄ Δημ.','Δ΄ Δημ.','Ε΄ Δημ.','Στ΄ Δημ.','Α΄ Γυμν.','Β΄ Γυμν.','Γ΄ Γυμν.','Α΄ Λυκ.','Β΄ Λυκ.','Γ΄ Λυκ.'];
 function schoolStart(){const d=new Date();return d.getMonth()>=7?d.getFullYear():d.getFullYear()-1;}
 function gradeNumFromDob(dob){const b=new Date(dob),ref=new Date(schoolStart(),8,1);let a=ref.getFullYear()-b.getFullYear();const m=ref.getMonth()-b.getMonth();if(m<0||(m===0&&ref.getDate()<b.getDate()))a--;return a-5;}
@@ -350,6 +355,8 @@ async function start(session){
   $('dEdit').style.display=ME.role==='admin'?'inline-block':'none';
   $('newBtn').style.display=ME.role==='admin'?'block':'none';
   SECS.forEach(s=>$('fSection').insertAdjacentHTML('beforeend',`<option>${s}</option>`));
+  YEARS.forEach(y=>$('yearSel').insertAdjacentHTML('beforeend',`<option ${y===SEL_YEAR?'selected':''}>${y}</option>`));
+  $('yearSel').onchange=()=>{ SEL_YEAR=$('yearSel').value; if(VIEW==='org')renderOrg(); else if(VIEW==='att'){attReload().then(renderAtt);} };
   await load();
   sb.from('progression_catalog').select('*').eq('active',true).order('ordinal').then(({data})=>{CATALOG=data||[];});
   sb.channel('bh').on('postgres_changes',{event:'*',schema:'public',table:'badgeholders'},load).subscribe();
@@ -391,15 +398,18 @@ function render(){
   $('cal').style.display     = VIEW==='cal'?'block':'none';
   $('dra').style.display     = VIEW==='dra'?'block':'none';
   $('att').style.display     = VIEW==='att'?'block':'none';
+  $('org').style.display     = VIEW==='org'?'block':'none';
   const tb=$('crm').parentElement.querySelector('.toolbar'); if(tb)tb.style.display=(VIEW==='crm')?'flex':'none';
-  if(VIEW==='crm')renderCRM(); else if(VIEW==='dia')renderDia(); else if(VIEW==='exp')renderExp(); else if(VIEW==='cal')renderCal(); else if(VIEW==='att')renderAtt(); else renderDra();
+  if(VIEW==='crm')renderCRM(); else if(VIEW==='dia')renderDia(); else if(VIEW==='exp')renderExp(); else if(VIEW==='cal')renderCal(); else if(VIEW==='att')renderAtt(); else if(VIEW==='org')renderOrg(); else renderDra();
 }
 function renderCRM(){
   $('crm').style.display='block'; $('diarthrosi').style.display='none';
   const rows=filtered();
   $('count').textContent=`${rows.length} / ${DATA.length}`;
-  if($('fKind').value==='Μέλος'){ $('crm').innerHTML=memberTable(rows); return; }
-  let h=`<table><thead><tr><th></th><th>Επίθετο</th><th>Όνομα</th><th>Προσκοπικό</th><th>Τμήμα</th><th>Κατηγορία</th><th>Τοποθεσία</th><th>Τηλέφωνο</th><th>Σεξόχαρτο λήξη</th><th>Α'Β</th></tr></thead><tbody>`;
+  const sysWrong=DATA.filter(p=>p.section==='Σύστημα'&&p.category!=='ΑΣ'&&(p.status||'')!=='Αρχειοθετημένος');
+  const warn=(sysWrong.length&&ME.role==='admin')?`<div style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#fff4e5;border:1px solid #ffd8a8;color:#8a5a00;font-size:13px">⚠ ${sysWrong.length} βαθμοφόρ${sysWrong.length>1?'οι':'ος'} με τμήμα «Σύστημα» χωρίς να είναι Α.Σ.: ${sysWrong.map(p=>`<a style="cursor:pointer;text-decoration:underline" onclick="detail('${p.id}')">${esc(p.first_name+' '+p.last_name)}</a>`).join(', ')} — έλεγξε/διόρθωσε το τμήμα.</div>`:'';
+  if($('fKind').value==='Μέλος'){ $('crm').innerHTML=warn+memberTable(rows); return; }
+  let h=warn+`<table><thead><tr><th></th><th>Επίθετο</th><th>Όνομα</th><th>Προσκοπικό</th><th>Τμήμα</th><th>Κατηγορία</th><th>Τοποθεσία</th><th>Τηλέφωνο</th><th>Σεξόχαρτο λήξη</th><th>Α'Β</th></tr></thead><tbody>`;
   rows.forEach(p=>{ const mem=p.kind==='Μέλος'; h+=`<tr class="sec-${p.section}" onclick="detail('${p.id}')">
     <td>${mem?'<span class="dot" title="Μέλος" style="background:#1e7a34"></span>':eligDot(p)}${!mem&&p.firstaid_ok?' <span class="cross" title="Ενεργές Α΄Βοήθειες">✚</span>':''}</td>
     <td><b>${p.last_name}</b></td><td>${p.first_name}</td>
@@ -469,6 +479,7 @@ function diaCol(sec){
 function renderDia(){
   $('crm').style.display='none'; $('diarthrosi').style.display='block';
   const as=DATA.find(p=>p.category==='ΑΣ'); let h='';
+  h+=`<div class="toolbar"><span class="count">🗂 Διάρθρωση</span>${ME.role==='admin'?'<button class="btn sm" onclick="exportDiarthrosi()">⤓ Εξαγωγή (xlsx)</button><span class="dmeta" style="margin-left:6px">κλικ σε άτομο → ✎ Επεξεργασία για edit/μετακίνηση τμήματος</span>':''}</div>`;
   if(as)h+=`<div class="asband"><div class="col Σύστημα"><h3>ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</h3><ul class="people">${personRow(as,null,'Σύστημα')}</ul></div></div>`;
   h+='<div class="grid">'+['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(diaCol).join('')+'</div>';
   const arch=bySurname(DATA.filter(p=>p.status==='Αρχειοθετημένος'||p.category==='Αρχειοθετημένος'));
@@ -951,6 +962,48 @@ async function loadParticip(id){
 $('evClose').onclick=()=>$('ev').classList.remove('show');
 $('ev').addEventListener('click',e=>{if(e.target===$('ev'))$('ev').classList.remove('show');});
 
+/* ---------- ΟΡΓΑΝΟΓΡΑΜΜΑ ---------- */
+async function renderOrg(){
+  const box=$('org');
+  box.innerHTML=`<div class="toolbar"><span class="count">🧭 Οργανόγραμμα · φόρτωση…</span></div>`;
+  const {data,error}=await sb.from('service_history').select('person_id,section,appointment,warrant_type').eq('scout_year',SEL_YEAR);
+  if(error){ box.innerHTML=`<div class="dmeta" style="padding:8px">${esc(error.message)}</div>`; return; }
+  const lead=(data||[]).filter(r=>/ρχηγ|υστήμ|πεύθυν|ξάρχ|νωμοτ|μιλάρχ/.test(r.appointment||''));
+  const nameOf=id=>{const p=DATA.find(x=>x.id===id);return p?esc(p.first_name+' '+p.last_name):'—';};
+  const rank=w=>w==='Εντολή Διοίκησης'?2:(w==='Ανάθεση Καθηκόντων'?1:0);
+  const byP={}; lead.forEach(r=>{ const c=byP[r.person_id]; if(!c||rank(r.warrant_type)>rank(c.warrant_type))byP[r.person_id]=r; });
+  const rows=Object.values(byP);
+  const glow=w=>w==='Εντολή Διοίκησης'?'#2e9e4f':(w==='Ανάθεση Καθηκόντων'?'#e8890c':'#9aa79a');
+  const gd=r=>dot(glow(r.warrant_type),r.warrant_type||'εκκρεμεί ταξινόμηση');
+  const isHead=a=>/Αρχηγός/.test(a||'');
+  const as=rows.find(r=>/Συστήμ/.test(r.appointment||''));
+  let h=`<div class="toolbar"><span class="count">🧭 Οργανόγραμμα · χρονιά ${SEL_YEAR}</span><span class="dmeta" style="margin-left:auto">🟢 Εντολή · 🟠 Ανάθεση · ⚪ εκκρεμεί</span></div>`;
+  if(as)h+=`<div class="asband"><div class="col Σύστημα"><h3>ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</h3><ul class="people"><li onclick="detail('${as.person_id}')"><span class="dbody"><span class="pname"><b>${nameOf(as.person_id)}</b> ${gd(as)}</span></span></li></ul></div></div>`;
+  h+='<div class="grid">';
+  ['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].forEach(sec=>{
+    const inSec=rows.filter(r=>r.section===sec);
+    const heads=inSec.filter(r=>isHead(r.appointment)), asst=inSec.filter(r=>!isHead(r.appointment));
+    const memCount=DATA.filter(p=>(p.kind||'')==='Μέλος'&&p.section===sec).length;
+    let inner='';
+    heads.forEach(r=>inner+=`<li onclick="detail('${r.person_id}')"><span class="dbody"><span class="pname"><b>${nameOf(r.person_id)}</b> ${gd(r)} <span class="role head">Αρχηγός</span></span></span></li>`);
+    if(asst.length){ inner+='<div class="catlabel">Υπαρχηγοί</div>'; asst.forEach(r=>inner+=`<li onclick="detail('${r.person_id}')"><span class="dbody"><span class="pname">${nameOf(r.person_id)} ${gd(r)}</span></span></li>`); }
+    if(!inner)inner='<li class="dmeta" style="padding:8px">— χωρίς θητείες '+SEL_YEAR+' —</li>';
+    h+=`<div class="col ${sec}"><h3>${SECLOGO[sec]?`<img src="${SECLOGO[sec]}">`:''}${sec} <span class="dmeta">(${inSec.length} βαθμ. · ${memCount} μέλη)</span></h3><ul class="people">${inner}</ul></div>`;
+  });
+  h+='</div>';
+  box.innerHTML=h;
+}
+function exportDiarthrosi(){
+  const aoa=[['Τμήμα','Κατηγορία','Επίθετο','Όνομα','Προσκοπικό','Καθήκοντα','Τηλέφωνο','Email','Τοποθεσία']];
+  ['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'].forEach(sec=>{
+    bySurname(DATA.filter(p=>p.section===sec&&(p.status||'')!=='Αρχειοθετημένος')).forEach(p=>{
+      aoa.push([sec,p.category||'',p.last_name||'',p.first_name||'',p.scout_name||'',p.headrole||p.appointment||'',p.phone||'',p.email||'',p.location||'']);
+    });
+  });
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'Διάρθρωση');
+  XLSX.writeFile(wb,`Διάρθρωση 76ου ${SEL_YEAR}.xlsx`);
+}
+
 /* ---------- ΠΑΡΟΥΣΙΕΣ (attendance) ---------- */
 async function attReload(){ await attLoadRoster(); await attLoadSession(); }
 async function attLoadRoster(){
@@ -1031,7 +1084,7 @@ async function attPickDate(v){ ATT_DATE=v; await attReload(); renderAtt(); }
 async function attCreate(type){
   const status=(type==='Δεν έγινε')?'δεν έγινε':'πραγματοποιήθηκε';
   const st=(type==='Δεν έγινε')?'Συγκέντρωση':type;
-  const {data,error}=await sb.from('sessions').upsert({section:ATT_SEC,session_date:ATT_DATE,session_type:st,status,scout_year:CUR_YEAR},{onConflict:'section,session_date'}).select('*').single();
+  const {data,error}=await sb.from('sessions').upsert({section:ATT_SEC,session_date:ATT_DATE,session_type:st,status,scout_year:SEL_YEAR},{onConflict:'section,session_date'}).select('*').single();
   if(error){alert(error.message);return;} ATT_SESSION=data; ATT_PRESENT=new Set(); renderAtt();
 }
 async function attDeleteSession(){
@@ -1074,6 +1127,7 @@ function setView(v){
   $('calToggle').classList.toggle('on',VIEW==='cal');
   $('draToggle').classList.toggle('on',VIEW==='dra');
   $('attToggle').classList.toggle('on',VIEW==='att');
+  $('orgToggle').classList.toggle('on',VIEW==='org');
   render();
 }
 $('viewToggle').onclick=()=>setView('dia');
@@ -1081,6 +1135,7 @@ $('expToggle').onclick=()=>setView('exp');
 $('calToggle').onclick=()=>setView('cal');
 $('draToggle').onclick=async()=>{ if(VIEW!=='dra'){await loadEvents();} setView('dra'); };
 $('attToggle').onclick=async()=>{ if(VIEW!=='att'){await attReload();} setView('att'); };
+$('orgToggle').onclick=()=>setView('org');
 $('newBtn').onclick=()=>$('newMenu').classList.toggle('show');
 async function createPerson(kind){
   $('newMenu').classList.remove('show');
@@ -1105,6 +1160,7 @@ window.runImport=runImport;window.confirmImport=confirmImport;
 window.exportGenika=exportGenika;window.exportSymmetoxes=exportSymmetoxes;window.exportPistopoiitika=exportPistopoiitika;
 window.attPickSec=attPickSec;window.attPickDate=attPickDate;window.attCreate=attCreate;window.attDeleteSession=attDeleteSession;
 window.attToggleP=attToggleP;window.attSetView=attSetView;window.attMove=attMove;window.attSave=attSave;window.attBulkAward=attBulkAward;
+window.exportDiarthrosi=exportDiarthrosi;
 </script>
 </body>
 </html>
