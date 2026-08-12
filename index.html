@@ -356,7 +356,8 @@ async function start(session){
   $('newBtn').style.display=ME.role==='admin'?'block':'none';
   SECS.forEach(s=>$('fSection').insertAdjacentHTML('beforeend',`<option>${s}</option>`));
   YEARS.forEach(y=>$('yearSel').insertAdjacentHTML('beforeend',`<option ${y===SEL_YEAR?'selected':''}>${y}</option>`));
-  $('yearSel').onchange=()=>{ SEL_YEAR=$('yearSel').value; if(VIEW==='org')renderOrg(); else if(VIEW==='att'){attReload().then(renderAtt);} };
+  $('yearSel').onchange=async()=>{ SEL_YEAR=$('yearSel').value; await loadMemberGroups(); if(VIEW==='org')renderOrg(); else if(VIEW==='att'){attReload().then(renderAtt);} else render(); };
+  loadMemberGroups();
   await load();
   sb.from('progression_catalog').select('*').eq('active',true).order('ordinal').then(({data})=>{CATALOG=data||[];});
   sb.channel('bh').on('postgres_changes',{event:'*',schema:'public',table:'badgeholders'},load).subscribe();
@@ -380,6 +381,7 @@ function eligDot(p){
 function dot(c,t){return `<span class="dot" title="${t}" style="background:${c}"></span>`;}
 function expCell(d){ if(!d) return ''; const x=new Date(d),now=new Date(),soon=new Date();soon.setDate(now.getDate()+90);
   const cls=x<now?'exp-red':(x<soon?'exp-yel':''); return `<span class="${cls}">${d.split('-').reverse().join('/')}</span>`; }
+function nameKey(s){s=(s||'').trim();const g=/[Α-Ωα-ωΆΈΉΊΌΎΏάέήίόύώ]/.test(s.charAt(0));return (g?'0':'1')+s.toLocaleUpperCase('el');}
 function filtered(){
   const q=$('search').value.trim().toLowerCase(), sec=$('fSection').value, st=$('fStatus').value, ex=$('fExpired').checked, kd=$('fKind').value;
   return DATA.filter(p=>{
@@ -387,9 +389,9 @@ function filtered(){
     if(sec&&p.section!==sec)return false;
     if(st&&p.status!==st)return false;
     if(ex&&!(p.sexoxarto_expiry&&new Date(p.sexoxarto_expiry)<new Date()))return false;
-    if(q){const s=(p.first_name+' '+p.last_name+' '+(p.scout_name||'')+' '+(p.location||'')).toLowerCase();if(!s.includes(q))return false;}
+    if(q){const s=(p.first_name+' '+p.last_name+' '+(p.scout_name||'')+' '+(p.location||'')+' '+(p.registry_no||'')).toLowerCase();if(!s.includes(q))return false;}
     return true;
-  });
+  }).sort((a,b)=>nameKey(a.last_name).localeCompare(nameKey(b.last_name),'el'));
 }
 function render(){
   $('crm').style.display     = VIEW==='crm'?'block':'none';
@@ -408,7 +410,13 @@ function renderCRM(){
   $('count').textContent=`${rows.length} / ${DATA.length}`;
   const sysWrong=DATA.filter(p=>p.section==='Σύστημα'&&p.category!=='ΑΣ'&&(p.status||'')!=='Αρχειοθετημένος');
   const warn=(sysWrong.length&&ME.role==='admin')?`<div style="margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#fff4e5;border:1px solid #ffd8a8;color:#8a5a00;font-size:13px">⚠ ${sysWrong.length} βαθμοφόρ${sysWrong.length>1?'οι':'ος'} με τμήμα «Σύστημα» χωρίς να είναι Α.Σ.: ${sysWrong.map(p=>`<a style="cursor:pointer;text-decoration:underline" onclick="detail('${p.id}')">${esc(p.first_name+' '+p.last_name)}</a>`).join(', ')} — έλεγξε/διόρθωσε το τμήμα.</div>`:'';
-  if($('fKind').value==='Μέλος'){ $('crm').innerHTML=warn+memberTable(rows); return; }
+  if($('fKind').value==='Μέλος'){
+    const sec=$('fSection').value, grp=(sec&&GROUPTERM[sec]&&MEM_VIEW==='grp');
+    const bar=`<div class="toolbar" style="margin:0 0 6px"><span class="count">${rows.length} μέλη${sec?' · '+sec:''} · χρονιά ${SEL_YEAR}</span>
+      <button class="btn ghost sm ${MEM_VIEW==='abc'?'on':''}" onclick="setMemView('abc')">Αλφαβητικά</button>
+      ${sec&&GROUPTERM[sec]?`<button class="btn ghost sm ${MEM_VIEW==='grp'?'on':''}" onclick="setMemView('grp')">Ανά ${GROUPTERM[sec]}</button>`:'<span class="dmeta">διάλεξε τμήμα για ομαδοποίηση ανά εξάδα/ενωμοτία</span>'}</div>`;
+    $('crm').innerHTML=warn+bar+memberTable(rows,grp); return;
+  }
   let h=warn+`<table><thead><tr><th></th><th>Επίθετο</th><th>Όνομα</th><th>Προσκοπικό</th><th>Τμήμα</th><th>Κατηγορία</th><th>Τοποθεσία</th><th>Τηλέφωνο</th><th>Σεξόχαρτο λήξη</th><th>Α'Β</th></tr></thead><tbody>`;
   rows.forEach(p=>{ const mem=p.kind==='Μέλος'; h+=`<tr class="sec-${p.section}" onclick="detail('${p.id}')">
     <td>${mem?'<span class="dot" title="Μέλος" style="background:#1e7a34"></span>':eligDot(p)}${!mem&&p.firstaid_ok?' <span class="cross" title="Ενεργές Α΄Βοήθειες">✚</span>':''}</td>
@@ -421,21 +429,30 @@ function renderCRM(){
   h+='</tbody></table>';
   $('crm').innerHTML=h;
 }
-function memberTable(rows){
-  let h=`<table><thead><tr><th>Επίθετο</th><th>Όνομα</th><th>Προσκοπικό</th><th>Κλάδος</th><th>Τμήμα</th><th>Τηλέφωνο</th><th>Κατάσταση</th></tr></thead><tbody>`;
-  rows.forEach(p=>{ h+=`<tr class="sec-${p.section}" onclick="detail('${p.id}')">
-    <td><b>${p.last_name}</b></td><td>${p.first_name}</td>
-    <td>${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}</td>
-    <td>${p.member_role||''}</td><td>${p.section||''}</td>
-    <td>${p.phone||''}</td><td>${p.reg_current?`<span class="kindchip mem">εγγ. ${CUR_YEAR}</span>`:'<span class="chip">εκκρεμεί</span>'}</td></tr>`; });
+function memberTable(rows,grouped){
+  const stat=p=>p.reg_current?`<span class="kindchip mem">εγγ. ${CUR_YEAR}</span>`:'<span class="chip">εκκρεμεί</span>';
+  const rowH=p=>`<tr class="sec-${p.section}" onclick="detail('${p.id}')"><td><b>${p.last_name}</b></td><td>${p.first_name}</td><td>${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}</td><td>${grouped?esc(MGROUP[p.id]||'—'):(p.member_role||'')}</td><td>${p.section||''}</td><td>${p.phone||''}</td><td>${stat(p)}</td></tr>`;
+  let h=`<table><thead><tr><th>Επίθετο</th><th>Όνομα</th><th>Προσκοπικό</th><th>${grouped?'Εξάδα/Ενωμ.':'Κλάδος'}</th><th>Τμήμα</th><th>Τηλέφωνο</th><th>Κατάσταση</th></tr></thead><tbody>`;
+  if(grouped){
+    const gr={}; rows.forEach(p=>{const g=MGROUP[p.id]||'~χωρίς';(gr[g]=gr[g]||[]).push(p);});
+    Object.keys(gr).sort((a,b)=>{if(a==='~χωρίς')return 1;if(b==='~χωρίς')return -1;const ia=EXADES.indexOf(a),ib=EXADES.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'el');}).forEach(g=>{
+      h+=`<tr><td colspan="7" style="background:#eef2f6;font-weight:700;color:#334155;padding:6px 8px">${g==='~χωρίς'?'— χωρίς εξάδα —':esc(g)} (${gr[g].length})</td></tr>`;
+      gr[g].forEach(p=>h+=rowH(p));
+    });
+  } else rows.forEach(p=>h+=rowH(p));
   return h+'</tbody></table>';
 }
+let MEM_VIEW='abc', MGROUP={}, MGROUP_YEAR=null;
+async function loadMemberGroups(){
+  const {data}=await sb.from('member_year').select('person_id,group_name').eq('scout_year',SEL_YEAR);
+  MGROUP={}; (data||[]).forEach(r=>{ if(r.group_name)MGROUP[r.person_id]=r.group_name; }); MGROUP_YEAR=SEL_YEAR;
+}
+function setMemView(v){ MEM_VIEW=v; renderCRM(); }
 const SEC_EMAIL={'Αγέλη':'76ageli@gmail.com','Ομάδα':'76omada@gmail.com','Κοινότητα':'aka76scouts@gmail.com'};
 function blockNum(i,count){const p=i+1;let b=(p<=2)?p:(p===3?4:p);if(count>=8){if(b===6)b=7;else if(b===7)b=6;}return b;}
 function bySurname(a){return a.slice().sort((x,y)=>(x.last_name||'').localeCompare(y.last_name||'','el'));}
 function chipsFor(p,sec){let c='';
   if(p.special==='7')c+='<span class="chip sp7">7η</span>';else if(p.special==='Σ')c+='<span class="chip sp">Σ</span>';
-  if(p.location)c+=`<span class="chip loc">${p.location}</span>`;
   if(p.is_network&&sec!=='Δίκτυο')c+='<span class="chip net">Δίκτυο</span>';
   return c;}
 function personRow(p,label,sec){
@@ -542,7 +559,7 @@ async function renderCal(){
 /* ---------- detail / edit ---------- */
 async function detail(id){
   EDIT_ID=id; const p=DATA.find(x=>x.id===id); if(!p)return;
-  $('dTitle').innerHTML=`${p.first_name} ${p.last_name} ${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}`;
+  $('dTitle').innerHTML=`${p.first_name} ${p.last_name} ${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}`+(p.registry_no?` <span class="dmeta" style="font-weight:normal">· Α.Μ. ${esc(p.registry_no)}</span>`:'');
   if(p.kind==='Μέλος'){ $('dBody').innerHTML=memberBody(p); $('ov').classList.add('show'); loadMember(id); return; }
   $('dBody').innerHTML=`
     <div class="row"><div class="f"><label>Τμήμα</label>${p.section||'—'}</div>
