@@ -255,6 +255,15 @@
   .kindchip{border-radius:6px;font-weight:700}
   #prof{max-width:1000px;margin:0 auto;padding:0 4px}
   #prof .modal{box-shadow:0 2px 10px rgba(15,30,60,.12);border:1px solid #e5e9ef}
+  .brand-logo{height:42px;width:42px;background:none!important;box-shadow:none;padding:0;border-radius:50%;margin-right:10px}
+  .col h3 img{height:30px;width:30px;background:none!important;padding:0;border-radius:50%;box-shadow:none}
+  #login .logo{height:96px}
+  .pavatar{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:50%;color:#fff;font-weight:800;font-size:17px;margin-right:13px;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.22);text-transform:uppercase}
+  #dTitle{display:flex;align-items:center;gap:0;border-bottom:1px solid #eef1f5;padding-bottom:12px;margin-bottom:6px}
+  .pttl{display:flex;flex-direction:column;line-height:1.3;min-width:0}
+  .pnm{font-size:18px;font-weight:800;color:#0f3d68}
+  .psub{font-size:12px;color:#6b7885;font-weight:600}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:6px 0;flex-wrap:wrap}
   button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #1b5e9c;outline-offset:1px}
   @media(max-width:760px){
     header.top{padding:8px 10px}
@@ -298,6 +307,7 @@
   <button class="btn ghost sm" id="attToggle">✅ Παρουσίες</button>
   <button class="btn ghost sm" id="orgToggle">🧭 Οργανόγραμμα</button>
   <select id="yearSel" class="btn ghost sm" style="padding:5px 8px" title="Προσκοπική χρονιά"></select>
+  <button class="btn ghost sm" id="legendBtn" title="Υπόμνημα συμβόλων">ℹ️ Υπόμνημα</button>
   <button class="btn ghost sm" id="logout">Έξοδος</button>
 </header>
 <div class="wrap">
@@ -330,6 +340,24 @@
     <button class="btn ghost sm" style="background:#e6ebf0;color:#333" id="evClose">Κλείσιμο</button>
     <div id="evExports"></div>
   </div>
+</div></div>
+
+<!-- LEGEND MODAL -->
+<div class="overlay" id="legend"><div class="modal" style="max-width:480px">
+  <h3>ℹ️ Υπόμνημα συμβόλων</h3>
+  <div style="font-size:13px">
+    <div class="legend-item"><span class="dot" style="background:linear-gradient(90deg,#27ae60 0 50%,#27ae60 50% 100%)"></span> <b>◖◗ διπλός δείκτης</b> — αριστερά: Σεξόχαρτο · δεξιά: Εκπαίδευση</div>
+    <div class="legend-item" style="margin-left:22px;color:#6b7885">🟢 πράσινο = ΟΚ · 🟡 κίτρινο = εν εξελίξει/προκαταρκτική · 🔴 κόκκινο = λήγει/όχι</div>
+    <div class="legend-item"><span class="dot" style="background:#8e44ad"></span> μωβ κουκκίδα = <b>Έφορος</b></div>
+    <div class="legend-item"><span class="dot" style="background:#c7ced6"></span> γκρι κουκκίδα = χωρίς στοιχεία καταλληλότητας</div>
+    <div class="legend-item"><span class="cross">✚</span> = ενεργές <b>Α΄ Βοήθειες</b></div>
+    <div class="legend-item"><span class="role head">Α.Α.Λ.</span> = <b>Αρχηγός Τμήματος</b> (Α.Α.Λ./Α.Ο.Π./Α.Κ.Α.)</div>
+    <div class="legend-item"><span class="chip net">Δίκτυο</span> <span class="chip sp7">7η</span> <span class="chip sp">Σ</span> = ενδείξεις (μέλος δικτύου · 7η ομάδα · Σύστημα)</div>
+    <div class="legend-item"><span class="scout">«ΟΝΟΜΑ»</span> = προσκοπικό όνομα</div>
+    <div class="legend-item"><span class="kindchip mem">εγγ. 2026-27</span> = εγγεγραμμένος φέτος · <span class="chip">εκκρεμεί</span> = χωρίς εγγραφή</div>
+    <div class="legend-item" style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px"><b>Οργανόγραμμα:</b> 🟢 Εντολή Διοίκησης (μετρά) · 🟠 Ανάθεση Καθηκόντων · ⚪ εκκρεμεί ταξινόμηση</div>
+  </div>
+  <div class="modal-actions"><button class="btn ghost sm" style="background:#e6ebf0;color:#333" onclick="document.getElementById('legend').classList.remove('show')">Κλείσιμο</button></div>
 </div></div>
 
 <!-- DETAIL MODAL -->
@@ -643,7 +671,8 @@ async function renderCal(){
 async function detail(id){
   ensureModalHome();
   EDIT_ID=id; const p=DATA.find(x=>x.id===id); if(!p)return;
-  $('dTitle').innerHTML=`${p.first_name} ${p.last_name} ${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}`+(p.registry_no?` <span class="dmeta" style="font-weight:normal">· Α.Μ. ${esc(p.registry_no)}</span>`:'');
+  const _ini=((p.first_name||' ')[0]||'')+((p.last_name||' ')[0]||'');
+  $('dTitle').innerHTML=`<span class="pavatar" style="background:${SECCOLOR[p.section]||'#1b5e9c'}">${esc(_ini)}</span><span class="pttl"><span class="pnm">${esc(p.first_name+' '+p.last_name)}${p.scout_name?` <span class="scout">«${esc(p.scout_name)}»</span>`:''}</span><span class="psub">${esc([p.section,(p.category&&p.category!=='ΑΣ'?p.category:null),p.member_role,(p.registry_no?'Α.Μ. '+p.registry_no:null)].filter(Boolean).join(' · '))}</span></span>`;
   if(p.kind==='Μέλος'){ $('dBody').innerHTML=memberBody(p); $('ov').classList.add('show'); loadMember(id); return; }
   $('dBody').innerHTML=`
     <div class="row"><div class="f"><label>Τμήμα</label>${p.section||'—'}</div>
@@ -1238,6 +1267,8 @@ $('calToggle').onclick=()=>setView('cal');
 $('draToggle').onclick=async()=>{ if(VIEW!=='dra'){await loadEvents();} setView('dra'); };
 $('attToggle').onclick=async()=>{ if(VIEW!=='att'){await attReload();} setView('att'); };
 $('orgToggle').onclick=()=>setView('org');
+$('legendBtn').onclick=()=>$('legend').classList.add('show');
+$('legend').addEventListener('click',e=>{if(e.target===$('legend'))$('legend').classList.remove('show');});
 function ensureModalHome(){ const m=$('profBody')&&$('profBody').querySelector('.modal'); if(m){ m.style.maxWidth='';m.style.margin=''; $('ov').appendChild(m);} if($('prof'))$('prof').style.display='none'; }
 function openProfileInline(){
   if(!EDIT_ID)return;
