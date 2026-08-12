@@ -268,6 +268,7 @@
   <div id="dra" style="display:none"></div>
   <div id="att" style="display:none"></div>
   <div id="org" style="display:none"></div>
+  <div id="prof" style="display:none"><div style="padding:8px 0"><button class="btn ghost sm" id="profBack">← Πίσω στη λίστα</button></div><div id="profBody"></div></div>
 </div>
 <div id="newMenu"><button class="btn sm" id="newMember">＋ Μέλος</button><button class="btn sm" id="newBadge">＋ Βαθμοφόρος</button></div>
 <button id="newBtn" title="Νέο άτομο" style="display:none">＋</button>
@@ -289,7 +290,8 @@
   <div id="dBody"></div>
   <div class="modal-actions">
     <button class="btn ghost sm" style="background:#e6ebf0;color:#333" id="dClose">Κλείσιμο</button>
-    <div><button class="btn sm" id="dSens" style="background:#a5822f">🔒 Ευαίσθητα</button>
+    <div><button class="btn sm" id="dOpen" style="background:#2f6fb0">⇱ Άνοιγμα σελίδας</button>
+    <button class="btn sm" id="dSens" style="background:#a5822f">🔒 Ευαίσθητα</button>
     <button class="btn sm" id="dEdit">✎ Επεξεργασία</button></div>
   </div>
 </div></div>
@@ -305,6 +307,7 @@ const EV_TYPES=['Συνάντηση','Εκδρομή','Διήμερο','Τριή
 const DUTIES=['Αρχηγός Δράσης','Α΄ Βοηθός','Οδηγός','Υπεύθυνος Υλικού','Υπεύθυνος Προγράμματος','Υπεύθυνος Ασφαλείας','Ταμίας','Βοηθός'];
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 const SECCOLOR={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)'};
+const SECHEAD={'Αγέλη':'background:#f4c20d;color:#4a3b00','Ομάδα':'background:#1e7a34;color:#fff','Κοινότητα':'background:#3498db;color:#fff','Δίκτυο':'background:#8e44ad;color:#fff','Σύστημα':'background:#334155;color:#fff'};
 const SECS=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'];
 const SECLOGO={'Αγέλη':'https://76.life/wp-content/uploads/2024/08/76ageliLogo-150x150.png','Ομάδα':'https://76.life/wp-content/uploads/2024/08/76omadaLogo-150x150.png','Κοινότητα':'https://76.life/wp-content/uploads/2024/08/76koinotitaLogo-150x150.png'};
 const CATS=['ΑΣ','Αρχηγός','Βαθμοφόρος','YOLO','Υπεύθυνος Δικτύου','Δίκτυο','Αρχειοθετημένος'];
@@ -361,6 +364,7 @@ async function start(session){
   await load();
   sb.from('progression_catalog').select('*').eq('active',true).order('ordinal').then(({data})=>{CATALOG=data||[];});
   sb.channel('bh').on('postgres_changes',{event:'*',schema:'public',table:'badgeholders'},load).subscribe();
+  if(location.hash.indexOf('p=')>-1){ const id=location.hash.split('p=')[1]; if(id&&DATA.find(x=>x.id===id)){ await detail(id); openProfileInline(); } }
 }
 
 /* ---------- data ---------- */
@@ -463,8 +467,10 @@ function personRow(p,label,sec){
   else if(p.category==='Υπεύθυνος Δικτύου')badge='<span class="role" style="background:var(--diktyo)">Υπ. Δικτύου</span>';
   const cross=p.firstaid_ok?' <span class="cross" title="Ενεργές Α΄Βοήθειες">✚</span>':'';
   const meta=(!hide&&(em.length||p.phone))?`<div class="dmeta">${em.join(' · ')}${p.phone?(em.length?' · ':'')+p.phone:''}</div>`:'';
-  return `<li onclick="detail('${p.id}')"><span class="dnum">${label==null?'':label}</span><span class="dbody"><span class="pname">${p.first_name} <b>${p.last_name}</b>${p.scout_name?` <span class="scout">«${p.scout_name}»</span>`:''} ${eligDot(p)}${cross}${badge}${chipsFor(p,sec)}</span>${meta}</span></li>`;
+  const mv=(ME.role==='admin')?`<select onclick="event.stopPropagation()" onchange="moveSection('${p.id}',this.value)" title="Μετακίνηση τμήματος" style="font-size:9px;padding:0 2px;margin-left:5px;border:1px solid #d7dee6;border-radius:4px;color:#8a9680;vertical-align:middle"><option value="">⇄</option>${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'].map(s=>`<option ${s===p.section?'selected':''}>${s}</option>`).join('')}</select>`:'';
+  return `<li onclick="detail('${p.id}')"><span class="dnum">${label==null?'':label}</span><span class="dbody"><span class="pname">${p.first_name} <b>${p.last_name}</b>${p.scout_name?` <span class="scout">«${p.scout_name}»</span>`:''} ${eligDot(p)}${cross}${badge}${chipsFor(p,sec)}${mv}</span>${meta}</span></li>`;
 }
+async function moveSection(id,sec){ if(!sec)return; const {error}=await sb.from('badgeholders').update({section:sec,member_role:SEC2ROLE[sec]||null}).eq('id',id); if(error){alert(error.message);return;} await load(); }
 function collap(title,arr,sec){let b='';arr.forEach((p,i)=>b+=personRow(p,blockNum(i,arr.length),sec));
   return `<details><summary>▸ ${title} (${arr.length})</summary><ul class="people" style="padding:0 0 4px">${b}</ul></details>`;}
 function diaCol(sec){
@@ -491,19 +497,48 @@ function diaCol(sec){
     if(extra.length)inner+=collap('Κοινά μέλη',bySurname(extra),sec);
   }
   const cnt=DATA.filter(p=>p.section===sec||(p.extra_sections||[]).includes(sec)).length;
-  return `<div class="col ${sec}"><h3>${SECLOGO[sec]?`<img src="${SECLOGO[sec]}">`:''}${sec} (${cnt})</h3><ul class="people">${inner||'<li class="dmeta" style="padding:8px">—</li>'}</ul></div>`;
+  return `<div class="col ${sec}"><h3 style="${SECHEAD[sec]||''}">${SECLOGO[sec]?`<img src="${SECLOGO[sec]}">`:''}${sec} (${cnt})</h3><ul class="people">${inner||'<li class="dmeta" style="padding:8px">—</li>'}</ul></div>`;
 }
-function renderDia(){
+async function renderDia(){
   $('crm').style.display='none'; $('diarthrosi').style.display='block';
+  if(SEL_YEAR!==CUR_YEAR) return renderDiaYear();
   const as=DATA.find(p=>p.category==='ΑΣ'); let h='';
-  h+=`<div class="toolbar"><span class="count">🗂 Διάρθρωση</span>${ME.role==='admin'?'<button class="btn sm" onclick="exportDiarthrosi()">⤓ Εξαγωγή (xlsx)</button><span class="dmeta" style="margin-left:6px">κλικ σε άτομο → ✎ Επεξεργασία για edit/μετακίνηση τμήματος</span>':''}</div>`;
-  if(as)h+=`<div class="asband"><div class="col Σύστημα"><h3>ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</h3><ul class="people">${personRow(as,null,'Σύστημα')}</ul></div></div>`;
+  h+=`<div class="toolbar"><span class="count">🗂 Διάρθρωση · ${CUR_YEAR}</span>${ME.role==='admin'?'<button class="btn sm" onclick="exportDiarthrosi()">⤓ Εξαγωγή (xlsx)</button><span class="dmeta" style="margin-left:6px">κλικ→καρτέλα · ⇄ δίπλα στο όνομα = μετακίνηση τμήματος</span>':''}</div>`;
+  if(as)h+=`<div class="asband"><div class="col Σύστημα"><h3 style="${SECHEAD['Σύστημα']}">ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</h3><ul class="people">${personRow(as,null,'Σύστημα')}</ul></div></div>`;
   h+='<div class="grid">'+['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(diaCol).join('')+'</div>';
   const arch=bySurname(DATA.filter(p=>p.status==='Αρχειοθετημένος'||p.category==='Αρχειοθετημένος'));
   if(arch.length){let b='';arch.forEach((p,i)=>b+=personRow(p,blockNum(i,arch.length),''));
     h+=`<div class="archband"><div class="col Σύστημα"><h3>ΑΡΧΕΙΟΘΕΤΗΜΕΝΟΙ ΒΑΘΜΟΦΟΡΟΙ (${arch.length})</h3><details><summary style="padding:8px 6px">▸ Εμφάνιση</summary><ul class="people">${b}</ul></details></div></div>`;
   }
   $('diarthrosi').innerHTML=h;
+}
+async function renderDiaYear(){
+  const box=$('diarthrosi');
+  box.innerHTML=`<div class="toolbar"><span class="count">🗂 Διάρθρωση · ${SEL_YEAR} (ιστορική, από θητείες)</span></div><div class="dmeta" style="padding:6px 8px">Φόρτωση…</div>`;
+  const {data}=await sb.from('service_history').select('person_id,section,appointment,warrant_type').eq('scout_year',SEL_YEAR);
+  const lead=(data||[]).filter(r=>/ρχηγ|υστήμ|πεύθυν|ξάρχ|νωμοτ|μιλάρχ/.test(r.appointment||''));
+  const nameOf=id=>{const p=DATA.find(x=>x.id===id);return p?esc(p.first_name+' '+p.last_name):'—';};
+  const rank=w=>w==='Εντολή Διοίκησης'?2:(w==='Ανάθεση Καθηκόντων'?1:0);
+  const byP={}; lead.forEach(r=>{const c=byP[r.person_id];if(!c||rank(r.warrant_type)>rank(c.warrant_type))byP[r.person_id]=r;});
+  const rows=Object.values(byP);
+  const isHead=a=>/Αρχηγός/.test(a||'');
+  const glow=w=>w==='Εντολή Διοίκησης'?'#27ae60':(w==='Ανάθεση Καθηκόντων'?'#f4c20d':'#c7ced6');
+  const gd=r=>dot(glow(r.warrant_type),r.warrant_type||'εκκρεμεί');
+  const li=r=>`<li onclick="detail('${r.person_id}')"><span class="dbody"><span class="pname">${isHead(r.appointment)?'<b>'+nameOf(r.person_id)+'</b>':nameOf(r.person_id)} ${gd(r)}${isHead(r.appointment)?' <span class="role head">Αρχηγός</span>':''}</span></span></li>`;
+  const as=rows.find(r=>/Συστήμ/.test(r.appointment||''));
+  let h=`<div class="toolbar"><span class="count">🗂 Διάρθρωση · ${SEL_YEAR} (ιστορική, από θητείες)</span><span class="dmeta" style="margin-left:auto">🟢 Εντολή · 🟡 Ανάθεση · άλλαξε χρονιά πάνω δεξιά</span></div>`;
+  if(as)h+=`<div class="asband"><div class="col Σύστημα"><h3 style="${SECHEAD['Σύστημα']}">ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</h3><ul class="people">${li(as)}</ul></div></div>`;
+  h+='<div class="grid">';
+  ['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].forEach(sec=>{
+    const inSec=rows.filter(r=>r.section===sec), heads=inSec.filter(r=>isHead(r.appointment)), asst=inSec.filter(r=>!isHead(r.appointment));
+    let inner='';
+    if(heads.length){inner+='<div class="catlabel">Αρχηγός</div>'+heads.map(li).join('');}
+    if(asst.length){inner+='<div class="catlabel">Υπαρχηγοί</div>'+asst.map(li).join('');}
+    if(!inner)inner='<li class="dmeta" style="padding:8px">— χωρίς θητείες —</li>';
+    h+=`<div class="col ${sec}"><h3 style="${SECHEAD[sec]||''}">${SECLOGO[sec]?`<img src="${SECLOGO[sec]}">`:''}${sec} (${inSec.length})</h3><ul class="people">${inner}</ul></div>`;
+  });
+  h+='</div>';
+  box.innerHTML=h;
 }
 function renderExp(){
   const now=new Date(), soon=new Date(); soon.setDate(now.getDate()+90);
@@ -558,6 +593,7 @@ async function renderCal(){
 
 /* ---------- detail / edit ---------- */
 async function detail(id){
+  ensureModalHome();
   EDIT_ID=id; const p=DATA.find(x=>x.id===id); if(!p)return;
   $('dTitle').innerHTML=`${p.first_name} ${p.last_name} ${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}`+(p.registry_no?` <span class="dmeta" style="font-weight:normal">· Α.Μ. ${esc(p.registry_no)}</span>`:'');
   if(p.kind==='Μέλος'){ $('dBody').innerHTML=memberBody(p); $('ov').classList.add('show'); loadMember(id); return; }
@@ -1138,6 +1174,7 @@ async function attBulkAward(){
 /* ---------- ui ---------- */
 ['search','fSection','fStatus','fExpired','fKind'].forEach(id=>$(id).addEventListener('input',render));
 function setView(v){
+  ensureModalHome();
   VIEW=(VIEW===v?'crm':v);
   $('viewToggle').classList.toggle('on',VIEW==='dia');
   $('expToggle').classList.toggle('on',VIEW==='exp');
@@ -1153,6 +1190,20 @@ $('calToggle').onclick=()=>setView('cal');
 $('draToggle').onclick=async()=>{ if(VIEW!=='dra'){await loadEvents();} setView('dra'); };
 $('attToggle').onclick=async()=>{ if(VIEW!=='att'){await attReload();} setView('att'); };
 $('orgToggle').onclick=()=>setView('org');
+function ensureModalHome(){ const m=$('profBody')&&$('profBody').querySelector('.modal'); if(m){ m.style.maxWidth='';m.style.margin=''; $('ov').appendChild(m);} if($('prof'))$('prof').style.display='none'; }
+function openProfileInline(){
+  if(!EDIT_ID)return;
+  const modal=$('ov').querySelector('.modal');
+  if(modal){ modal.style.maxWidth='900px'; modal.style.margin='0 auto'; $('profBody').appendChild(modal); }
+  $('ov').classList.remove('show');
+  ['crm','diarthrosi','exp','cal','dra','att','org'].forEach(v=>{const e=$(v);if(e)e.style.display='none';});
+  const tb=$('crm').parentElement.querySelector('.toolbar'); if(tb)tb.style.display='none';
+  ['viewToggle','expToggle','calToggle','draToggle','attToggle','orgToggle'].forEach(b=>{const e=$(b);if(e)e.classList.remove('on');});
+  $('prof').style.display='block'; window.scrollTo(0,0); location.hash='p='+EDIT_ID;
+}
+function backFromProfile(){ ensureModalHome(); history.replaceState(null,'',location.pathname+location.search); VIEW='crm'; render(); }
+$('dOpen').onclick=openProfileInline;
+$('profBack').onclick=backFromProfile;
 $('newBtn').onclick=()=>$('newMenu').classList.toggle('show');
 async function createPerson(kind){
   $('newMenu').classList.remove('show');
@@ -1177,7 +1228,7 @@ window.runImport=runImport;window.confirmImport=confirmImport;
 window.exportGenika=exportGenika;window.exportSymmetoxes=exportSymmetoxes;window.exportPistopoiitika=exportPistopoiitika;
 window.attPickSec=attPickSec;window.attPickDate=attPickDate;window.attCreate=attCreate;window.attDeleteSession=attDeleteSession;
 window.attToggleP=attToggleP;window.attSetView=attSetView;window.attMove=attMove;window.attSave=attSave;window.attBulkAward=attBulkAward;
-window.exportDiarthrosi=exportDiarthrosi;
+window.exportDiarthrosi=exportDiarthrosi;window.moveSection=moveSection;
 </script>
 </body>
 </html>
