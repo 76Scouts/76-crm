@@ -238,7 +238,7 @@
   .toolbar{background:#fff;border:1px solid #e5e9ef;border-radius:10px;padding:8px 12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
   .count{font-weight:600}
   table{border:1px solid #e5e9ef;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:visible;border-collapse:separate;border-spacing:0}
-  th{background:#f7f9fc;position:sticky;top:48px;z-index:5;font-size:10.5px;border-bottom:2px solid #e5e9ef;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+  th{background:#f7f9fc;position:sticky;top:var(--hh,50px);z-index:5;font-size:10.5px;border-bottom:2px solid #e5e9ef;box-shadow:0 2px 4px rgba(0,0,0,.06)}
   /* sticky header needs the app header height as offset; keep header compact */
   header.top{min-height:0}
   td{border-bottom:1px solid #eef1f5}
@@ -266,6 +266,18 @@
   .pnm{font-size:18px;font-weight:800;color:#0f3d68}
   .psub{font-size:12px;color:#6b7885;font-weight:600}
   .legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:6px 0;flex-wrap:wrap}
+  /* SAP-style standalone profile page */
+  #prof .modal{padding:0;overflow:hidden}
+  #prof #dTitle{flex-direction:row;align-items:center;gap:15px;margin:0;padding:22px;background:linear-gradient(120deg,#0f3d68,#2c6aa0);border:0;border-radius:16px 16px 0 0}
+  #prof #dTitle .pnm{color:#fff;font-size:23px}
+  #prof #dTitle .psub{color:rgba(255,255,255,.9)}
+  #prof #dTitle .scout{color:#ffe08a}
+  #prof #dTitle .pavatar{width:68px;height:68px;font-size:25px;border:3px solid rgba(255,255,255,.8);box-shadow:0 3px 10px rgba(0,0,0,.3)}
+  #prof #dBody{padding:18px 22px}
+  #prof #dBody .row{gap:12px}
+  #prof #dBody .f{background:#f7f9fc;border:1px solid #eef1f5;border-radius:10px;padding:8px 11px;min-width:150px}
+  #prof #dBody .f label{color:#8a9680}
+  #prof .modal-actions{padding:6px 22px 20px}
   button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #1b5e9c;outline-offset:1px}
   @media(max-width:760px){
     header.top{padding:8px 10px}
@@ -431,6 +443,7 @@ async function start(session){
   const {data:prof}=await sb.from('profiles').select('role').eq('id',session.user.id).maybeSingle();
   ME.role=prof?.role||'viewer';
   $('login').style.display='none'; $('app').style.display='block';
+  setTimeout(setHH,50);
   $('who').innerHTML=`${ME.email} <span class="badge-role ${ME.role!=='admin'?'viewer':''}">${ME.role}</span>`;
   $('dSens').style.display=ME.role==='admin'?'inline-block':'none';
   $('dEdit').style.display=ME.role==='admin'?'inline-block':'none';
@@ -1271,6 +1284,8 @@ $('attToggle').onclick=async()=>{ if(VIEW!=='att'){await attReload();} setView('
 $('orgToggle').onclick=()=>setView('org');
 $('legendBtn').onclick=()=>$('legend').classList.add('show');
 $('legend').addEventListener('click',e=>{if(e.target===$('legend'))$('legend').classList.remove('show');});
+function setHH(){const h=document.querySelector('header.top'); if(h&&h.offsetHeight)document.documentElement.style.setProperty('--hh',(h.offsetHeight-1)+'px');}
+window.addEventListener('resize',setHH); setTimeout(setHH,300);
 function ensureModalHome(){ const m=$('profBody')&&$('profBody').querySelector('.modal'); if(m){ m.style.maxWidth='';m.style.margin=''; $('ov').appendChild(m);} if($('prof'))$('prof').style.display='none'; }
 function openProfileInline(){
   if(!EDIT_ID)return;
