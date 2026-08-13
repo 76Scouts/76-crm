@@ -329,6 +329,7 @@
     <input id="search" placeholder="🔍 Αναζήτηση..." style="min-width:200px">
     <select id="fSection"><option value="">Όλα τα τμήματα</option></select>
     <select id="fKind"><option value="">Όλοι (βαθμ.+μέλη)</option><option value="Βαθμοφόρος">Βαθμοφόροι</option><option value="Μέλος">Μέλη</option></select>
+    <select id="fCat"><option value="">Όλες οι κατηγορίες</option></select>
     <select id="fStatus"><option value="">Όλες οι καταστάσεις</option><option>Ενεργός</option><option>Αρχειοθετημένος</option></select>
     <label style="font-size:12px;color:var(--muted);display:flex;gap:4px;align-items:center"><input type="checkbox" id="fExpired"> ληγμένα σεξόχαρτα</label>
     <span class="count" id="count"></span>
@@ -396,6 +397,23 @@ let ATT_SEC='Αγέλη', ATT_DATE=(new Date()).toISOString().slice(0,10), ATT_S
 const EV_TYPES=['Συνάντηση','Εκδρομή','Διήμερο','Τριήμερο','Κατασκήνωση','ΜΔΥ','Εκδήλωση','Άλλο'];
 const DUTIES=['Αρχηγός Δράσης','Α΄ Βοηθός','Οδηγός','Υπεύθυνος Υλικού','Υπεύθυνος Προγράμματος','Υπεύθυνος Ασφαλείας','Ταμίας','Βοηθός'];
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmtPhone(ph){ if(!ph)return ''; let d=(''+ph).replace(/[^\d+]/g,'');
+  if(d.startsWith('00'))d='+'+d.slice(2);
+  if(d.startsWith('+357'))d=d.slice(4);
+  if(d.startsWith('+')){ const m=d.match(/^\+(\d{1,3})(\d+)$/); return m?('+'+m[1]+' '+m[2].replace(/(\d{2,3})(?=\d)/g,'$1 ').trim()):d; }
+  d=d.replace(/\D/g,'');
+  if(d.length===8)return d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3');
+  return d.replace(/(\d{2,3})(?=\d)/g,'$1 ').trim(); }
+function roleAbbr(p){
+  const a=p.appointment||p.headrole||'';
+  if(p.category==='ΑΣ'||/Συστήμ/.test(a))return 'Α.Σ.';
+  if(p.category==='Υπεύθυνος Δικτύου')return 'Υ.Δ.';
+  const sfx={'Αγέλη':'Α.Λ.','Ομάδα':'Ο.Π.','Κοινότητα':'Κ.Α.'}[p.section];
+  let ab='';
+  if(sfx){ if(/Υπαρχηγός/.test(a))ab='Υ.'+sfx; else if(/Αρχηγός/.test(a)||p.category==='Αρχηγός')ab='Α.'+sfx; }
+  if(ab&&p.is_network)ab+='-Δ';
+  return ab;
+}
 const SECCOLOR={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)'};
 const SECHEAD={'Αγέλη':'background:#f4c20d;color:#4a3b00','Ομάδα':'background:#c2a35a;color:#3d2f10','Κοινότητα':'background:#3498db;color:#fff','Δίκτυο':'background:#8e44ad;color:#fff','Σύστημα':'background:#334155;color:#fff'};
 const PROGBOOK={'Αγέλη':'Μονοπάτια Λυκοπούλου','Ομάδα':'ΚΑΝΕ — Προσκοπικό Διαβατήριο','Κοινότητα':'ΗΚΑΔΕ'};
@@ -452,6 +470,7 @@ async function start(session){
   $('dEdit').style.display=ME.role==='admin'?'inline-block':'none';
   $('newBtn').style.display=ME.role==='admin'?'block':'none';
   SECS.forEach(s=>$('fSection').insertAdjacentHTML('beforeend',`<option>${s}</option>`));
+  CATS.forEach(c=>$('fCat').insertAdjacentHTML('beforeend',`<option>${c}</option>`));
   YEARS.forEach(y=>$('yearSel').insertAdjacentHTML('beforeend',`<option ${y===SEL_YEAR?'selected':''}>${y}</option>`));
   $('yearSel').onchange=async()=>{ SEL_YEAR=$('yearSel').value; await loadMemberGroups(); if(VIEW==='org')renderOrg(); else if(VIEW==='att'){attReload().then(renderAtt);} else render(); };
   loadMemberGroups();
@@ -468,22 +487,25 @@ async function load(){
   DATA=data||[]; render();
 }
 function eligDot(p){
-  if(p.is_commissioner) return dot('#8e44ad','Έφορος');
+  const ring=SECCOLOR[p.section]?`box-shadow:0 0 0 2px ${SECCOLOR[p.section]};`:'';
+  const dd=(c,t)=>`<span class="dot" title="${t}" style="${ring}background:${c};margin-right:2px"></span>`;
+  if(p.is_commissioner) return dd('#8e44ad',(p.section||'')+' · Έφορος');
   const hasData=p.sexoxarto_date||p.has_prok||p.own_basic;
-  if(!hasData) return dot('#c7ced6','Χωρίς στοιχεία');
-  const sexC=p.sex_ok?'#27ae60':(p.sexoxarto_expiry?'#e74c3c':'#e74c3c');
+  if(!hasData) return dd('#c7ced6',(p.section||'')+' · Χωρίς στοιχεία');
+  const sexC=p.sex_ok?'#27ae60':'#e74c3c';
   const trC=p.own_basic?'#27ae60':(p.has_prok?'#f4c20d':'#e74c3c');
   const can=(p.sex_ok&&p.own_basic)?'Εντολή':((p.sex_ok&&p.has_prok)?'Ανάθεση':'—');
-  return `<span class="dot" title="Σεξόχαρτο ${p.sex_ok?'✓':'✗'} · Εκπ. ${p.own_basic?'Βασική':(p.has_prok?'Προκ.':'—')} → ${can}" style="background:linear-gradient(90deg,${sexC} 0 50%,${trC} 50% 100%)"></span>`;
+  return `<span class="dot" title="${p.section||''} · Σεξόχαρτο ${p.sex_ok?'✓':'✗'} · Εκπ. ${p.own_basic?'Βασική':(p.has_prok?'Προκ.':'—')} → ${can}" style="${ring}background:linear-gradient(90deg,${sexC} 0 50%,${trC} 50% 100%);margin-right:2px"></span>`;
 }
 function dot(c,t){return `<span class="dot" title="${t}" style="background:${c}"></span>`;}
 function expCell(d){ if(!d) return ''; const x=new Date(d),now=new Date(),soon=new Date();soon.setDate(now.getDate()+90);
   const cls=x<now?'exp-red':(x<soon?'exp-yel':''); return `<span class="${cls}">${d.split('-').reverse().join('/')}</span>`; }
 function nameKey(s){s=(s||'').trim();const g=/[Α-Ωα-ωΆΈΉΊΌΎΏάέήίόύώ]/.test(s.charAt(0));return (g?'0':'1')+s.toLocaleUpperCase('el');}
 function filtered(){
-  const q=$('search').value.trim().toLowerCase(), sec=$('fSection').value, st=$('fStatus').value, ex=$('fExpired').checked, kd=$('fKind').value;
+  const q=$('search').value.trim().toLowerCase(), sec=$('fSection').value, st=$('fStatus').value, ex=$('fExpired').checked, kd=$('fKind').value, cat=($('fCat')?$('fCat').value:'');
   return DATA.filter(p=>{
     if(kd&&(p.kind||'Βαθμοφόρος')!==kd)return false;
+    if(cat&&p.category!==cat)return false;
     if(sec&&p.section!==sec)return false;
     if(st&&p.status!==st)return false;
     if(ex&&!(p.sexoxarto_expiry&&new Date(p.sexoxarto_expiry)<new Date()))return false;
@@ -522,14 +544,14 @@ function renderCRM(){
     <td>${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}</td>
     <td>${p.section||''}${p.is_network&&p.section!=='Δίκτυο'?'<span class="chip">δίκτυο</span>':''}</td>
     <td>${mem?`<span class="kindchip mem">μέλος</span>${p.member_role?`<span class="chip">${p.member_role}</span>`:''}`:`${p.category||''}${p.special?`<span class="chip">${p.special==='7'?'7η':'Σ'}</span>`:''}`}</td>
-    <td>${p.location||''}</td><td>${p.phone||''}</td>
+    <td>${p.location||''}</td><td>${fmtPhone(p.phone)}</td>
     <td>${mem?'':expCell(p.sexoxarto_expiry)}</td><td>${!mem&&p.firstaid_ok?'✚':''}</td></tr>`; });
   h+='</tbody></table>';
   $('crm').innerHTML=h;
 }
 function memberTable(rows,grouped){
   const stat=p=>p.reg_current?`<span class="kindchip mem">εγγ. ${CUR_YEAR}</span>`:'<span class="chip">εκκρεμεί</span>';
-  const rowH=p=>`<tr class="sec-${p.section}" onclick="detail('${p.id}')"><td><b>${p.last_name}</b></td><td>${p.first_name}</td><td>${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}</td><td>${grouped?esc(MGROUP[p.id]||'—'):(p.member_role||'')}</td><td>${p.section||''}</td><td>${p.phone||''}</td><td>${stat(p)}</td></tr>`;
+  const rowH=p=>`<tr class="sec-${p.section}" onclick="detail('${p.id}')"><td><b>${p.last_name}</b></td><td>${p.first_name}</td><td>${p.scout_name?`<span class="scout">«${p.scout_name}»</span>`:''}</td><td>${grouped?esc(MGROUP[p.id]||'—'):(p.member_role||'')}</td><td>${p.section||''}</td><td>${fmtPhone(p.phone)}</td><td>${stat(p)}</td></tr>`;
   let h=`<table><thead><tr><th>Επίθετο</th><th>Όνομα</th><th>Προσκοπικό</th><th>${grouped?'Εξάδα/Ενωμ.':'Κλάδος'}</th><th>Τμήμα</th><th>Τηλέφωνο</th><th>Κατάσταση</th></tr></thead><tbody>`;
   if(grouped){
     const gr={}; rows.forEach(p=>{const g=MGROUP[p.id]||'~χωρίς';(gr[g]=gr[g]||[]).push(p);});
@@ -556,11 +578,10 @@ function chipsFor(p,sec){let c='';
 function personRow(p,label,sec){
   const hide=(p.category==='YOLO'||p.category==='Δίκτυο');
   let em=[]; if(!hide){ if(p.email)em.push(p.email); if(p.category==='Αρχηγός'&&SEC_EMAIL[sec])em.push(SEC_EMAIL[sec]); }
-  let badge='';
-  if(p.category==='Αρχηγός'||p.category==='ΑΣ')badge=`<span class="role head">${p.headrole||'Αρχ.'}</span>`;
-  else if(p.category==='Υπεύθυνος Δικτύου')badge='<span class="role" style="background:var(--diktyo)">Υπ. Δικτύου</span>';
+  let badge=''; const _rab=roleAbbr(p);
+  if(_rab)badge=`<span class="role head"${p.category==='Υπεύθυνος Δικτύου'?' style="background:var(--diktyo)"':''}>${_rab}</span>`;
   const cross=p.firstaid_ok?' <span class="cross" title="Ενεργές Α΄Βοήθειες">✚</span>':'';
-  const meta=(!hide&&(em.length||p.phone))?`<div class="dmeta">${em.join(' · ')}${p.phone?(em.length?' · ':'')+p.phone:''}</div>`:'';
+  const meta=(!hide&&(em.length||p.phone))?`<div class="dmeta">${em.join(' · ')}${p.phone?(em.length?' · ':'')+fmtPhone(p.phone):''}</div>`:'';
   const mv=(ME.role==='admin')?`<select onclick="event.stopPropagation()" onchange="moveSection('${p.id}',this.value)" title="Μετακίνηση τμήματος" style="font-size:9px;padding:0 2px;margin-left:5px;border:1px solid #d7dee6;border-radius:4px;color:#8a9680;vertical-align:middle"><option value="" disabled>⇄ μετακίνηση σε…</option>${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'].map(s=>`<option ${s===p.section?'selected':''}>${s}</option>`).join('')}</select>`:'';
   return `<li onclick="detail('${p.id}')"><span class="dnum">${label==null?'':label}</span><span class="dbody"><span class="pname">${p.first_name} <b>${p.last_name}</b>${p.scout_name?` <span class="scout">«${p.scout_name}»</span>`:''} ${eligDot(p)}${cross}${badge}${chipsFor(p,sec)}${mv}</span>${meta}</span></li>`;
 }
@@ -698,7 +719,7 @@ async function detail(id){
       <div class="f"><label>Κατηγορία</label>${p.category}</div>
       <div class="f"><label>Καθήκοντα</label>${p.headrole||p.appointment||'—'}</div></div>
     <div class="row"><div class="f"><label>Τοποθεσία</label>${p.location||'—'}</div>
-      <div class="f"><label>Τηλέφωνο</label>${p.phone||'—'}</div>
+      <div class="f"><label>Τηλέφωνο</label>${fmtPhone(p.phone)||'—'}</div>
       <div class="f"><label>Email</label>${p.email||'—'}</div></div>
     <div class="row"><div class="f"><label>Έφορος</label>${p.is_commissioner?'Ναι':'Όχι'}</div>
       <div class="f"><label>Δίκτυο</label>${p.is_network?'Ναι':'Όχι'}</div>
@@ -723,7 +744,7 @@ function memberBody(p){
    <div class="row"><div class="f"><label>Ηλικία</label><span id="m_age">—</span></div>
      <div class="f"><label>Ημ. πρώτης εγγραφής</label><span id="m_join">—</span></div>
      <div class="f"><label>Εγγραφή ${CUR_YEAR}</label><span id="m_reg">—</span></div></div>
-   <div class="row"><div class="f"><label>Τηλέφωνο</label>${p.phone||'—'}</div>
+   <div class="row"><div class="f"><label>Τηλέφωνο</label>${fmtPhone(p.phone)||'—'}</div>
      <div class="f"><label>Προσκοπικό</label>${p.scout_name||'—'}</div>
      <div class="f"><label>Κατάσταση</label><span id="m_status">—</span></div></div>
    <div class="row"><div class="f"><label>Τάξη (${CUR_YEAR})</label><span id="m_grade">—</span></div>
@@ -940,9 +961,11 @@ $('dSens').onclick=async()=>{
   if(error||!data){box.innerHTML=`<div class="sens">Χωρίς πρόσβαση ή χωρίς στοιχεία.</div>`;return;}
   box.innerHTML=`<div class="sens">🔒 Α.Δ.Τ.: <b>${data.adt||'—'}</b> · Ημ. Γέννησης: <b>${data.dob?data.dob.split('-').reverse().join('/'):'—'}</b></div>`;
 };
-$('dEdit').onclick=()=>{
+$('dEdit').onclick=async()=>{
   const p=DATA.find(x=>x.id===EDIT_ID);
   if(p.kind==='Μέλος'){ memberEdit(p); return; }
+  const {data:ad}=await sb.from('badgeholders').select('home_address,study_place,studying').eq('id',EDIT_ID).maybeSingle();
+  const A=ad||{};
   $('dBody').innerHTML=`
    <div class="row"><div class="f"><label>Όνομα</label><input id="e_first" value="${p.first_name||''}"></div>
      <div class="f"><label>Επίθετο</label><input id="e_last" value="${p.last_name||''}"></div>
@@ -950,19 +973,28 @@ $('dEdit').onclick=()=>{
    <div class="row"><div class="f"><label>Τμήμα</label><select id="e_sec"><option value="">—</option>${SECS.map(s=>`<option ${s===p.section?'selected':''}>${s}</option>`).join('')}</select></div>
      <div class="f"><label>Κατηγορία</label><select id="e_cat">${CATS.map(c=>`<option ${c===p.category?'selected':''}>${c}</option>`).join('')}</select></div>
      <div class="f"><label>Καθήκοντα</label><input id="e_head" value="${p.headrole||''}"></div></div>
-   <div class="row"><div class="f"><label>Τοποθεσία</label><input id="e_loc" value="${p.location||''}"></div>
-     <div class="f"><label>Τηλέφωνο</label><input id="e_phone" value="${p.phone||''}"></div>
+   <div class="row"><div class="f"><label>Τηλέφωνο (με κωδικό)</label><input id="e_phone" value="${p.phone||''}"></div>
      <div class="f"><label>Email</label><input id="e_email" value="${p.email||''}"></div></div>
+   <div class="row"><div class="f" style="flex:2"><label>🏠 Μόνιμη διεύθυνση (Κύπρος)</label><input id="e_home" value="${esc(A.home_address||'')}"></div></div>
+   <div class="row"><div class="f"><label>🎓 Τόπος σπουδών</label><input id="e_study" value="${esc(A.study_place||'')}" placeholder="π.χ. UK (Warwick)"></div>
+     <div class="f" style="max-width:140px"><label>Σπουδάζει τώρα;</label><select id="e_studying"><option value="false">Όχι</option><option value="true" ${A.studying?'selected':''}>Ναι</option></select></div>
+     <div class="f"><label>Τοποθεσία (auto)</label><input id="e_loc" value="${p.location||''}"></div></div>
    <div class="row"><div class="f"><label>Έφορος</label><select id="e_efor"><option value="false">Όχι</option><option value="true" ${p.is_commissioner?'selected':''}>Ναι</option></select></div>
      <div class="f"><label>Κατάσταση</label><select id="e_status"><option ${p.status==='Ενεργός'?'selected':''}>Ενεργός</option><option ${p.status==='Αρχειοθετημένος'?'selected':''}>Αρχειοθετημένος</option></select></div></div>
+   <div class="dmeta" style="margin:4px 0">Αν «Σπουδάζει τώρα = Ναι», η τρέχουσα Τοποθεσία γίνεται αυτόματα ο τόπος σπουδών· η μόνιμη μένει αποθηκευμένη.</div>
    <button class="btn" id="e_save" style="width:100%;margin-top:6px">💾 Αποθήκευση</button>
    <div class="msg" id="e_msg"></div>`;
   $('e_save').onclick=save;
 };
 async function save(){
+  const studying=$('e_studying')&&$('e_studying').value==='true';
+  const home=$('e_home')?($('e_home').value.trim()||null):null;
+  const study=$('e_study')?($('e_study').value.trim()||null):null;
+  const loc=(studying&&study)?study:($('e_loc').value.trim()||null);
   const upd={first_name:$('e_first').value.trim(),last_name:$('e_last').value.trim(),scout_name:$('e_scout').value.trim()||null,
     section:$('e_sec').value||null,category:$('e_cat').value,headrole:$('e_head').value.trim()||null,
-    location:$('e_loc').value.trim()||null,phone:$('e_phone').value.trim()||null,email:$('e_email').value.trim()||null,
+    location:loc,phone:$('e_phone').value.trim()||null,email:$('e_email').value.trim()||null,
+    home_address:home,study_place:study,studying:studying,
     is_commissioner:$('e_efor').value==='true',status:$('e_status').value};
   const {error}=await sb.from('badgeholders').update(upd).eq('id',EDIT_ID);
   const m=$('e_msg');
@@ -1306,7 +1338,7 @@ async function attBulkAward(){
 }
 
 /* ---------- ui ---------- */
-['search','fSection','fStatus','fExpired','fKind'].forEach(id=>$(id).addEventListener('input',render));
+['search','fSection','fStatus','fExpired','fKind','fCat'].forEach(id=>$(id).addEventListener('input',render));
 function setView(v){
   ensureModalHome();
   VIEW=(VIEW===v?'crm':v);
