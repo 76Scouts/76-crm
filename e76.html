@@ -296,7 +296,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 
 /* ══ AUTH ══ */
@@ -379,12 +379,13 @@ async function loadAll(){
     sb.from('request_types').select('*'),
     sb.from('requests').select('*').limit(2000),
     sb.from('request_steps').select('*').limit(6000),
-    sb.from('reports').select('*').limit(2000)
+    sb.from('reports').select('*').limit(2000),
+    sb.from('org_roles').select('*').order('seq')
   ];
   const r=await Promise.all(q.map(p=>p.catch(e=>({data:null,error:e}))));
   if(!r[0].data&&loadCache()){banner();return}
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   const yrs=[...new Set(D.my.map(x=>x.scout_year).filter(Boolean))].sort().reverse();
@@ -1381,13 +1382,32 @@ V.certs=()=>{
 
 V.org=()=>{
   const secs=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+  const ext=(D.or||[]).slice().sort((a,b)=>a.seq-b.seq);
+  const lv=[...new Set(ext.map(r=>r.level))];
+  const extHTML=lv.length?`<div class="sec"><h3>Ανώτερα κλιμάκια</h3><span class="n">εικονικά προφίλ · δείχνουν τι θα βλέπει ο καθένας</span></div>
+    <div class="card pad noprint" style="margin-bottom:12px;background:var(--accbg);border-color:var(--accln)">
+      <span class="muted">Δεν είναι μέλη του 76ου — μπαίνουν στο οργανόγραμμα για να είναι ορατή η <b>αλυσίδα εγκρίσεων</b> και το <b>εύρος πρόσβασης</b> κάθε ρόλου όταν ανοίξει το e76 πέρα από το Σύστημα. Κανένας δεν έχει σήμερα πρόσβαση.</span></div>
+    ${lv.map(l=>`<div class="card" style="margin-bottom:12px">
+      <div class="pad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
+        <span class="dot" style="background:${l.includes('Γενική')?'var(--sys)':'var(--diktyo)'}"></span><b>${esc(l)}</b>
+        <span class="sp"></span><span class="dim" style="font-size:12px">${ext.filter(r=>r.level===l).length} ρόλοι</span></div>
+      <div style="padding:4px 0">${ext.filter(r=>r.level===l).map(r=>`
+        <div style="padding:10px 18px;border-bottom:1px solid var(--line)">
+          <div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap">
+            <b style="font-size:14px">${esc(r.title)}</b>
+            ${r.person_name?`<span>${esc(r.person_name)}</span>`:'<span class="dim" style="font-size:12.5px">— κενό / άγνωστο —</span>'}
+            <span class="sp"></span><span class="pill">${esc(r.scope||'')}</span></div>
+          <div class="dim" style="font-size:12.5px;margin-top:4px">${esc(r.access||'')}</div>
+          <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${(r.can||[]).map(c=>`<span class="pill" style="font-size:11px">${esc(c)}</span>`).join('')}
+            ${r.email?`<span class="sp"></span><a href="mailto:${esc(r.email)}" class="dim" style="font-size:11.5px">${esc(r.email)}</a>`:''}</div>
+        </div>`).join('')}</div></div>`).join('')}`:'';
   $('view').innerHTML=`<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">${
     secs.map(s=>{const led=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός'&&(p.section===s||(s==='Σύστημα'&&p.category==='ΑΣ'))).sort(sortByName);
       const mem=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===s).length;
       if(!led.length&&!mem)return '';
       return `<div class="card"><div class="pad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
         ${sdot(s)}<b>${esc(s)}</b><span class="sp"></span><span class="dim" style="font-size:12px">${led.length} βαθμ.${mem?' · '+mem+' μέλη':''}</span></div>
-        <div style="padding:6px 0">${led.map(p=>`<div style="padding:7px 18px;display:flex;gap:8px;align-items:baseline"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span><span class="dim" style="font-size:12px;margin-left:auto">${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||''))}</span></div>`).join('')||'<div class="dim" style="padding:10px 18px">—</div>'}</div></div>`}).join('')}</div>`;
+        <div style="padding:6px 0">${led.map(p=>`<div style="padding:7px 18px;display:flex;gap:8px;align-items:baseline"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span><span class="dim" style="font-size:12px;margin-left:auto">${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||''))}</span></div>`).join('')||'<div class="dim" style="padding:10px 18px">—</div>'}</div></div>`}).join('')}</div>`+extHTML;
 };
 
 V.groups=()=>{
