@@ -323,7 +323,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-16 03:46'; let DIAG=[], WHO=null, LOADMS=0; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-16 03:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 
 /* ══ AUTH ══ */
@@ -454,9 +454,12 @@ async function start(){
     }
   }catch(e){}
   $('whoami').onclick=()=>{if(ME.person_id)openProfile(ME.person_id);else toast('Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα')};
+  renderPersona();
+  const _me0=meRec();
+  if(_me0)$('whoami').innerHTML=`<b style="color:var(--sidein)">${esc(nm(_me0))}</b><div style="font-size:10.5px">${esc(_me0.appointment&&_me0.appointment!=='-'?_me0.appointment:(_me0.category||''))}</div>`;
   $('mbtn').innerHTML=ic('menu'); $('palbtn').innerHTML=ic('srch',16);
   renderNav(); route(location.hash.slice(1)||'dash'); banner();
-  await loadAll(); renderPersona(); renderNav();
+  await loadAll(); const _keep=PA&&PA.id; renderPersona(); if(_keep&&PERSONAS.some(x=>x.id===_keep)){PA=PERSONAS.find(x=>x.id===_keep);$('persona').value=_keep} renderNav();
   if(!localStorage.getItem('e76:persona')&&PERSONAS.length>1){showPicker();}
   else route(PA&&PA.k==='member'?'me':PA&&PA.k==='parent'?'mykids':ROUTE);
   const me=meRec();
@@ -519,15 +522,28 @@ async function loadAll(){
   ];
   const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats'];
   const _t0=Date.now();
-  const r=await Promise.all(q.map(p=>p.catch(e=>({data:null,error:e}))));
+  const TMO=12000;
+  const guard=(pr,label)=>new Promise(res=>{
+    let done=false;
+    const t=setTimeout(()=>{if(!done){done=true;res({data:null,error:{message:'timeout > '+(TMO/1000)+'s'}})}},TMO);
+    Promise.resolve(pr).then(v=>{if(!done){done=true;clearTimeout(t);res(v)}},
+                              e=>{if(!done){done=true;clearTimeout(t);res({data:null,error:e})}});
+  });
+  const r=[];
+  for(let i=0;i<q.length;i+=5){
+    const part=await Promise.all(q.slice(i,i+5).map((p,j)=>guard(p,names[i+j])));
+    part.forEach(x=>r.push(x));
+    if(i===0&&r[0]&&r[0].data&&r[0].data.length){ /* πρώτο batch ήρθε */ }
+  }
   LOADMS=Date.now()-_t0;
   DIAG=r.map((x,i)=>({t:names[i]||('#'+i),n:(x&&x.data)?x.data.length:null,e:x&&x.error?(x.error.message||String(x.error)):null}));
-  try{const w=await sb.rpc('whoami'); WHO=w.data||null}catch(e){WHO=null}
+  try{const w=await guard(sb.rpc('whoami'),'whoami'); WHO=(w&&w.data)||null}catch(e){WHO=null}
   const bad=DIAG.filter(d=>d.e);
   if(bad.length)console.warn('e76 φόρτωση:',bad);
   if((!r[0].data||!r[0].data.length)){
     if(loadCache()&&(D.bh||[]).length){banner();return}
   }
+  LOADED=true;
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
   D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
@@ -1491,6 +1507,9 @@ V.mark=()=>{
 
 V.dash=()=>{
   if(!(D.bh||[]).length){
+    if(!LOADED){$('view').innerHTML=`<div style="max-width:420px;margin:60px auto;text-align:center">
+      <div class="dim" style="margin-bottom:14px">Φόρτωση δεδομένων…</div>
+      ${[1,2,3].map(()=>'<div class="skel" style="height:52px;margin-bottom:10px;border-radius:12px"></div>').join('')}</div>`;return}
     const bad=DIAG.filter(d=>d.e);
     $('view').innerHTML=`<div class="card pad" style="border-color:var(--bad)">
       <b>Δεν φορτώθηκαν δεδομένα</b>
