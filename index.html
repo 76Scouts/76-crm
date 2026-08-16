@@ -178,11 +178,20 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
   <div class="gbox">
     <img src="https://76.life/wp-content/uploads/2024/08/76ScoutsLogo300-1.png" alt="">
     <h1>e76</h1>
-    <p>Προσκοπικό σύστημα διαχείρισης</p>
+    <p id="gtag">Προσκοπικό σύστημα διαχείρισης</p>
+    <div id="grec" style="display:none">
+      <input id="np1" type="password" placeholder="Νέος κωδικός (8+ χαρακτήρες)" autocomplete="new-password">
+      <input id="np2" type="password" placeholder="Επανάληψη νέου κωδικού" autocomplete="new-password">
+      <button class="btn p" id="npSave" style="width:100%;justify-content:center;padding:11px">Αποθήκευση & είσοδος</button>
+      <div id="npmsg" class="muted" style="font-size:13px;margin-top:10px"></div>
+    </div>
+    <div id="glogin">
     <input id="gmail" type="text" placeholder="Email ή Αρ. Μητρώου" autocomplete="username">
     <input id="gpass" type="password" placeholder="Κωδικός πρόσβασης" autocomplete="current-password">
     <button class="btn p" id="gbtn" style="width:100%;justify-content:center;padding:11px">Είσοδος</button>
-    <div style="margin-top:9px;font-size:13px"><a href="#" id="useOtp" style="color:var(--ink2)">Δεν έχω κωδικό — στείλε μου email</a></div>
+    <div style="margin-top:9px;font-size:13px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <a href="#" id="forgot" style="color:var(--ink2)">Ξέχασα τον κωδικό μου / δεν έχω ακόμα κωδικό</a>
+      <a href="#" id="useOtp" style="display:none"></a></div>
     <input id="gotp" type="text" placeholder="Κωδικός email ή επικόλληση συνδέσμου" style="display:none;margin-top:9px">
     <div id="gmsg" class="muted"></div>
     <details style="margin-top:20px;text-align:left;font-size:13px" id="ghelp">
@@ -195,6 +204,7 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
       </ol>
       <div class="dim" style="margin-top:10px;font-size:12px">Το πάτημα του συνδέσμου δουλεύει μόνο αν η εφαρμογή είναι ανεβασμένη στο διαδίκτυο. Όταν την ανοίγεις ως αρχείο στον υπολογιστή σου, ο σύνδεσμος δεν μπορεί να γυρίσει πίσω σε αυτήν — γι' αυτό ξαναβλέπεις την αρχική. Η επικόλληση δουλεύει πάντα.</div>
     </details>
+    </div>
   </div>
 </div>
 
@@ -207,7 +217,7 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
     <div id="navwrap"></div>
     <div class="sidefoot">
       <div id="whoami" style="cursor:pointer" title="Το προφίλ μου">—</div>
-      <div style="margin-top:6px"><a href="#" id="logout" style="color:var(--sidein2)">Αποσύνδεση</a> · <span id="ver">v0.1</span></div>
+      <div style="margin-top:6px"><a href="#" id="switchp" style="color:var(--sidein2)">Αλλαγή ιδιότητας</a> · <a href="#" id="logout" style="color:var(--sidein2)">Αποσύνδεση</a> · <span id="ver">v0.1</span></div>
     </div>
   </aside>
 
@@ -312,13 +322,14 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+let DIAG=[], WHO=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 
 /* ══ AUTH ══ */
 const isFile=location.protocol==='file:';
 async function boot(){
   const h=location.hash||'', qs=new URLSearchParams(location.search);
+  if(/type=recovery/.test(h)||qs.get('type')==='recovery')RECOVER=true;
   try{
     if(h.includes('access_token')){
       const p=new URLSearchParams(h.slice(1));
@@ -334,7 +345,7 @@ async function boot(){
     }
   }catch(e){console.warn(e)}
   const {data:{session}}=await sb.auth.getSession();
-  if(session){ME.email=session.user.email;start();return}
+  if(session){ME.email=session.user.email; if(RECOVER){showRecovery();return} start();return}
   if(isFile)$('ghelp').open=true;
 }
 async function resolveId(v){
@@ -348,10 +359,40 @@ function tokenFromLink(s){
     return {t:u.searchParams.get('token_hash')||u.searchParams.get('token'),ty:u.searchParams.get('type')||'email'};
   }catch(e){return null}
 }
-let OTPMODE=false;
-$('useOtp').onclick=e=>{e.preventDefault();OTPMODE=true;
-  $('gpass').style.display='none'; $('useOtp').style.display='none';
-  $('gbtn').textContent='Στείλε μου email'; $('ghelp').open=true; $('gmail').focus();};
+let OTPMODE=false, RECOVER=false;
+function showRecovery(){
+  $('glogin').style.display='none'; $('grec').style.display='block';
+  $('gtag').textContent='Όρισε νέο κωδικό πρόσβασης'; $('np1').focus();
+}
+$('npSave').onclick=async()=>{
+  const a=$('np1').value,b=$('np2').value,m=$('npmsg');
+  if(a.length<8){m.style.color='var(--bad)';m.textContent='Τουλάχιστον 8 χαρακτήρες';return}
+  if(a!==b){m.style.color='var(--bad)';m.textContent='Οι δύο κωδικοί δεν ταιριάζουν';return}
+  m.style.color='var(--ink2)'; m.textContent='Αποθήκευση…';
+  const {error}=await sb.auth.updateUser({password:a});
+  if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
+  const {data:{session}}=await sb.auth.getSession();
+  ME.email=(session&&session.user.email)||ME.email; start();
+};
+$('useOtp').onclick=e=>{e.preventDefault();OTPMODE=true;RECOVER=false;
+  $('gpass').style.display='none'; $('useOtp').style.display='none'; $('forgot').style.display='none';
+  $('gbtn').textContent='Στείλε μου κωδικό'; $('ghelp').open=true; $('gmail').focus();};
+$('forgot').onclick=async e=>{
+  e.preventDefault();
+  const m=$('gmsg'), id=$('gmail').value.trim();
+  if(!id){m.style.color='var(--bad)';m.textContent='Γράψε πρώτα email ή Αρ. Μητρώου';$('gmail').focus();return}
+  const mail=await resolveId(id);
+  if(!mail){m.style.color='var(--bad)';m.textContent='Δεν βρέθηκε λογαριασμός με αυτά τα στοιχεία.';return}
+  m.style.color='var(--ink2)'; m.textContent='Αποστολή…';
+  const o={}; if(!isFile)o.redirectTo=location.origin+location.pathname;
+  const {error}=await sb.auth.resetPasswordForEmail(mail,o);
+  if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
+  OTPMODE=true; RECOVER=true;
+  $('gpass').style.display='none'; $('useOtp').style.display='none'; $('forgot').style.display='none';
+  $('gotp').style.display='block'; $('gotp').placeholder='Κωδικός ή σύνδεσμος ανάκτησης'; $('gotp').focus();
+  $('gbtn').textContent='Συνέχεια'; $('ghelp').open=true;
+  m.style.color='var(--ok)'; m.textContent='Έφυγε email ανάκτησης. Βάλε τον κωδικό ή επικόλλησε τον σύνδεσμο.';
+};
 $('gbtn').onclick=async()=>{
   const em=$('gmail').value.trim(), raw=$('gotp').value.trim(), pw=$('gpass').value, m=$('gmsg');
   if(!OTPMODE&&pw){
@@ -373,7 +414,9 @@ $('gbtn').onclick=async()=>{
     else {m.style.color='var(--bad)';m.textContent='Βάλε 6ψήφιο κωδικό ή επικόλλησε ολόκληρο τον σύνδεσμο.';return}
     if(res.error){m.style.color='var(--bad)';m.textContent=res.error.message.includes('expired')?'Ο σύνδεσμος έληξε — ζήτα καινούργιο.':res.error.message;return}
     const {data:{session}}=await sb.auth.getSession();
-    ME.email=(session&&session.user.email)||em; start(); return;
+    ME.email=(session&&session.user.email)||em;
+    if(RECOVER||(lnk&&lnk.ty==='recovery')){m.textContent='';showRecovery();return}
+    start(); return;
   }
   if(!em){m.style.color='var(--bad)';m.textContent='Γράψε email ή Αρ. Μητρώου';return;}
   const em2=await resolveId(em);
@@ -389,7 +432,12 @@ $('gbtn').onclick=async()=>{
 };
 $('gmail').addEventListener('keydown',e=>{if(e.key==='Enter')$('gbtn').click()});
 $('gotp').addEventListener('keydown',e=>{if(e.key==='Enter')$('gbtn').click()});
-$('logout').onclick=async e=>{e.preventDefault();await sb.auth.signOut();location.reload()};
+$('switchp').onclick=e=>{e.preventDefault();if(PERSONAS.length>1)showPicker();else toast('Έχεις μία μόνο ιδιότητα')};
+$('logout').onclick=async e=>{e.preventDefault();
+  if(QUEUE.length&&!confirm(QUEUE.length+' αλλαγές δεν έχουν συγχρονιστεί. Αποσύνδεση παρόλα αυτά;'))return;
+  await sb.auth.signOut();
+  ['e76:cache','e76:persona','e76:dedupe'].forEach(k=>localStorage.removeItem(k));
+  location.replace(location.pathname);};
 
 async function start(){
   $('gate').style.display='none'; $('app').style.display='flex';
@@ -401,7 +449,9 @@ async function start(){
   $('whoami').onclick=()=>{if(ME.person_id)openProfile(ME.person_id);else toast('Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα')};
   $('mbtn').innerHTML=ic('menu'); $('palbtn').innerHTML=ic('srch',16);
   renderNav(); route(location.hash.slice(1)||'dash'); banner();
-  await loadAll(); renderPersona(); renderNav(); route(PA&&PA.k==='member'?'me':PA&&PA.k==='parent'?'mykids':ROUTE);
+  await loadAll(); renderPersona(); renderNav();
+  if(!localStorage.getItem('e76:persona')&&PERSONAS.length>1){showPicker();}
+  else route(PA&&PA.k==='member'?'me':PA&&PA.k==='parent'?'mykids':ROUTE);
   const me=ME.person_id&&D.bh.find(p=>p.id===ME.person_id);
   if(me)$('whoami').innerHTML=`<b style="color:var(--sidein)">${esc(nm(me))}</b><div style="font-size:10.5px">${esc(me.appointment&&me.appointment!=='-'?me.appointment:(me.category||''))}${ME.role?' · '+esc(ME.role):''}</div>`;
 }
@@ -409,7 +459,7 @@ async function start(){
 /* ══ OFFLINE CACHE + ΟΥΡΑ ══ */
 const CK='e76:cache', QK='e76:queue';
 let QUEUE=[]; try{QUEUE=JSON.parse(localStorage.getItem(QK)||'[]')}catch(e){}
-function saveCache(){try{localStorage.setItem(CK,JSON.stringify({t:Date.now(),D}))}catch(e){}}
+function saveCache(){try{if(!(D.bh||[]).length)return;localStorage.setItem(CK,JSON.stringify({t:Date.now(),D}))}catch(e){}}
 function loadCache(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.D){D=c.D;return c.t}}catch(e){}return 0}
 function qAdd(job){QUEUE.push(job);localStorage.setItem(QK,JSON.stringify(QUEUE));banner()}
 async function qFlush(){
@@ -460,8 +510,15 @@ async function loadAll(){
     sb.from('org_roles').select('*').order('seq'),
     sb.from('person_hats').select('*').limit(500)
   ];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats'];
   const r=await Promise.all(q.map(p=>p.catch(e=>({data:null,error:e}))));
-  if(!r[0].data&&loadCache()){banner();return}
+  DIAG=r.map((x,i)=>({t:names[i]||('#'+i),n:(x&&x.data)?x.data.length:null,e:x&&x.error?(x.error.message||String(x.error)):null}));
+  try{const w=await sb.rpc('whoami'); WHO=w.data||null}catch(e){WHO=null}
+  const bad=DIAG.filter(d=>d.e);
+  if(bad.length)console.warn('e76 φόρτωση:',bad);
+  if((!r[0].data||!r[0].data.length)){
+    if(loadCache()&&(D.bh||[]).length){banner();return}
+  }
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
   D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
@@ -501,6 +558,24 @@ function buildPersonas(){
   const kids=childrenOf(me);
   if(kids.length)out.push({id:'parent',t:`Γονέας · ${kids.length} ${kids.length===1?'παιδί':'παιδιά'}`,k:'parent',sc:'ΠΑΙΔΙΑ'});
   return out;
+}
+function personaIcon(k){return k==='parent'?'home':k==='member'?'users':'award'}
+function showPicker(){
+  const w=$('view');
+  $('ttl').textContent='Καλωσόρισες'; $('sub').textContent='';
+  w.innerHTML=`<div style="max-width:720px;margin:22px auto">
+    <h2 style="font-size:20px;margin-bottom:5px">Με ποια ιδιότητα θέλεις να μπεις;</h2>
+    <p class="muted" style="margin:0 0 18px">Μπορείς να αλλάξεις όποτε θες από το μενού πάνω δεξιά.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">${PERSONAS.map(p=>`
+      <button class="tile" data-pick="${esc(p.id)}" style="padding:18px">
+        <div style="width:38px;height:38px;border-radius:11px;background:var(--accbg);border:1px solid var(--accln);display:grid;place-items:center;color:var(--acc);margin-bottom:11px">${ic(personaIcon(p.k),20)}</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:3px">${esc(p.t)}</div>
+        <div class="dim" style="font-size:12.5px">${p.k==='member'?'Η καρτέλα, οι παρουσίες και η πορεία μου':p.k==='parent'?'Πρόοδος και παρουσίες των παιδιών μου':(p.sc&&p.sc!=='ΟΛΑ')?('Εύρος: '+esc(p.sc)):'Πλήρης διαχείριση'}</div>
+      </button>`).join('')}</div></div>`;
+  w.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{
+    PA=PERSONAS.find(x=>x.id===b.dataset.pick); localStorage.setItem('e76:persona',PA.id);
+    $('persona').value=PA.id; renderNav();
+    route(PA.k==='member'?'me':PA.k==='parent'?'mykids':'dash');});
 }
 function renderPersona(){
   PERSONAS=buildPersonas();
@@ -1405,6 +1480,19 @@ V.mark=()=>{
 };
 
 V.dash=()=>{
+  if(!(D.bh||[]).length){
+    const bad=DIAG.filter(d=>d.e);
+    $('view').innerHTML=`<div class="card pad" style="border-color:var(--bad)">
+      <b>Δεν φορτώθηκαν δεδομένα</b>
+      <div class="muted" style="margin:6px 0 12px;font-size:13.5px">Ο λογαριασμός <b>${esc(ME.email||'')}</b> συνδέθηκε, αλλά τα ερωτήματα δεν επέστρεψαν εγγραφές.</div><div class="card pad" style="margin-bottom:12px;background:var(--bg)"><b style="font-size:13px">Ταυτότητα προς τον διακομιστή</b><div style="font-size:13px;margin-top:6px">${WHO?`ρόλος βάσης: <b>${esc(WHO.db_role)}</b> · ρόλος token: <b>${esc(WHO.jwt_role)}</b> · email: ${esc(WHO.email)}`:'<span class="dim">δεν απάντησε</span>'}</div><div class="dim" style="font-size:12px;margin-top:5px">${WHO&&WHO.jwt_role!=='authenticated'?'⚠ Τα αιτήματα φεύγουν ως anon — το token δεν συνοδεύει τις κλήσεις. Κάνε αποσύνδεση και ξανασύνδεση.':''}</div></div><div class="muted" style="font-size:13.5px;margin-bottom:8px">Ανά πίνακα:</div>
+      <div style="overflow:auto"><table><thead><tr><th>Πίνακας</th><th>Γραμμές</th><th>Σφάλμα</th></tr></thead><tbody>${
+        DIAG.map(d=>`<tr><td>${esc(d.t)}</td><td>${d.n===null?'<span class="dim">—</span>':d.n}</td><td class="dim">${esc(d.e||'')}</td></tr>`).join('')||'<tr><td colspan="3" class="dim">Καμία πληροφορία — δοκίμασε ανανέωση</td></tr>'}</tbody></table></div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn p sm" onclick="location.reload()">Ανανέωση</button>
+        <button class="btn sm" id="dgClear">Καθαρισμός τοπικής μνήμης</button></div></div>`;
+    const c=$('dgClear'); if(c)c.onclick=()=>{['e76:cache','e76:persona'].forEach(k=>localStorage.removeItem(k));location.reload()};
+    return;
+  }
   const act=D.bh.filter(p=>p.status==='Ενεργός');
   const mem=act.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p));
   const led=act.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος');
