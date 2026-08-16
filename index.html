@@ -168,6 +168,17 @@ th.srt:after{content:"⇅";opacity:.28;margin-left:5px;font-size:10px}
 th.srt.asc:after{content:"↑";opacity:.9}
 th.srt.desc:after{content:"↓";opacity:.9}
 .fbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:11px;align-items:start}
+.bcol{background:var(--card);border:1px solid var(--line);border-radius:var(--r);min-height:120px;display:flex;flex-direction:column}
+.bcol.over{border-color:var(--acc);background:var(--accbg)}
+.bhead{padding:10px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;position:sticky;top:0;background:var(--card);border-radius:var(--r) var(--r) 0 0;z-index:2}
+.bbody{padding:7px;display:flex;flex-direction:column;gap:6px;min-height:60px}
+.pcard{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 10px;cursor:grab;font-size:13px;display:flex;gap:8px;align-items:center;transition:.1s}
+.pcard:active{cursor:grabbing}
+.pcard.drag{opacity:.4}
+.pcard.moved{border-color:var(--acc);background:var(--accbg)}
+.pcard select{font-size:11px;padding:2px 4px;width:auto;max-width:104px;border:0;background:transparent;color:var(--ink3)}
 .pickwrap{max-width:560px;margin:24px auto;padding:0 2px}
 .picklist{display:flex;flex-direction:column;gap:9px}
 .pickcard{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;cursor:pointer;box-shadow:var(--sh);transition:.13s;font:inherit;color:inherit}
@@ -347,6 +358,7 @@ const NAV=[
    {id:'dedupe',t:'Ταυτοποίηση',i:'users',s:'live'}]},
  {g:'Διάρθρωση',items:[
    {id:'org',t:'Οργανόγραμμα',i:'tree',s:'live'},
+   {id:'staff',t:'Διάρθρωση & επιτελεία',i:'users',s:'live'},
    {id:'groups',t:'Εξάδες & Ενωμοτίες',i:'flag',s:'live'}]},
  {g:'Πρόγραμμα',items:[
    {id:'sessions',t:'Συγκεντρώσεις',i:'cal',s:'live'},
@@ -377,7 +389,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-16 11:08'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-16 11:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 
 /* ══ AUTH ══ */
@@ -770,9 +782,10 @@ function openProfile(id){
   const kv=(k,v)=>v?`<div class="kv"><b>${esc(k)}</b><span>${v}</span></div>`:'';
   const dexp=c.sexoxarto_expiry?Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5):null;
   $('drwp').innerHTML=`
-    <div class="dhead">${sdot(sec)}
+    <div class="dhead">${isMem?sdot(sec):leaderDot(p)}
       <div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:600;letter-spacing:-.01em">${esc(nm(p))}</div>
         <div class="dim" style="font-size:12.5px">${esc(sec||'')}${y.group_name?' · '+esc(y.group_name):''}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
+      <button class="btn gh sm" id="dArch" title="${p.status==='Αρχειοθετημένος'?'Επαναφορά':'Αρχειοθέτηση'}">${p.status==='Αρχειοθετημένος'?'↩':'🗄'}</button>
       <button class="btn gh sm" id="dEdit" title="Επεξεργασία">✎</button>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec" id="dEditBox" style="display:none;background:var(--accbg)">
@@ -793,6 +806,7 @@ function openProfile(id){
       ${kv('Ημ. γέννησης',sn.dob?fdate(sn.dob)+(agey(sn.dob)?` <span class="dim">(${agey(sn.dob)} ετών)</span>`:''):'')}
       ${kv('Τηλέφωνο',p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'')}
       ${kv('Email',p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'')}
+      ${p.status==='Αρχειοθετημένος'?'<div style="margin-top:7px"><span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">Αρχειοθετημένος</span></div>':''}
       ${p.is_commissioner?'<div style="margin-top:7px"><span class="pill">Έφορος</span></div>':''}${p.is_network?'<span class="pill">Δίκτυο</span>':''}</div>
 
     ${(gu.father_name||gu.mother_name)?`<div class="dsec"><h4>Γονείς & κηδεμόνες</h4>
@@ -817,6 +831,14 @@ function openProfile(id){
     <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">Η καρτέλα προόδου έρχεται μετά την αναθεώρηση του μοντέλου.</div></div>`;
   drw.classList.add('on');
   $('dEdit').onclick=()=>{const b=$('dEditBox');b.style.display=b.style.display==='none'?'block':'none'};
+  $('dArch').onclick=async()=>{
+    const arch=p.status!=='Αρχειοθετημένος';
+    if(!confirm(arch?`Αρχειοθέτηση: ${nm(p)};\n\nΘα φύγει από τις ενεργές λίστες αλλά το ιστορικό μένει ανέπαφο.`:`Επαναφορά ${nm(p)} στους ενεργούς;`))return;
+    const v={status:arch?'Αρχειοθετημένος':'Ενεργός'};
+    const {error}=await sb.from('badgeholders').update(v).eq('id',p.id);
+    if(error)return toast('Σφάλμα: '+error.message);
+    p.status=v.status; saveCache(); toast(arch?'Αρχειοθετήθηκε':'Επανήλθε');
+    drw.classList.remove('on'); route(ROUTE);};
   $('eCancel').onclick=()=>{$('dEditBox').style.display='none'};
   $('eSave').onclick=async()=>{
     const btn=$('eSave'); btn.disabled=true; btn.textContent='…';
@@ -871,6 +893,46 @@ function agey(d){if(!d)return 0;const b=new Date(d),n=new Date();let a=n.getFull
 const pnm=p=>`<b class="pn" data-p="${p.id}">${esc(nm(p))}</b>`;
 
 
+
+
+/* ── κατάσταση εντολής / εκπαίδευσης / Ν.91(Ι) ── */
+const TR_B=/βασικ/i, TR_P=/προκαταρκτ/i;
+function trainLevel(id){
+  const t=(D.tr||[]).filter(x=>x.person_id===id);
+  if(t.some(x=>TR_B.test(x.type||x.code||'')))return 2;
+  if(t.some(x=>TR_P.test(x.type||x.code||'')))return 1;
+  return 0;
+}
+function certState(id){
+  const c=(D.cert||[]).find(x=>x.person_id===id);
+  if(!c||!c.sexoxarto_expiry)return {k:'none',d:null};
+  const d=Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5);
+  return {k:d<0?'expired':d<=(TH.certWarnDays||90)?'soon':'ok', d, exp:c.sexoxarto_expiry};
+}
+function warrantOf(id){
+  const rows=(D.sh||[]).filter(x=>x.person_id===id&&x.warrant_type&&x.warrant_type!=='ΠΡΟΣ ΕΛΕΓΧΟ');
+  if(!rows.length)return {k:'none'};
+  const today=new Date().toISOString().slice(0,10);
+  const act=rows.filter(x=>!x.end_date||x.end_date>=today);
+  if(act.length){
+    const e=act.find(x=>/Εντολή/.test(x.warrant_type));
+    return e?{k:'entoli',rec:e}:{k:'anathesi',rec:act[0]};
+  }
+  return {k:'expired',rec:rows.slice().sort((a,b)=>(a.end_date||'')<(b.end_date||'')?1:-1)[0]};
+}
+const RING={entoli:'#22c55e',anathesi:'#eab308',expired:'#ef4444',none:null};
+const RINGTXT={entoli:'ενεργή Εντολή Διοίκησης',anathesi:'ενεργή Ανάθεση Καθηκόντων',expired:'έληξε',none:'δεν έχει αιτηθεί'};
+const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6'};
+const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντομα',expired:'Ν.91(Ι) έληξε',none:'χωρίς Ν.91(Ι)'};
+const TRC=['#e74c3c','#f4c20d','#27ae60'];
+const TRTXT=['χωρίς εκπαίδευση','Προκαταρκτική','Βασική'];
+/* διπλή τελεία: αριστερά Ν.91(Ι) · δεξιά εκπαίδευση · δακτύλιος = εντολή */
+function leaderDot(p){
+  const cs=certState(p.id), tl=trainLevel(p.id), w=warrantOf(p.id);
+  const ring=RING[w.k]?`box-shadow:0 0 0 2px ${RING[w.k]};`:'';
+  const t=`${esc(nm(p))} — ${CERTTXT[cs.k]}${cs.d!=null&&cs.k==='soon'?' ('+cs.d+' μέρες)':''} · ${TRTXT[tl]} · ${RINGTXT[w.k]}`;
+  return `<span class="dot" title="${t}" style="${ring}background:linear-gradient(90deg,${CERTC[cs.k]} 0 50%,${TRC[tl]} 50% 100%)"></span>`;
+}
 
 /* ── ταξινόμηση στηλών ── */
 function makeSortable(){
@@ -939,35 +1001,38 @@ function wireVQ(){
 
 /* ── επεξήγηση συμβόλων ── */
 function showLegend(){
-  const d=(bg,extra='')=>`<span class="dot" style="background:${bg};${extra}"></span>`;
-  const half=(a,b)=>`<span class="dot" style="background:linear-gradient(90deg,${a} 0 50%,${b} 50% 100%)"></span>`;
-  const ring=(bg,rc)=>`<span class="dot" style="background:${bg};box-shadow:0 0 0 2px ${rc}"></span>`;
-  const rowx=(sym,t,s)=>`<div style="display:flex;gap:11px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)">
-     <span style="flex:0 0 26px;padding-top:3px">${sym}</span><div><div style="font-size:13.5px">${t}</div>${s?`<div class="dim" style="font-size:12px">${s}</div>`:''}</div></div>`;
-  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Τι σημαίνουν οι τελείες</div>
-      <div class="dim" style="font-size:12.5px">Σύγκριση για να αποφασίσεις</div></div>
+  const half=(a,b,r)=>`<span class="dot" style="background:linear-gradient(90deg,${a} 0 50%,${b} 50% 100%);${r?`box-shadow:0 0 0 2px ${r};`:''}"></span>`;
+  const solid=c=>`<span class="dot" style="background:${c}"></span>`;
+  const rowx=(sym,t,s)=>`<div style="display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)">
+     <span style="flex:0 0 24px;padding-top:3px">${sym}</span><div><div style="font-size:13.5px">${t}</div>${s?`<div class="dim" style="font-size:12px">${s}</div>`:''}</div></div>`;
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Υπόμνημα συμβόλων</div>
+      <div class="dim" style="font-size:12.5px">Τι δείχνει κάθε τελεία</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
 
-    <div class="dsec"><h4>Τώρα σε χρήση</h4>
-      ${rowx(d('var(--ageli)'),'Μέλος Αγέλης','συμπαγής τελεία στο χρώμα του κλάδου')}
-      ${rowx(d('var(--omada)'),'Μέλος Ομάδας','')}
-      ${rowx(d('var(--koin)'),'Μέλος Κοινότητας','')}
-      ${rowx(d('var(--diktyo)'),'Έφορος','μωβ, ανεξαρτήτως κλάδου')}
-      ${rowx(half('#27ae60','#27ae60'),'Βαθμοφόρος — εντάξει','αριστερό μισό: πιστοποιητικό Ν.91(Ι) · δεξί μισό: εκπαίδευση')}
-      ${rowx(half('#e74c3c','#f4c20d'),'Βαθμοφόρος — ελλείψεις','κόκκινο: λείπει · κίτρινο: μόνο Προκαταρκτική · πράσινο: εντάξει')}
-      ${rowx(d('#c7ced6'),'Χωρίς στοιχεία','δεν έχει καταχωρηθεί τίποτα')}
+    <div class="dsec"><h4>Μέλη — συμπαγής τελεία = κλάδος</h4>
+      ${rowx(solid('var(--ageli)'),'Λυκόπουλο','Αγέλη')}
+      ${rowx(solid('var(--omada)'),'Πρόσκοπος','Ομάδα')}
+      ${rowx(solid('var(--koin)'),'Ανιχνευτής','Κοινότητα')}
+      ${rowx(solid('var(--diktyo)'),'Δίκτυο','')}
     </div>
 
-    <div class="dsec"><h4>Παλιό σύστημα</h4>
-      ${rowx(ring('linear-gradient(90deg,#27ae60 0 50%,#27ae60 50% 100%)','var(--ageli)'),'Διπλή τελεία + δακτύλιος κλάδου','η διπλή έδειχνε πιστοποιητικό/εκπαίδευση, ο δακτύλιος τον κλάδο — όλα σε ένα σύμβολο')}
-      <div class="dim" style="font-size:12px;padding-top:8px">Πλεονέκτημα: μία ματιά, τρεις πληροφορίες. Μειονέκτημα: δυσανάγνωστο σε μικρή οθόνη και δυσνόητο για νέο χρήστη.</div>
+    <div class="dsec"><h4>Βαθμοφόροι — διπλή τελεία</h4>
+      <div class="dim" style="font-size:12.5px;margin-bottom:8px">Αριστερό μισό: <b>πιστοποιητικό Ν.91(Ι)</b> · Δεξί μισό: <b>εκπαίδευση</b></div>
+      ${rowx(half('#27ae60','#27ae60'),'Όλα εντάξει','Ν.91(Ι) σε ισχύ · Βασική εκπαίδευση')}
+      ${rowx(half('#f39c12','#27ae60'),'Ν.91(Ι) λήγει σύντομα','πορτοκαλί όταν απομένουν ≤ 90 μέρες')}
+      ${rowx(half('#e74c3c','#27ae60'),'Ν.91(Ι) έληξε','')}
+      ${rowx(half('#c7ced6','#27ae60'),'Χωρίς Ν.91(Ι)','δεν έχει καταχωρηθεί')}
+      ${rowx(half('#27ae60','#f4c20d'),'Μόνο Προκαταρκτική','κίτρινο δεξιά')}
+      ${rowx(half('#27ae60','#e74c3c'),'Χωρίς εκπαίδευση','κόκκινο δεξιά')}
     </div>
 
-    <div class="dsec"><h4>Πρόταση ρεμίξ</h4>
-      ${rowx(ring('var(--ageli)','#27ae60'),'Γέμισμα = κλάδος · δακτύλιος = ετοιμότητα','πράσινος δακτύλιος: όλα εντάξει · κίτρινος: λήγει σύντομα · κόκκινος: λείπει κάτι')}
-      <div class="dim" style="font-size:12px;padding-top:8px">Το χρώμα που διαβάζεται πιο εύκολα (το γέμισμα) κρατά τη σταθερή πληροφορία — τον κλάδο. Ο δακτύλιος κρατά αυτό που αλλάζει και θέλει προσοχή. Ίδιος κανόνας για μέλη και βαθμοφόρους, άρα μαθαίνεται μία φορά.</div>
+    <div class="dsec"><h4>Δακτύλιος = κατάσταση εντολής</h4>
+      ${rowx(half('#27ae60','#27ae60','#22c55e'),'Ενεργή Εντολή Διοίκησης','έντονο πράσινο')}
+      ${rowx(half('#27ae60','#27ae60','#eab308'),'Ενεργή Ανάθεση Καθηκόντων','κίτρινο')}
+      ${rowx(half('#27ae60','#27ae60','#ef4444'),'Έληξε','κόκκινο')}
+      ${rowx(half('#27ae60','#27ae60',null),'Δεν έχει αιτηθεί','χωρίς δακτύλιο')}
     </div>
-    <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">Πες μου ποιο προτιμάς και το εφαρμόζω παντού.</div></div>`;
+    <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">Πέρνα το ποντίκι πάνω από οποιαδήποτε τελεία για αναλυτική επεξήγηση.</div></div>`;
   drw.classList.add('on');
 }
 
@@ -1002,6 +1067,64 @@ V.trends=()=>{
           <span class="dim" style="flex:0 0 34px;text-align:right;font-variant-numeric:tabular-nums">${v}%</span></div>`}).join('')}</div>`:''}
     </div>`}).join('');
   $('view').innerHTML=blocks||'<div class="uc"><h3>Δεν υπάρχουν αρκετά δεδομένα</h3><p>Χρειάζονται καταχωρημένες συγκεντρώσεις.</p></div>';
+};
+
+
+/* ── Διάρθρωση & επιτελεία (drag & drop, πρόχειρο) ── */
+const SECS_B=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+const CATS_B=['ΑΣ','Αρχηγός','Βαθμοφόρος','P/T','Δίκτυο','Υπεύθυνος Δικτύου'];
+let DRAFT={};
+try{DRAFT=JSON.parse(localStorage.getItem('e76:draft')||'{}')}catch(e){}
+V.staff=()=>{
+  const led=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status!=='Αρχειοθετημένος').sort(sortByName);
+  const secOfDraft=p=>(DRAFT[p.id]&&DRAFT[p.id].section)||p.section||'Σύστημα';
+  const catOfDraft=p=>(DRAFT[p.id]&&DRAFT[p.id].category)||p.category||'Βαθμοφόρος';
+  const changed=led.filter(p=>DRAFT[p.id]&&(DRAFT[p.id].section!==p.section||DRAFT[p.id].category!==p.category));
+  $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:13px">
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+        <b>Διάρθρωση Συστήματος</b>
+        <span class="dim" style="font-size:13px">Σύρε βαθμοφόρους ανάμεσα στα τμήματα· άλλαξε ιδιότητα από το μενού κάθε κάρτας.</span>
+        <span class="sp"></span>
+        ${changed.length?`<span class="pill" style="background:var(--accbg);border-color:var(--accln);color:var(--acc)">${changed.length} αλλαγές σε πρόχειρο</span>
+        <button class="btn sm" id="stReset">Απόρριψη</button>
+        <button class="btn p" id="stApply">Οριστικοποίηση</button>`:'<span class="pill">καμία αλλαγή</span>'}
+      </div></div>
+    <div class="board">${SECS_B.map(s=>{
+      const list=led.filter(p=>secOfDraft(p)===s);
+      return `<div class="bcol" data-sec="${esc(s)}">
+        <div class="bhead">${sdot(s)}${esc(s)}<span class="sp"></span><span class="dim" style="font-weight:400;font-size:12px">${list.length}</span></div>
+        <div class="bbody" data-drop="${esc(s)}">${list.map(p=>{
+          const mv=DRAFT[p.id]&&(DRAFT[p.id].section!==p.section||DRAFT[p.id].category!==p.category);
+          return `<div class="pcard${mv?' moved':''}" draggable="true" data-id="${p.id}">
+            ${leaderDot(p)}
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm(p))}</span>
+            <select data-cat="${p.id}" title="Ιδιότητα">${CATS_B.map(c=>`<option${c===catOfDraft(p)?' selected':''}>${esc(c)}</option>`).join('')}</select>
+          </div>`}).join('')||'<div class="dim" style="font-size:12px;padding:8px 4px">— κενό —</div>'}</div></div>`}).join('')}</div>
+    <div class="dim" style="font-size:12px;margin-top:12px">Οι αλλαγές μένουν <b>πρόχειρες στη συσκευή σου</b> μέχρι να πατήσεις «Οριστικοποίηση». Τότε γράφονται στο μητρώο για όλους.</div>`;
+
+  const setD=(id,f,v)=>{const p=led.find(x=>x.id===id);DRAFT[id]=Object.assign({section:p.section,category:p.category},DRAFT[id]||{},{[f]:v});
+    localStorage.setItem('e76:draft',JSON.stringify(DRAFT));V.staff();};
+  let dragId=null;
+  document.querySelectorAll('.pcard').forEach(c=>{
+    c.ondragstart=e=>{dragId=c.dataset.id;c.classList.add('drag');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragId)};
+    c.ondragend=()=>{c.classList.remove('drag')};});
+  document.querySelectorAll('[data-drop]').forEach(z=>{
+    z.ondragover=e=>{e.preventDefault();z.parentElement.classList.add('over')};
+    z.ondragleave=()=>z.parentElement.classList.remove('over');
+    z.ondrop=e=>{e.preventDefault();z.parentElement.classList.remove('over');
+      const id=dragId||e.dataTransfer.getData('text/plain'); if(id)setD(id,'section',z.dataset.drop);};});
+  document.querySelectorAll('[data-cat]').forEach(s=>s.onchange=()=>setD(s.dataset.cat,'category',s.value));
+  const rs=$('stReset'); if(rs)rs.onclick=()=>{if(confirm('Απόρριψη όλων των πρόχειρων αλλαγών;')){DRAFT={};localStorage.removeItem('e76:draft');V.staff()}};
+  const ap=$('stApply'); if(ap)ap.onclick=async()=>{
+    if(!confirm(`Θα ενημερωθεί το μητρώο για ${changed.length} βαθμοφόρους. Συνέχεια;`))return;
+    ap.disabled=true; ap.textContent='Εφαρμογή…'; let ok=0;
+    for(const p of changed){
+      const v={section:DRAFT[p.id].section,category:DRAFT[p.id].category};
+      const {error}=await sb.from('badgeholders').update(v).eq('id',p.id);
+      if(!error){Object.assign(p,v);ok++}
+    }
+    DRAFT={}; localStorage.removeItem('e76:draft'); saveCache();
+    toast(`Ενημερώθηκαν ${ok} βαθμοφόροι`); V.staff();};
 };
 
 /* ── Προσωπικές όψεις ── */
@@ -1323,7 +1446,7 @@ V.training=()=>{
           :L.n>=1&&ok?'<span class="pill" style="background:var(--accbg);border-color:transparent;color:var(--acc)">Ανάθεση</span>'
           :!ok?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Λείπει Ν.91(Ι)</span>'
           :'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">Λείπει εκπαίδευση</span>';
-        return `<tr><td>${p.is_commissioner?'<span class="dot" style="background:var(--diktyo)"></span>':sdot(p.section)}</td><td>${pnm(p)}</td>
+        return `<tr><td>${leaderDot(p)}</td><td>${pnm(p)}</td>
           <td class="hide-s dim">${esc(p.section||'—')}</td>
           <td><span class="pill" style="background:var(--${L.c}bg);border-color:transparent;color:var(--${L.c})">${L.t}</span></td>
           <td>${right}</td>
@@ -1805,7 +1928,7 @@ V.leaders=()=>{
     list.map(p=>{const c=D.cert.find(x=>x.person_id===p.id);const d=c&&c.sexoxarto_expiry?Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5):null;
       const st=d===null?'<span class="pill" style="border-color:var(--line2)">—</span>':d<0?`<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Έληξε</span>`:d<=90?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">${d} μέρες</span>`:`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Σε ισχύ</span>`;
       const cst=d===null?'none':d<0?'bad':d<=90?'warn':'ok';
-      return `<tr data-sec="${esc(p.section||'')}" data-cert="${cst}"><td>${p.is_commissioner?'<span class="dot" style="background:var(--diktyo)" title="Έφορος"></span>':sdot(p.section)}</td>
+      return `<tr data-sec="${esc(p.section||'')}" data-cert="${cst}"><td>${leaderDot(p)}</td>
         <td>${pnm(p)}${p.is_commissioner?' <span class="pill">Έφορος</span>':''}${p.is_network?' <span class="pill">Δίκτυο</span>':''}</td>
         <td class="hide-s">${esc(p.section||'—')}</td><td class="hide-s dim">${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||'—'))}</td>
         <td class="hide-s">${p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'<span class="dim">—</span>'}</td><td>${st}</td></tr>`}).join('')}</tbody></table></div>`;
@@ -1893,7 +2016,7 @@ V.certs=()=>{
       :d<0?`<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Έληξε ${fdate(c.exp)}</span>`
       :d<=90?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">Λήγει σε ${d} μέρες</span>`
       :`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Σε ισχύ ως ${fdate(c.exp)}</span>`;
-    return `<tr><td>${c.p.is_commissioner?'<span class="dot" style="background:var(--diktyo)"></span>':sdot(c.p.section)}</td><td>${pnm(c.p)}</td><td class="hide-s dim">${esc(c.p.section||'—')}</td><td>${st}</td><td class="hide-s">${c.p.phone?`<a href="tel:${esc(c.p.phone)}">${fphone(c.p.phone)}</a>`:'<span class="dim">—</span>'}</td></tr>`};
+    return `<tr><td>${leaderDot(c.p)}</td><td>${pnm(c.p)}</td><td class="hide-s dim">${esc(c.p.section||'—')}</td><td>${st}</td><td class="hide-s">${c.p.phone?`<a href="tel:${esc(c.p.phone)}">${fphone(c.p.phone)}</a>`:'<span class="dim">—</span>'}</td></tr>`};
   const tbl=(t,arr)=>arr.length?`<div class="sec"><h3>${t}</h3><span class="n">${arr.length}</span></div><div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th>Κατάσταση</th><th class="hide-s">Τηλέφωνο</th></tr></thead><tbody>${arr.map(row).join('')}</tbody></table></div>`:'';
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:4px"><span class="muted"><b>Πιστοποιητικό κατά Σεξουαλικών Αδικημάτων</b> <span class="dim">(«Ν.91(Ι)»)</span><div style="margin-top:5px">Επίσημα: <i>Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014</i>. Εκδίδεται ατελώς. Ισχύς 3 έτη από την έκδοση — χωρίς αυτό σε ισχύ δεν εκδίδεται εντολή διοίκησης.</div></span></div>
     ${listBar('',true)}${tbl('Ληγμένα',bad)}${tbl('Λήγουν σύντομα',soon)}${tbl('Χωρίς καταχώρηση',none)}${tbl('Σε ισχύ',ok)}`;
@@ -1927,7 +2050,7 @@ V.org=()=>{
       if(!led.length&&!mem)return '';
       return `<div class="card"><div class="pad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
         ${sdot(s)}<b>${esc(s)}</b><span class="sp"></span><span class="dim" style="font-size:12px">${led.length} βαθμ.${mem?' · '+mem+' μέλη':''}</span></div>
-        <div style="padding:6px 0">${led.map(p=>`<div style="padding:7px 18px;display:flex;gap:8px;align-items:baseline"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span><span class="dim" style="font-size:12px;margin-left:auto">${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||''))}</span></div>`).join('')||'<div class="dim" style="padding:10px 18px">—</div>'}</div></div>`}).join('')}</div>`+extHTML;
+        <div style="padding:6px 0">${led.map(p=>`<div style="padding:7px 18px;display:flex;gap:8px;align-items:baseline">${leaderDot(p)}<span class="pn" data-p="${p.id}">${esc(nm(p))}</span><span class="dim" style="font-size:12px;margin-left:auto">${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||''))}</span></div>`).join('')||'<div class="dim" style="padding:10px 18px">—</div>'}</div></div>`}).join('')}</div>`+extHTML;
 };
 
 V.groups=()=>{
@@ -1947,7 +2070,7 @@ V.warrants=()=>{
   $('view').innerHTML=listBar('',true)+`<div class="card pad" style="margin-bottom:14px"><span class="muted">Τρέχουσες ιδιότητες και αναθέσεις. Η ροή έκδοσης εντολών με εγκρίσεις έρχεται στη φάση 8.</span></div>
   <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th>Ιδιότητα</th><th class="hide-s">Τμήμα</th><th class="hide-s">Έγινε βαθμοφόρος</th></tr></thead><tbody>${
     led.map(p=>{let sd={};try{sd=p.scout_dates||{}}catch(e){}
-      return `<tr><td>${p.is_commissioner?'<span class="dot" style="background:var(--diktyo)"></span>':sdot(p.section)}</td><td>${pnm(p)}</td>
+      return `<tr><td>${leaderDot(p)}</td><td>${pnm(p)}</td>
       <td>${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||'—'))}</td><td class="hide-s dim">${esc(p.section||'—')}</td>
       <td class="hide-s dim">${esc(fgr(sd.LeaderDate)||'—')}</td></tr>`}).join('')}</tbody></table></div>`;
 };
