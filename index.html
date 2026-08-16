@@ -179,9 +179,11 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
     <img src="https://76.life/wp-content/uploads/2024/08/76ScoutsLogo300-1.png" alt="">
     <h1>e76</h1>
     <p>Προσκοπικό σύστημα διαχείρισης</p>
-    <input id="gmail" type="email" placeholder="Το email σου" autocomplete="email">
-    <input id="gotp" type="text" placeholder="Κωδικός ή επικόλληση συνδέσμου" style="display:none">
-    <button class="btn p" id="gbtn" style="width:100%;justify-content:center;padding:11px">Συνέχεια</button>
+    <input id="gmail" type="text" placeholder="Email ή Αρ. Μητρώου" autocomplete="username">
+    <input id="gpass" type="password" placeholder="Κωδικός πρόσβασης" autocomplete="current-password">
+    <button class="btn p" id="gbtn" style="width:100%;justify-content:center;padding:11px">Είσοδος</button>
+    <div style="margin-top:9px;font-size:13px"><a href="#" id="useOtp" style="color:var(--ink2)">Δεν έχω κωδικό — στείλε μου email</a></div>
+    <input id="gotp" type="text" placeholder="Κωδικός email ή επικόλληση συνδέσμου" style="display:none;margin-top:9px">
     <div id="gmsg" class="muted"></div>
     <details style="margin-top:20px;text-align:left;font-size:13px" id="ghelp">
       <summary style="cursor:pointer;color:var(--ink2);text-align:center">Πώς μπαίνω;</summary>
@@ -331,13 +333,33 @@ async function boot(){
   if(session){ME.email=session.user.email;start();return}
   if(isFile)$('ghelp').open=true;
 }
+async function resolveId(v){
+  const s=(v||'').trim();
+  if(s.includes('@'))return s.toLowerCase();
+  try{const {data}=await sb.rpc('resolve_login',{p_id:s}); return data||null}
+  catch(e){return null}
+}
 function tokenFromLink(s){
   try{const u=new URL(s.trim());
     return {t:u.searchParams.get('token_hash')||u.searchParams.get('token'),ty:u.searchParams.get('type')||'email'};
   }catch(e){return null}
 }
+let OTPMODE=false;
+$('useOtp').onclick=e=>{e.preventDefault();OTPMODE=true;
+  $('gpass').style.display='none'; $('useOtp').style.display='none';
+  $('gbtn').textContent='Στείλε μου email'; $('ghelp').open=true; $('gmail').focus();};
 $('gbtn').onclick=async()=>{
-  const em=$('gmail').value.trim(), raw=$('gotp').value.trim(), m=$('gmsg');
+  const em=$('gmail').value.trim(), raw=$('gotp').value.trim(), pw=$('gpass').value, m=$('gmsg');
+  if(!OTPMODE&&pw){
+    if(!em){m.style.color='var(--bad)';m.textContent='Γράψε email ή Αρ. Μητρώου';return}
+    m.style.color='var(--ink2)'; m.textContent='Είσοδος…';
+    const mail=await resolveId(em);
+    if(!mail){m.style.color='var(--bad)';m.textContent='Λάθος στοιχεία σύνδεσης.';return}
+    const {data,error}=await sb.auth.signInWithPassword({email:mail,password:pw});
+    if(error){m.style.color='var(--bad)';
+      m.textContent=/Invalid login/i.test(error.message)?'Λάθος στοιχεία σύνδεσης.':error.message;return}
+    ME.email=data.user.email; start(); return;
+  }
   if(raw){
     m.style.color='var(--ink2)'; m.textContent='Έλεγχος…';
     const lnk=/^https?:\/\//i.test(raw)?tokenFromLink(raw):null;
@@ -349,7 +371,10 @@ $('gbtn').onclick=async()=>{
     const {data:{session}}=await sb.auth.getSession();
     ME.email=(session&&session.user.email)||em; start(); return;
   }
-  if(!em){m.style.color='var(--bad)';m.textContent='Γράψε το email σου';return;}
+  if(!em){m.style.color='var(--bad)';m.textContent='Γράψε email ή Αρ. Μητρώου';return;}
+  const em2=await resolveId(em);
+  if(!em2){m.style.color='var(--bad)';m.textContent='Δεν βρέθηκε λογαριασμός με αυτά τα στοιχεία.';return;}
+  $('gmail').value=em2;
   m.style.color='var(--ink2)'; m.textContent='Αποστολή…';
   const opts={shouldCreateUser:true};
   if(!isFile)opts.emailRedirectTo=location.origin+location.pathname;
@@ -643,11 +668,26 @@ V.settings=()=>{
       ${f('selfServiceAge','Ηλικία αυτοεξυπηρέτησης','Από ποια ηλικία το μέλος θα επεξεργάζεται μόνο του τα στοιχεία του')}
       ${f('ackHours','Προθεσμία απόκρισης αναφορών (ώρες)','Μέσα σε πόσο πρέπει να επιβεβαιωθεί η παραλαβή μιας αναφοράς')}
       <div style="display:flex;gap:8px;margin-top:14px"><button class="btn p" id="thSave">Αποθήκευση</button><span class="sp"></span><span class="dim" id="thMsg" style="font-size:12.5px"></span></div></div>
+    <div class="sec"><h3>Ο λογαριασμός μου</h3></div>
+    <div class="card pad">
+      <div class="kv"><b>Email</b><span>${esc(ME.email||'')}</span></div>
+      <div style="margin-top:12px;display:grid;gap:8px;max-width:340px">
+        <label style="font-size:12px;color:var(--ink3)">Νέος κωδικός πρόσβασης<input type="password" id="pw1" autocomplete="new-password" placeholder="τουλάχιστον 8 χαρακτήρες"></label>
+        <label style="font-size:12px;color:var(--ink3)">Επανάληψη<input type="password" id="pw2" autocomplete="new-password"></label>
+        <div><button class="btn p" id="pwSave">Ορισμός κωδικού</button></div>
+        <div class="dim" style="font-size:12px">Με κωδικό μπαίνεις κατευθείαν, χωρίς email — και δεν σε πιάνει το όριο αποστολών.</div></div></div>
     <div class="sec"><h3>Κανόνας κλάδου ανά τάξη</h3></div>
     <div class="card pad"><div style="display:grid;gap:5px;font-size:13.5px">${
       GRADES.map(g=>`<div style="display:flex;gap:10px"><span style="flex:0 0 108px">${esc(g)}</span>${sdot(secForGrade(g))}<span>${esc(secForGrade(g))}</span></div>`).join('')}</div>
       <div class="dim" style="font-size:12px;margin-top:10px">Ο κανόνας χρησιμοποιείται στην ανέλιξη χρονιάς. Η επεξεργασία του έρχεται όταν μπουν οι ρόλοι.</div></div>`;
   document.querySelectorAll('[data-rst]').forEach(b=>b.onclick=()=>{$('th_'+b.dataset.rst).value=DEF_TH[b.dataset.rst]});
+  $('pwSave').onclick=async()=>{
+    const a=$('pw1').value,b=$('pw2').value;
+    if(a.length<8)return toast('Τουλάχιστον 8 χαρακτήρες');
+    if(a!==b)return toast('Οι δύο κωδικοί δεν ταιριάζουν');
+    const {error}=await sb.auth.updateUser({password:a});
+    if(error)return toast('Σφάλμα: '+error.message);
+    $('pw1').value='';$('pw2').value=''; toast('Ο κωδικός ορίστηκε — μπαίνεις πλέον χωρίς email');};
   $('thSave').onclick=async()=>{
     const v={}; Object.keys(DEF_TH).forEach(k=>{const n=parseInt($('th_'+k).value); v[k]=isNaN(n)?DEF_TH[k]:n});
     const {error}=await sb.from('app_settings').upsert({k:'thresholds',v,updated_at:new Date().toISOString()},{onConflict:'k'});
