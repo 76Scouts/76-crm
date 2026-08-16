@@ -347,7 +347,7 @@ const ic=(n,s=17)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="no
 
 /* ══ ΔΟΜΗ ══ */
 const NAV=[
- {g:'Επισκόπηση',items:[{id:'dash',t:'Πίνακας',i:'grid',s:'live'},{id:'trends',t:'Τάσεις',i:'trend',s:'live'}]},
+ {g:'Επισκόπηση',items:[{id:'dash',t:'Πίνακας',i:'grid',s:'live'},{id:'trends',t:'Τάσεις',i:'trend',s:'live'},{id:'issues',t:'Εκκρεμότητες',i:'alert',s:'live'}]},
  {g:'Μητρώο',items:[
    {id:'me',t:'Η καρτέλα μου',i:'users',s:'live'},
    {id:'myatt',t:'Οι παρουσίες μου',i:'check',s:'live'},
@@ -389,7 +389,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-16 11:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-16 11:34'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 
 /* ══ AUTH ══ */
@@ -1509,26 +1509,101 @@ V.rollover=()=>{
   };
 };
 
-/* ── Ταυτοποίηση ── */
-V.dedupe=()=>{
+
+/* ── εντοπισμός πιθανών διπλοεγγραφών ── */
+function dupPairs(){
   const norm=s=>nameKey(s).replace(/[^Α-ΩA-Z ]/g,' ').split(/\s+/).filter(x=>x.length>1).sort().join(' ');
-  const P=D.bh.filter(p=>p.status!=='Διαγραφή');
-  const pairs=[]; const seen=new Set();
+  const P=D.bh.filter(p=>p.status!=='Διαγραφή'); const out=[]; const seen=new Set();
   for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){
-    const a=P[i],b=P[j], k=a.id+b.id; if(seen.has(k))continue;
-    const na=norm(nm(a)), nb=norm(nm(b)); if(!na||!nb)continue;
+    const a=P[i],b=P[j],k=a.id+b.id; if(seen.has(k))continue;
+    const na=norm(nm(a)),nb=norm(nm(b)); if(!na||!nb)continue;
     let score=0,sig=[];
     if(na===nb){score+=60;sig.push('ίδιο ονοματεπώνυμο')}
-    else{const A=na.split(' '),B=nb.split(' '); const inter=A.filter(x=>B.includes(x)).length;
+    else{const A=na.split(' '),B=nb.split(' ');const inter=A.filter(x=>B.includes(x)).length;
       if(inter>=2&&Math.abs(A.length-B.length)<=1){score+=35;sig.push('παρόμοιο όνομα')}else continue}
-    if(a.registry_no&&b.registry_no){ if(a.registry_no===b.registry_no){score+=40;sig.push('ίδιος Α.Μ.')} else score-=25; }
-    else {score+=15;sig.push('ένα χωρίς Α.Μ.')}
+    if(a.registry_no&&b.registry_no){if(a.registry_no===b.registry_no){score+=40;sig.push('ίδιος Α.Μ.')}else score-=25}
+    else{score+=15;sig.push('ένα χωρίς Α.Μ.')}
     const ga=gOf(a.registry_no),gb=gOf(b.registry_no);
-    if(ga&&gb&&(ga.father_name===gb.father_name||ga.mother_name===gb.mother_name))
-      {score+=10;sig.push('ίδιοι γονείς')}
-    if(score>=45){seen.add(k);pairs.push({a,b,score,sig})}
+    if(ga&&gb&&(ga.father_name===gb.father_name||ga.mother_name===gb.mother_name)){score+=10;sig.push('ίδιοι γονείς')}
+    if(score>=45){seen.add(k);out.push({a,b,score,sig})}
   }
-  pairs.sort((x,y)=>y.score-x.score);
+  return out.sort((x,y)=>y.score-x.score);
+}
+
+/* ── Κέντρο εκκρεμοτήτων ── */
+V.issues=()=>{
+  const act=D.bh.filter(p=>p.status==='Ενεργός');
+  const led=act.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος');
+  const mem=act.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p));
+  const dec=JSON.parse(localStorage.getItem('e76:dedupe')||'{}');
+  const dups=dupPairs().filter(x=>!dec[x.a.id+x.b.id]);
+  const noReg=act.filter(p=>!inYear(p));
+  const I=[
+   {g:'Ασφάλεια & συμμόρφωση',items:[
+    {t:'Βαθμοφόροι χωρίς Ν.91(Ι)',w:'Δεν επιτρέπεται να εργάζονται με παιδιά χωρίς αυτό.',s:'bad',
+     l:led.filter(p=>certState(p.id).k==='none')},
+    {t:'Ν.91(Ι) που έληξε',w:'Χρειάζεται άμεση ανανέωση.',s:'bad',
+     l:led.filter(p=>certState(p.id).k==='expired')},
+    {t:'Ν.91(Ι) που λήγει σύντομα',w:`Λήγει εντός ${TH.certWarnDays||90} ημερών.`,s:'warn',
+     l:led.filter(p=>certState(p.id).k==='soon')},
+    {t:'Χωρίς ιατρικό δελτίο',w:'Απαραίτητο πριν από κατασκήνωση ή πολυήμερη δράση.',s:'warn',
+     l:act.filter(p=>!(D.med||[]).some(m=>m.person_id===p.id))},
+    {t:'Χωρίς επαφή έκτακτης ανάγκης',w:'Ποιον καλούμε αν συμβεί κάτι;',s:'warn',
+     l:act.filter(p=>!(D.ecs||[]).some(e=>e.person_id===p.id))},
+   ]},
+   {g:'Μητρώο',items:[
+    {t:'Πιθανές διπλοεγγραφές',w:'Το ίδιο άτομο καταχωρημένο δύο φορές.',s:'bad',pairs:dups},
+    {t:'Χωρίς εγγραφή '+YEAR,w:'Δεν εμφανίζονται στον Κατάλογο Εγγραφών Κλιμακίου.',s:'warn',l:noReg},
+    {t:'Χωρίς Αριθμό Μητρώου',w:'Δεν μπορούν να συνδεθούν με το escouts ούτε να κάνουν login με Α.Μ.',s:'warn',
+     l:act.filter(p=>!p.registry_no)},
+    {t:'Βαθμοφόροι χωρίς ενεργή εντολή',w:'Ούτε Εντολή Διοίκησης ούτε Ανάθεση σε ισχύ.',s:'warn',
+     l:led.filter(p=>warrantOf(p.id).k==='none'||warrantOf(p.id).k==='expired')},
+    {t:'Βαθμοφόροι χωρίς εκπαίδευση',w:'Ούτε Προκαταρκτική. Δεν μπορεί να εκδοθεί εντολή.',s:'warn',
+     l:led.filter(p=>trainLevel(p.id)===0)},
+   ]},
+   {g:'Στοιχεία επικοινωνίας',items:[
+    {t:'Μέλη χωρίς στοιχεία γονέα',w:'Δεν μπορούμε να ειδοποιήσουμε την οικογένεια.',s:'bad',
+     l:mem.filter(p=>{const g=gOf(p.registry_no);return !g||(!g.father_mobile&&!g.mother_mobile)})},
+    {t:'Βαθμοφόροι χωρίς τηλέφωνο',w:'',s:'warn',l:led.filter(p=>!p.phone)},
+    {t:'Βαθμοφόροι χωρίς email',w:'Δεν μπορούν να κάνουν login στο e76.',s:'warn',l:led.filter(p=>!p.email)},
+    {t:'Χωρίς διεύθυνση',w:'',s:'info',l:act.filter(p=>!p.home_address)},
+    {t:'Μέλη χωρίς υποομάδα',w:'Δεν εμφανίζονται σε εξάδα/ενωμοτία/όμιλο.',s:'info',
+     l:mem.filter(p=>!(myOf(p)||{}).group_name)},
+   ]}];
+  const tot=I.reduce((s,g)=>s+g.items.reduce((x,i)=>x+((i.pairs||i.l||[]).length),0),0);
+  const crit=I[0].items.filter(i=>i.s==='bad').reduce((s,i)=>s+(i.l||[]).length,0)+dups.length;
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">${tot}</div><div class="dim" style="font-size:12.5px">εκκρεμότητες συνολικά</div></div>
+        <div style="border-left:1px solid var(--line);padding-left:12px"><div style="font-size:26px;font-weight:600;color:${crit?'var(--bad)':'var(--ok)'}">${crit}</div><div class="dim" style="font-size:12.5px">κρίσιμες</div></div>
+        <span class="sp"></span><span class="muted" style="font-size:13px;max-width:340px">Κάθε γραμμή είναι κάτι που λείπει ή δεν στέκει. Πάτα για να δεις ποιους αφορά — και μετά κλικ στο όνομα για να το διορθώσεις.</span>
+      </div></div>
+    ${I.map(g=>`<div class="sec"><h3>${esc(g.g)}</h3></div>
+      ${g.items.map((it,gi)=>{const n=(it.pairs||it.l||[]).length; if(!n)return '';
+        const col=it.s==='bad'?'var(--bad)':it.s==='warn'?'var(--warn)':'var(--ink3)';
+        const id='is_'+esc(g.g).replace(/\W/g,'')+gi;
+        return `<div class="card" style="margin-bottom:8px">
+          <button class="pad" id="${id}" data-x="${id}" style="width:100%;text-align:left;background:none;border:0;cursor:pointer;display:flex;gap:10px;align-items:center">
+            <span class="dot" style="background:${col}"></span>
+            <span style="flex:1"><span style="font-size:14px;font-weight:500">${esc(it.t)}</span>
+              ${it.w?`<span class="dim" style="display:block;font-size:12px">${esc(it.w)}</span>`:''}</span>
+            <span class="pill" style="color:${col};border-color:${col}">${n}</span><span class="dim">▾</span></button>
+          <div id="${id}_b" style="display:none;padding:0 16px 13px">
+            ${it.pairs?it.pairs.slice(0,30).map(pr=>`<div style="padding:6px 0;border-top:1px solid var(--line);font-size:13.5px">
+                <span class="pn" data-p="${pr.a.id}">${esc(nm(pr.a))}</span> <span class="dim">↔</span> <span class="pn" data-p="${pr.b.id}">${esc(nm(pr.b))}</span>
+                <span class="dim" style="font-size:11.5px"> · ${pr.sig.map(esc).join(' · ')}</span></div>`).join('')
+              :it.l.slice(0,60).map(x=>`<span class="pill" style="margin:3px 3px 0 0"><span class="pn" data-p="${x.id}">${esc(nm(x))}</span>${x.section?`<span class="dim">${esc(x.section)}</span>`:''}</span>`).join('')}
+            ${n>60?`<div class="dim" style="font-size:12px;margin-top:7px">+ ${n-60} ακόμη</div>`:''}
+            ${it.pairs?'<div style="margin-top:10px"><button class="btn sm" data-goto="dedupe">Άνοιγμα Ταυτοποίησης →</button></div>':''}
+          </div></div>`}).join('')}`).join('')}
+    ${!tot?`<div class="uc"><div class="ico">${ic('check',26)}</div><h3>Καμία εκκρεμότητα</h3><p>Το μητρώο είναι πλήρες.</p></div>`:''}`;
+  document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const d=$(b.dataset.x+'_b');d.style.display=d.style.display==='none'?'block':'none'});
+  document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>route(b.dataset.goto));
+};
+
+/* ── Ταυτοποίηση ── */
+V.dedupe=()=>{
+  const pairs=dupPairs();
   const dec=JSON.parse(localStorage.getItem('e76:dedupe')||'{}');
   const open=pairs.filter(p=>!dec[p.a.id+p.b.id]);
   const info=p=>`<div style="font-size:13.5px"><b class="pn" data-p="${p.id}">${esc(nm(p))}</b></div>
