@@ -179,6 +179,7 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
     <img src="https://76.life/wp-content/uploads/2024/08/76ScoutsLogo300-1.png" alt="">
     <h1>e76</h1>
     <p id="gtag">Προσκοπικό σύστημα διαχείρισης</p>
+    <div class="dim" style="font-size:11px;margin:-14px 0 18px" id="gver"></div>
     <div id="grec" style="display:none">
       <input id="np1" type="password" placeholder="Νέος κωδικός (8+ χαρακτήρες)" autocomplete="new-password">
       <input id="np2" type="password" placeholder="Επανάληψη νέου κωδικού" autocomplete="new-password">
@@ -217,7 +218,7 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
     <div id="navwrap"></div>
     <div class="sidefoot">
       <div id="whoami" style="cursor:pointer" title="Το προφίλ μου">—</div>
-      <div style="margin-top:6px"><a href="#" id="switchp" style="color:var(--sidein2)">Αλλαγή ιδιότητας</a> · <a href="#" id="logout" style="color:var(--sidein2)">Αποσύνδεση</a> · <span id="ver">v0.1</span></div>
+      <div style="margin-top:6px"><a href="#" id="switchp" style="color:var(--sidein2)">Αλλαγή ιδιότητας</a> · <a href="#" id="logout" style="color:var(--sidein2)">Αποσύνδεση</a> · <span id="ver"></span></div>
     </div>
   </aside>
 
@@ -322,7 +323,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-let DIAG=[], WHO=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-16 03:46'; let DIAG=[], WHO=null, LOADMS=0; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 
 /* ══ AUTH ══ */
@@ -441,10 +442,16 @@ $('logout').onclick=async e=>{e.preventDefault();
 
 async function start(){
   $('gate').style.display='none'; $('app').style.display='flex';
-  $('whoami').textContent=ME.email||'';
+  $('whoami').textContent=ME.email||''; $('ver').textContent='build '+BUILD;
   try{
     const {data:pr}=await sb.from('profiles').select('person_id,role,access_role,scope_section').eq('id',(await sb.auth.getUser()).data.user.id).single();
     if(pr){ME.person_id=pr.person_id;ME.role=pr.access_role||pr.role;ME.scope=pr.scope_section}
+    if(ME.person_id){
+      const {data:mine}=await sb.from('badgeholders').select('*').eq('id',ME.person_id).single();
+      if(mine)ME.rec=mine;
+      const {data:hats}=await sb.from('person_hats').select('*').eq('person_id',ME.person_id);
+      if(hats)ME.hats=hats;
+    }
   }catch(e){}
   $('whoami').onclick=()=>{if(ME.person_id)openProfile(ME.person_id);else toast('Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα')};
   $('mbtn').innerHTML=ic('menu'); $('palbtn').innerHTML=ic('srch',16);
@@ -452,7 +459,7 @@ async function start(){
   await loadAll(); renderPersona(); renderNav();
   if(!localStorage.getItem('e76:persona')&&PERSONAS.length>1){showPicker();}
   else route(PA&&PA.k==='member'?'me':PA&&PA.k==='parent'?'mykids':ROUTE);
-  const me=ME.person_id&&D.bh.find(p=>p.id===ME.person_id);
+  const me=meRec();
   if(me)$('whoami').innerHTML=`<b style="color:var(--sidein)">${esc(nm(me))}</b><div style="font-size:10.5px">${esc(me.appointment&&me.appointment!=='-'?me.appointment:(me.category||''))}${ME.role?' · '+esc(ME.role):''}</div>`;
 }
 
@@ -510,8 +517,10 @@ async function loadAll(){
     sb.from('org_roles').select('*').order('seq'),
     sb.from('person_hats').select('*').limit(500)
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats'];
+  const _t0=Date.now();
   const r=await Promise.all(q.map(p=>p.catch(e=>({data:null,error:e}))));
+  LOADMS=Date.now()-_t0;
   DIAG=r.map((x,i)=>({t:names[i]||('#'+i),n:(x&&x.data)?x.data.length:null,e:x&&x.error?(x.error.message||String(x.error)):null}));
   try{const w=await sb.rpc('whoami'); WHO=w.data||null}catch(e){WHO=null}
   const bad=DIAG.filter(d=>d.e);
@@ -542,15 +551,16 @@ function childrenOf(me){
   return D.bh.filter(p=>regs.includes(p.registry_no));
 }
 function buildPersonas(){
-  const out=[], me=ME.person_id&&D.bh.find(p=>p.id===ME.person_id);
+  const out=[], me=(ME.person_id&&D.bh.find(p=>p.id===ME.person_id))||ME.rec||null;
   if(ME.role==='admin')out.push({id:'admin',t:'Διαχειριστής · πλήρης πρόσβαση',k:'leader',sc:'ΟΛΑ'});
-  (D.ph||[]).filter(h=>h.person_id===ME.person_id&&!h.valid_to).forEach(h=>
+  ((D.ph&&D.ph.length?D.ph:(ME.hats||[]))).filter(h=>h.person_id===ME.person_id&&!h.valid_to).forEach(h=>
     out.push({id:'hat:'+h.id,t:h.title,k:h.kind||'leader',sc:h.scope_value||'ΟΛΑ',lvl:h.scope_level}));
   if(me){
     if((me.kind||'Βαθμοφόρος')!=='Μέλος'){
       const lb=me.appointment&&me.appointment!=='-'?me.appointment:(me.category||'Βαθμοφόρος');
       const sc=me.category==='ΑΣ'?'ΟΛΑ':(me.section||'ΟΛΑ');
-      if(!out.some(o=>o.t===('Βαθμοφόρος · '+lb)))out.push({id:'leader',t:'Βαθμοφόρος · '+lb,k:'leader',sc});
+      const nice=me.category==='ΑΣ'?'Αρχηγός Συστήματος':('Βαθμοφόρος · '+lb);
+      if(!out.some(o=>o.t===nice))out.push({id:'leader',t:nice,k:'leader',sc});
     }
     if(me.is_commissioner)out.push({id:'com',t:'Έφορος',k:'leader',sc:'ΟΛΑ'});
     out.push({id:'member',t:'Μέλος · η καρτέλα μου',k:'member',sc:'ΕΓΩ'});
@@ -787,7 +797,7 @@ V.trends=()=>{
 };
 
 /* ── Προσωπικές όψεις ── */
-const meRec=()=>ME.person_id&&D.bh.find(p=>p.id===ME.person_id);
+const meRec=()=>(ME.person_id&&D.bh.find(p=>p.id===ME.person_id))||ME.rec||null;
 V.me=()=>{
   const p=meRec();
   if(!p)return $('view').innerHTML=`<div class="uc"><h3>Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα</h3><p>Ζήτα από τον Α.Σ. να συνδέσει το email σου με το μητρώο.</p></div>`;
@@ -1484,7 +1494,7 @@ V.dash=()=>{
     const bad=DIAG.filter(d=>d.e);
     $('view').innerHTML=`<div class="card pad" style="border-color:var(--bad)">
       <b>Δεν φορτώθηκαν δεδομένα</b>
-      <div class="muted" style="margin:6px 0 12px;font-size:13.5px">Ο λογαριασμός <b>${esc(ME.email||'')}</b> συνδέθηκε, αλλά τα ερωτήματα δεν επέστρεψαν εγγραφές.</div><div class="card pad" style="margin-bottom:12px;background:var(--bg)"><b style="font-size:13px">Ταυτότητα προς τον διακομιστή</b><div style="font-size:13px;margin-top:6px">${WHO?`ρόλος βάσης: <b>${esc(WHO.db_role)}</b> · ρόλος token: <b>${esc(WHO.jwt_role)}</b> · email: ${esc(WHO.email)}`:'<span class="dim">δεν απάντησε</span>'}</div><div class="dim" style="font-size:12px;margin-top:5px">${WHO&&WHO.jwt_role!=='authenticated'?'⚠ Τα αιτήματα φεύγουν ως anon — το token δεν συνοδεύει τις κλήσεις. Κάνε αποσύνδεση και ξανασύνδεση.':''}</div></div><div class="muted" style="font-size:13.5px;margin-bottom:8px">Ανά πίνακα:</div>
+      <div class="muted" style="margin:6px 0 12px;font-size:13.5px">Ο λογαριασμός <b>${esc(ME.email||'')}</b> συνδέθηκε, αλλά τα ερωτήματα δεν επέστρεψαν εγγραφές.</div><div class="card pad" style="margin-bottom:12px;background:var(--bg)"><b style="font-size:13px">Ταυτότητα προς τον διακομιστή</b><div style="font-size:13px;margin-top:6px">${WHO?`φόρτωση ${LOADMS} ms · ρόλος βάσης: <b>${esc(WHO.db_role)}</b> · ρόλος token: <b>${esc(WHO.jwt_role)}</b> · email: ${esc(WHO.email)}`:'<span class="dim">δεν απάντησε</span>'}</div><div class="dim" style="font-size:12px;margin-top:5px">${WHO&&WHO.jwt_role!=='authenticated'?'⚠ Τα αιτήματα φεύγουν ως anon — το token δεν συνοδεύει τις κλήσεις. Κάνε αποσύνδεση και ξανασύνδεση.':''}</div></div><div class="muted" style="font-size:13.5px;margin-bottom:8px">Ανά πίνακα:</div>
       <div style="overflow:auto"><table><thead><tr><th>Πίνακας</th><th>Γραμμές</th><th>Σφάλμα</th></tr></thead><tbody>${
         DIAG.map(d=>`<tr><td>${esc(d.t)}</td><td>${d.n===null?'<span class="dim">—</span>':d.n}</td><td class="dim">${esc(d.e||'')}</td></tr>`).join('')||'<tr><td colspan="3" class="dim">Καμία πληροφορία — δοκίμασε ανανέωση</td></tr>'}</tbody></table></div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
@@ -1775,6 +1785,7 @@ function palDraw(q){
   $('palq').onkeydown=e=>{if(e.key==='Enter'&&res[0]){closePal();res[0].go()}};
 }
 
+$('gver').textContent='build '+BUILD;
 boot();
 </script>
 </body>
