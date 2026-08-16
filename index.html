@@ -157,16 +157,67 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
   table{page-break-inside:auto}tr{page-break-inside:avoid}
 }
 .prt{display:none}
+
+
+.chipf{font:inherit;font-size:12.5px;padding:4px 11px;border-radius:20px;border:1px solid var(--line2);background:var(--card);color:var(--ink2);cursor:pointer;transition:.12s;white-space:nowrap}
+.chipf:hover{border-color:var(--ink3)}
+.chipf.on{background:var(--acc);border-color:var(--acc);color:#fff}
+th.srt{cursor:pointer;user-select:none;position:relative}
+th.srt:hover{color:var(--ink)}
+th.srt:after{content:"⇅";opacity:.28;margin-left:5px;font-size:10px}
+th.srt.asc:after{content:"↑";opacity:.9}
+th.srt.desc:after{content:"↓";opacity:.9}
+.fbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pickwrap{max-width:560px;margin:24px auto;padding:0 2px}
+.picklist{display:flex;flex-direction:column;gap:9px}
+.pickcard{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;cursor:pointer;box-shadow:var(--sh);transition:.13s;font:inherit;color:inherit}
+.pickcard:hover{border-color:var(--acc);transform:translateY(-1px)}
+.pickcard .pi{width:36px;height:36px;flex:0 0 36px;border-radius:10px;background:var(--accbg);border:1px solid var(--accln);display:grid;place-items:center;color:var(--acc)}
+.pickcard .pt{display:block;font-size:15px;font-weight:600;letter-spacing:-.01em;margin-bottom:2px}
+.pickcard .pd{display:block;font-size:12.5px;color:var(--ink3);line-height:1.4}
+@media(max-width:430px){.pickwrap{margin:14px auto}.pickcard{padding:12px 13px;gap:10px}.pickcard .pt{font-size:14.5px}}
 .mob{display:none}
 @media(max-width:860px){
-  .side{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:.2s}
+  .side{position:fixed;left:0;top:0;bottom:0;width:min(272px,84vw);flex-basis:auto;transform:translateX(-100%);transition:.2s}
   .side.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.3)}
   .mob{display:inline-flex}
-  .wrap{padding:14px}
-  .top{padding:10px 13px}
+  .wrap{padding:12px}
   .scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:39}
   th{top:0}
   .hide-s{display:none}
+
+  /* μπάρα: δύο σειρές αντί για ξεχείλισμα */
+  .top{padding:9px 12px;flex-wrap:wrap;gap:7px;row-gap:7px}
+  .top h2{font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top .sub{display:none}
+  .top .sp{display:none}
+  #persona{order:10;flex:1 1 100%;max-width:none!important;font-size:12.5px}
+  #yr{font-size:12.5px}
+
+  /* πλακίδια & πλέγματα */
+  .tiles{grid-template-columns:repeat(2,1fr);gap:8px}
+  .tile{padding:12px 13px}
+  .tile .v{font-size:22px}
+  .tile .k{font-size:11.5px;margin-bottom:5px}
+  .tile .s{font-size:11px}
+  .grid{grid-template-columns:1fr!important}
+  .card .pad,.pad{padding:13px 14px}
+  .sec{margin:17px 0 9px}
+  .sec h3{font-size:14px}
+  td,th{padding:8px 9px;font-size:13.5px}
+  .mkgrid{grid-template-columns:repeat(auto-fill,minmax(46%,1fr));gap:7px}
+  .drw .pnl{width:100%;border-left:0}
+  .dhead{padding:13px 15px}.dsec{padding:13px 15px}
+  .kv b{flex:0 0 96px;font-size:12.5px}
+  .uc{margin:26px auto}
+  input,select{font-size:16px}          /* αποτρέπει zoom στο iOS */
+  .btn{padding:8px 12px}
+  .gbox h1{font-size:22px}
+}
+@media(max-width:430px){
+  .tiles{grid-template-columns:1fr}
+  .mkgrid{grid-template-columns:1fr}
+  .brand b{font-size:16px}
 }
 .skel{background:linear-gradient(90deg,var(--line) 25%,var(--bg) 50%,var(--line) 75%);background-size:200% 100%;animation:sk 1.3s infinite;border-radius:6px;height:13px}
 @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
@@ -228,7 +279,7 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
       <h2 id="ttl">Πίνακας</h2><span class="sub" id="sub"></span>
       <span class="sp"></span>
       <select id="persona" class="btn sm" style="width:auto;padding:5px 8px;max-width:230px" title="Προβολή ως"></select>
-      <button class="btn gh sm" id="palbtn" title="Αναζήτηση (⌘K)"></button>
+      <button class="btn gh sm" id="legbtn" title="Τι σημαίνουν τα σύμβολα">ⓘ</button><button class="btn gh sm" id="palbtn" title="Αναζήτηση (⌘K)"></button>
       <select id="yr" class="btn sm" style="width:auto;padding:5px 8px"></select>
     </header>
     <div class="wrap" id="view"></div>
@@ -250,8 +301,11 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const MON=['Ιανουαρίου','Φεβρουαρίου','Μαρτίου','Απριλίου','Μαΐου','Ιουνίου','Ιουλίου','Αυγούστου','Σεπτεμβρίου','Οκτωβρίου','Νοεμβρίου','Δεκεμβρίου'];
-const fdate=d=>{if(!d)return'—';const x=new Date(d);return x.getDate()+' '+MON[x.getMonth()]+' '+x.getFullYear();};
-const fshort=d=>{if(!d)return'—';const x=new Date(d);return x.getDate()+'/'+(x.getMonth()+1);};
+const p2=n=>String(n).padStart(2,'0');
+const fdate=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+' '+MON[x.getMonth()]+' '+x.getFullYear();};
+const fshort=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+'/'+p2(x.getMonth()+1);};
+const fnum=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+'/'+p2(x.getMonth()+1)+'/'+x.getFullYear();};
+const fgr=s=>{if(!s)return'';const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s).trim());return m?p2(m[1])+'/'+p2(m[2])+'/'+m[3]:s;};
 const fphone=p=>{if(!p)return'';const d=String(p).replace(/\D/g,'');return d.length===8?d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3'):p;};
 const SC={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)'};
 const I={
@@ -323,7 +377,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-16 03:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-16 11:08'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 
 /* ══ AUTH ══ */
@@ -518,9 +572,12 @@ async function loadAll(){
     sb.from('request_steps').select('*').limit(6000),
     sb.from('reports').select('*').limit(2000),
     sb.from('org_roles').select('*').order('seq'),
-    sb.from('person_hats').select('*').limit(500)
+    sb.from('person_hats').select('*').limit(500),
+    sb.from('service_history').select('*').limit(3000),
+    sb.from('honors').select('*').limit(500),
+    sb.from('person_emails').select('*').limit(2000)
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails'];
   const _t0=Date.now();
   const TMO=12000;
   const guard=(pr,label)=>new Promise(res=>{
@@ -545,7 +602,7 @@ async function loadAll(){
   }
   LOADED=true;
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   const yrs=[...new Set(D.my.map(x=>x.scout_year).filter(Boolean))].sort().reverse();
@@ -589,14 +646,17 @@ function personaIcon(k){return k==='parent'?'home':k==='member'?'users':'award'}
 function showPicker(){
   const w=$('view');
   $('ttl').textContent='Καλωσόρισες'; $('sub').textContent='';
-  w.innerHTML=`<div style="max-width:720px;margin:22px auto">
-    <h2 style="font-size:20px;margin-bottom:5px">Με ποια ιδιότητα θέλεις να μπεις;</h2>
-    <p class="muted" style="margin:0 0 18px">Μπορείς να αλλάξεις όποτε θες από το μενού πάνω δεξιά.</p>
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">${PERSONAS.map(p=>`
-      <button class="tile" data-pick="${esc(p.id)}" style="padding:18px">
-        <div style="width:38px;height:38px;border-radius:11px;background:var(--accbg);border:1px solid var(--accln);display:grid;place-items:center;color:var(--acc);margin-bottom:11px">${ic(personaIcon(p.k),20)}</div>
-        <div style="font-size:15px;font-weight:600;margin-bottom:3px">${esc(p.t)}</div>
-        <div class="dim" style="font-size:12.5px">${p.k==='member'?'Η καρτέλα, οι παρουσίες και η πορεία μου':p.k==='parent'?'Πρόοδος και παρουσίες των παιδιών μου':(p.sc&&p.sc!=='ΟΛΑ')?('Εύρος: '+esc(p.sc)):'Πλήρης διαχείριση'}</div>
+  w.innerHTML=`<div class="pickwrap">
+    <h2 style="font-size:19px;margin-bottom:4px">Με ποια ιδιότητα θέλεις να μπεις;</h2>
+    <p class="muted" style="margin:0 0 16px;font-size:14px">Αλλάζεις όποτε θες από το μενού.</p>
+    <div class="picklist">${PERSONAS.map(p=>`
+      <button class="pickcard" data-pick="${esc(p.id)}">
+        <span class="pi">${ic(personaIcon(p.k),20)}</span>
+        <span style="flex:1;min-width:0">
+          <span class="pt">${esc(p.t)}</span>
+          <span class="pd">${p.k==='member'?'Η καρτέλα, οι παρουσίες και η πορεία μου':p.k==='parent'?'Πρόοδος και παρουσίες των παιδιών μου':(p.sc&&p.sc!=='ΟΛΑ')?('Εύρος: '+esc(p.sc)):'Πλήρης διαχείριση'}</span>
+        </span>
+        <span class="dim" style="flex:0 0 auto">›</span>
       </button>`).join('')}</div></div>`;
   w.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{
     PA=PERSONAS.find(x=>x.id===b.dataset.pick); localStorage.setItem('e76:persona',PA.id);
@@ -747,13 +807,14 @@ function openProfile(id){
       <div class="dim" style="font-size:11.5px;margin-top:6px">κάθε τετράγωνο = μία συγκέντρωση, από Σεπτέμβριο</div></div>`:''}
 
     ${!isMem?`<div class="dsec"><h4>Πιστοποιητικά</h4>
-      ${c.sexoxarto_date?kv('Σεξόχαρτο',`${fdate(c.sexoxarto_date)} → <b style="color:${dexp<0?'var(--bad)':dexp<=90?'var(--warn)':'var(--ok)'}">${fdate(c.sexoxarto_expiry)}</b>`):'<div class="dim" style="font-size:13.5px">Καμία καταχώρηση</div>'}</div>`:''}
+      ${c.sexoxarto_date?kv('Πιστοποιητικό Ν.91(Ι)',`${fdate(c.sexoxarto_date)} → <b style="color:${dexp<0?'var(--bad)':dexp<=90?'var(--warn)':'var(--ok)'}">${fdate(c.sexoxarto_expiry)}</b>`):'<div class="dim" style="font-size:13.5px">Καμία καταχώρηση</div>'}</div>`:''}
 
     ${Object.keys(sd).length?`<div class="dsec"><h4>Προσκοπική πορεία</h4>
-      ${kv('Εγγραφή',esc(sd.Registration||''))}${kv('Υπόσχεση Λυκοπούλου',esc(sd.CubPromise||sd.CubDate||''))}
-      ${kv('Υπόσχεση Προσκόπου',esc(sd.ScoutPromise||sd.ScoutDate||''))}${kv('Ανιχνευτής',esc(sd.VentureDate||''))}
-      ${kv('Πρόσκοπος Δημοκρατίας',esc(sd.RepublicDate||''))}${kv('Έγινε βαθμοφόρος',esc(sd.LeaderDate||''))}</div>`:''}
-    <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">Η επεξεργασία στοιχείων και η καρτέλα προόδου έρχονται σε επόμενη φάση.</div></div>`;
+      ${kv('Εγγραφή',esc(fgr(sd.Registration)))}${kv('Υπόσχεση Λυκοπούλου',esc(fgr(sd.CubPromise||sd.CubDate)))}
+      ${kv('Υπόσχεση Προσκόπου',esc(fgr(sd.ScoutPromise||sd.ScoutDate)))}${kv('Ανιχνευτής',esc(fgr(sd.VentureDate)))}
+      ${kv('Πρόσκοπος Δημοκρατίας',esc(fgr(sd.RepublicDate)))}${kv('Έγινε βαθμοφόρος',esc(fgr(sd.LeaderDate)))}</div>`:''}
+    ${histHTML(p)}
+    <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">Η καρτέλα προόδου έρχεται μετά την αναθεώρηση του μοντέλου.</div></div>`;
   drw.classList.add('on');
   $('dEdit').onclick=()=>{const b=$('dEditBox');b.style.display=b.style.display==='none'?'block':'none'};
   $('eCancel').onclick=()=>{$('dEditBox').style.display='none'};
@@ -776,8 +837,139 @@ function openProfile(id){
     saveCache(); openProfile(p.id); route(ROUTE);
   };
 }
+function histHTML(p){
+  const sh=(D.sh||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.start_date||'')<(a.start_date||'')?-1:1);
+  const tr=(D.tr||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.date||'')<(a.date||'')?-1:1);
+  const ho=(D.ho||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.award_date||'')<(a.award_date||'')?-1:1);
+  const em=(D.pe||[]).filter(x=>x.person_id===p.id);
+  let out='';
+  if(em.length>1||em.some(e=>e.label!=='προσωπικό'))
+    out+=`<div class="dsec"><h4>Ηλεκτρονικές διευθύνσεις</h4>${em.map(e=>
+      `<div class="kv"><b>${esc(e.label)}</b><span><a href="mailto:${esc(e.address)}">${esc(e.address)}</a>${e.is_primary?' <span class="pill" style="font-size:10px">κύριο</span>':''}</span></div>`).join('')}</div>`;
+  if(sh.length){
+    const yrs=sh.filter(x=>x.counts_for_service!==false).reduce((s,x)=>s+(x.duration_months||0),0);
+    out+=`<div class="dsec"><h4>Διοικητικές μεταβολές <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:400">· ${sh.length}${yrs?` · ${Math.floor(yrs/12)} έτη ${yrs%12} μήνες υπηρεσίας`:''}</span></h4>
+      ${sh.slice(0,14).map(x=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)">
+        <div style="font-size:13.5px;display:flex;gap:7px;align-items:baseline">
+          ${x.section?sdot(x.section):''}<b style="font-weight:500">${esc(x.appointment||x.role||'—')}</b>
+          ${x.warrant_type?`<span class="pill" style="font-size:10px">${esc(x.warrant_type)}</span>`:''}
+          <span class="sp"></span><span class="dim" style="font-size:11.5px">${esc(x.scout_year||'')}</span></div>
+        <div class="dim" style="font-size:11.5px">${esc(x.section||'')}${x.appointment_no?' · αρ. '+esc(x.appointment_no):''}${x.start_date?' · '+fdate(x.start_date):''}${x.end_date?' → '+fdate(x.end_date):''}</div>
+      </div>`).join('')}${sh.length>14?`<div class="dim" style="font-size:11.5px;padding-top:7px">+ ${sh.length-14} ακόμη</div>`:''}</div>`;
+  }
+  if(tr.length)
+    out+=`<div class="dsec"><h4>Εκπαιδεύσεις & σχολές <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:400">· ${tr.length}</span></h4>
+      ${tr.map(x=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)">
+        <div style="font-size:13.5px;font-weight:500">${esc(x.type||x.code||'—')}</div>
+        <div class="dim" style="font-size:11.5px">${[x.section,x.body,x.date?fdate(x.date):''].filter(Boolean).map(esc).join(' · ')}</div></div>`).join('')}</div>`;
+  if(ho.length)
+    out+=`<div class="dsec"><h4>Τιμητικές διακρίσεις</h4>${ho.map(x=>
+      `<div class="kv"><b>${esc(x.award_date?fdate(x.award_date):'—')}</b><span>${esc(x.title||x.code||'')}</span></div>`).join('')}</div>`;
+  return out;
+}
 function agey(d){if(!d)return 0;const b=new Date(d),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a}
 const pnm=p=>`<b class="pn" data-p="${p.id}">${esc(nm(p))}</b>`;
+
+
+
+/* ── ταξινόμηση στηλών ── */
+function makeSortable(){
+  document.querySelectorAll('#view table').forEach(tb=>{
+    const ths=tb.tHead?tb.tHead.rows[0].cells:[];
+    [...ths].forEach((th,i)=>{
+      if(!th.textContent.trim())return;
+      th.classList.add('srt');
+      th.onclick=()=>{
+        const body=tb.tBodies[0]; if(!body)return;
+        const dir=th.classList.contains('asc')?-1:1;
+        [...ths].forEach(x=>x.classList.remove('asc','desc'));
+        th.classList.add(dir===1?'asc':'desc');
+        const rows=[...body.rows];
+        rows.sort((a,b)=>{
+          const A=(a.cells[i]?.textContent||'').trim(), B=(b.cells[i]?.textContent||'').trim();
+          const nA=parseFloat(A.replace(/[^\d.,-]/g,'').replace(',','.')), nB=parseFloat(B.replace(/[^\d.,-]/g,'').replace(',','.'));
+          if(!isNaN(nA)&&!isNaN(nB)&&A.match(/\d/)&&B.match(/\d/))return (nA-nB)*dir;
+          return nameKey(A).localeCompare(nameKey(B),'el')*dir;});
+        rows.forEach(r=>body.appendChild(r));};
+    });
+  });
+}
+/* ── γρήγορα φίλτρα ── */
+let VF={};
+function chipsHTML(defs){
+  return `<div class="fbar">${defs.map(g=>g.opts.map(o=>
+    `<button class="chipf" data-k="${esc(g.k)}" data-v="${esc(o.v)}">${o.l}</button>`).join('')).join('<span class="dim" style="padding:0 2px">·</span>')}
+    <button class="btn gh sm" id="fclr" style="display:none">Καθαρισμός</button></div>`;
+}
+function wireChips(){
+  VF={};
+  const apply=()=>{
+    const q=nameKey(($('vq')||{}).value||''); let n=0;
+    document.querySelectorAll('#view tbody tr').forEach(r=>{
+      let ok=!q||nameKey(r.textContent).includes(q);
+      if(ok)for(const k in VF){if(VF[k]&&r.dataset[k]!==VF[k]){ok=false;break}}
+      r.style.display=ok?'':'none'; if(ok)n++;});
+    const c=$('vcnt'); if(c)c.textContent=n+(n===1?' εγγραφή':' εγγραφές');
+    const any=Object.values(VF).some(Boolean); const b=$('fclr'); if(b)b.style.display=any?'':'none';};
+  document.querySelectorAll('.chipf').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k,v=b.dataset.v;
+    if(VF[k]===v){VF[k]=null;b.classList.remove('on')}
+    else{document.querySelectorAll(`.chipf[data-k="${k}"]`).forEach(x=>x.classList.remove('on'));VF[k]=v;b.classList.add('on')}
+    apply();});
+  const clr=$('fclr'); if(clr)clr.onclick=()=>{VF={};document.querySelectorAll('.chipf').forEach(x=>x.classList.remove('on'));if($('vq'))$('vq').value='';apply()};
+  const i=$('vq'); if(i)i.addEventListener('input',apply);
+  apply();
+}
+
+/* ── γενική αναζήτηση λίστας ── */
+const listBar=(extra,hint)=>`<div class="card pad" style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+  <input id="vq" placeholder="Αναζήτηση…  ( / )" style="max-width:230px" autocomplete="off">${extra||''}
+  <span class="sp"></span><span class="pill" id="vcnt"></span>
+  ${hint?`<button class="btn gh sm" id="vinfo" title="Τι σημαίνουν τα σύμβολα">${ic('alert',15)}</button>`:''}</div>`;
+function wireVQ(){
+  const i=$('vq'); if(!i)return;
+  const upd=()=>{const q=nameKey(i.value); let n=0;
+    document.querySelectorAll('#view tbody tr').forEach(r=>{
+      const ok=!q||nameKey(r.textContent).includes(q); r.style.display=ok?'':'none'; if(ok)n++;});
+    const c=$('vcnt'); if(c)c.textContent=n+(n===1?' εγγραφή':' εγγραφές');};
+  i.addEventListener('input',upd); upd();
+  const b=$('vinfo'); if(b)b.onclick=showLegend;
+  makeSortable(); wireChips();
+}
+
+/* ── επεξήγηση συμβόλων ── */
+function showLegend(){
+  const d=(bg,extra='')=>`<span class="dot" style="background:${bg};${extra}"></span>`;
+  const half=(a,b)=>`<span class="dot" style="background:linear-gradient(90deg,${a} 0 50%,${b} 50% 100%)"></span>`;
+  const ring=(bg,rc)=>`<span class="dot" style="background:${bg};box-shadow:0 0 0 2px ${rc}"></span>`;
+  const rowx=(sym,t,s)=>`<div style="display:flex;gap:11px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)">
+     <span style="flex:0 0 26px;padding-top:3px">${sym}</span><div><div style="font-size:13.5px">${t}</div>${s?`<div class="dim" style="font-size:12px">${s}</div>`:''}</div></div>`;
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Τι σημαίνουν οι τελείες</div>
+      <div class="dim" style="font-size:12.5px">Σύγκριση για να αποφασίσεις</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+
+    <div class="dsec"><h4>Τώρα σε χρήση</h4>
+      ${rowx(d('var(--ageli)'),'Μέλος Αγέλης','συμπαγής τελεία στο χρώμα του κλάδου')}
+      ${rowx(d('var(--omada)'),'Μέλος Ομάδας','')}
+      ${rowx(d('var(--koin)'),'Μέλος Κοινότητας','')}
+      ${rowx(d('var(--diktyo)'),'Έφορος','μωβ, ανεξαρτήτως κλάδου')}
+      ${rowx(half('#27ae60','#27ae60'),'Βαθμοφόρος — εντάξει','αριστερό μισό: πιστοποιητικό Ν.91(Ι) · δεξί μισό: εκπαίδευση')}
+      ${rowx(half('#e74c3c','#f4c20d'),'Βαθμοφόρος — ελλείψεις','κόκκινο: λείπει · κίτρινο: μόνο Προκαταρκτική · πράσινο: εντάξει')}
+      ${rowx(d('#c7ced6'),'Χωρίς στοιχεία','δεν έχει καταχωρηθεί τίποτα')}
+    </div>
+
+    <div class="dsec"><h4>Παλιό σύστημα</h4>
+      ${rowx(ring('linear-gradient(90deg,#27ae60 0 50%,#27ae60 50% 100%)','var(--ageli)'),'Διπλή τελεία + δακτύλιος κλάδου','η διπλή έδειχνε πιστοποιητικό/εκπαίδευση, ο δακτύλιος τον κλάδο — όλα σε ένα σύμβολο')}
+      <div class="dim" style="font-size:12px;padding-top:8px">Πλεονέκτημα: μία ματιά, τρεις πληροφορίες. Μειονέκτημα: δυσανάγνωστο σε μικρή οθόνη και δυσνόητο για νέο χρήστη.</div>
+    </div>
+
+    <div class="dsec"><h4>Πρόταση ρεμίξ</h4>
+      ${rowx(ring('var(--ageli)','#27ae60'),'Γέμισμα = κλάδος · δακτύλιος = ετοιμότητα','πράσινος δακτύλιος: όλα εντάξει · κίτρινος: λήγει σύντομα · κόκκινος: λείπει κάτι')}
+      <div class="dim" style="font-size:12px;padding-top:8px">Το χρώμα που διαβάζεται πιο εύκολα (το γέμισμα) κρατά τη σταθερή πληροφορία — τον κλάδο. Ο δακτύλιος κρατά αυτό που αλλάζει και θέλει προσοχή. Ίδιος κανόνας για μέλη και βαθμοφόρους, άρα μαθαίνεται μία φορά.</div>
+    </div>
+    <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">Πες μου ποιο προτιμάς και το εφαρμόζω παντού.</div></div>`;
+  drw.classList.add('on');
+}
 
 /* ══ VIEWS ══ */
 const V={};
@@ -834,11 +1026,11 @@ V.me=()=>{
         <div style="font-size:26px;font-weight:600">${pct===null?'—':pct+'%'}</div>
         <div class="dim" style="font-size:12.5px">${mine.filter(x=>x.status==='Παρών').length} από ${mine.length} συγκεντρώσεις</div></div>
       <div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Προσκοπική πορεία</h3>
-        ${row('Εγγραφή',esc(sd.Registration||''))}${row('Υπόσχεση Λυκ.',esc(sd.CubPromise||sd.CubDate||''))}${row('Υπόσχεση Προσκ.',esc(sd.ScoutPromise||sd.ScoutDate||''))}
-        ${row('Πρόσκ. Δημοκρατίας',esc(sd.RepublicDate||''))}${row('Έγινε βαθμοφόρος',esc(sd.LeaderDate||''))}
+        ${row('Εγγραφή',esc(sd.Registration||''))}${row('Υπόσχεση Λυκ.',esc(fgr(sd.CubPromise||sd.CubDate)))}${row('Υπόσχεση Προσκ.',esc(fgr(sd.ScoutPromise||sd.ScoutDate)))}
+        ${row('Πρόσκ. Δημοκρατίας',esc(fgr(sd.RepublicDate)))}${row('Έγινε βαθμοφόρος',esc(fgr(sd.LeaderDate)))}
         ${!Object.keys(sd).length?'<span class="dim" style="font-size:13px">Χωρίς καταχωρημένες ημερομηνίες</span>':''}</div>
       ${c.sexoxarto_expiry?`<div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Πιστοποιητικά</h3>
-        ${row('Σεξόχαρτο',fdate(c.sexoxarto_date)+' → <b>'+fdate(c.sexoxarto_expiry)+'</b>')}</div>`:''}
+        ${row('Πιστοποιητικό Ν.91(Ι)',fdate(c.sexoxarto_date)+' → <b>'+fdate(c.sexoxarto_expiry)+'</b>')}</div>`:''}
     </div>`;
 };
 V.myatt=()=>{
@@ -885,7 +1077,7 @@ V.settings=()=>{
     <div class="card pad">
       ${f('absencesInRow','Συνεχόμενες απουσίες για ειδοποίηση','Πόσες απουσίες στη σειρά μαρκάρουν παιδί σε κίνδυνο διαρροής')}
       ${f('lowAttendancePct','Χαμηλή προσέλευση (%)','Ποσοστό κάτω από το οποίο μπαίνει στη λίστα, ακόμη κι αν δεν λείπει συνεχόμενα')}
-      ${f('certWarnDays','Προειδοποίηση λήξης (μέρες)','Πόσο νωρίς ειδοποιεί για σεξόχαρτα και πιστοποιητικά')}
+      ${f('certWarnDays','Προειδοποίηση λήξης (μέρες)','Πόσο νωρίς ειδοποιεί για πιστοποιητικά Ν.91(Ι) και λοιπά')}
       ${f('selfServiceAge','Ηλικία αυτοεξυπηρέτησης','Από ποια ηλικία το μέλος θα επεξεργάζεται μόνο του τα στοιχεία του')}
       ${f('ackHours','Προθεσμία απόκρισης αναφορών (ώρες)','Μέσα σε πόσο πρέπει να επιβεβαιωθεί η παραλαβή μιας αναφοράς')}
       <div style="display:flex;gap:8px;margin-top:14px"><button class="btn p" id="thSave">Αποθήκευση</button><span class="sp"></span><span class="dim" id="thMsg" style="font-size:12.5px"></span></div></div>
@@ -1118,24 +1310,25 @@ V.training=()=>{
   const ready=led.filter(p=>lvl(p.id).n===2&&cert(p.id)).length;
   $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:14px">
       <b>Εκπαιδευτικό επίπεδο βαθμοφόρων</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px">Η Βασική μαζί με σεξόχαρτο σε ισχύ είναι η προϋπόθεση για <b>Εντολή Διοίκησης</b>· η Προκαταρκτική αρκεί για <b>Ανάθεση Καθηκόντων</b>. Ο έλεγχος γίνεται εδώ ώστε να μην κολλήσει η αίτηση αργότερα.</div></div>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Η Βασική μαζί με <span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Πιστοποιητικό Ν.91(Ι)</span> σε ισχύ είναι η προϋπόθεση για <b>Εντολή Διοίκησης</b>· η Προκαταρκτική αρκεί για <b>Ανάθεση Καθηκόντων</b>. Ο έλεγχος γίνεται εδώ ώστε να μην κολλήσει η αίτηση αργότερα.</div></div>
     <div class="tiles">
-      <div class="tile" style="cursor:default"><div class="k">Έτοιμοι για εντολή</div><div class="v">${ready}</div><div class="s">Βασική + σεξόχαρτο</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Έτοιμοι για εντολή</div><div class="v">${ready}</div><div class="s">Βασική + Ν.91(Ι)</div></div>
       <div class="tile" style="cursor:default"><div class="k">Με Βασική</div><div class="v">${counts[2]}</div><div class="s">από ${led.length}</div></div>
       <div class="tile warn" style="cursor:default"><div class="k">Μόνο Προκαταρκτική</div><div class="v">${counts[1]}</div><div class="s">επόμενο βήμα: Βασική</div></div>
       <div class="tile bad" style="cursor:default"><div class="k">Χωρίς εκπαίδευση</div><div class="v">${counts[0]}</div><div class="s">προτεραιότητα</div></div></div>
-    <div class="sec"><h3>Ανά βαθμοφόρο</h3><span class="n">${led.length}</span></div>
+    ${listBar('',true)}<div class="sec"><h3>Ανά βαθμοφόρο</h3><span class="n">${led.length}</span></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th>Επίπεδο</th><th>Δικαίωμα</th><th class="hide-s">Τελευταία εκπαίδευση</th></tr></thead><tbody>${
       led.map(p=>{const L=lvl(p.id),ok=cert(p.id),t=trOf(p.id)[0];
         const right=L.n===2&&ok?'<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Εντολή</span>'
           :L.n>=1&&ok?'<span class="pill" style="background:var(--accbg);border-color:transparent;color:var(--acc)">Ανάθεση</span>'
-          :!ok?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Λείπει σεξόχαρτο</span>'
+          :!ok?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Λείπει Ν.91(Ι)</span>'
           :'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">Λείπει εκπαίδευση</span>';
         return `<tr><td>${p.is_commissioner?'<span class="dot" style="background:var(--diktyo)"></span>':sdot(p.section)}</td><td>${pnm(p)}</td>
           <td class="hide-s dim">${esc(p.section||'—')}</td>
           <td><span class="pill" style="background:var(--${L.c}bg);border-color:transparent;color:var(--${L.c})">${L.t}</span></td>
           <td>${right}</td>
           <td class="hide-s dim">${t?esc((t.type||t.code||'').slice(0,34))+(t.date?' · '+fdate(t.date):''):'—'}</td></tr>`}).join('')}</tbody></table></div>`;
+  wireVQ();
 };
 
 /* ── Ανέλιξη χρονιάς ── */
@@ -1257,7 +1450,8 @@ V.medical=()=>{
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap"><span class="pill">${people.length} άτομα</span>
         <span class="pill" style="${nMissing?'background:var(--warnbg);border-color:transparent;color:var(--warn)':''}">${nMissing} χωρίς δήλωση</span>
         <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση φακέλου</button></div></div>
-    <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th>Κατάσταση</th><th class="hide-s">Σημάνσεις</th><th class="hide-s">Έκτακτη ανάγκη</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    ${listBar('',true)}<div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th>Κατάσταση</th><th class="hide-s">Σημάνσεις</th><th class="hide-s">Έκτακτη ανάγκη</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wireVQ();
   document.querySelectorAll('[data-med]').forEach(b=>b.onclick=()=>medForm(b.dataset.med));
 };
 function medForm(id){
@@ -1373,12 +1567,13 @@ V.events=()=>{
         <select id="evS" style="max-width:140px"><option value="">Όλο το Σύστημα</option>${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(s=>`<option>${s}</option>`).join('')}</select>
         <input id="evP" placeholder="Τόπος" style="max-width:180px">
         <button class="btn p sm" id="evSave">Δημιουργία</button></div></div>
-    ${evs.length?`<div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Δράση</th><th class="hide-s">Τύπος</th><th class="hide-s">Τμήμα</th><th>Συμμετοχές</th><th></th></tr></thead><tbody>${
+    ${evs.length?listBar('',false)+`<div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Δράση</th><th class="hide-s">Τύπος</th><th class="hide-s">Τμήμα</th><th>Συμμετοχές</th><th></th></tr></thead><tbody>${
       evs.map(e=>`<tr><td>${fdate(e.event_date)}${e.end_date&&e.end_date!==e.event_date?`<span class="dim"> → ${fshort(e.end_date)}</span>`:''}</td>
         <td><b>${esc(e.title||'—')}</b>${e.place?`<div class="dim" style="font-size:12px">${esc(e.place)}</div>`:''}</td>
         <td class="hide-s dim">${esc(e.type||'—')}</td><td class="hide-s">${e.section?sdot(e.section)+' '+esc(e.section):'<span class="dim">Σύστημα</span>'}</td>
         <td><b>${cnt(e.id)}</b></td><td><button class="btn sm" data-ev="${e.id}">Συμμετοχές</button></td></tr>`).join('')}</tbody></table></div>`
       :`<div class="uc"><div class="ico">${ic('flag',26)}</div><h3>Καμία δράση φέτος</h3><p>Δημιούργησε την πρώτη — μετά δηλώνεις συμμετοχές με ένα tap.</p></div>`}`;
+  wireVQ();
   $('evNew').onclick=()=>{const b=$('evBox');b.style.display=b.style.display==='flex'?'none':'flex';$('evD').value=new Date().toISOString().slice(0,10)};
   $('evSave').onclick=async()=>{
     const t=$('evT').value.trim(), d=$('evD').value; if(!t||!d)return toast('Θέλει τίτλο και ημερομηνία');
@@ -1542,7 +1737,7 @@ V.dash=()=>{
   <div class="sec"><h3>Χρειάζονται εσένα</h3><span class="n">σήμερα</span></div>
   <div class="tiles">
     <button class="tile ${risk.length?'bad':''}" data-go="attend" data-tab="risk"><div class="k">${ic('alert',14)}Κίνδυνος διαρροής</div><div class="v">${risk.length}</div><div class="s">${risk.length?'παιδιά που λείπουν συστηματικά':'κανένα — όλα καλά'}</div></button>
-    <button class="tile ${(expd||nocert)?'bad':(soon?'warn':'')}" data-go="certs"><div class="k">${ic('shield',14)}Σεξόχαρτα</div><div class="v">${expd+soon}</div><div class="s">${expd?expd+' ληγμένα · ':''}${soon} λήγουν σε 90 μέρες</div></button>
+    <button class="tile ${(expd||nocert)?'bad':(soon?'warn':'')}" data-go="certs"><div class="k">${ic('shield',14)}<span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Πιστοποιητικά Ν.91(Ι)</span></div><div class="v">${expd+soon}</div><div class="s">${expd?expd+' ληγμένα · ':''}${soon} λήγουν σε 90 μέρες</div></button>
     <button class="tile ${nocert?'warn':''}" data-go="certs"><div class="k">${ic('alert',14)}Χωρίς πιστοποιητικό</div><div class="v">${nocert}</div><div class="s">βαθμοφόροι χωρίς καταχώρηση</div></button>
     <button class="tile act" data-go="guardians"><div class="k">${ic('msg',14)}Επικοινωνία γονέων</div><div class="v">${D.gu.length}</div><div class="s">έτοιμες λίστες ανά τμήμα</div></button>
   </div>
@@ -1594,22 +1789,27 @@ V.members=()=>{
     $('cnt').textContent=r.length+' μέλη';
     $('tb').innerHTML=r.map(p=>{const y=myOf(p)||{},gu=gOf(p.registry_no)||{};
       const pn=gu.father_name||gu.mother_name||'', ph=gu.father_mobile||gu.mother_mobile||'';
-      return `<tr><td>${sdot(secOf(p))}</td><td>${pnm(p)}</td><td class="hide-s">${esc(y.group_name||'—')}</td><td class="hide-s dim">${esc(p.registry_no||'—')}</td><td class="hide-s dim">${esc(y.grade||'—')}</td>
+      return `<tr data-sec="${esc(secOf(p)||'')}" data-grp="${esc(y.group_name||'')}"><td>${sdot(secOf(p))}</td><td>${pnm(p)}</td><td class="hide-s">${esc(y.group_name||'—')}</td><td class="hide-s dim">${esc(p.registry_no||'—')}</td><td class="hide-s dim">${esc(y.grade||'—')}</td>
         <td>${pn?esc(pn)+(ph?` <a href="tel:${esc(ph)}" class="dim">${fphone(ph)}</a>`:''):'<span class="dim">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="6" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα</td></tr>';
   };
   ['fq','fsec','fgrp'].forEach(id=>{$(id).addEventListener('input',draw);$(id).addEventListener('change',draw)});
-  draw();
+  draw(); makeSortable();
 };
 
 V.leaders=()=>{
   const list=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός'&&inScope(p)).sort(sortByName);
-  $('view').innerHTML=`<div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th class="hide-s">Ιδιότητα</th><th class="hide-s">Τηλέφωνο</th><th>Σεξόχαρτο</th></tr></thead><tbody>${
+  $('view').innerHTML=listBar(chipsHTML([
+      {k:'sec',opts:[{v:'Αγέλη',l:'Αγέλη'},{v:'Ομάδα',l:'Ομάδα'},{v:'Κοινότητα',l:'Κοινότητα'},{v:'Δίκτυο',l:'Δίκτυο'},{v:'Σύστημα',l:'Σύστημα'}]},
+      {k:'cert',opts:[{v:'ok',l:'Ν.91(Ι) σε ισχύ'},{v:'warn',l:'λήγει'},{v:'bad',l:'έληξε'},{v:'none',l:'χωρίς'}]}
+    ]),true)+`<div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th class="hide-s">Ιδιότητα</th><th class="hide-s">Τηλέφωνο</th><th><span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Ν.91(Ι)</span></th></tr></thead><tbody>${
     list.map(p=>{const c=D.cert.find(x=>x.person_id===p.id);const d=c&&c.sexoxarto_expiry?Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5):null;
       const st=d===null?'<span class="pill" style="border-color:var(--line2)">—</span>':d<0?`<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Έληξε</span>`:d<=90?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">${d} μέρες</span>`:`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Σε ισχύ</span>`;
-      return `<tr><td>${p.is_commissioner?'<span class="dot" style="background:var(--diktyo)" title="Έφορος"></span>':sdot(p.section)}</td>
+      const cst=d===null?'none':d<0?'bad':d<=90?'warn':'ok';
+      return `<tr data-sec="${esc(p.section||'')}" data-cert="${cst}"><td>${p.is_commissioner?'<span class="dot" style="background:var(--diktyo)" title="Έφορος"></span>':sdot(p.section)}</td>
         <td>${pnm(p)}${p.is_commissioner?' <span class="pill">Έφορος</span>':''}${p.is_network?' <span class="pill">Δίκτυο</span>':''}</td>
         <td class="hide-s">${esc(p.section||'—')}</td><td class="hide-s dim">${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||'—'))}</td>
         <td class="hide-s">${p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'<span class="dim">—</span>'}</td><td>${st}</td></tr>`}).join('')}</tbody></table></div>`;
+  wireVQ();
 };
 
 V.guardians=()=>{
@@ -1695,8 +1895,9 @@ V.certs=()=>{
       :`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Σε ισχύ ως ${fdate(c.exp)}</span>`;
     return `<tr><td>${c.p.is_commissioner?'<span class="dot" style="background:var(--diktyo)"></span>':sdot(c.p.section)}</td><td>${pnm(c.p)}</td><td class="hide-s dim">${esc(c.p.section||'—')}</td><td>${st}</td><td class="hide-s">${c.p.phone?`<a href="tel:${esc(c.p.phone)}">${fphone(c.p.phone)}</a>`:'<span class="dim">—</span>'}</td></tr>`};
   const tbl=(t,arr)=>arr.length?`<div class="sec"><h3>${t}</h3><span class="n">${arr.length}</span></div><div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th>Κατάσταση</th><th class="hide-s">Τηλέφωνο</th></tr></thead><tbody>${arr.map(row).join('')}</tbody></table></div>`:'';
-  $('view').innerHTML=`<div class="card pad" style="margin-bottom:4px"><span class="muted">Πιστοποιητικό κατά σεξουαλικών αδικημάτων — ισχύς 3 έτη από την έκδοση. Χωρίς αυτό σε ισχύ δεν εκδίδεται εντολή διοίκησης.</span></div>
-    ${tbl('Ληγμένα',bad)}${tbl('Λήγουν σύντομα',soon)}${tbl('Χωρίς καταχώρηση',none)}${tbl('Σε ισχύ',ok)}`;
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:4px"><span class="muted"><b>Πιστοποιητικό κατά Σεξουαλικών Αδικημάτων</b> <span class="dim">(«Ν.91(Ι)»)</span><div style="margin-top:5px">Επίσημα: <i>Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014</i>. Εκδίδεται ατελώς. Ισχύς 3 έτη από την έκδοση — χωρίς αυτό σε ισχύ δεν εκδίδεται εντολή διοίκησης.</div></span></div>
+    ${listBar('',true)}${tbl('Ληγμένα',bad)}${tbl('Λήγουν σύντομα',soon)}${tbl('Χωρίς καταχώρηση',none)}${tbl('Σε ισχύ',ok)}`;
+  wireVQ();
 };
 
 V.org=()=>{
@@ -1743,18 +1944,18 @@ V.groups=()=>{
 
 V.warrants=()=>{
   const led=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').sort(sortByName);
-  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px"><span class="muted">Τρέχουσες ιδιότητες και αναθέσεις. Η ροή έκδοσης εντολών με εγκρίσεις έρχεται στη φάση 8.</span></div>
+  $('view').innerHTML=listBar('',true)+`<div class="card pad" style="margin-bottom:14px"><span class="muted">Τρέχουσες ιδιότητες και αναθέσεις. Η ροή έκδοσης εντολών με εγκρίσεις έρχεται στη φάση 8.</span></div>
   <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th>Ιδιότητα</th><th class="hide-s">Τμήμα</th><th class="hide-s">Έγινε βαθμοφόρος</th></tr></thead><tbody>${
     led.map(p=>{let sd={};try{sd=p.scout_dates||{}}catch(e){}
       return `<tr><td>${p.is_commissioner?'<span class="dot" style="background:var(--diktyo)"></span>':sdot(p.section)}</td><td>${pnm(p)}</td>
       <td>${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||'—'))}</td><td class="hide-s dim">${esc(p.section||'—')}</td>
-      <td class="hide-s dim">${esc(sd.LeaderDate||'—')}</td></tr>`}).join('')}</tbody></table></div>`;
+      <td class="hide-s dim">${esc(fgr(sd.LeaderDate)||'—')}</td></tr>`}).join('')}</tbody></table></div>`;
 };
 
 V.exports=()=>{
   const opts=[
     {id:'members',t:'Μέλη τμημάτων',d:'Ονοματεπώνυμο, Α.Μ., τμήμα, υποομάδα, τάξη, γονείς'},
-    {id:'leaders',t:'Βαθμοφόροι',d:'Ονοματεπώνυμο, ιδιότητα, τμήμα, επικοινωνία, σεξόχαρτο'},
+    {id:'leaders',t:'Βαθμοφόροι',d:'Ονοματεπώνυμο, ιδιότητα, τμήμα, επικοινωνία, Ν.91(Ι)'},
     {id:'guardians',t:'Γονείς & κηδεμόνες',d:'Παιδί, πατέρας, μητέρα, τηλέφωνα, email'},
     {id:'attend',t:'Παρουσίες',d:'Μία γραμμή ανά μέλος ανά συγκέντρωση'}
   ];
@@ -1771,7 +1972,7 @@ function dl(kind){
   if(kind==='members')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Υποομάδα','Τάξη','Πατέρας','Κιν.Πατέρα','Μητέρα','Κιν.Μητέρας']].concat(
     D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός').sort(sortByName).map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
       return [p.registry_no,p.last_name,p.first_name,secOf(p),y.group_name,y.grade,g.father_name,g.father_mobile,g.mother_name,g.mother_mobile]}));
-  if(kind==='leaders')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Ιδιότητα','Τηλέφωνο','Email','Λήξη σεξόχαρτου']].concat(
+  if(kind==='leaders')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Ιδιότητα','Τηλέφωνο','Email','Λήξη Ν.91(Ι)']].concat(
     D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').sort(sortByName).map(p=>{const c=D.cert.find(x=>x.person_id===p.id)||{};
       return [p.registry_no,p.last_name,p.first_name,p.section,p.appointment||p.category,p.phone,p.email,c.sexoxarto_expiry]}));
   if(kind==='guardians')rows=[['Α.Μ.παιδιού','Παιδί','Τμήμα','Πατέρας','Κιν.Πατέρα','Email πατέρα','Μητέρα','Κιν.Μητέρας','Email μητέρας']].concat(
@@ -1789,10 +1990,15 @@ const pal=$('pal');
 function openPal(){pal.classList.add('on');$('palq').value='';$('palq').focus();palDraw('')}
 function closePal(){pal.classList.remove('on')}
 $('palbtn').onclick=openPal;
+$('legbtn').onclick=showLegend;
 pal.onclick=e=>{if(e.target===pal)closePal()};
 document.addEventListener('keydown',e=>{
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();pal.classList.contains('on')?closePal():openPal()}
   if(e.key==='Escape')closePal();
+  const tag=(e.target.tagName||'').toLowerCase();
+  if(e.key==='/'&&tag!=='input'&&tag!=='textarea'&&tag!=='select'){
+    const i=$('vq')||$('fq'); if(i){e.preventDefault();i.focus();i.select()}}
+  if(e.key==='Escape'){const i=$('vq')||$('fq'); if(i&&document.activeElement===i){i.value='';i.dispatchEvent(new Event('input'))}}
 });
 $('palq').addEventListener('input',e=>palDraw(e.target.value));
 function palDraw(q){
