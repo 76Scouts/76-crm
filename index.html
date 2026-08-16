@@ -310,6 +310,11 @@ th.srt.desc:after{content:"↓";opacity:.9}
 #toTop.on{display:block}
 .cgrid{align-items:start}
 @media print{#toTop{display:none!important}.sec{position:static}}
+
+.cfls{display:flex;flex-wrap:wrap;gap:4px 10px}
+.cfl{display:flex;gap:5px;align-items:center;font-size:12px;color:var(--ink2);white-space:nowrap}
+.cfl input{width:auto;margin:0}
+.dsec.restr{background:var(--badbg);border-radius:10px}
 </style>
 </head>
 <body>
@@ -446,7 +451,7 @@ const NAV=[
    {id:'cal',t:'Ημερολόγιο',i:'cal',s:'live'}]},
  {g:'Ανάπτυξη',items:[
    {id:'progress',t:'Προσκοπική πρόοδος',i:'trend',s:'review',ph:3,d:'Υπό αναθεώρηση — η πρόοδος δεν είναι γραμμική.',w:['Το μοντέλο σταδίων χρειάζεται επανασχεδιασμό: παράλληλες διαδρομές, ειδικότητες εκτός σειράς, διαφορετικός ρυθμός ανά κλάδο','Τα δεδομένα (167 Αγέλη · 109 Ομάδα · 28 Κοινότητα) υπάρχουν ήδη','Ξαναχτίζεται μετά τη συζήτηση για το πραγματικό μοντέλο']},
-   {id:'badges',t:'Πτυχία & Δάφνες',i:'award',s:'soon',ph:3,d:'Απονομές, γραφικά και ιστορικό.',w:['Γραφικά πτυχίων ανά κλάδο','Ιστορικό απονομών με ημερομηνία και εισηγητή','Εκτυπώσιμα πιστοποιητικά']}]},
+   {id:'badges',t:'Πτυχία & Δάφνες',i:'award',s:'live'}]},
  {g:'Ετοιμότητα',items:[
    {id:'certs',t:'Πιστοποιητικά',i:'shield',s:'live'},
    {id:'medical',t:'Ιατρικά & έκτακτη ανάγκη',i:'shield',s:'live'},
@@ -459,7 +464,8 @@ const NAV=[
    {id:'handover',t:'Παραλαβή φακέλου',i:'check',s:'live'},
    {id:'rollover',t:'Μετάβαση χρονιάς',i:'trend',s:'live'},
    {id:'forms',t:'Θεσμικά έντυπα',i:'book',s:'live'},
-   {id:'templates',t:'Έντυπα & πρότυπα',i:'book',s:'live'}]},
+   {id:'templates',t:'Έντυπα & πρότυπα',i:'book',s:'live'},
+   {id:'access',t:'Ρόλοι & προσβάσεις',i:'shield',s:'live'}]},
  {g:'Διοίκηση',items:[
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'approvals',t:'Αιτήσεις & εγκρίσεις',i:'check',s:'live'},
@@ -474,7 +480,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-16 20:51'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-17 00:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -686,9 +692,11 @@ async function loadAll(){
     sb.from('form_templates').select('*').order('version',{ascending:false}),
     sb.from('consent_items').select('*'),
     sb.from('handovers').select('*').order('created_at',{ascending:false}).limit(500),
-    sb.from('subgroups').select('*').limit(500)
+    sb.from('subgroups').select('*').limit(500),
+    sb.from('care_links').select('*').limit(3000),
+    sb.from('profiles').select('*')
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles'];
   const _t0=Date.now();
   const TMO=12000;
   const guard=(pr,label)=>new Promise(res=>{
@@ -713,7 +721,7 @@ async function loadAll(){
   }
   LOADED=true;
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   ensurePhotos((D.bh||[]).map(x=>x.photo_path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
@@ -1560,6 +1568,139 @@ function voidReg(personId){
     if(r){r.voided_at=new Date().toISOString();r.voided_reason=why.trim()}
     saveCache(); toast('Ακυρώθηκε'); voidReg(personId); route(ROUTE);});
 }
+
+/* ══ ΔΕΣΜΟΙ ΦΡΟΝΤΙΔΑΣ — η καρτέλα του παιδιού και του γονέα ══ */
+const RELS=['Μητέρα','Πατέρας','Θετή μητέρα','Θετός πατέρας','Γιαγιά','Παππούς','Αδελφή','Αδελφός','Θεία','Θείος','Ανάδοχος','Κηδεμόνας','Άλλο'];
+const linksOf=id=>(D.cl||[]).filter(x=>x.member_id===id);
+const linkedKidsOf=id=>(D.cl||[]).filter(x=>x.carer_id===id);
+function careDrawer(memberId){
+  const p=D.bh.find(x=>x.id===memberId); if(!p)return;
+  const ls=linksOf(memberId).map(l=>({l,c:D.bh.find(b=>b.id===l.carer_id)})).filter(x=>x.c)
+    .sort((a,b)=>(a.l.call_order||99)-(b.l.call_order||99));
+  const flag=(l,k,t)=>`<label class="cfl"><input type="checkbox" data-f="${l.id}|${k}"${l[k]?' checked':''}>${t}</label>`;
+  $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1">
+      <div style="font-size:17px;font-weight:600">${esc(nm(p))}</div>
+      <div class="dim" style="font-size:12.5px">Ποιος φροντίζει, ποιος καλείται, ποιος αποφασίζει</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    ${ls.map(({l,c})=>`<div class="dsec${l.restricted?' restr':''}">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        ${avatar(c,30)}<div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px"><span class="pn" data-p="${c.id}">${esc(nm(c))}</span></div>
+          <div class="dim" style="font-size:12px">${esc(c.phone?fphone(c.phone):'')}${c.email?' · '+esc(c.email):''}</div></div>
+        ${l.restricted?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">απαγορευμένος</span>':''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <select data-r="${l.id}" style="max-width:140px;font-size:12.5px">${RELS.map(r=>`<option${r===l.relation?' selected':''}>${r}</option>`).join('')}</select>
+        <select data-o="${l.id}" style="max-width:120px;font-size:12.5px">
+          <option value=""${l.call_order?'':' selected'}>χωρίς σειρά</option>
+          ${[1,2,3,4].map(n=>`<option value="${n}"${l.call_order===n?' selected':''}>${n}ος στη σειρά</option>`).join('')}</select>
+      </div>
+      <div class="cfls">
+        ${flag(l,'lives_with','μένει μαζί')}${flag(l,'has_custody','γονική μέριμνα')}
+        ${flag(l,'can_collect','παραλαβή')}${flag(l,'can_consent_medical','ιατρική συναίνεση')}
+        ${flag(l,'receives_comms','ανακοινώσεις')}${flag(l,'is_payer','πληρώνει')}
+        ${flag(l,'restricted','⚠ απαγόρευση')}
+      </div>
+      <input data-n="${l.id}" value="${esc(l.internal_note||'')}" placeholder="Εσωτερικό σημείωμα — μόνο Α.Σ." style="margin-top:8px;font-size:12.5px">
+      <button class="btn gh sm" data-del="${l.id}" style="margin-top:7px">Αφαίρεση δεσμού</button>
+    </div>`).join('')||'<div class="dsec dim" style="font-size:13px">Κανένας δεσμός</div>'}
+    <div class="dsec" style="border:0">
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:7px">Προσθήκη φροντιστή</div>
+      <input id="caQ" placeholder="Γράψε όνομα…" style="font-size:13px">
+      <div id="caRes" style="max-height:170px;overflow:auto;margin-top:6px"></div></div>`;
+  drw.classList.add('on');
+  const save=async(id,v)=>{const {error}=await sb.from('care_links').update(v).eq('id',id);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const l=(D.cl||[]).find(x=>x.id===id); if(l)Object.assign(l,v); saveCache()};
+  document.querySelectorAll('[data-f]').forEach(c=>c.onchange=()=>{
+    const [id,k]=c.dataset.f.split('|'); save(id,{[k]:c.checked});
+    if(k==='restricted'&&c.checked)save(id,{can_collect:false,receives_comms:false});
+    setTimeout(()=>careDrawer(memberId),120)});
+  document.querySelectorAll('[data-r]').forEach(s=>s.onchange=()=>save(s.dataset.r,{relation:s.value}));
+  document.querySelectorAll('[data-o]').forEach(s=>s.onchange=()=>save(s.dataset.o,{call_order:s.value?+s.value:null}));
+  document.querySelectorAll('[data-n]').forEach(i=>i.onchange=()=>save(i.dataset.n,{internal_note:i.value.trim()||null}));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Αφαίρεση του δεσμού;'))return;
+    await sb.from('care_links').delete().eq('id',b.dataset.del);
+    D.cl=(D.cl||[]).filter(x=>x.id!==b.dataset.del); saveCache(); careDrawer(memberId)});
+  $('caQ').oninput=()=>{const q=nameKey($('caQ').value); if(q.length<2)return $('caRes').innerHTML='';
+    const have=new Set(linksOf(memberId).map(x=>x.carer_id));
+    const hits=D.bh.filter(b=>!have.has(b.id)&&b.id!==memberId&&nameKey(nm(b)).includes(q)).slice(0,12);
+    $('caRes').innerHTML=hits.map(b=>`<div class="kv" style="cursor:pointer" data-add="${b.id}">
+      <b style="flex:1">${esc(nm(b))}</b><span class="dim" style="font-size:11.5px">${esc(b.kind||'')}${b.phone?' · '+fphone(b.phone):''}</span></div>`).join('')
+      ||'<div class="dim" style="font-size:12.5px">Κανένα αποτέλεσμα</div>';
+    document.querySelectorAll('[data-add]').forEach(d=>d.onclick=async()=>{
+      const {data,error}=await sb.from('care_links').insert({member_id:memberId,carer_id:d.dataset.add,relation:'Κηδεμόνας'}).select().single();
+      if(error)return toast('Σφάλμα: '+error.message);
+      (D.cl=D.cl||[]).push(data); saveCache(); careDrawer(memberId)})};
+}
+
+/* ══ ΡΟΛΟΙ & ΠΡΟΣΒΑΣΕΙΣ ══ */
+const ACCROLES=[['admin','Α.Σ. — τα βλέπει όλα'],['section_head','Αρχηγός τμήματος'],['section_assistant','Βαθμοφόρος'],
+  ['commissioner','Έφορος — όλα τα τμήματα, χωρίς ευαίσθητα'],['member','Μέλος — μόνο ο εαυτός του'],
+  ['guardian','Γονέας — μόνο τα παιδιά του'],['viewer','Χωρίς πρόσβαση']];
+V.access=()=>{
+  const rows=(D.pr||[]).map(pr=>({pr,p:D.bh.find(b=>b.id===pr.person_id)}));
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>Ρόλοι & προσβάσεις</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Ποιος βλέπει τι. Η εμβέλεια <b>επιβάλλεται από τη βάση</b> — δεν είναι απλώς κρυμμένα κουμπιά.</div></div>
+    <div class="card" style="overflow:auto"><table><thead><tr><th>Πρόσωπο</th><th>Ρόλος</th><th class="hide-s">Τμήματα</th></tr></thead><tbody>
+      ${rows.map(({pr,p})=>`<tr><td>${p?pnm(p):'<span class="dim">—</span>'}</td>
+        <td><select data-ar="${pr.id}" style="max-width:230px;font-size:12.5px">
+          ${ACCROLES.map(([v,l])=>`<option value="${v}"${pr.access_role===v?' selected':''}>${l}</option>`).join('')}</select></td>
+        <td class="hide-s dim" style="font-size:12px">${(pr.sections||[]).join(' · ')||(p&&p.section?esc(p.section):'—')}</td></tr>`).join('')}
+      </tbody></table></div>
+    <div class="sec"><h3>Τι βλέπει ο καθένας</h3></div>
+    <div class="card pad"><table style="width:100%;font-size:12.5px"><thead><tr>
+      <th style="text-align:left">Ρόλος</th><th>Πρόσωπα</th><th>Γονείς</th><th>Ιατρικά</th><th>Κηδεμονικά</th></tr></thead><tbody>
+      ${[['Α.Σ.','όλα','όλοι','όλα','ναι'],['Αρχηγός τμήματος','το τμήμα','του τμήματος','του τμήματος','όχι'],
+        ['Βαθμοφόρος','το τμήμα','του τμήματος','του τμήματος','όχι'],['Έφορος','όλα τα τμήματα','όλοι','όλα','όχι'],
+        ['Μέλος','ο εαυτός','οι γονείς του','δικά του','όχι'],['Γονέας','τα παιδιά του','ο εαυτός','των παιδιών','όχι']]
+        .map(r=>`<tr><td style="padding:5px 0"><b>${r[0]}</b></td>${r.slice(1).map(c=>`<td style="text-align:center;color:${c==='όχι'?'var(--bad)':'var(--ink2)'}">${c}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div>`;
+  document.querySelectorAll('[data-ar]').forEach(s=>s.onchange=async()=>{
+    const {error}=await sb.from('profiles').update({access_role:s.value}).eq('id',s.dataset.ar);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const pr=(D.pr||[]).find(x=>x.id===s.dataset.ar); if(pr)pr.access_role=s.value;
+    saveCache(); toast('Αποθηκεύτηκε')});
+};
+
+/* ══ ΠΤΥΧΙΑ & ΔΑΦΝΕΣ ══ */
+V.badges=()=>{
+  const hs=(D.ho||[]).map(h=>({h,p:D.bh.find(b=>b.id===h.person_id)})).filter(x=>x.p)
+    .sort((a,b)=>(b.h.award_date||'').localeCompare(a.h.award_date||''));
+  const byT={}; hs.forEach(x=>{const t=x.h.title||'—';(byT[t]=byT[t]||[]).push(x)});
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>Πτυχία & Δάφνες</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Απονομές και διακρίσεις — ό,τι έχει καταγραφεί.</div>
+      <div style="margin-top:11px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+        <input id="hT" placeholder="Τίτλος (π.χ. Δάφνη)" style="max-width:180px">
+        <input id="hP" placeholder="Ποιος…" style="max-width:160px">
+        <input id="hD" type="date" style="max-width:150px">
+        <button class="btn p sm" id="hAdd">+ Απονομή</button>
+        <span class="sp"></span><button class="btn sm" id="hExp">${ic('down',14)} Εξαγωγή</button></div>
+      <div id="hSug" class="dim" style="font-size:12.5px;margin-top:7px"></div></div>
+    ${Object.entries(byT).sort((a,b)=>b[1].length-a[1].length).map(([t,l])=>`
+      <div class="sec"><h3>${esc(t)}</h3><span class="n">${l.length}</span></div>
+      <div class="card pad" style="display:flex;flex-wrap:wrap;gap:6px">
+        ${l.map(x=>`<span class="pill">${sdot(secOf(x.p))}<span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span>
+          <span class="dim">${x.h.award_date?fshort(x.h.award_date):''}</span></span>`).join('')}</div>`).join('')
+      ||'<div class="uc"><h3>Καμία απονομή ακόμη</h3><p>Πρόσθεσε την πρώτη από πάνω.</p></div>'}`;
+  let pick=null;
+  $('hP').oninput=()=>{const q=nameKey($('hP').value); if(q.length<2)return $('hSug').textContent='';
+    const hits=D.bh.filter(b=>!isPar(b)&&nameKey(nm(b)).includes(q)).slice(0,6);
+    $('hSug').innerHTML=hits.map(b=>`<button class="btn gh sm" data-hp="${b.id}" style="margin:2px 3px 0 0">${esc(nm(b))}</button>`).join('');
+    document.querySelectorAll('[data-hp]').forEach(b=>b.onclick=()=>{pick=b.dataset.hp;$('hP').value=b.textContent;$('hSug').textContent='✓ '+b.textContent})};
+  $('hAdd').onclick=async()=>{
+    if(!pick)return toast('Διάλεξε πρόσωπο από τις προτάσεις');
+    const t=$('hT').value.trim(); if(!t)return toast('Θέλει τίτλο');
+    const {data,error}=await sb.from('honors').insert({person_id:pick,title:t,award_date:$('hD').value||null,source:'e76'}).select().single();
+    if(error)return toast('Σφάλμα: '+error.message);
+    (D.ho=D.ho||[]).push(data); saveCache(); pick=null;
+    $('hT').value='';$('hP').value='';$('hSug').textContent=''; toast('Καταχωρήθηκε'); V.badges();};
+  $('hExp').onclick=()=>exportRows([['Τίτλος','Πρόσωπο','Α.Μ.','Τμήμα','Ημερομηνία']]
+    .concat(hs.map(x=>[x.h.title,nm(x.p),x.p.registry_no||'',secOf(x.p)||'',x.h.award_date||''])),
+    '76-ptyxia-dafnes','Πτυχία & Δάφνες');
+};
 
 /* ══ ΕΞΑΓΩΓΗ ΣΕ ΤΡΕΙΣ ΜΟΡΦΕΣ ══ */
 function exportRows(rows,name,title){
@@ -3911,7 +4052,7 @@ V.guardians=()=>{
         <button class="btn p sm" id="doMail">${ic('msg',14)} Άνοιγμα email</button>
         <button class="btn sm" id="xExp">${ic('down',14)} Εξαγωγή επαφών</button>
       </div><div class="dim" style="font-size:12.5px;margin-top:9px" id="ginfo"></div></div>
-    <div class="card" style="overflow:auto"><table><thead><tr><th>Παιδί</th><th class="hide-s">Υποομάδα</th><th>Πατέρας</th><th>Μητέρα</th></tr></thead><tbody id="gtb"></tbody></table></div>`;
+    <div class="card" style="overflow:auto"><table><thead><tr><th>Παιδί</th><th class="hide-s">Υποομάδα</th><th>Πατέρας</th><th>Μητέρα</th><th></th></tr></thead><tbody id="gtb"></tbody></table></div>`;
   const draw=()=>{
     const s=$('gsec').value,g=$('ggrp').value;
     const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===s&&(!g||(myOf(p)||{}).group_name===g)).sort(sortByName);
@@ -3923,8 +4064,10 @@ V.guardians=()=>{
       [gu.father_mobile,gu.mother_mobile].forEach(t=>{if(t&&!tels.includes(t))tels.push(t)});
       const cell=(n,m,t)=>n?`<div>${esc(n)}</div><div class="dim" style="font-size:12px">${t?`<a href="tel:${esc(t)}">${fphone(t)}</a>`:''}${m?' · '+esc(m):''}</div>`:'<span class="dim">—</span>';
       return `<tr><td>${pnm(p)}</td><td class="hide-s dim">${esc((myOf(p)||{}).group_name||'—')}</td>
-        <td>${cell(gu.father_name,gu.father_email,gu.father_mobile)}</td><td>${cell(gu.mother_name,gu.mother_email,gu.mother_mobile)}</td></tr>`}).join('')||'<tr><td colspan="4" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα</td></tr>';
+        <td>${cell(gu.father_name,gu.father_email,gu.father_mobile)}</td><td>${cell(gu.mother_name,gu.mother_email,gu.mother_mobile)}</td>
+        <td><button class="btn gh sm" data-care="${p.id}" title="Δεσμοί φροντίδας">⋯</button></td></tr>`}).join('')||'<tr><td colspan="5" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα</td></tr>';
     $('ginfo').textContent=`${kids.length} παιδιά · ${mails.length} email · ${tels.length} κινητά`;
+    document.querySelectorAll('[data-care]').forEach(b=>b.onclick=()=>careDrawer(b.dataset.care));
     $('cpMail').onclick=()=>cp(mails.join('; '),'email');
     $('cpTel').onclick=()=>cp(tels.join(', '),'τηλέφωνα');
     $('doMail').onclick=()=>{location.href='mailto:?bcc='+encodeURIComponent(mails.join(','))};
