@@ -276,6 +276,40 @@ th.srt.desc:after{content:"↓";opacity:.9}
 .edb{width:30px;height:26px;border-radius:7px;border:1px solid var(--line);background:transparent;color:var(--ink3);cursor:pointer;font-size:13px}
 .edb.on{background:var(--okbg);border-color:transparent;color:var(--ok);font-weight:700}
 .edb:hover{border-color:var(--ink3)}
+
+/* ── οργανόγραμμα ── */
+.otree{padding:10px 12px}
+.onode{display:flex;gap:8px;align-items:center;padding:8px 8px;border-radius:9px;cursor:pointer;user-select:none;
+  border-left:3px solid var(--oc);margin:2px 0;background:var(--bg2,transparent)}
+.onode:hover{background:var(--line)}
+.ochev{width:14px;color:var(--ink3);font-size:11px}
+.otitle{font-weight:600;font-size:13.5px}
+.osub{font-size:11.5px;color:var(--ink3);margin-left:auto;white-space:nowrap}
+.okids{margin-left:14px;padding-left:10px;border-left:1px dashed var(--line)}
+.obranch{margin:2px 0}
+.orow{display:flex;gap:9px;align-items:center;padding:5px 8px;border-radius:8px;font-size:13px}
+.orow:hover{background:var(--line)}
+.orow.dimmed{opacity:.22}
+.orow.virt .on{font-style:normal}
+.orow .on{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orow .osn{font-style:normal;font-size:10.5px;color:var(--ink3);margin-left:6px;letter-spacing:.03em}
+.orow .or{font-size:11.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oc2{flex:0 0 105px;font-size:12px}.oc3{flex:0 0 190px;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.oc4{flex:0 0 34px;display:flex;gap:3px;justify-content:flex-end}
+.cdot,.wdot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.cdot.ok{background:var(--ok)}.cdot.soon{background:var(--warn)}.cdot.expired{background:var(--bad)}.cdot.none{background:var(--line);border:1px solid var(--ink3)}
+.wdot.entoli{background:#22c55e}.wdot.anathesi{background:#eab308}.wdot.expired{background:#ef4444}
+@media print{.otree{padding:0}.onode{break-inside:avoid}.orow{font-size:10.5px;padding:3px 6px}.oc3{flex:0 0 150px}}
+@media(max-width:760px){.oc2,.oc3{display:none}}
+
+/* ── πυκνές σελίδες ── */
+.sec{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:10px}
+#toTop{position:fixed;right:16px;bottom:16px;z-index:60;width:40px;height:40px;border-radius:50%;
+  border:1px solid var(--line);background:var(--card);color:var(--ink2);cursor:pointer;display:none;
+  box-shadow:0 4px 14px rgba(15,23,42,.14);font-size:16px}
+#toTop.on{display:block}
+.cgrid{align-items:start}
+@media print{#toTop{display:none!important}.sec{position:static}}
 </style>
 </head>
 <body>
@@ -420,6 +454,9 @@ const NAV=[
    {id:'enroll',t:'Φάκελος εγγραφής',i:'book',s:'live'},
    {id:'mails',t:'Λείπουν email',i:'mail',s:'live'}]},
  {g:'Χρονιά',items:[
+   {id:'year',t:'Η χρονιά που έρχεται',i:'trend',s:'live'},
+   {id:'intake',t:'Νέα μέλη',i:'user',s:'live'},
+   {id:'handover',t:'Παραλαβή φακέλου',i:'check',s:'live'},
    {id:'rollover',t:'Μετάβαση χρονιάς',i:'trend',s:'live'},
    {id:'forms',t:'Θεσμικά έντυπα',i:'book',s:'live'},
    {id:'templates',t:'Έντυπα & πρότυπα',i:'book',s:'live'}]},
@@ -437,7 +474,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-16 19:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-16 20:51'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -620,7 +657,7 @@ async function loadAll(){
     sb.from('sessions').select('id,session_date,section,scout_year,status,title').order('session_date').limit(500),
     sb.from('attendance').select('session_id,person_id,status').limit(20000),
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
-    sb.from('guardians').select('registry_no,father_name,father_mobile,father_email,mother_name,mother_mobile,mother_email').limit(2000),
+    sb.from('guardians').select('*').limit(2000),
     sb.from('sensitive').select('person_id,dob').limit(2000),
     sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights').order('event_date').limit(1000),
     sb.from('participations').select('id,person_id,event_id,status,role,is_staff').limit(20000),
@@ -647,9 +684,11 @@ async function loadAll(){
     sb.from('doc_requirements').select('*'),
     sb.from('enrollment_docs').select('*').limit(6000),
     sb.from('form_templates').select('*').order('version',{ascending:false}),
-    sb.from('consent_items').select('*')
+    sb.from('consent_items').select('*'),
+    sb.from('handovers').select('*').order('created_at',{ascending:false}).limit(500),
+    sb.from('subgroups').select('*').limit(500)
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups'];
   const _t0=Date.now();
   const TMO=12000;
   const guard=(pr,label)=>new Promise(res=>{
@@ -674,13 +713,15 @@ async function loadAll(){
   }
   LOADED=true;
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   ensurePhotos((D.bh||[]).map(x=>x.photo_path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
-  const yrs=[...new Set(D.my.map(x=>x.scout_year).filter(Boolean))].sort().reverse();
-  if(yrs.length&&!yrs.includes(YEAR))YEAR=yrs[0];
-  $('yr').innerHTML=yrs.map(y=>`<option${y===YEAR?' selected':''}>${y}</option>`).join('')||`<option>${YEAR}</option>`;
+  const yrs=[...new Set([...D.my.map(x=>x.scout_year),...(D.sh||[]).map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
+  const nx=nextYear(yrs[0]||YEAR); if(nx&&!yrs.includes(nx))yrs.unshift(nx);   // η επόμενη πάντα επιλέξιμη
+  if(yrs.length&&!yrs.includes(YEAR))YEAR=yrs.find(y=>D.my.some(x=>x.scout_year===y))||yrs[0];
+  const emptyY=y=>!D.my.some(x=>x.scout_year===y);
+  $('yr').innerHTML=yrs.map(y=>`<option value="${y}"${y===YEAR?' selected':''}>${y}${emptyY(y)?' — κενή':''}</option>`).join('')||`<option>${YEAR}</option>`;
   $('yr').onchange=e=>{YEAR=e.target.value;route(ROUTE)};
 }
 
@@ -751,7 +792,7 @@ function inScope(p){const s=scopeSec(); if(!s)return true; return secOf(p)===s||
 
 /* ══ NAV ══ */
 function renderNav(){
-  const cnt={members:D.bh.filter(p=>(p.kind||'')==='Μέλος').length,leaders:D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος').length,guardians:D.gu.length,sessions:D.ss.length};
+  const cnt={members:D.bh.filter(p=>(p.kind||'')==='Μέλος').length,leaders:D.bh.filter(p=>isLed(p)).length,guardians:D.gu.length,sessions:D.ss.length};
   const K=PA?PA.k:'leader';
   const allow=id=>K==='leader'?!NAV_MEMBER.includes(id)&&!NAV_PARENT.includes(id)
     :K==='member'?NAV_MEMBER.includes(id)
@@ -783,7 +824,7 @@ function uc(m){
 }
 
 /* ══ helpers ══ */
-const myOfRef={fn:p=>D.my.find(x=>x.person_id===p.id&&x.scout_year===YEAR)}; const myOf=p=>myOfRef.fn(p);
+const myOfRef={fn:p=>D.my.find(x=>x.person_id===p.id&&x.scout_year===YEAR&&!x.voided_at)}; const myOf=p=>myOfRef.fn(p);
 const inYear=p=>!!myOf(p);
 const secOf=p=>(myOf(p)||{}).section||p.section;
 const nm=p=>p.first_name+' '+p.last_name;
@@ -818,7 +859,7 @@ function riskList(){
 /* ══ CERTS ══ */
 function certList(){
   const today=new Date(); const out=[];
-  D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').forEach(p=>{
+  D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').forEach(p=>{
     const c=D.cert.find(x=>x.person_id===p.id);
     const exp=c&&c.sexoxarto_expiry?new Date(c.sexoxarto_expiry):null;
     const days=exp?Math.round((exp-today)/864e5):null;
@@ -831,6 +872,10 @@ function certList(){
 const drw=$('drw');
 drw.querySelector('.bg').onclick=()=>drw.classList.remove('on');
 document.addEventListener('keydown',e=>{if(e.key==='Escape')drw.classList.remove('on')});
+(()=>{const b=document.getElementById('toTop'); if(!b)return;
+  const sc=()=>b.classList.toggle('on',window.scrollY>500);
+  window.addEventListener('scroll',sc,{passive:true});
+  b.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});})();
 document.addEventListener('click',e=>{const t=e.target.closest('[data-p]');if(t){e.preventDefault();openProfile(t.dataset.p)}});
 async function openProfile(id){
   const p=D.bh.find(x=>x.id===id); if(!p)return;
@@ -960,6 +1005,9 @@ function histHTML(p){
   return out;
 }
 function agey(d){if(!d)return 0;const b=new Date(d),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a}
+const isPar=p=>(p.kind||'')==='Γονέας';
+const isLed=p=>!isPar(p)&&isLed(p);
+const isMem=p=>(p.kind||'')==='Μέλος';
 const pnm=p=>`<b class="pn" data-p="${p.id}">${esc(nm(p))}</b>`;
 
 
@@ -1396,14 +1444,425 @@ function loadDraft(){try{DRAFT=JSON.parse(localStorage.getItem(draftKey())||'{}'
 function saveDraft(){localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}
 const initials=p=>((p.first_name||' ')[0]+(p.last_name||' ')[0]).toUpperCase();
 
+
+/* ══ ΝΕΟ ΜΕΛΟΣ — το Α.Μ. έρχεται τελευταίο ══ */
+let INSEC='Αγέλη';
+V.intake=()=>{
+  const wait=D.bh.filter(p=>isMem(p)&&p.status==='Αναμονή').sort(sortByName);
+  const noAM=D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&!p.registry_no).sort(sortByName);
+  const row=(p,extra)=>{const g=gOf(p.registry_no)||{}, y=myOf(p)||{};
+    return `<tr><td>${pnm(p)}</td><td class="hide-s dim">${esc(secOf(p)||'')}</td>
+      <td class="hide-s dim">${esc(y.grade||'')}</td>
+      <td class="dim" style="font-size:12px">${esc([g.father_name,g.mother_name].filter(Boolean).join(' · ')||'—')}</td>
+      <td style="white-space:nowrap">${extra(p)}</td></tr>`};
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>Νέα μέλη</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Το Α.Μ. το εκδίδει το Σ.Π.Κ. <b>αφού</b> σταλεί η εγγραφή. Μέχρι τότε το παιδί υπάρχει εδώ — έρχεται στις συγκεντρώσεις, μπαίνει σε παρουσίες, αλλά δεν είναι ακόμη εγγεγραμμένο.</div>
+      <div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="inSec" style="max-width:130px">${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>`<option${s===INSEC?' selected':''}>${s}</option>`).join('')}</select>
+        <input id="inFn" placeholder="Όνομα" style="max-width:130px">
+        <input id="inLn" placeholder="Επώνυμο" style="max-width:150px">
+        <select id="inGr" style="max-width:110px"><option value="">Τάξη…</option>${GRADES.map(g=>`<option>${g}</option>`).join('')}</select>
+        <button class="btn p sm" id="inAdd">+ Στη λίστα αναμονής</button></div></div>
+
+    <div class="sec"><h3>Λίστα αναμονής</h3><span class="n">${wait.length}</span></div>
+    <div class="card" style="overflow:auto"><table><thead><tr><th>Παιδί</th><th class="hide-s">Τμήμα</th><th class="hide-s">Τάξη</th><th>Γονείς</th><th></th></tr></thead>
+      <tbody>${wait.map(p=>row(p,x=>`<button class="btn sm p" data-act="${x.id}">Ενεργοποίηση</button>`)).join('')
+        ||'<tr><td colspan="5" class="dim" style="padding:20px;text-align:center">Κανείς σε αναμονή</td></tr>'}</tbody></table></div>
+
+    <div class="sec"><h3>Ενεργά χωρίς Α.Μ.</h3><span class="n">${noAM.length}</span></div>
+    <div class="card" style="overflow:auto"><table><thead><tr><th>Παιδί</th><th class="hide-s">Τμήμα</th><th class="hide-s">Τάξη</th><th>Γονείς</th><th>Α.Μ.</th></tr></thead>
+      <tbody>${noAM.map(p=>row(p,x=>`<input data-am="${x.id}" placeholder="π.χ. 35240" style="max-width:110px;font-size:12.5px">`)).join('')
+        ||'<tr><td colspan="5" class="dim" style="padding:20px;text-align:center">Όλοι έχουν Α.Μ. 🎉</td></tr>'}</tbody></table></div>`;
+  $('inSec').onchange=e=>INSEC=e.target.value;
+  $('inAdd').onclick=async()=>{
+    const fn=$('inFn').value.trim(), ln=$('inLn').value.trim();
+    if(!fn||!ln)return toast('Θέλει όνομα και επώνυμο');
+    const rec={first_name:fn,last_name:ln,kind:'Μέλος',section:INSEC,status:'Αναμονή',
+      member_role:INSEC==='Αγέλη'?'Λυκόπουλο':INSEC==='Ομάδα'?'Πρόσκοπος':'Ανιχνευτής'};
+    const {data,error}=await sb.from('badgeholders').insert(rec).select().single();
+    if(error)return toast('Σφάλμα: '+error.message);
+    D.bh.push(data);
+    if($('inGr').value){const {data:my}=await sb.from('member_year')
+      .insert({person_id:data.id,scout_year:YEAR,section:INSEC,grade:$('inGr').value,registered:false,source:'αναμονή'}).select().single();
+      if(my)D.my.push(my);}
+    saveCache(); $('inFn').value='';$('inLn').value=''; toast('Μπήκε στη λίστα'); V.intake();};
+  document.querySelectorAll('[data-act]').forEach(b=>b.onclick=async()=>{
+    const {error}=await sb.from('badgeholders').update({status:'Ενεργός'}).eq('id',b.dataset.act);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const p=D.bh.find(x=>x.id===b.dataset.act); if(p)p.status='Ενεργός';
+    saveCache(); toast('Ενεργοποιήθηκε'); V.intake();});
+  document.querySelectorAll('[data-am]').forEach(inp=>inp.onchange=async()=>{
+    const v=inp.value.trim(); if(!v)return;
+    if(D.bh.some(x=>x.registry_no===v))return toast('Το Α.Μ. χρησιμοποιείται ήδη');
+    const {error}=await sb.from('badgeholders').update({registry_no:v}).eq('id',inp.dataset.am);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const p=D.bh.find(x=>x.id===inp.dataset.am); if(p)p.registry_no=v;
+    saveCache(); toast('Καταχωρήθηκε'); V.intake();});
+};
+
+/* ══ ΠΑΡΑΛΑΒΗ ΦΑΚΕΛΟΥ ΣΤΗΝ ΑΛΛΑΓΗ ΚΛΑΔΟΥ ══ */
+V.handover=()=>{
+  const pend=(D.ho2||[]).filter(x=>!x.received_at);
+  const done=(D.ho2||[]).filter(x=>x.received_at).slice(0,30);
+  const line=x=>{const p=D.bh.find(b=>b.id===x.person_id); if(!p)return '';
+    const fl=(D.mf||[]).filter(f=>f.person_id===p.id&&['Ιατρικό','Διατροφή'].includes(f.kind));
+    return `<div class="ccard${fl.some(f=>f.urgent)?' warn':''}">
+      <div class="chead">${sdot(x.to_section)}<div style="flex:1;min-width:0">
+        <div class="ctitle">${esc(nm(p))}</div>
+        <div class="dim" style="font-size:12px">${esc(x.from_section||'—')} → <b>${esc(x.to_section||'—')}</b> · ${esc(x.scout_year||'')}</div></div>
+        ${x.received_at?`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">παραλήφθηκε</span>`:''}</div>
+      ${fl.map(f=>`<div class="cflag${f.urgent?' urg':''}">${f.urgent?'⚠ ':''}<b>${esc(f.kind)}:</b> ${esc(f.detail)}</div>`).join('')||'<div class="dim" style="font-size:12px;padding:2px 0">Καμία σήμανση</div>'}
+      ${x.received_at?`<div class="dim" style="font-size:11.5px;margin-top:7px">${esc(x.received_by||'')} · ${fdate(x.received_at)}</div>`
+        :`<button class="btn p sm" data-hv="${x.id}" style="margin-top:9px;width:100%;justify-content:center">Είδα τον φάκελο — παραλαβή</button>`}
+    </div>`};
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>Παραλαβή φακέλου</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Όταν ένα παιδί αλλάζει κλάδο, ο νέος αρχηγός <b>διαβάζει τις σημάνσεις και το επιβεβαιώνει</b>. Μέχρι τότε το παιδί μετράει και στους δύο.</div>
+      <div class="dim" style="font-size:12.5px;margin-top:7px">Δεν είναι γραφειοκρατία: πέντε παιδιά έχουν κατάσταση που στέλνει στο νοσοκομείο αν αγνοηθεί.</div></div>
+    ${pend.length?`<div class="sec"><h3>Εκκρεμούν</h3><span class="n">${pend.length}</span></div>
+      <div class="cgrid">${pend.map(line).join('')}</div>`:'<div class="uc"><h3>Καμία εκκρεμότητα</h3><p>Όλοι οι φάκελοι έχουν παραληφθεί.</p></div>'}
+    ${done.length?`<div class="sec"><h3>Παραλήφθηκαν</h3><span class="n">${done.length}</span></div>
+      <div class="cgrid">${done.map(line).join('')}</div>`:''}`;
+  document.querySelectorAll('[data-hv]').forEach(b=>b.onclick=async()=>{
+    const {error}=await sb.from('handovers').update({received_at:new Date().toISOString(),received_by:ME.email}).eq('id',b.dataset.hv);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const x=(D.ho2||[]).find(y=>y.id===b.dataset.hv);
+    if(x){x.received_at=new Date().toISOString();x.received_by=ME.email}
+    saveCache(); toast('Παραλήφθηκε'); V.handover();});
+};
+
+/* ══ ΑΚΥΡΩΣΗ / ΔΙΟΡΘΩΣΗ ΕΓΓΡΑΦΗΣ ══ */
+function voidReg(personId){
+  const p=D.bh.find(x=>x.id===personId); if(!p)return;
+  const rows=(D.my||[]).filter(x=>x.person_id===personId).sort((a,b)=>a.scout_year<b.scout_year?1:-1);
+  const line=r=>`<div class="kv" style="${r.voided_at?'opacity:.5':''}">
+      <b style="flex:1">${esc(r.scout_year)}${r.voided_at?' · ΑΚΥΡΩΜΕΝΗ':''}</b>
+      <span style="font-size:12px">${esc(r.triptycho_no||'—')}${r.section?' · '+esc(r.section):''}</span>
+      ${r.voided_at?`<span class="dim" style="font-size:11px">${esc(r.voided_reason||'')}</span>`
+        :`<button class="btn gh sm" data-void="${r.id}">Ακύρωση</button>`}</div>`;
+  $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1">
+      <div style="font-size:17px;font-weight:600">${esc(nm(p))}</div>
+      <div class="dim" style="font-size:12.5px">Εγγραφές ανά χρονιά</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">${rows.map(line).join('')||'<div class="dim" style="font-size:13px">Καμία εγγραφή</div>'}</div>
+    <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px;line-height:1.6">
+      Η ακύρωση <b>δεν σβήνει</b> — σημαίνει. Η εγγραφή μένει στο ιστορικό με τον λόγο, και παύει να μετράει σε δυνάμεις, οικονομικά και έντυπα.<br>
+      Χρησιμοποίησέ την για <b>λάθος τμήμα, διπλή καταχώρηση, λάθος ποσό</b> — και μετά κάνε τη σωστή.</div></div>`;
+  drw.classList.add('on');
+  document.querySelectorAll('[data-void]').forEach(b=>b.onclick=async()=>{
+    const why=prompt('Γιατί ακυρώνεται;\n(π.χ. «διπλή καταχώρηση», «λάθος τμήμα», «λάθος ποσό»)');
+    if(!why)return;
+    const {error}=await sb.from('member_year')
+      .update({voided_at:new Date().toISOString(),voided_reason:why.trim()}).eq('id',b.dataset.void);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const r=(D.my||[]).find(x=>x.id===b.dataset.void);
+    if(r){r.voided_at=new Date().toISOString();r.voided_reason=why.trim()}
+    saveCache(); toast('Ακυρώθηκε'); voidReg(personId); route(ROUTE);});
+}
+
+/* ══ ΕΞΑΓΩΓΗ ΣΕ ΤΡΕΙΣ ΜΟΡΦΕΣ ══ */
+function exportRows(rows,name,title){
+  if(!rows||rows.length<2)return toast('Τίποτα για εξαγωγή');
+  const esc2=v=>{const s=v==null?'':String(v);return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  const csv=()=>saveBlob('﻿'+rows.map(r=>r.map(esc2).join(';')).join('\r\n'),'text/csv;charset=utf-8',name+'.csv');
+  const xls=()=>{ // SpreadsheetML — ανοίγει σε Excel/Numbers χωρίς βιβλιοθήκη
+    const cell=v=>{const s=String(v==null?'':v);
+      const num=/^-?\d+([.,]\d+)?$/.test(s)&&s.length<15;
+      return `<Cell><Data ss:Type="${num?'Number':'String'}">${esc(num?s.replace(',','.'):s)}</Data></Cell>`};
+    const xml=`<?xml version="1.0" encoding="UTF-8"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles><Style ss:ID="h"><Font ss:Bold="1"/><Interior ss:Color="#EEEEEE" ss:Pattern="Solid"/></Style></Styles>
+<Worksheet ss:Name="${esc((title||name).slice(0,28))}"><Table>
+${rows.map((r,i)=>`<Row>${r.map(c=>i===0?cell(c).replace('<Cell>','<Cell ss:StyleID="h">'):cell(c)).join('')}</Row>`).join('\n')}
+</Table></Worksheet></Workbook>`;
+    saveBlob(xml,'application/vnd.ms-excel',name+'.xls')};
+  const pdf=()=>{
+    const head=rows[0], body=rows.slice(1);
+    openPrint(title||name,`<div class="fpage" style="min-height:auto">
+      <div class="fhead"><div><div class="ft">${esc(title||name)}</div>
+        <div class="fs">${body.length} εγγραφές · ${fdate(new Date().toISOString().slice(0,10))}</div></div>
+        <div class="fs" style="text-align:right">76ο ΣΥΣΤΗΜΑ ΠΡΟΣΚΟΠΩΝ<br>ΣΤΡΟΒΟΛΟΥ</div></div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5px">
+        <thead><tr>${head.map(h=>`<th style="text-align:left;border-bottom:1.5px solid #111;padding:4px 3px;font-size:8.5px;text-transform:uppercase;letter-spacing:.03em">${esc(h)}</th>`).join('')}</tr></thead>
+        <tbody>${body.map(r=>`<tr>${r.map(c=>`<td style="border-bottom:1px solid #ddd;padding:4px 3px">${esc(c==null?'':c)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table></div>`)};
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Εξαγωγή</div>
+      <div class="dim" style="font-size:12.5px">${esc(title||name)} · ${rows.length-1} εγγραφές</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec" style="border:0;display:flex;flex-direction:column;gap:8px">
+      <button class="btn p" id="exX" style="justify-content:center">Excel (.xls)</button>
+      <button class="btn" id="exP" style="justify-content:center">PDF / Εκτύπωση</button>
+      <button class="btn gh" id="exC" style="justify-content:center">CSV</button>
+      <div class="dim" style="font-size:11.5px;margin-top:6px">Το Excel ανοίγει και σε Numbers. Το PDF βγαίνει από το παράθυρο εκτύπωσης — «Αποθήκευση ως PDF».</div></div>`;
+  drw.classList.add('on');
+  $('exC').onclick=()=>{csv();drw.classList.remove('on')};
+  $('exX').onclick=()=>{xls();drw.classList.remove('on')};
+  $('exP').onclick=()=>{pdf();drw.classList.remove('on')};
+}
+
+/* ══ ΥΠΟΟΜΑΔΕΣ ══ */
+let SGSEC='Αγέλη';
+V.groups=()=>{
+  const secs=['Αγέλη','Ομάδα','Κοινότητα'];
+  const sgs=(D.sg||[]).filter(s=>s.scout_year===YEAR&&s.section===SGSEC&&s.active!==false)
+    .sort((a,b)=>(a.seq||0)-(b.seq||0)||a.name.localeCompare(b.name,'el'));
+  const kids=D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===SGSEC);
+  const inG=n=>kids.filter(p=>(myOf(p)||{}).group_name===n).sort(sortByName);
+  const none=kids.filter(p=>!(myOf(p)||{}).group_name).sort(sortByName);
+  const chip=s=>`<button class="btn sm${SGSEC===s?' p':' gh'}" data-sg="${s}">${s}</button>`;
+  const kindOf=SGSEC==='Αγέλη'?'Εξάδα':SGSEC==='Ομάδα'?'Ενωμοτία':'Όμιλος';
+  const card=g=>{const list=inG(g.name), ld=D.bh.find(x=>x.id===g.leader_id), sd=D.bh.find(x=>x.id===g.second_id);
+    return `<div class="ccard">
+      <div class="chead"><span class="dot" style="background:${g.colour||SC[SGSEC]}"></span>
+        <div style="flex:1;min-width:0"><div class="ctitle">${esc(g.name)}</div>
+          <div class="dim" style="font-size:12px">${esc(g.kind||kindOf)} · ${list.length} ${list.length===1?'μέλος':'μέλη'}</div></div></div>
+      <div class="kv" style="font-size:12.5px"><b>Αρχηγός</b><span>${ld?esc(nm(ld)):'<span class="dim">—</span>'}</span></div>
+      <div class="kv" style="font-size:12.5px"><b>Υπαρχηγός</b><span>${sd?esc(nm(sd)):'<span class="dim">—</span>'}</span></div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
+        ${list.map(p=>`<span class="pill" style="font-size:11.5px"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span></span>`).join('')
+          ||'<span class="dim" style="font-size:12px">— κενή —</span>'}</div>
+      <div style="margin-top:9px;display:flex;gap:6px"><button class="btn sm gh" data-sgl="${g.id}">Αρχηγοί</button></div></div>`};
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>Υποομάδες</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Εξάδες, ενωμοτίες και όμιλοι — ανά χρονιά, με αρχηγό και υπαρχηγό.</div>
+      <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+        ${secs.map(chip).join('')}
+        <span class="sp"></span>
+        <input id="sgNew" placeholder="Νέα ${kindOf.toLowerCase()}…" style="max-width:160px;font-size:13px">
+        <button class="btn sm" id="sgAdd">+</button>
+        <button class="btn sm" id="sgExp">${ic('down',14)} Εξαγωγή</button></div></div>
+    <div class="cgrid">${sgs.map(card).join('')||'<div class="card pad dim">Καμία υποομάδα ακόμη</div>'}</div>
+    ${none.length?`<div class="sec"><h3>Χωρίς υποομάδα</h3><span class="n">${none.length}</span></div>
+      <div class="card pad" style="display:flex;flex-wrap:wrap;gap:5px">${none.map(p=>`<span class="pill"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span></span>`).join('')}</div>`:''}`;
+  document.querySelectorAll('[data-sg]').forEach(b=>b.onclick=()=>{SGSEC=b.dataset.sg;V.groups()});
+  $('sgAdd').onclick=async()=>{const n=$('sgNew').value.trim(); if(!n)return;
+    const {data,error}=await sb.from('subgroups').insert({scout_year:YEAR,section:SGSEC,name:n,kind:kindOf}).select().single();
+    if(error)return toast('Σφάλμα: '+error.message);
+    (D.sg=D.sg||[]).push(data); saveCache(); $('sgNew').value=''; V.groups()};
+  $('sgExp').onclick=()=>{
+    const rows=[['Τμήμα',kindOf,'Αρχηγός','Υπαρχηγός','Μέλος','Α.Μ.','Τάξη']];
+    sgs.forEach(g=>{const ld=D.bh.find(x=>x.id===g.leader_id),sd=D.bh.find(x=>x.id===g.second_id);
+      const list=inG(g.name);
+      if(!list.length)rows.push([SGSEC,g.name,ld?nm(ld):'',sd?nm(sd):'','','','']);
+      list.forEach(p=>rows.push([SGSEC,g.name,ld?nm(ld):'',sd?nm(sd):'',nm(p),p.registry_no||'',(myOf(p)||{}).grade||'']))});
+    exportRows(rows,`76-ypoomades-${SGSEC}-${YEAR}`,`Υποομάδες ${SGSEC} ${YEAR}`)};
+  document.querySelectorAll('[data-sgl]').forEach(b=>b.onclick=()=>sgLeaders(b.dataset.sgl));
+};
+function sgLeaders(id){
+  const g=(D.sg||[]).find(x=>x.id===id); if(!g)return;
+  const pool=D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===g.section).sort(sortByName);
+  const opt=(sel)=>`<option value="">—</option>`+pool.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${esc(nm(p))}</option>`).join('');
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">${esc(g.name)}</div>
+      <div class="dim" style="font-size:12.5px">${esc(g.kind||'')} · ${esc(g.section)}</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">
+      <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Αρχηγός<select id="sgL">${opt(g.leader_id)}</select></label>
+      <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Υπαρχηγός<select id="sgS">${opt(g.second_id)}</select></label>
+      <label style="font-size:12px;color:var(--ink3);display:block">Χρώμα<input id="sgC" type="color" value="${g.colour||'#888888'}" style="height:36px"></label>
+    </div>
+    <div class="dsec" style="border:0"><button class="btn p" id="sgSave" style="width:100%;justify-content:center">Αποθήκευση</button></div>`;
+  drw.classList.add('on');
+  $('sgSave').onclick=async()=>{
+    const v={leader_id:$('sgL').value||null,second_id:$('sgS').value||null,colour:$('sgC').value};
+    const {error}=await sb.from('subgroups').update(v).eq('id',id);
+    if(error)return toast('Σφάλμα: '+error.message);
+    Object.assign(g,v); saveCache(); drw.classList.remove('on'); V.groups();};
+}
+
+/* ══ Η ΧΡΟΝΙΑ ΠΟΥ ΕΡΧΕΤΑΙ ══ */
+V.year=()=>{
+  const NY=nextYear(YEAR)||'—';
+  const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p));
+  const led=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός');
+  const plan=kids.map(p=>{const y=myOf(p)||{}, ng=nextGrade(y.grade), grad=ng==='ΑΠΟΦΟΙΤΗΣΗ';
+    return {p, cur:y.grade, curSec:secOf(p), ng:grad?null:ng, grad, ns:grad?null:secForGrade(ng)}});
+  const moves=plan.filter(x=>x.ns&&x.ns!==x.curSec);
+  const grads=plan.filter(x=>x.grad);
+  const unknown=plan.filter(x=>!x.ng&&!x.grad);
+  const proj={}; SECS_B.forEach(s=>proj[s]=0);
+  plan.forEach(x=>{if(x.ns&&proj[x.ns]!==undefined)proj[x.ns]++});
+  const now={}; SECS_B.forEach(s=>now[s]=kids.filter(p=>secOf(p)===s).length);
+
+  // λήξεις μέσα στη νέα χρονιά (01/09 → 31/08)
+  const y0=new Date((+NY.slice(0,4))+'-09-01'), y1=new Date((+NY.slice(0,4)+1)+'-08-31');
+  const inWin=d=>{if(!d)return false;const x=new Date(d);return x>=y0&&x<=y1};
+  const certExp=led.map(p=>({p,c:certState(p.id)})).filter(x=>x.c.exp&&(new Date(x.c.exp)<=y1)).sort((a,b)=>a.c.exp<b.c.exp?-1:1);
+  const insExp=(D.vi||[]).filter(v=>v.expires_on&&new Date(v.expires_on)<=y1)
+    .map(v=>{const veh=(D.veh||[]).find(x=>x.id===v.vehicle_id)||{};
+      const lk=(D.vl||[]).find(x=>x.vehicle_id===v.vehicle_id)||{};
+      return {plate:veh.plate,exp:v.expires_on,p:D.bh.find(x=>x.id===lk.person_id)}})
+    .sort((a,b)=>a.exp<b.exp?-1:1);
+  const teen18=kids.filter(p=>{const d=dobOf(p); if(!d)return false;
+    const t=new Date(d); t.setFullYear(t.getFullYear()+18); return t>=y0&&t<=y1});
+
+  const tile=(cls,k,v,s,go)=>`<${go?'button':'div'} class="tile ${cls}"${go?` data-go="${go}"`:' style="cursor:default"'}>
+    <div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></${go?'button':'div'}>`;
+  const chips=list=>list.slice(0,60).map(x=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(x.curSec||secOf(x.p))}
+      <span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span><span class="dim">${x.ns?esc(x.ns):'αποφοίτηση'}</span></span>`).join('')
+    +(list.length>60?`<div class="dim" style="font-size:12px;margin-top:6px">+ ${list.length-60} ακόμη</div>`:'');
+
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>Η χρονιά που έρχεται · ${esc(NY)}</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Τι αλλάζει από μόνο του, τι λήγει, και τι πρέπει να αποφασίσεις. Τίποτα εδώ δεν έχει γίνει ακόμη.</div>
+      <div style="margin-top:11px;display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn p sm" data-go="staff">Στήσε επιτελεία</button>
+        <button class="btn sm" data-go="rollover">Οδηγός μετάβασης</button>
+        <button class="btn sm" data-go="enroll">Φάκελος εγγραφής</button></div></div>
+
+    <div class="sec"><h3>Δύναμη</h3><span class="n">πρόβλεψη χωρίς νέα μέλη</span></div>
+    <div class="tiles">
+      ${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>{const d=proj[s]-now[s];
+        return tile(d<0?'warn':'', s, proj[s], `${now[s]} τώρα · ${d>0?'+':''}${d}`)}).join('')}
+      ${tile(grads.length?'bad':'', 'Αποφοιτούν', grads.length, 'φεύγουν από Κοινότητα')}
+    </div>
+    ${moves.length?`<div class="sec"><h3>Αλλάζουν κλάδο</h3><span class="n">${moves.length}</span></div>
+      <div class="card pad">${chips(moves)}</div>`:''}
+    ${grads.length?`<div class="sec"><h3>Αποφοιτούν από την Κοινότητα</h3><span class="n">${grads.length}</span></div>
+      <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Δίκτυο, βαθμοφόροι ή αποχώρηση — δική σου απόφαση, ένας-ένας.</div>${chips(grads)}</div>`:''}
+    ${teen18.length?`<div class="sec"><h3>Ενηλικιώνονται μέσα στη χρονιά</h3><span class="n">${teen18.length}</span></div>
+      <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Υπογράφουν μόνοι τους και <b>ο γονέας παύει να τους βλέπει</b> αυτόματα.</div>
+      ${teen18.map(p=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(secOf(p))}<span class="pn" data-p="${p.id}">${esc(nm(p))}</span></span>`).join('')}</div>`:''}
+    ${unknown.length?`<div class="sec"><h3>Χωρίς τάξη</h3><span class="n">${unknown.length}</span></div>
+      <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Δεν μπορούν να ανελιχθούν αυτόματα — θέλουν τάξη.</div>
+      ${unknown.map(x=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(x.curSec)}<span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span></span>`).join('')}</div>`:''}
+
+    <div class="sec"><h3>Λήγουν μέχρι το τέλος της νέας χρονιάς</h3></div>
+    <div class="tiles">
+      ${tile(certExp.length?'bad':'', 'Ν.91(Ι)', certExp.length, 'βαθμοφόροι', 'certs')}
+      ${tile(insExp.length?'warn':'', 'Ασφάλειες οχημάτων', insExp.length, 'οχήματα')}
+    </div>
+    ${certExp.length?`<div class="card" style="overflow:auto;margin-top:10px"><table><thead><tr><th>Βαθμοφόρος</th><th class="hide-s">Τμήμα</th><th>Λήγει</th></tr></thead><tbody>
+      ${certExp.slice(0,40).map(x=>`<tr><td>${pnm(x.p)}</td><td class="hide-s dim">${esc(x.p.section||'')}</td>
+        <td class="${new Date(x.c.exp)<new Date()?'':''}"><span class="pill" style="background:${new Date(x.c.exp)<new Date()?'var(--badbg);color:var(--bad)':'var(--warnbg);color:var(--warn)'};border-color:transparent">${fdate(x.c.exp)}</span></td></tr>`).join('')}
+      </tbody></table></div>`:''}
+    ${insExp.length?`<div class="card" style="overflow:auto;margin-top:10px"><table><thead><tr><th>Όχημα</th><th>Οδηγός</th><th>Λήγει</th></tr></thead><tbody>
+      ${insExp.map(x=>`<tr><td><b>${esc(x.plate||'')}</b></td><td>${x.p?pnm(x.p):'<span class="dim">—</span>'}</td>
+        <td><span class="pill" style="background:${new Date(x.exp)<new Date()?'var(--badbg);color:var(--bad)':'var(--warnbg);color:var(--warn)'};border-color:transparent">${fdate(x.exp)}</span></td></tr>`).join('')}
+      </tbody></table></div>`:''}`;
+  bindTiles();
+  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go));
+};
+
+/* ══ ΔΙΑΡΘΡΩΣΗ — πλήρες οργανόγραμμα, Σ.Π.Κ. → τελευταίος βαθμοφόρος ══ */
+let STMODE='org', OPEN={}, STQ='';
+try{OPEN=JSON.parse(localStorage.getItem('e76:orgopen')||'{"ΣΠΚ":1,"76":1,"Αγέλη":1,"Ομάδα":1,"Κοινότητα":1}')}catch(e){OPEN={}}
+const saveOpen=()=>localStorage.setItem('e76:orgopen',JSON.stringify(OPEN));
+const ROLERANK=r=>{const s=String(r||'');
+  if(/^Αρχηγός Συστ/i.test(s))return 0;
+  if(/^Αναπλ|^Υπαρχηγός Συστ/i.test(s))return 1;
+  if(/^Αρχηγός/i.test(s))return 2;
+  if(/^Υπαρχηγός/i.test(s))return 3;
+  if(/^Έφορος|^Βοηθός Έφ/i.test(s))return 4;
+  if(/P\/T|Part/i.test(s))return 6;
+  return 5;};
+function roleOfYear(p,yr){
+  const sh=(D.sh||[]).find(x=>x.person_id===p.id&&x.scout_year===yr&&(x.appointment||x.role));
+  return (sh&&(sh.appointment||sh.role))||p.appointment||p.headrole||
+    (p.category==='ΑΣ'?'Αρχηγός Συστήματος':(p.category&&p.category!=='Βαθμοφόρος'?p.category:'Βαθμοφόρος'));
+}
+function secOfYear(p,yr){
+  const sh=(D.sh||[]).find(x=>x.person_id===p.id&&x.scout_year===yr&&x.section);
+  return (sh&&sh.section)||p.section||'Σύστημα';
+}
 V.staff=()=>{
-  const years=[...new Set((D.sh||[]).map(x=>x.scout_year).filter(Boolean))].sort().reverse();
-  const nxt=nextY(YEAR); if(nxt&&!years.includes(nxt))years.unshift(nxt);
-  if(!SY||!years.includes(SY))SY=nxt||years[0]||YEAR;
+  const years=[...new Set([...(D.sh||[]).map(x=>x.scout_year),...D.my.map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
+  const nx=nextY(years[0]||YEAR); if(nx&&!years.includes(nx))years.unshift(nx);
+  if(!SY||!years.includes(SY))SY=years.find(y=>(D.sh||[]).some(x=>x.scout_year===y))||YEAR;
+  if(STMODE==='draft')return staffDraft(years);
+
+  const led=D.bh.filter(p=>isLed(p)&&p.status!=='Αρχειοθετημένος');
+  const q=nameKey(STQ);
+  const hit=p=>!q||nameKey(nm(p)+' '+roleOfYear(p,SY)+' '+(p.scout_name||'')+' '+(p.email||'')).includes(q);
+  const bySec={}; led.forEach(p=>{const s=secOfYear(p,SY);(bySec[s]=bySec[s]||[]).push(p)});
+  Object.values(bySec).forEach(l=>l.sort((a,b)=>ROLERANK(roleOfYear(a,SY))-ROLERANK(roleOfYear(b,SY))||sortByName(a,b)));
+  const memCount=s=>D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)&&secOf(x)===s).length;
+
+  const tog=(k,label,sub,color,extra)=>`<div class="onode" data-tog="${esc(k)}" style="--oc:${color||'var(--ink3)'}">
+      <span class="ochev">${OPEN[k]?'▾':'▸'}</span><span class="otitle">${label}</span>
+      ${sub?`<span class="osub">${sub}</span>`:''}${extra||''}</div>`;
+
+  const prow=p=>{
+    const r=roleOfYear(p,SY), cs=certState(p.id), w=warrantOf(p.id);
+    const mail=p.email||'', tel=p.phone||'';
+    return `<div class="orow${hit(p)?'':' dimmed'}">
+      ${avatar(p,28)}
+      <div style="flex:1;min-width:0">
+        <div class="on"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span>${p.scout_name?`<i class="osn">${esc(p.scout_name)}</i>`:''}</div>
+        <div class="or">${esc(r)}</div>
+      </div>
+      <div class="oc2 hide-s">${tel?`<a href="tel:${esc(tel)}">${fphone(tel)}</a>`:'<span class="dim">—</span>'}</div>
+      <div class="oc3 hide-s">${mail?`<a href="mailto:${esc(mail)}">${esc(mail)}</a>`:'<span class="dim">—</span>'}</div>
+      <div class="oc4" title="Ν.91(Ι): ${cs.k==='ok'?'σε ισχύ':cs.k==='soon'?'λήγει σύντομα':cs.k==='expired'?'έληξε':'δεν υπάρχει'}">
+        <span class="cdot ${cs.k}"></span>${w&&w.k?`<span class="wdot ${w.k}"></span>`:''}</div>
+    </div>`};
+
+  const orole=o=>`<div class="orow virt">
+      <span class="avaph" style="width:28px;height:28px;font-size:10px;background:var(--line);color:var(--ink3)">${o.person_name?esc(initialsOf({first_name:o.person_name.split(' ')[0]||'',last_name:o.person_name.split(' ').slice(-1)[0]||''})):'—'}</span>
+      <div style="flex:1;min-width:0"><div class="on">${o.person_name?esc(o.person_name):'<span class="dim">κενή θέση</span>'}</div>
+        <div class="or">${esc(o.title)}</div></div>
+      <div class="oc2 hide-s dim">${esc(o.scope||'')}</div>
+      <div class="oc3 hide-s">${o.email?`<a href="mailto:${esc(o.email)}">${esc(o.email)}</a>`:'<span class="dim">—</span>'}</div>
+      <div class="oc4"></div></div>`;
+
+  const ge=(D.or||[]).filter(o=>o.level==='Γενική Εφορεία').sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const ep=(D.or||[]).filter(o=>o.level&&o.level.startsWith('Επαρχιακή')).sort((a,b)=>(a.seq||0)-(b.seq||0));
+
+  const secBlock=s=>{const list=bySec[s]||[]; if(!list.length&&s!=='Σύστημα')return '';
+    const m=memCount(s);
+    return `<div class="obranch">${tog(s,esc(SECFULL[s]||s),`${list.length} βαθμοφόροι${m?` · ${m} μέλη`:''}`,SC[s])}
+      ${OPEN[s]?`<div class="okids">${list.map(prow).join('')||'<div class="dim" style="padding:6px 10px;font-size:12.5px">— κενό —</div>'}</div>`:''}</div>`};
+
+  const tot=led.length, mem=D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)).length;
+  $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:13px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <b>Διάρθρωση</b>
+        <select id="syr" style="width:auto;max-width:120px">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select>
+        <button class="btn sm gh" id="stDraft">Πρόχειρο επιτελείων</button>
+        <span class="sp"></span>
+        <input id="stq" placeholder="Αναζήτηση…" value="${esc(STQ)}" style="max-width:170px;font-size:13px">
+        <button class="btn sm gh" id="stAll">${Object.keys(OPEN).length?'Σύμπτυξη':'Ανάπτυξη'} όλων</button>
+        <button class="btn sm" id="stCsv">${ic('down',14)} CSV</button>
+        <button class="btn sm" id="stPrint">Εκτύπωση</button>
+      </div>
+      <div class="dim" style="font-size:12.5px;margin-top:6px">Από την κορυφή του Σ.Π.Κ. μέχρι τον τελευταίο βαθμοφόρο. ${tot} βαθμοφόροι · ${mem} μέλη στο 76ο.</div></div>
+    <div class="card pad otree">
+      ${tog('ΣΠΚ','ΣΩΜΑ ΠΡΟΣΚΟΠΩΝ ΚΥΠΡΟΥ','','var(--brand)')}
+      ${OPEN['ΣΠΚ']?`<div class="okids">
+        <div class="obranch">${tog('ΓΕ','Γενική Εφορεία',`${ge.length} θέσεις`,'#6b7280')}
+          ${OPEN['ΓΕ']?`<div class="okids">${ge.map(orole).join('')}</div>`:''}</div>
+        <div class="obranch">${tog('ΕΕ','Επαρχιακή Εφορεία Λευκωσίας',`${ep.length} θέσεις`,'#6b7280')}
+          ${OPEN['ΕΕ']?`<div class="okids">${ep.map(orole).join('')}</div>`:''}</div>
+        <div class="obranch">${tog('76','76ο ΣΥΣΤΗΜΑ ΠΡΟΣΚΟΠΩΝ ΣΤΡΟΒΟΛΟΥ',`${tot} βαθμοφόροι · ${mem} μέλη`,'var(--brand)')}
+          ${OPEN['76']?`<div class="okids">${SECS_B.map(secBlock).join('')}</div>`:''}</div>
+      </div>`:''}
+    </div>`;
+  $('syr').onchange=e=>{SY=e.target.value;V.staff()};
+  $('stDraft').onclick=()=>{STMODE='draft';V.staff()};
+  $('stq').oninput=e=>{STQ=e.target.value;
+    document.querySelectorAll('.orow').forEach(r=>{
+      const t=nameKey(r.textContent); r.classList.toggle('dimmed', !!nameKey(STQ)&&!t.includes(nameKey(STQ)))})};
+  $('stAll').onclick=()=>{const any=Object.keys(OPEN).length;
+    OPEN=any?{}:{'ΣΠΚ':1,'ΓΕ':1,'ΕΕ':1,'76':1,'Σύστημα':1,'Αγέλη':1,'Ομάδα':1,'Κοινότητα':1,'Δίκτυο':1};
+    saveOpen();V.staff()};
+  document.querySelectorAll('[data-tog]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.tog; OPEN[k]?delete OPEN[k]:OPEN[k]=1; saveOpen(); V.staff()});
+  $('stPrint').onclick=()=>{OPEN={'ΣΠΚ':1,'ΓΕ':1,'ΕΕ':1,'76':1,'Σύστημα':1,'Αγέλη':1,'Ομάδα':1,'Κοινότητα':1,'Δίκτυο':1};saveOpen();V.staff();setTimeout(()=>window.print(),120)};
+  $('stCsv').onclick=()=>{
+    const rows=[['Επίπεδο','Τμήμα','Ρόλος','Επώνυμο','Όνομα','Προσκοπικό','Α.Μ.','Τηλέφωνο','Email','Ν.91(Ι) λήξη','Εντολή']];
+    ge.forEach(o=>rows.push(['Γενική Εφορεία','',o.title,o.person_name||'','','','','',o.email||'','','']));
+    ep.forEach(o=>rows.push(['Επαρχιακή Λευκωσίας','',o.title,o.person_name||'','','','','',o.email||'','','']));
+    SECS_B.forEach(s=>(bySec[s]||[]).forEach(p=>{const cs=certState(p.id),w=warrantOf(p.id);
+      rows.push(['76ο Σύστημα',s,roleOfYear(p,SY),p.last_name,p.first_name,p.scout_name||'',p.registry_no||'',p.phone||'',p.email||'',cs.exp||'',w&&w.no?w.no:''])}));
+    const csv='﻿'+rows.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
+    saveBlob(csv,'text/csv;charset=utf-8',`76-diarthrwsi-${SY}.csv`)};
+};
+
+function staffDraft(years){
   loadDraft();
   const isFuture=SY>=YEAR;      // τρέχουσα + μελλοντικές επεξεργάσιμες
   const isNow=SY===YEAR;
-  const led=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status!=='Αρχειοθετημένος');
+  const led=D.bh.filter(p=>isLed(p)&&p.status!=='Αρχειοθετημένος');
   // πραγματικές θέσεις της χρονιάς
   const real={}; (D.sh||[]).filter(x=>x.scout_year===SY).forEach(x=>{
     if(!real[x.person_id])real[x.person_id]={section:x.section,role:(x.appointment||x.role||'')};});
@@ -1416,7 +1875,7 @@ V.staff=()=>{
 
   $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:13px">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <b>Διάρθρωση</b>
+        <button class="btn sm gh" id="stBack">← Οργανόγραμμα</button><b>Πρόχειρο επιτελείων</b>
         <select id="syr" style="width:auto;max-width:130px">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select>
         ${isFuture?'<span class="pill" style="background:var(--accbg);border-color:var(--accln);color:var(--acc)">νέα χρονιά · πρόχειρο</span>':'<span class="pill">ιστορικό</span>'}
         <span class="sp"></span>
@@ -1626,7 +2085,7 @@ V.approvals=()=>{
       <div class="muted" style="margin-top:7px;font-size:13.5px">Τα βήματα που καλύπτει ήδη η δική σου ιδιότητα <b>σφραγίζονται αυτόματα</b> — δεν θα ξαναδείς αίτηση που υπέβαλες εσύ να περιμένει τη δική σου έγκριση. Τα επόμενα επίπεδα φαίνονται ως εκτός συστήματος μέχρι να μπει και η Επαρχία στο e76.</div>
       <div id="rqBox" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);gap:8px;flex-wrap:wrap">
         <select id="rqT" style="max-width:210px">${(D.rt||[]).map(t=>`<option value="${t.code}">${esc(t.name)}</option>`).join('')}</select>
-        <select id="rqP" style="max-width:230px">${D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').sort(sortByName).map(p=>`<option value="${p.id}">${esc(nm(p))}</option>`).join('')}</select>
+        <select id="rqP" style="max-width:230px">${D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName).map(p=>`<option value="${p.id}">${esc(nm(p))}</option>`).join('')}</select>
         <input id="rqN" placeholder="Σημείωση (π.χ. Υ.Α.Λ. 2026-27)" style="max-width:250px">
         <button class="btn p sm" id="rqGo">Υποβολή</button></div></div>
     ${R.length?R.map(r=>{const st=stepsOf(r.id),c=cur(r.id),sub=D.bh.find(x=>x.id===r.subject_id);
@@ -1700,7 +2159,7 @@ V.reports=()=>{
       <div id="rpBox" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);flex-direction:column;gap:9px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <select id="rpK" style="max-width:210px">${RK.map(([v,l])=>`<option value="${v}">${esc(l)}</option>`).join('')}</select>
-          <select id="rpAbout" style="max-width:250px"><option value="">Αφορά (προαιρετικά)…</option>${D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος').sort(sortByName).map(p=>`<option value="${p.id}">${esc(nm(p))}</option>`).join('')}</select>
+          <select id="rpAbout" style="max-width:250px"><option value="">Αφορά (προαιρετικά)…</option>${D.bh.filter(p=>isLed(p)).sort(sortByName).map(p=>`<option value="${p.id}">${esc(nm(p))}</option>`).join('')}</select>
           <label class="pill" style="cursor:pointer"><input type="checkbox" id="rpAnon" style="width:auto;margin-right:5px"> Ανώνυμα</label></div>
         <textarea id="rpB" rows="4" placeholder="Περιγραφή περιστατικού ή παραπόνου" style="width:100%;font:inherit;padding:9px;border:1px solid var(--line2);border-radius:var(--rs);background:var(--card);color:var(--ink)"></textarea>
         <div id="rpRoute" class="pill" style="align-self:flex-start"></div>
@@ -1751,7 +2210,7 @@ V.reports=()=>{
 
 /* ── Εγγραφές & εισπράξεις ── */
 V.reg=()=>{
-  const rows=D.my.filter(x=>x.scout_year===YEAR).map(r=>{const p=D.bh.find(b=>b.id===r.person_id);return p?{r,p}:null})
+  const rows=D.my.filter(x=>x.scout_year===YEAR&&!x.voided_at).map(r=>{const p=D.bh.find(b=>b.id===r.person_id);return p?{r,p}:null})
     .filter(x=>x&&x.p.status==='Ενεργός').sort((a,b)=>sortByName(a.p,b.p));
   const done=rows.filter(x=>x.r.registered), paid=rows.filter(x=>x.r.triptycho_no);
   const bySec={}; rows.forEach(x=>{const s=x.r.section||'—';bySec[s]=bySec[s]||{t:0,d:0};bySec[s].t++;if(x.r.registered)bySec[s].d++});
@@ -1762,14 +2221,14 @@ V.reg=()=>{
         <input id="rq" placeholder="Αναζήτηση…" style="max-width:200px">
         <select id="rsec" style="max-width:150px"><option value="">Όλα τα τμήματα</option>${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(s=>`<option>${s}</option>`).join('')}</select>
         <select id="rst" style="max-width:170px"><option value="">Όλες οι καταστάσεις</option><option value="no">Χωρίς εγγραφή</option><option value="yes">Εγγεγραμμένοι</option><option value="unpaid">Χωρίς τριπλότυπο</option></select>
-        <span class="sp"></span><button class="btn sm" id="rExp">${ic('down',14)} CSV</button></div></div>
+        <span class="sp"></span><button class="btn sm" id="rExp">${ic('down',14)} Εξαγωγή</button></div></div>
     <div class="tiles">
       <div class="tile" style="cursor:default"><div class="k">Εγγεγραμμένοι</div><div class="v">${done.length}<span class="dim" style="font-size:15px">/${rows.length}</span></div><div class="s">${rows.length?Math.round(100*done.length/rows.length):0}% της δύναμης</div></div>
       <div class="tile ${rows.length-paid.length?'warn':''}" style="cursor:default"><div class="k">Με τριπλότυπο</div><div class="v">${paid.length}</div><div class="s">${rows.length-paid.length} εκκρεμούν</div></div>
       ${Object.keys(bySec).filter(s=>bySec[s].t).map(s=>`<div class="tile" style="cursor:default"><div class="k">${sdot(s)}${esc(s)}</div><div class="v">${bySec[s].d}<span class="dim" style="font-size:15px">/${bySec[s].t}</span></div><div class="s">εγγραφές</div></div>`).join('')}
     </div>
     <div class="sec"><h3>Κατάσταση ανά μέλος</h3><span class="n" id="rcnt"></span></div>
-    <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th>Εγγραφή</th><th>Τριπλότυπο</th></tr></thead><tbody id="rtb"></tbody></table></div>`;
+    <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th>Εγγραφή</th><th>Τριπλότυπο</th><th></th></tr></thead><tbody id="rtb"></tbody></table></div>`;
   const draw=()=>{
     const q=nameKey($('rq').value),s=$('rsec').value,st=$('rst').value;
     const f=rows.filter(x=>(!s||x.r.section===s)&&(!q||nameKey(nm(x.p)).includes(q))&&
@@ -1777,14 +2236,16 @@ V.reg=()=>{
     $('rcnt').textContent=f.length+' μέλη';
     $('rtb').innerHTML=f.map(x=>`<tr><td>${sdot(x.r.section)}</td><td>${pnm(x.p)}</td><td class="hide-s dim">${esc(x.r.section||'')}</td>
       <td><button class="btn sm" data-rg="${x.p.id}" style="${x.r.registered?'background:var(--okbg);border-color:transparent;color:var(--ok)':''}">${x.r.registered?'✓ Εγγράφηκε':'Εγγραφή'}</button></td>
-      <td><input data-tr="${x.p.id}" value="${esc(x.r.triptycho_no||'')}" placeholder="αρ." style="max-width:110px;padding:4px 8px;font-size:13px"></td></tr>`).join('')
-      ||'<tr><td colspan="5" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα</td></tr>';
+      <td><input data-tr="${x.p.id}" value="${esc(x.r.triptycho_no||'')}" placeholder="αρ." style="max-width:110px;padding:4px 8px;font-size:13px"></td>
+      <td><button class="btn gh sm" data-vd="${x.p.id}" title="Εγγραφές & ακύρωση">⋯</button></td></tr>`).join('')
+      ||'<tr><td colspan="6" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα</td></tr>';
     document.querySelectorAll('[data-rg]').forEach(b=>b.onclick=async()=>{
       const x=rows.find(r=>r.p.id===b.dataset.rg); x.r.registered=!x.r.registered;
       await upMY(x.p.id,{registered:x.r.registered}); draw();});
     document.querySelectorAll('[data-tr]').forEach(i=>i.onchange=async()=>{
       const x=rows.find(r=>r.p.id===i.dataset.tr); x.r.triptycho_no=i.value.trim()||null;
       await upMY(x.p.id,{triptycho_no:x.r.triptycho_no}); toast('Αποθηκεύτηκε');});
+    document.querySelectorAll('[data-vd]').forEach(b=>b.onclick=()=>voidReg(b.dataset.vd));
   };
   const upMY=async(pid,v)=>{
     try{const {error}=await sb.from('member_year').update(v).eq('person_id',pid).eq('scout_year',YEAR); if(error)throw error; saveCache()}
@@ -1793,15 +2254,14 @@ V.reg=()=>{
   $('rExp').onclick=()=>{
     const R=[['Α.Μ.','Ονοματεπώνυμο','Τμήμα','Τάξη','Εγγραφή','Τριπλότυπο']].concat(
       rows.map(x=>[x.p.registry_no,nm(x.p),x.r.section,x.r.grade,x.r.registered?'ΝΑΙ':'ΟΧΙ',x.r.triptycho_no||'']));
-    const csv='﻿'+R.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`e76-eggrafes-${YEAR}.csv`;a.click();toast('Κατέβηκε');};
+    exportRows(R,`e76-eggrafes-${YEAR}`,`Εγγραφές ${YEAR}`);};
   draw();
 };
 
 /* ── Εκπαιδεύσεις ── */
 const TR_BASIC=/βασικ/i, TR_PRE=/προκαταρκτ/i;
 V.training=()=>{
-  const led=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').sort(sortByName);
+  const led=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName);
   const trOf=id=>(D.tr||[]).filter(t=>t.person_id===id).sort((a,b)=>(a.date||'')<(b.date||'')?1:-1);
   const lvl=id=>{const t=trOf(id); if(t.some(x=>TR_BASIC.test(x.type||x.code||'')))return{t:'Βασική',c:'ok',n:2};
     if(t.some(x=>TR_PRE.test(x.type||x.code||'')))return{t:'Προκαταρκτική',c:'warn',n:1}; return{t:'Καμία',c:'bad',n:0}};
@@ -1848,7 +2308,7 @@ V.rollover=()=>{
   if(!S.step)S.step=1;
 
   const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)).sort(sortByName);
-  const led=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός');
+  const led=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός');
   const done=D.my.filter(x=>x.scout_year===NY);
   const fromRoll=done.filter(x=>(x.source||'').startsWith('rollover'));
 
@@ -1990,7 +2450,7 @@ V.rollover=()=>{
 /* ── Κέντρο εκκρεμοτήτων ── */
 V.issues=()=>{
   const act=D.bh.filter(p=>p.status==='Ενεργός');
-  const led=act.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος');
+  const led=act.filter(p=>isLed(p));
   const mem=act.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p));
   const dec=JSON.parse(localStorage.getItem('e76:dedupe')||'{}');
   const dups=dupPairs().filter(x=>!dec[x.a.id+x.b.id]);
@@ -2270,10 +2730,10 @@ function form(kind){
     const secs=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'];
     body=head('ΑΠΟΓΡΑΦΗ ΜΕΛΩΝ')+`<table><thead><tr><th>Κλάδος</th><th>Μέλη</th><th>Βαθμοφόροι</th><th>Σύνολο</th></tr></thead><tbody>${
       secs.map(s=>{const m=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός'&&secOf(p)===s).length;
-        const l=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός'&&p.section===s).length;
+        const l=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός'&&p.section===s).length;
         return (m||l)?`<tr><td>${esc(s)}</td><td>${m}</td><td>${l}</td><td><b>${m+l}</b></td></tr>`:''}).join('')}
       <tr><td><b>ΣΥΝΟΛΟ</b></td><td><b>${D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός').length}</b></td>
-        <td><b>${D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').length}</b></td>
+        <td><b>${D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').length}</b></td>
         <td><b>${D.bh.filter(p=>p.status==='Ενεργός'&&((p.kind||'')==='Μέλος'?inYear(p):true)).length}</b></td></tr></tbody></table>`+sign;
   }
   if(kind==='att'){
@@ -2555,7 +3015,8 @@ function deskSheet(kids){
       .dft{margin-top:9px;font-size:10px;color:#666}
       @page{size:A4 landscape;margin:0}
       @media print{body{background:#fff}.dpage{margin:0}}
-    </style></head><body>${Object.entries(bySec).map(([s,l])=>page(s,l.sort(sortByName))).join('')}</body></html>`);
+    </style></head><body>${Object.entries(bySec).map(([s,l])=>page(s,l.sort(sortByName))).join('')}<button id="toTop" title="Πάνω">↑</button>
+</body></html>`);
   w.document.close(); setTimeout(()=>w.print(),400);
 }
 const senRef={fn:p=>(D.sen||[]).find(s=>s.person_id===p.id)||{}}; const senOf=p=>senRef.fn(p);
@@ -3019,7 +3480,7 @@ function evParts(eid){
       : (!e.section||p.section===e.section||p.category==='ΑΣ'||p.is_commissioner))).sort(sortByName);
   const st={}; (D.pa||[]).filter(x=>x.event_id===eid).forEach(x=>st[x.person_id]={on:true,role:x.role||'Συμμετέχων',id:x.id});
 
-  const leaders=pool.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος');
+  const leaders=pool.filter(p=>isLed(p));
   const kids=pool.filter(p=>(p.kind||'')==='Μέλος');
   const gs={}; kids.forEach(p=>{const k=(myOf(p)||{}).group_name||'Χωρίς υποομάδα';(gs[k]=gs[k]||[]).push(p)});
 
@@ -3206,7 +3667,7 @@ V.dash=()=>{
   }
   const act=D.bh.filter(p=>p.status==='Ενεργός');
   const mem=act.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p));
-  const led=act.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος');
+  const led=act.filter(p=>isLed(p));
   const bySec={}; ['Αγέλη','Ομάδα','Κοινότητα'].forEach(s=>bySec[s]=mem.filter(p=>secOf(p)===s).length);
   const risk=riskList(), certs=certList();
   const soon=certs.filter(c=>c.days!==null&&c.days<=(TH.certWarnDays||90)&&c.days>=0).length, expd=certs.filter(c=>c.days!==null&&c.days<0).length, nocert=certs.filter(c=>c.none).length;
@@ -3249,13 +3710,14 @@ function bdayHTML(){
   const list=(D.sen||[]).map(s=>{if(!s.dob)return null;const d=new Date(s.dob);if(d.getMonth()!==m)return null;
       const p=D.bh.find(x=>x.id===s.person_id); if(!p||p.status!=='Ενεργός')return null;
       if((p.kind||'')==='Μέλος'&&!inYear(p))return null;
-      return {p,day:d.getDate(),age:agey(s.dob)}}).filter(Boolean).sort((a,b)=>a.day-b.day);
+      const turns=new Date().getFullYear()-d.getFullYear();
+      return {p,day:d.getDate(),age:turns}}).filter(Boolean).sort((a,b)=>a.day-b.day);
   if(!list.length)return '';
   return `<div class="sec"><h3>Γενέθλια ${MON[m]}</h3><span class="n">${list.length}</span></div>
     <div class="card pad" style="display:flex;flex-wrap:wrap;gap:8px">${list.map(b=>
       `<span class="pill" style="${b.day===today?'background:var(--accbg);border-color:var(--accln);color:var(--acc)':''}" >
         ${sdot(secOf(b.p))}<span class="pn" data-p="${b.p.id}">${esc(nm(b.p))}</span>
-        <span class="dim">${b.day}${b.day===today?' · σήμερα':''}${b.age?' · '+b.age:''}</span></span>`).join('')}</div>`;
+        <span class="dim">${String(b.day).padStart(2,'0')}/${String(m+1).padStart(2,'0')}${b.age?' · '+b.age+' χρ.':''}${b.day===today?' · σήμερα':''}</span></span>`).join('')}</div>`;
 }
 function avgAtt(){const ids=new Set(D.ss.filter(s=>s.scout_year===YEAR).map(s=>s.id));const a=D.att.filter(x=>ids.has(x.session_id));return a.length?Math.round(100*a.filter(x=>x.status==='Παρών').length/a.length):0}
 function bindTiles(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec,t=b.dataset.tab;route(b.dataset.go);if(s)setTimeout(()=>{const f=$('fsec');if(f){f.value=s;f.dispatchEvent(new Event('change'))}},30);if(t==='risk')setTimeout(()=>$('tabRisk')?.click(),30)})}
@@ -3284,7 +3746,7 @@ V.members=()=>{
 };
 
 V.leaders=()=>{
-  const list=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός'&&inScope(p)).sort(sortByName);
+  const list=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός'&&inScope(p)).sort(sortByName);
   $('view').innerHTML=listBar(chipsHTML([
       {k:'sec',opts:[{v:'Αγέλη',l:'Αγέλη'},{v:'Ομάδα',l:'Ομάδα'},{v:'Κοινότητα',l:'Κοινότητα'},{v:'Δίκτυο',l:'Δίκτυο'},{v:'Σύστημα',l:'Σύστημα'}]},
       {k:'cert',opts:[{v:'ok',l:'Ν.91(Ι) σε ισχύ'},{v:'warn',l:'λήγει'},{v:'bad',l:'έληξε'},{v:'none',l:'χωρίς'}]}
@@ -3549,7 +4011,7 @@ V.org=()=>{
             ${r.email?`<span class="sp"></span><a href="mailto:${esc(r.email)}" class="dim" style="font-size:11.5px">${esc(r.email)}</a>`:''}</div>
         </div>`).join('')}</div></div>`).join('')}`:'';
   $('view').innerHTML=`<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">${
-    secs.map(s=>{const led=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός'&&(p.section===s||(s==='Σύστημα'&&p.category==='ΑΣ'))).sort(sortByName);
+    secs.map(s=>{const led=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός'&&(p.section===s||(s==='Σύστημα'&&p.category==='ΑΣ'))).sort(sortByName);
       const mem=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===s).length;
       if(!led.length&&!mem)return '';
       return `<div class="card"><div class="pad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
@@ -3557,20 +4019,9 @@ V.org=()=>{
         <div style="padding:6px 0">${led.map(p=>`<div style="padding:7px 18px;display:flex;gap:8px;align-items:baseline">${leaderDot(p)}<span class="pn" data-p="${p.id}">${esc(nm(p))}</span><span class="dim" style="font-size:12px;margin-left:auto">${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||''))}</span></div>`).join('')||'<div class="dim" style="padding:10px 18px">—</div>'}</div></div>`}).join('')}</div>`+extHTML;
 };
 
-V.groups=()=>{
-  const out=['Αγέλη','Ομάδα','Κοινότητα'].map(sec=>{
-    const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec);
-    const g={}; kids.forEach(p=>{const n=(myOf(p)||{}).group_name||'— χωρίς υποομάδα';(g[n]=g[n]||[]).push(p)});
-    const keys=Object.keys(g).sort();
-    if(!keys.length)return '';
-    return `<div class="sec"><h3>${sdot(sec)} ${esc(sec)}</h3><span class="n">${kids.length} μέλη · ${keys.length} υποομάδες</span></div>
-      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(215px,1fr))">${keys.map(k=>`<div class="card"><div class="pad" style="border-bottom:1px solid var(--line);display:flex"><b>${esc(k)}</b><span class="sp"></span><span class="dim">${g[k].length}</span></div>
-        <div style="padding:6px 0">${g[k].sort(sortByName).map(p=>`<div style="padding:5px 16px;font-size:13.5px" class="pn" data-p="${p.id}">${esc(nm(p))}</div>`).join('')}</div></div>`).join('')}</div>`}).join('');
-  $('view').innerHTML=out||'<div class="uc"><h3>Δεν βρέθηκαν υποομάδες</h3></div>';
-};
 
 V.warrants=()=>{
-  const led=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').sort(sortByName);
+  const led=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName);
   $('view').innerHTML=listBar('',true)+`<div class="card pad" style="margin-bottom:14px"><span class="muted">Τρέχουσες ιδιότητες και αναθέσεις. Η ροή έκδοσης εντολών με εγκρίσεις έρχεται στη φάση 8.</span></div>
   <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th>Ιδιότητα</th><th class="hide-s">Τμήμα</th><th class="hide-s">Έγινε βαθμοφόρος</th></tr></thead><tbody>${
     led.map(p=>{let sd={};try{sd=p.scout_dates||{}}catch(e){}
@@ -3600,15 +4051,15 @@ function dl(kind){
     D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός').sort(sortByName).map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
       return [p.registry_no,p.last_name,p.first_name,secOf(p),y.group_name,y.grade,g.father_name,g.father_mobile,g.mother_name,g.mother_mobile]}));
   if(kind==='leaders')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Ιδιότητα','Τηλέφωνο','Email','Λήξη Ν.91(Ι)']].concat(
-    D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').sort(sortByName).map(p=>{const c=D.cert.find(x=>x.person_id===p.id)||{};
+    D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName).map(p=>{const c=D.cert.find(x=>x.person_id===p.id)||{};
       return [p.registry_no,p.last_name,p.first_name,p.section,p.appointment||p.category,p.phone,p.email,c.sexoxarto_expiry]}));
   if(kind==='guardians')rows=[['Α.Μ.παιδιού','Παιδί','Τμήμα','Πατέρας','Κιν.Πατέρα','Email πατέρα','Μητέρα','Κιν.Μητέρας','Email μητέρας']].concat(
     D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)).sort(sortByName).map(p=>{const g=gOf(p.registry_no)||{};
       return [p.registry_no,nm(p),secOf(p),g.father_name,g.father_mobile,g.father_email,g.mother_name,g.mother_mobile,g.mother_email]}));
   if(kind==='attend'){rows=[['Ημερομηνία','Τμήμα','Α.Μ.','Ονοματεπώνυμο','Κατάσταση']];
     D.ss.filter(s=>s.scout_year===YEAR).forEach(s=>D.att.filter(a=>a.session_id===s.id).forEach(a=>{const p=D.bh.find(x=>x.id===a.person_id);if(p)rows.push([s.session_date,s.section,p.registry_no,nm(p),a.status])}));}
-  const csv='﻿'+rows.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`e76-${kind}-${YEAR}.csv`;a.click();
+  const T={members:'Μέλη',leaders:'Βαθμοφόροι',guardians:'Γονείς',attend:'Παρουσίες'};
+  exportRows(rows,`e76-${kind}-${YEAR}`,(T[kind]||kind)+' '+YEAR);
   toast('Κατέβηκε '+rows.length+' γραμμές');
 }
 
