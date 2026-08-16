@@ -206,7 +206,7 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
     </div>
     <div id="navwrap"></div>
     <div class="sidefoot">
-      <div id="whoami">—</div>
+      <div id="whoami" style="cursor:pointer" title="Το προφίλ μου">—</div>
       <div style="margin-top:6px"><a href="#" id="logout" style="color:var(--sidein2)">Αποσύνδεση</a> · <span id="ver">v0.1</span></div>
     </div>
   </aside>
@@ -390,9 +390,16 @@ $('logout').onclick=async e=>{e.preventDefault();await sb.auth.signOut();locatio
 async function start(){
   $('gate').style.display='none'; $('app').style.display='flex';
   $('whoami').textContent=ME.email||'';
+  try{
+    const {data:pr}=await sb.from('profiles').select('person_id,role,access_role,scope_section').eq('id',(await sb.auth.getUser()).data.user.id).single();
+    if(pr){ME.person_id=pr.person_id;ME.role=pr.access_role||pr.role;ME.scope=pr.scope_section}
+  }catch(e){}
+  $('whoami').onclick=()=>{if(ME.person_id)openProfile(ME.person_id);else toast('Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα')};
   $('mbtn').innerHTML=ic('menu'); $('palbtn').innerHTML=ic('srch',16);
   renderNav(); route(location.hash.slice(1)||'dash'); banner();
   await loadAll(); renderNav(); route(ROUTE);
+  const me=ME.person_id&&D.bh.find(p=>p.id===ME.person_id);
+  if(me)$('whoami').innerHTML=`<b style="color:var(--sidein)">${esc(nm(me))}</b><div style="font-size:10.5px">${esc(me.appointment&&me.appointment!=='-'?me.appointment:(me.category||''))}${ME.role?' · '+esc(ME.role):''}</div>`;
 }
 
 /* ══ OFFLINE CACHE + ΟΥΡΑ ══ */
