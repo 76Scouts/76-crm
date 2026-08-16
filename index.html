@@ -216,6 +216,7 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
       <button class="btn gh sm mob" id="mbtn" aria-label="Μενού"></button>
       <h2 id="ttl">Πίνακας</h2><span class="sub" id="sub"></span>
       <span class="sp"></span>
+      <select id="persona" class="btn sm" style="width:auto;padding:5px 8px;max-width:230px" title="Προβολή ως"></select>
       <button class="btn gh sm" id="palbtn" title="Αναζήτηση (⌘K)"></button>
       <select id="yr" class="btn sm" style="width:auto;padding:5px 8px"></select>
     </header>
@@ -272,6 +273,9 @@ const ic=(n,s=17)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="no
 const NAV=[
  {g:'Επισκόπηση',items:[{id:'dash',t:'Πίνακας',i:'grid',s:'live'},{id:'trends',t:'Τάσεις',i:'trend',s:'live'}]},
  {g:'Μητρώο',items:[
+   {id:'me',t:'Η καρτέλα μου',i:'users',s:'live'},
+   {id:'myatt',t:'Οι παρουσίες μου',i:'check',s:'live'},
+   {id:'mykids',t:'Τα παιδιά μου',i:'home',s:'live'},
    {id:'members',t:'Μέλη',i:'users',s:'live'},
    {id:'leaders',t:'Βαθμοφόροι',i:'award',s:'live'},
    {id:'guardians',t:'Γονείς',i:'home',s:'live'},
@@ -308,7 +312,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 
 /* ══ AUTH ══ */
@@ -397,7 +401,7 @@ async function start(){
   $('whoami').onclick=()=>{if(ME.person_id)openProfile(ME.person_id);else toast('Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα')};
   $('mbtn').innerHTML=ic('menu'); $('palbtn').innerHTML=ic('srch',16);
   renderNav(); route(location.hash.slice(1)||'dash'); banner();
-  await loadAll(); renderNav(); route(ROUTE);
+  await loadAll(); renderPersona(); renderNav(); route(PA&&PA.k==='member'?'me':PA&&PA.k==='parent'?'mykids':ROUTE);
   const me=ME.person_id&&D.bh.find(p=>p.id===ME.person_id);
   if(me)$('whoami').innerHTML=`<b style="color:var(--sidein)">${esc(nm(me))}</b><div style="font-size:10.5px">${esc(me.appointment&&me.appointment!=='-'?me.appointment:(me.category||''))}${ME.role?' · '+esc(ME.role):''}</div>`;
 }
@@ -453,12 +457,13 @@ async function loadAll(){
     sb.from('requests').select('*').limit(2000),
     sb.from('request_steps').select('*').limit(6000),
     sb.from('reports').select('*').limit(2000),
-    sb.from('org_roles').select('*').order('seq')
+    sb.from('org_roles').select('*').order('seq'),
+    sb.from('person_hats').select('*').limit(500)
   ];
   const r=await Promise.all(q.map(p=>p.catch(e=>({data:null,error:e}))));
   if(!r[0].data&&loadCache()){banner();return}
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   const yrs=[...new Set(D.my.map(x=>x.scout_year).filter(Boolean))].sort().reverse();
@@ -467,12 +472,60 @@ async function loadAll(){
   $('yr').onchange=e=>{YEAR=e.target.value;route(ROUTE)};
 }
 
+/* ══ ΙΔΙΟΤΗΤΕΣ (personas) ══ */
+let PERSONAS=[], PA=null;
+const NAV_MEMBER=['me','myatt','progress'];
+const NAV_PARENT=['mykids'];
+function childrenOf(me){
+  if(!me)return [];
+  const em=(ME.email||'').toLowerCase(), full=nameKey(nm(me));
+  const regs=(D.gu||[]).filter(g=>
+     [g.father_email,g.mother_email].some(x=>x&&x.toLowerCase()===em) ||
+     [g.father_name,g.mother_name].some(x=>x&&nameKey(x)===full)).map(g=>g.registry_no);
+  return D.bh.filter(p=>regs.includes(p.registry_no));
+}
+function buildPersonas(){
+  const out=[], me=ME.person_id&&D.bh.find(p=>p.id===ME.person_id);
+  if(ME.role==='admin')out.push({id:'admin',t:'Διαχειριστής · πλήρης πρόσβαση',k:'leader',sc:'ΟΛΑ'});
+  (D.ph||[]).filter(h=>h.person_id===ME.person_id&&!h.valid_to).forEach(h=>
+    out.push({id:'hat:'+h.id,t:h.title,k:h.kind||'leader',sc:h.scope_value||'ΟΛΑ',lvl:h.scope_level}));
+  if(me){
+    if((me.kind||'Βαθμοφόρος')!=='Μέλος'){
+      const lb=me.appointment&&me.appointment!=='-'?me.appointment:(me.category||'Βαθμοφόρος');
+      const sc=me.category==='ΑΣ'?'ΟΛΑ':(me.section||'ΟΛΑ');
+      if(!out.some(o=>o.t===('Βαθμοφόρος · '+lb)))out.push({id:'leader',t:'Βαθμοφόρος · '+lb,k:'leader',sc});
+    }
+    if(me.is_commissioner)out.push({id:'com',t:'Έφορος',k:'leader',sc:'ΟΛΑ'});
+    out.push({id:'member',t:'Μέλος · η καρτέλα μου',k:'member',sc:'ΕΓΩ'});
+  }
+  const kids=childrenOf(me);
+  if(kids.length)out.push({id:'parent',t:`Γονέας · ${kids.length} ${kids.length===1?'παιδί':'παιδιά'}`,k:'parent',sc:'ΠΑΙΔΙΑ'});
+  return out;
+}
+function renderPersona(){
+  PERSONAS=buildPersonas();
+  const saved=localStorage.getItem('e76:persona');
+  PA=PERSONAS.find(p=>p.id===saved)||PERSONAS[0]||{id:'admin',t:'Διαχειριστής',k:'leader',sc:'ΟΛΑ'};
+  const sel=$('persona');
+  sel.innerHTML=PERSONAS.map(p=>`<option value="${p.id}"${p.id===PA.id?' selected':''}>${esc(p.t)}</option>`).join('');
+  sel.style.display=PERSONAS.length>1?'':'none';
+  sel.onchange=e=>{PA=PERSONAS.find(p=>p.id===e.target.value);localStorage.setItem('e76:persona',PA.id);
+    renderNav();route(PA.k==='member'?'me':PA.k==='parent'?'mykids':'dash')};
+}
+const scopeSec=()=>(PA&&PA.k==='leader'&&PA.sc&&PA.sc!=='ΟΛΑ'&&['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].includes(PA.sc))?PA.sc:null;
+function inScope(p){const s=scopeSec(); if(!s)return true; return secOf(p)===s||p.section===s}
+
 /* ══ NAV ══ */
 function renderNav(){
   const cnt={members:D.bh.filter(p=>(p.kind||'')==='Μέλος').length,leaders:D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος').length,guardians:D.gu.length,sessions:D.ss.length};
-  $('navwrap').innerHTML=NAV.map(g=>`<div class="navg">${g.g?`<span>${esc(g.g)}</span>`:''}${g.items.map(m=>{
+  const K=PA?PA.k:'leader';
+  const allow=id=>K==='leader'?!NAV_MEMBER.includes(id)&&!NAV_PARENT.includes(id)
+    :K==='member'?NAV_MEMBER.includes(id)
+    :NAV_PARENT.includes(id);
+  $('navwrap').innerHTML=NAV.map(g=>{const its=g.items.filter(m=>allow(m.id)); if(!its.length)return '';
+    return `<div class="navg">${g.g?`<span>${esc(g.g)}</span>`:''}${its.map(m=>{
     const tag=m.s==='soon'?'<span class="tag">Σύντομα</span>':m.s==='review'?'<span class="tag">Review</span>':(cnt[m.id]?`<span class="cnt">${cnt[m.id]}</span>`:'');
-    return `<button class="nav${ROUTE===m.id?' on':''}" data-r="${m.id}">${ic(m.i)}<span>${esc(m.t)}</span>${tag}</button>`;}).join('')}</div>`).join('');
+    return `<button class="nav${ROUTE===m.id?' on':''}" data-r="${m.id}">${ic(m.i)}<span>${esc(m.t)}</span>${tag}</button>`;}).join('')}</div>`}).join('');
   $('navwrap').querySelectorAll('.nav').forEach(b=>b.onclick=()=>{route(b.dataset.r);$('side').classList.remove('open');document.querySelector('.scrim')?.remove()});
 }
 $('mbtn').onclick=()=>{const s=$('side');s.classList.toggle('open');
@@ -482,7 +535,7 @@ $('mbtn').onclick=()=>{const s=$('side');s.classList.toggle('open');
 function route(r){
   if(typeof r==='string'&&r.includes('='))r='dash';
   ROUTE=MOD[r]?r:'dash'; location.hash=ROUTE;
-  const m=MOD[ROUTE]; $('ttl').textContent=m.t; $('sub').textContent='';
+  const m=MOD[ROUTE]; $('ttl').textContent=m.t; $('sub').textContent=(PA&&PA.sc&&PA.sc!=='ΟΛΑ')?('· '+PA.sc):'';
   renderNav(); window.scrollTo(0,0);
   if(m.s==='live'){ (V[ROUTE]||V.dash)(); } else { uc(m); }
 }
@@ -656,6 +709,66 @@ V.trends=()=>{
           <span class="dim" style="flex:0 0 34px;text-align:right;font-variant-numeric:tabular-nums">${v}%</span></div>`}).join('')}</div>`:''}
     </div>`}).join('');
   $('view').innerHTML=blocks||'<div class="uc"><h3>Δεν υπάρχουν αρκετά δεδομένα</h3><p>Χρειάζονται καταχωρημένες συγκεντρώσεις.</p></div>';
+};
+
+/* ── Προσωπικές όψεις ── */
+const meRec=()=>ME.person_id&&D.bh.find(p=>p.id===ME.person_id);
+V.me=()=>{
+  const p=meRec();
+  if(!p)return $('view').innerHTML=`<div class="uc"><h3>Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα</h3><p>Ζήτα από τον Α.Σ. να συνδέσει το email σου με το μητρώο.</p></div>`;
+  const sd=p.scout_dates||{}, c=D.cert.find(x=>x.person_id===p.id)||{}, y=myOf(p)||{};
+  const sec=secOf(p);
+  const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR);
+  const mine=D.att.filter(a=>a.person_id===p.id&&ses.some(s=>s.id===a.session_id));
+  const pct=mine.length?Math.round(100*mine.filter(x=>x.status==='Παρών').length/mine.length):null;
+  const row=(k,v)=>v?`<div class="kv"><b>${esc(k)}</b><span>${v}</span></div>`:'';
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      ${sdot(sec)}<div><div style="font-size:19px;font-weight:600;letter-spacing:-.01em">${esc(nm(p))}</div>
+      <div class="dim" style="font-size:13px">${esc(p.appointment&&p.appointment!=='-'?p.appointment:(p.category||''))}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
+      <span class="sp"></span><button class="btn sm" data-p="${p.id}">Πλήρης καρτέλα</button></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
+      <div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Στοιχεία</h3>
+        ${row('Τμήμα',esc(sec||'—'))}${row('Υποομάδα',esc(y.group_name||''))}${row('Τηλέφωνο',p.phone?fphone(p.phone):'')}${row('Email',esc(p.email||''))}</div>
+      <div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Παρουσίες ${esc(YEAR)}</h3>
+        <div style="font-size:26px;font-weight:600">${pct===null?'—':pct+'%'}</div>
+        <div class="dim" style="font-size:12.5px">${mine.filter(x=>x.status==='Παρών').length} από ${mine.length} συγκεντρώσεις</div></div>
+      <div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Προσκοπική πορεία</h3>
+        ${row('Εγγραφή',esc(sd.Registration||''))}${row('Υπόσχεση Λυκ.',esc(sd.CubPromise||sd.CubDate||''))}${row('Υπόσχεση Προσκ.',esc(sd.ScoutPromise||sd.ScoutDate||''))}
+        ${row('Πρόσκ. Δημοκρατίας',esc(sd.RepublicDate||''))}${row('Έγινε βαθμοφόρος',esc(sd.LeaderDate||''))}
+        ${!Object.keys(sd).length?'<span class="dim" style="font-size:13px">Χωρίς καταχωρημένες ημερομηνίες</span>':''}</div>
+      ${c.sexoxarto_expiry?`<div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Πιστοποιητικά</h3>
+        ${row('Σεξόχαρτο',fdate(c.sexoxarto_date)+' → <b>'+fdate(c.sexoxarto_expiry)+'</b>')}</div>`:''}
+    </div>`;
+};
+V.myatt=()=>{
+  const p=meRec(); if(!p)return V.me();
+  const sec=secOf(p);
+  const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR).sort((a,b)=>a.session_date<b.session_date?1:-1);
+  const map={}; D.att.filter(a=>a.person_id===p.id).forEach(a=>map[a.session_id]=a.status);
+  $('view').innerHTML=`<div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Κατάσταση</th></tr></thead><tbody>${
+    ses.map(s=>`<tr><td>${fdate(s.session_date)}</td><td>${sdot(s.section)} ${esc(s.section||'')}</td>
+      <td>${map[s.id]==='Παρών'?'<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Παρών</span>':map[s.id]==='Απών'?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Απών</span>':'<span class="dim">—</span>'}</td></tr>`).join('')
+    ||'<tr><td colspan="3" class="dim" style="padding:22px;text-align:center">Καμία συγκέντρωση</td></tr>'}</tbody></table></div>`;
+};
+V.mykids=()=>{
+  const kids=childrenOf(meRec());
+  if(!kids.length)return $('view').innerHTML=`<div class="uc"><div class="ico">${ic('home',26)}</div><h3>Δεν βρέθηκαν παιδιά</h3><p>Η σύνδεση γίνεται μέσω του μητρώου γονέων — αν λείπει, ζήτα από τον Α.Σ. να καταχωρήσει το email σου.</p></div>`;
+  $('view').innerHTML=kids.map(k=>{
+    const sec=secOf(k), y=myOf(k)||{};
+    const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR);
+    const mine=D.att.filter(a=>a.person_id===k.id&&ses.some(s=>s.id===a.session_id));
+    const pct=mine.length?Math.round(100*mine.filter(x=>x.status==='Παρών').length/mine.length):null;
+    const last=ses.filter(s=>mine.some(a=>a.session_id===s.id&&a.status==='Παρών')).sort((a,b)=>a.session_date<b.session_date?1:-1)[0];
+    return `<div class="card pad" style="margin-bottom:12px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${sdot(sec)}
+        <div><div style="font-size:17px;font-weight:600">${esc(nm(k))}</div>
+        <div class="dim" style="font-size:12.5px">${esc(sec||'')}${y.group_name?' · '+esc(y.group_name):''}${y.grade?' · '+esc(y.grade):''}</div></div>
+        <span class="sp"></span><button class="btn sm" data-p="${k.id}">Καρτέλα</button></div>
+      <div class="tiles" style="margin-top:12px">
+        <div class="tile" style="cursor:default"><div class="k">Προσέλευση ${esc(YEAR)}</div><div class="v">${pct===null?'—':pct+'%'}</div><div class="s">${mine.filter(x=>x.status==='Παρών').length}/${mine.length} συγκεντρώσεις</div></div>
+        <div class="tile" style="cursor:default"><div class="k">Τελευταία παρουσία</div><div class="v" style="font-size:16px">${last?fdate(last.session_date):'—'}</div><div class="s">&nbsp;</div></div>
+        <div class="tile" style="cursor:default"><div class="k">Εγγραφή</div><div class="v" style="font-size:16px">${y.registered?'Ολοκληρώθηκε':'Εκκρεμεί'}</div><div class="s">${y.triptycho_no?'τριπλότυπο '+esc(y.triptycho_no):'χωρίς τριπλότυπο'}</div></div>
+      </div></div>`}).join('');
 };
 
 /* ── Ρυθμίσεις ── */
@@ -1349,7 +1462,7 @@ function avgAtt(){const ids=new Set(D.ss.filter(s=>s.scout_year===YEAR).map(s=>s
 function bindTiles(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec,t=b.dataset.tab;route(b.dataset.go);if(s)setTimeout(()=>{const f=$('fsec');if(f){f.value=s;f.dispatchEvent(new Event('change'))}},30);if(t==='risk')setTimeout(()=>$('tabRisk')?.click(),30)})}
 
 V.members=()=>{
-  const list=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)).sort(sortByName);
+  const list=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&inScope(p)).sort(sortByName);
   $('view').innerHTML=`<div class="card pad" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
       <input id="fq" placeholder="Αναζήτηση…" style="max-width:230px">
       <select id="fsec" style="max-width:160px"><option value="">Όλα τα τμήματα</option>${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>`<option>${s}</option>`).join('')}</select>
@@ -1372,7 +1485,7 @@ V.members=()=>{
 };
 
 V.leaders=()=>{
-  const list=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός').sort(sortByName);
+  const list=D.bh.filter(p=>(p.kind||'Βαθμοφόρος')!=='Μέλος'&&p.status==='Ενεργός'&&inScope(p)).sort(sortByName);
   $('view').innerHTML=`<div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th class="hide-s">Ιδιότητα</th><th class="hide-s">Τηλέφωνο</th><th>Σεξόχαρτο</th></tr></thead><tbody>${
     list.map(p=>{const c=D.cert.find(x=>x.person_id===p.id);const d=c&&c.sexoxarto_expiry?Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5):null;
       const st=d===null?'<span class="pill" style="border-color:var(--line2)">—</span>':d<0?`<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Έληξε</span>`:d<=90?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">${d} μέρες</span>`:`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Σε ισχύ</span>`;
