@@ -80,6 +80,9 @@ input,select{font:inherit;padding:7px 10px;border:1px solid var(--line2);border-
 input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;border-color:var(--acc)}
 
 /* stat tiles */
+  .grow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+  .grow label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2);flex:1;min-width:150px}
+  .grow select,.grow input{padding:7px 8px;font-size:13px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);cursor:pointer;transition:.13s;text-align:left;display:block;width:100%}
 .tile:hover{border-color:var(--ink3);transform:translateY(-1px)}
@@ -460,12 +463,14 @@ const NAV=[
    {id:'mails',t:'Λείπουν email',i:'mail',s:'live'}]},
  {g:'Χρονιά',items:[
    {id:'year',t:'Η χρονιά που έρχεται',i:'trend',s:'live'},
+   {id:'fees',t:'Χρέωση εγγραφών',i:'book',s:'live'},
    {id:'intake',t:'Νέα μέλη',i:'user',s:'live'},
    {id:'handover',t:'Παραλαβή φακέλου',i:'check',s:'live'},
    {id:'rollover',t:'Μετάβαση χρονιάς',i:'trend',s:'live'},
    {id:'forms',t:'Θεσμικά έντυπα',i:'book',s:'live'},
    {id:'templates',t:'Έντυπα & πρότυπα',i:'book',s:'live'},
-   {id:'access',t:'Ρόλοι & προσβάσεις',i:'shield',s:'live'}]},
+   {id:'access',t:'Ρόλοι & προσβάσεις',i:'shield',s:'live'},
+   {id:'grants',t:'Παραχωρήσεις',i:'lock',s:'live'}]},
  {g:'Διοίκηση',items:[
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'approvals',t:'Αιτήσεις & εγκρίσεις',i:'check',s:'live'},
@@ -480,7 +485,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-17 09:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-17 09:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -658,8 +663,8 @@ function banner(){
 
 async function loadAll(){
   const q=[
-    sb.from('badgeholders').select('id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,photo_path,scout_name,nickname').limit(2000),
-    sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,triptycho_no,role,source').limit(3000),
+    sb.from('badgeholders').select('id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,photo_path,scout_name,nickname,same_as').limit(2000),
+    sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
     sb.from('sessions').select('id,session_date,section,scout_year,status,title').order('session_date').limit(500),
     sb.from('attendance').select('session_id,person_id,status').limit(20000),
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
@@ -695,9 +700,11 @@ async function loadAll(){
     sb.from('subgroups').select('*').limit(500),
     sb.from('care_links').select('*').limit(3000),
     sb.from('profiles').select('*'),
-    sb.from('section_config').select('*')
+    sb.from('section_config').select('*'),
+    sb.from('fee_schedule').select('*'),
+    sb.from('grants').select('*').order('valid_to',{ascending:false}).limit(500)
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants'];
   const _t0=Date.now();
   const TMO=12000;
   const guard=(pr,label)=>new Promise(res=>{
@@ -722,7 +729,7 @@ async function loadAll(){
   }
   LOADED=true;
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   ensurePhotos((D.bh||[]).map(x=>x.photo_path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
@@ -738,8 +745,26 @@ async function loadAll(){
 let PERSONAS=[], PA=null;
 const NAV_MEMBER=['me','myatt','progress'];
 const NAV_PARENT=['mykids'];
+/* Οι κάρτες που είναι ο ΙΔΙΟΣ άνθρωπος με εμένα:
+   η δική μου, η καρτέλα-γονέας που δείχνει σε εμένα (same_as), και ό,τι έχει το ίδιο email. */
+function myCards(me){
+  if(!me)return [];
+  const em=(ME.email||'').toLowerCase();
+  const set=new Map([[me.id,me]]);
+  D.bh.forEach(b=>{
+    if(b.same_as===me.id||me.same_as===b.id) set.set(b.id,b);
+    else if(em&&(b.email||'').toLowerCase()===em) set.set(b.id,b);
+  });
+  return [...set.values()];
+}
 function childrenOf(me){
   if(!me)return [];
+  const ids=myCards(me).map(b=>b.id);
+  // 1) δεσμοί φροντίδας — η αλήθεια
+  const byLink=(D.cl||[]).filter(c=>ids.includes(c.carer_id)&&!c.restricted&&!c.valid_to)
+    .map(c=>D.bh.find(b=>b.id===c.member_id)).filter(Boolean);
+  if(byLink.length)return [...new Set(byLink)];
+  // 2) μεταβατικό: το παλιό μητρώο γονέων
   const em=(ME.email||'').toLowerCase(), full=nameKey(nm(me));
   const regs=(D.gu||[]).filter(g=>
      [g.father_email,g.mother_email].some(x=>x&&x.toLowerCase()===em) ||
@@ -1985,6 +2010,237 @@ V.year=()=>{
       </tbody></table></div>`:''}`;
   bindTiles();
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go));
+};
+
+/* ══ ΠΑΡΑΧΩΡΗΣΕΙΣ — δικαιώματα πάνω από τον ρόλο, με λήξη ══ */
+const CAPS=[
+ {k:'people',    t:'Πρόσωπα & επαφές',      d:'Καρτέλες, τηλέφωνα γονέων, εξαγωγές'},
+ {k:'attendance',t:'Παρουσίες',             d:'Συγκεντρώσεις και παρουσιολόγιο'},
+ {k:'progress',  t:'Προσκοπική πρόοδος',    d:'Στάδια, απαιτήσεις, πτυχία'},
+ {k:'events',    t:'Δράσεις & συμμετοχές',  d:'Εκδρομές, κατασκηνώσεις, έντυπα'},
+ {k:'enrollment',t:'Φάκελος εγγραφής',      d:'Δικαιολογητικά, συγκαταθέσεις'},
+ {k:'medical',   t:'Ιατρικά & σημάνσεις',   d:'Χωριστά — δεν έρχεται μαζί με τα υπόλοιπα'},
+ {k:'finance',   t:'Χρέωση & ταμείο',       d:'Ποσά εγγραφών, πληρωμές'},
+ {k:'admin',     t:'Διαχείριση',            d:'Ρόλοι, πρότυπα, ρυθμίσεις — μόνο ο Α.Σ. το δίνει'}
+];
+const capT=k=>(CAPS.find(c=>c.k===k)||{}).t||k;
+V.grants=()=>{
+  const gs=(D.gr||[]).slice().sort((a,b)=>(a.valid_to<b.valid_to?-1:1));
+  const today=new Date().toISOString().slice(0,10);
+  const live=g=>!g.revoked_at&&g.valid_to>=today&&g.valid_from<=today;
+  const per=id=>D.bh.find(b=>b.id===id);
+  const secs=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'];
+  const cands=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName);
+  const row=g=>{const p=per(g.person_id), by=per(g.granted_by), ok=live(g);
+    return `<tr style="${ok?'':'opacity:.5'}">
+      <td>${p?pnm(p):'<span class="dim">—</span>'}<div class="dim" style="font-size:11.5px">${esc(p&&p.section||'')}</div></td>
+      <td>${esc(capT(g.capability))}<div class="dim" style="font-size:11.5px">${g.can_write?'γράφει':'βλέπει'}</div></td>
+      <td>${g.scope_level==='ΟΛΑ'?'<b>ΟΛΑ</b>':g.scope_level==='person'?esc((per(g.scope_value)||{}).first_name||'άτομο'):esc(g.scope_value||'')}</td>
+      <td class="hide-s">${fdate(g.valid_from)} → <b>${fdate(g.valid_to)}</b></td>
+      <td class="hide-s dim" style="font-size:11.5px;max-width:220px">${esc(g.reason||'')}${by?'<br>— '+esc(nm(by)):''}</td>
+      <td>${g.revoked_at?'<span class="pill">ανακλήθηκε</span>':
+            ok?`<button class="btn sm" data-rev="${g.id}">Ανάκληση</button>`:'<span class="pill">έληξε</span>'}</td></tr>`};
+
+  $('view').innerHTML=`
+   <div class="card pad"><div class="dim" style="font-size:12.5px">
+     Δικαιώματα <b>πάνω από τον ρόλο</b>, χωρίς να αλλάξει ο ρόλος. Πάντα με ημερομηνία λήξης και λόγο.
+     Ο βαθμοφόρος Αγέλης μπορεί να γράφει την πρόοδο της Ομάδας μέχρι τα Χριστούγεννα, και μετά όχι — μόνο του.</div></div>
+
+   <div class="sec"><h3>Νέα παραχώρηση</h3></div>
+   <div class="card pad">
+    <div class="grow">
+     <label>Σε ποιον<select id="gPer"><option value="">—</option>
+       ${cands.map(p=>`<option value="${p.id}">${esc(nm(p))}${p.section?' · '+esc(p.section):''}</option>`).join('')}</select></label>
+     <label>Τι<select id="gCap">${CAPS.map(c=>`<option value="${c.k}">${esc(c.t)}</option>`).join('')}</select></label>
+     <label>Επίπεδο<select id="gRw"><option value="0">Μόνο να βλέπει</option><option value="1">Να βλέπει και να γράφει</option></select></label>
+    </div>
+    <div class="grow">
+     <label>Πού<select id="gSec">${secs.map(s=>`<option value="${s}">${s}</option>`).join('')}<option value="ΟΛΑ">ΟΛΑ (μόνο ο Α.Σ.)</option></select></label>
+     <label>Μέχρι<input type="date" id="gTo" value="${(new Date(new Date().getFullYear()+(new Date().getMonth()>=8?1:0),7,31)).toISOString().slice(0,10)}"></label>
+     <label style="flex:2;min-width:220px">Γιατί<input id="gWhy" placeholder="π.χ. καλύπτει την Ομάδα όσο λείπει ο υπαρχηγός"></label>
+    </div>
+    <div class="dim" style="font-size:12.5px;margin:6px 0 10px">
+      <b>Λήγει πάντα.</b> Προεπιλογή το τέλος της προσκοπικής χρονιάς (31 Αυγούστου) — δικαίωμα που ζει
+      περισσότερο από τον λόγο του είναι ο τρόπος που διαρρέουν τα συστήματα.</div>
+    <button class="btn" id="gAdd">Παραχώρηση</button>
+    <span class="dim" id="gMsg" style="margin-left:10px;font-size:12.5px"></span>
+   </div>
+
+   <div class="sec"><h3>Σε ισχύ</h3><span class="n">${gs.filter(live).length}</span></div>
+   ${gs.length?`<div class="card" style="overflow:auto"><table>
+     <thead><tr><th>Ποιος</th><th>Τι</th><th>Πού</th><th class="hide-s">Διάστημα</th><th class="hide-s">Λόγος</th><th></th></tr></thead>
+     <tbody>${gs.map(row).join('')}</tbody></table></div>`
+    :`<div class="card pad"><div class="dim">Καμία παραχώρηση. Ο καθένας βλέπει ό,τι του δίνει ο ρόλος του.</div></div>`}
+
+   <div class="sec"><h3>Οι τρεις κανόνες</h3></div>
+   <div class="card pad"><ol class="dim" style="font-size:12.5px;line-height:1.75;padding-left:20px;margin:0">
+     <li><b>Κανείς δεν δίνει ό,τι δεν έχει.</b> Ο αρχηγός Αγέλης παραχωρεί μόνο Αγέλη· «ΟΛΑ» μόνο ο Α.Σ.
+         Ελέγχεται στη βάση — αν το δοκιμάσεις αλλιώς, η βάση το απορρίπτει, δεν κρύβεται απλώς το κουμπί.</li>
+     <li><b>Τα ιατρικά είναι ξεχωριστή δυνατότητα.</b> Παραχώρηση «πρόοδος» δίνει τα παιδιά, <b>όχι</b> τους φακέλους υγείας τους.</li>
+     <li><b>Τα κηδεμονικά δεν παραχωρούνται ποτέ</b> — ούτε από τον Α.Σ. Δεν υπάρχουν στη λίστα.
+         Αν χρειαστεί κάποιος να μάθει για ένα δικαστικό διάταγμα, είναι συζήτηση, όχι κουμπί.</li>
+   </ol></div>`;
+
+  const msg=t=>{const m=$('gMsg'); if(m)m.textContent=t};
+  $('gAdd').onclick=async()=>{
+    const pid=$('gPer').value, cap=$('gCap').value, sec=$('gSec').value,
+          to=$('gTo').value, why=$('gWhy').value.trim(), rw=$('gRw').value==='1';
+    if(!pid)return msg('Διάλεξε σε ποιον.');
+    if(!to)  return msg('Βάλε ημερομηνία λήξης.');
+    if(!why) return msg('Γράψε τον λόγο — θα τον διαβάσεις σε έξι μήνες.');
+    msg('…');
+    const {error}=await sb.from('grants').insert({person_id:pid,capability:cap,can_write:rw,
+      scope_level:sec==='ΟΛΑ'?'ΟΛΑ':'section', scope_value:sec==='ΟΛΑ'?null:sec,
+      valid_to:to, reason:why, granted_by:ME.person_id||null});
+    if(error)return msg('Δεν έγινε: '+error.message);
+    await loadAll(); route('grants');
+  };
+  document.querySelectorAll('[data-rev]').forEach(b=>b.onclick=async()=>{
+    b.disabled=true;
+    const {error}=await sb.from('grants').update({revoked_at:new Date().toISOString(),
+      revoked_by:ME.person_id||null}).eq('id',b.dataset.rev);
+    if(error){msg('Δεν έγινε: '+error.message);b.disabled=false;return}
+    await loadAll(); route('grants');
+  });
+};
+
+/* ══ ΧΡΕΩΣΗ ΕΓΓΡΑΦΩΝ — εγκύκλιος Σ.Π.Κ. 2025/267 ══ */
+const eur=v=>(v==null||v==='')?'—':'€'+Number(v).toFixed(2);
+const TIERLBL={paidi_1:'1ο παιδί',paidi_2:'2ο+ παιδί',paidi_bathm:'Παιδί βαθμοφόρου',diktyo:'Δίκτυο',bathmoforos:'Βαθμοφόρος'};
+V.fees=()=>{
+  const rows=D.my.filter(x=>x.scout_year===YEAR&&!x.voided_at)
+    .map(r=>{const p=D.bh.find(b=>b.id===r.person_id); return p?{r,p}:null}).filter(Boolean);
+  if(!rows.length){$('view').innerHTML=`<div class="card pad"><div class="dim">Καμία εγγραφή για ${esc(YEAR)}.</div></div>`;return}
+
+  const famOf=pid=>{const c=(D.cl||[]).filter(x=>x.member_id===pid).map(x=>x.carer_id).sort();
+    return c.length?c[0]:('solo:'+pid)};
+  const fam={}; rows.forEach(x=>{const k=famOf(x.p.id);(fam[k]=fam[k]||[]).push(x)});
+  const sum=(a,f)=>a.reduce((s,x)=>s+(Number(f(x))||0),0);
+  const due=sum(rows,x=>x.r.fee_due), paid=sum(rows,x=>x.r.fee_paid);
+  const unpaid=rows.filter(x=>x.r.fee_paid==null);
+  const noTier=rows.filter(x=>!x.r.fee_tier);
+  const byTier={}; rows.forEach(x=>{const t=x.r.fee_tier||'—';(byTier[t]=byTier[t]||[]).push(x)});
+  const sched=(D.fs||[]).filter(f=>f.scout_year===YEAR).sort((a,b)=>b.total-a.total);
+
+  // Βαθμοφόροι-γονείς: έχουν Ε.Δ. που καλύπτει τη χρονιά; Χωρίς αυτή, το παιδί χάνει τα €15,50.
+  const y0=(+String(YEAR).slice(0,4))+'-09-01', y1=((+String(YEAR).slice(0,4))+1)+'-08-31';
+  const edOK=id=>(D.sh||[]).some(s=>s.person_id===id&&s.warrant_type==='Εντολή Διοίκησης'
+      &&(s.start_date||y0)<=y1&&(s.end_date||y1)>=y0);
+  const lp=D.bh.filter(g=>(g.kind||'')==='Γονέας'&&g.same_as)
+    .map(g=>({g, l:D.bh.find(b=>b.id===g.same_as),
+      kids:(D.cl||[]).filter(c=>c.carer_id===g.id).map(c=>D.bh.find(b=>b.id===c.member_id))
+            .filter(k=>k&&(k.kind||'')==='Μέλος'&&myOf(k))}))
+    .filter(x=>x.l&&x.kids.length);
+  const lpNo=lp.filter(x=>!edOK(x.l.id));
+
+  const diffs=Object.entries(fam).map(([k,a])=>({k,a,d:sum(a,x=>x.r.fee_paid)-sum(a,x=>x.r.fee_due),
+      anyPaid:a.some(x=>x.r.fee_paid!=null)}))
+    .filter(f=>f.anyPaid&&Math.abs(f.d)>=0.01).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
+  const over=diffs.filter(f=>f.d>0), under=diffs.filter(f=>f.d<0);
+
+  const tile=(cls,k,v,s)=>`<div class="tile ${cls}" style="cursor:default"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  const line=x=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(x.r.section||secOf(x.p))}
+     <span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span>
+     <span class="dim">${TIERLBL[x.r.fee_tier]||'—'} · ${eur(x.r.fee_due)}${(x.r.fee_paid!=null&&Number(x.r.fee_paid)!==Number(x.r.fee_due))?` · <b style="color:var(--warn)">πλήρωσε ${eur(x.r.fee_paid)}</b>`:''}</span></span>`;
+  const famRow=f=>`<tr><td>${f.a.map(line).join(' ')}</td>
+     <td style="white-space:nowrap;text-align:right"><b style="color:${f.d>0?'var(--warn)':'var(--ink2)'}">${f.d>0?'+':''}${eur(f.d)}</b></td></tr>`;
+  const toSyst=sum(rows,x=>{const f=sched.find(s=>s.tier===x.r.fee_tier);return f?Number(f.systima):0});
+
+  $('view').innerHTML=`
+    <div class="card pad"><div class="dim" style="font-size:12.5px">
+      Ο υπολογισμός γίνεται <b>στη βάση</b>, κατά την εγκύκλιο Σ.Π.Κ. <b>2025/267</b>.
+      Δεν αντικαθιστά το e-Scouts — <b>το ελέγχει</b>.</div></div>
+
+    <div class="tiles">
+      ${tile('', 'Εγγραφές', rows.length, esc(YEAR))}
+      ${tile('', 'Οφειλόμενα', eur(due), 'κατά Σ.Π.Κ.')}
+      ${tile(unpaid.length?'warn':'ok', 'Καταγεγραμμένα', eur(paid), unpaid.length?unpaid.length+' χωρίς πληρωμή':'όλα')}
+      ${tile(diffs.length?'warn':'ok', 'Αποκλίσεις', diffs.length, 'οικογένειες')}
+    </div>
+
+    ${lp.length?`<div class="sec"><h3>Βαθμοφόροι-γονείς</h3><span class="n">${lp.length}</span></div>
+      <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">
+      Το παιδί τους πληρώνει <b>€15,50 αντί €50</b> — <b>μόνο</b> αν ο γονέας έχει Εντολή Διοίκησης που καλύπτει το ${esc(YEAR)}.
+      Το e-Scouts το αναγνωρίζει από το <b>Α.Δ.Τ.</b>, που πρέπει να είναι <b>ίδιο</b> σε Μητρώο Βαθμοφόρου και Μητρώο Γονέα.</div>
+      <div class="card" style="overflow:auto;box-shadow:none"><table>
+      <thead><tr><th>Βαθμοφόρος-γονέας</th><th class="hide-s">Α.Μ.</th><th>Ε.Δ. ${esc(YEAR)}</th><th>Παιδιά</th></tr></thead><tbody>
+      ${lp.sort((a,b)=>(edOK(a.l.id)?1:0)-(edOK(b.l.id)?1:0)).map(x=>`<tr>
+        <td>${pnm(x.l)}</td><td class="hide-s dim">${esc(x.l.registry_no||'—')}</td>
+        <td><span class="pill" style="border-color:transparent;background:${edOK(x.l.id)?'var(--okbg);color:var(--ok)':'var(--badbg);color:var(--bad)'}">${edOK(x.l.id)?'ναι':'ΟΧΙ'}</span></td>
+        <td>${x.kids.map(k=>`<span class="pn" data-p="${k.id}">${esc(nm(k))}</span>`).join(', ')}</td></tr>`).join('')}
+      </tbody></table></div>
+      ${lpNo.length?`<div class="dim" style="font-size:12.5px;margin-top:10px">
+      <b style="color:var(--bad)">${lpNo.length} χωρίς Ε.Δ. για το ${esc(YEAR)}.</b>
+      Αν οι εγγραφές ανοίξουν πριν εκδοθούν οι εντολές, τα παιδιά τους χρεώνονται πλήρη τιμή —
+      χαμένα <b>${eur(lpNo.reduce((s,x)=>s+x.kids.length*34.5,0))}</b>.
+      Η εγκύκλιος 2025/271 §3 ζητά email στο <code>administration@cyprusscouts.org</code> για κατά προτεραιότητα αξιολόγηση.</div>`:''}
+      </div>`:''}
+
+    ${over.length?`<div class="sec"><h3>Πλήρωσαν παραπάνω</h3><span class="n">${eur(sum(over,f=>f.d))}</span></div>
+      <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">
+      Σχεδόν πάντα το ίδιο: <b>δεν εφαρμόστηκε η μειωμένη τιμή παιδιού βαθμοφόρου</b> (€15,50).
+      Η εγκύκλιος 2025/271 §3 ζητά email στο <code>administration@cyprusscouts.org</code> με τα στοιχεία των βαθμοφόρων-γονέων.</div></div>
+      <div class="card" style="overflow:auto"><table><tbody>${over.map(famRow).join('')}</tbody></table></div>`:''}
+
+    ${under.length?`<div class="sec"><h3>Πλήρωσαν λιγότερα</h3><span class="n">${eur(Math.abs(sum(under,f=>f.d)))}</span></div>
+      <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">
+      Είτε λείπει καταγραφή πληρωμής, είτε το e-Scouts μέτρησε αδελφό <b>άλλου Συστήματος</b> —
+      η έκπτωση αδελφού είναι πανκύπρια, όχι ανά Σύστημα. <b>Δεν είναι αυτόματα λάθος.</b></div></div>
+      <div class="card" style="overflow:auto"><table><tbody>${under.map(famRow).join('')}</tbody></table></div>`:''}
+
+    <div class="sec"><h3>Ανά βαθμίδα</h3></div>
+    <div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Βαθμίδα</th><th style="text-align:right">Πλήθος</th><th style="text-align:right">Ανά άτομο</th><th style="text-align:right">Σύνολο</th><th class="hide-s">Τρόπος πληρωμής</th></tr></thead>
+      <tbody>${sched.map(f=>{const a=byTier[f.tier]||[];
+        return `<tr><td>${esc(f.label)}</td><td style="text-align:right">${a.length}</td>
+        <td style="text-align:right">${eur(f.total)}</td><td style="text-align:right">${eur(a.length*Number(f.total))}</td>
+        <td class="hide-s dim">${f.tier==='bathmoforos'?'JCC Gateway — κάρτα Συστήματος':'JCC Portal — σύνδεσμος στον γονέα'}</td></tr>`}).join('')}
+        <tr><td colspan="3"><b>Σύνολο</b></td><td style="text-align:right"><b>${eur(due)}</b></td><td class="hide-s"></td></tr>
+      </tbody></table></div>
+
+    <div class="sec"><h3>Πού πάει το κάθε ευρώ</h3></div>
+    <div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Βαθμίδα</th><th style="text-align:right">Σύστημα</th><th style="text-align:right">Ε.Π.Ε.</th><th style="text-align:right">Σ.Π.Κ.</th><th style="text-align:right">Ανάπτυξη</th><th style="text-align:right">Ασφάλεια</th><th style="text-align:right">Σύνολο</th></tr></thead>
+      <tbody>${sched.map(f=>`<tr><td>${esc(f.label)}</td>
+        <td style="text-align:right">${eur(f.systima)}</td><td style="text-align:right">${eur(f.epe)}</td>
+        <td style="text-align:right">${eur(f.spk)}</td><td style="text-align:right">${eur(f.anaptyxi)}</td>
+        <td style="text-align:right">${eur(f.asfaleia)}</td><td style="text-align:right"><b>${eur(f.total)}</b></td></tr>`).join('')}
+      </tbody></table></div>
+    <div class="card pad"><div class="dim" style="font-size:12.5px">
+      Το μερίδιο <b>Συστήματος (€5 ανά εγγραφή)</b> επιστρέφεται στον λογαριασμό της Προσκοπικής Επιτροπής —
+      γι' αυτό το Σ.Π.Κ. ζητά πιστοποιητικό IBAN. Φέτος: <b>${eur(toSyst)}</b> προς το 76ο.</div></div>
+
+    ${unpaid.length?`<div class="sec"><h3>Χωρίς καταγεγραμμένη πληρωμή</h3><span class="n">${unpaid.length}</span></div>
+      <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">
+      Η εγγραφή θεωρείται επιβεβαιωμένη <b>μόνο όταν πληρωθεί</b>. Για βαθμοφόρους, μόνο οι πληρωμένες
+      μετρούν για έκδοση νέας Εντολής Διοίκησης (2025/271 §2).</div>
+      ${unpaid.map(line).join('')}</div>`:''}
+
+    ${noTier.length?`<div class="sec"><h3>Χωρίς βαθμίδα χρέωσης</h3><span class="n">${noTier.length}</span></div>
+      <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Πάτα «Επανυπολογισμός».</div>
+      ${noTier.map(line).join('')}</div>`:''}
+
+    <div class="sec"><h3>Κανόνες που κρατά η εφαρμογή</h3></div>
+    <div class="card pad"><ol class="dim" style="font-size:12.5px;line-height:1.75;padding-left:20px;margin:0">
+      <li><b>Ο βαθμοφόρος-αδελφός δεν πιάνει θέση παιδιού.</b> Πρώτα τα μέλη, μετά χωριστά ο βαθμοφόρος — αλλιώς το επόμενο παιδί χρεώνεται €24,50 αντί €50 (2025/271 §4).</li>
+      <li><b>€15,50</b> μόνο με <b>ενεργή Εντολή Διοίκησης</b> του γονέα μέσα στη χρονιά. Χωρίς Ε.Δ., πλήρης τιμή.</li>
+      <li><b>Το Α.Δ.Τ. πρέπει να είναι ίδιο</b> σε Μητρώο Βαθμοφόρου και Μητρώο Γονέα, αλλιώς το e-Scouts δεν αναγνωρίζει την έκπτωση.</li>
+      <li><b>Ασφάλιση:</b> η κατάσταση φεύγει στην ασφαλιστική κάθε <b>Δευτέρα</b>. Παιδί που γράφεται Τρίτη μένει ανασφάλιστο ως την επόμενη Δευτέρα.</li>
+      <li><b>Ο σύνδεσμος πληρωμής</b> στέλνεται Δευτέρα και λήγει <b>Παρασκευή</b> της ίδιας εβδομάδας. Οι εγγραφές του Σαββάτου πρέπει να μπουν στο e-Scouts μέσα στο Σαββατοκύριακο.</li>
+      <li><b>Παραδοχή προς επιβεβαίωση:</b> θεωρούμε ότι το παιδί βαθμοφόρου <i>δεν</i> πιάνει θέση στη σειρά αδελφών — το επόμενο αδέλφι χρεώνεται ως 1ο παιδί. Θέλει επιβεβαίωση από την Εφορεία Διοίκησης.</li>
+    </ol></div>
+
+    <div class="card pad">
+      <button class="btn sm" id="recalcFees">Επανυπολογισμός χρέωσης</button>
+      <span class="dim" id="recalcMsg" style="margin-left:10px;font-size:12.5px"></span></div>`;
+
+  bindTiles();
+  const b=$('recalcFees');
+  if(b)b.onclick=async()=>{b.disabled=true; $('recalcMsg').textContent='Υπολογίζω…';
+    const {data,error}=await sb.rpc('recalc_fees',{y:YEAR});
+    if(error){$('recalcMsg').textContent='Σφάλμα: '+error.message; b.disabled=false; return}
+    $('recalcMsg').textContent=data+' εγγραφές ενημερώθηκαν';
+    await loadAll(); route('fees');};
 };
 
 /* ══ ΔΙΑΡΘΡΩΣΗ — πλήρες οργανόγραμμα, Σ.Π.Κ. → τελευταίος βαθμοφόρος ══ */
