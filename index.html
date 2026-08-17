@@ -480,7 +480,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-17 00:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-17 09:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -694,9 +694,10 @@ async function loadAll(){
     sb.from('handovers').select('*').order('created_at',{ascending:false}).limit(500),
     sb.from('subgroups').select('*').limit(500),
     sb.from('care_links').select('*').limit(3000),
-    sb.from('profiles').select('*')
+    sb.from('profiles').select('*'),
+    sb.from('section_config').select('*')
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config'];
   const _t0=Date.now();
   const TMO=12000;
   const guard=(pr,label)=>new Promise(res=>{
@@ -721,7 +722,7 @@ async function loadAll(){
   }
   LOADED=true;
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   ensurePhotos((D.bh||[]).map(x=>x.photo_path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
@@ -1441,7 +1442,10 @@ V.trends=()=>{
   $('view').innerHTML=blocks||'<div class="uc"><h3>Δεν υπάρχουν αρκετά δεδομένα</h3><p>Χρειάζονται καταχωρημένες συγκεντρώσεις.</p></div>';
 };
 
-const SECS_B=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+const SECCFG=()=>(D.sc||[]).filter(s=>s.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
+const SECS_B=['Σύστημα','Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+const MEMSECS=()=>{const c=SECCFG().filter(s=>s.has_members).map(s=>s.section);
+  return c.length?c:['Αγέλη','Ομάδα','Κοινότητα']};
 const ROLES_B=['Αρχηγός','Υπαρχηγός','Βοηθός','P/T','Έφορος'];
 const CATS_B=['ΑΣ','Αρχηγός','Βαθμοφόρος','P/T','Δίκτυο','Υπεύθυνος Δικτύου'];
 const SECFULL={'Αγέλη':'Αγέλης Λυκοπούλων','Ομάδα':'Ομάδας Προσκόπων','Κοινότητα':'Κοινότητας Ανιχνευτών','Δίκτυο':'Δικτύου','Σύστημα':'Συστήματος'};
@@ -1569,10 +1573,108 @@ function voidReg(personId){
     saveCache(); toast('Ακυρώθηκε'); voidReg(personId); route(ROUTE);});
 }
 
+const linkedKidsOf=id=>(D.cl||[]).filter(x=>x.carer_id===id);
+/* ══ ΠΥΛΗ ΓΟΝΕΑ — τι βλέπει ο γονέας ══ */
+function myKids(){
+  const me=meRec(); if(!me)return [];
+  const em=(ME.email||'').toLowerCase();
+  const byLink=linkedKidsOf(me.id).map(l=>({kid:D.bh.find(b=>b.id===l.member_id),l})).filter(x=>x.kid);
+  if(byLink.length)return byLink;
+  // γέφυρα: ταίριασμα με email στην καρτέλα του παιδιού
+  return D.bh.filter(p=>isMem(p)).map(p=>{const g=gOf(p.registry_no)||{};
+    return (em&&[g.father_email,g.mother_email].some(x=>(x||'').toLowerCase()===em))?{kid:p,l:{}}:null}).filter(Boolean);
+}
+V.mykids=()=>{
+  const list=myKids();
+  if(!list.length)return $('view').innerHTML=`<div class="uc"><div class="ico">${ic('home',26)}</div>
+    <h3>Δεν βρέθηκαν παιδιά</h3><p>Ο λογαριασμός σου δεν είναι συνδεδεμένος με μέλος του Συστήματος. Αν νομίζεις ότι είναι λάθος, γράψε στο <b>as@76.life</b>.</p></div>`;
+  const card=({kid:p,l})=>{
+    const y=myOf(p)||{}, m=(D.med||[]).find(x=>x.person_id===p.id)||{};
+    const fl=(D.mf||[]).filter(f=>f.person_id===p.id&&['Ιατρικό','Διατροφή'].includes(f.kind));
+    const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
+    const ses=D.ss.filter(s=>s.section===secOf(p)&&s.scout_year===YEAR);
+    const att=D.att.filter(a=>a.person_id===p.id&&ses.some(s=>s.id===a.session_id));
+    const pres=att.filter(a=>a.status==='Παρών').length;
+    return `<div class="ccard">
+      <div class="chead">${avatar(p,36)}<div style="flex:1;min-width:0">
+        <div class="ctitle">${esc(nm(p))}${p.scout_name?` <i class="osn">${esc(p.scout_name)}</i>`:''}</div>
+        <div class="dim" style="font-size:12px">${esc(secOf(p)||'')}${y.group_name?' · '+esc(y.group_name):''}${y.grade?' · '+esc(y.grade):''}</div></div></div>
+      <div class="tiles" style="margin:8px 0">
+        <div class="tile" style="cursor:default"><div class="k">Παρουσίες</div><div class="v">${att.length?Math.round(100*pres/att.length):'—'}${att.length?'%':''}</div><div class="s">${pres} από ${att.length}</div></div>
+        <div class="tile ${reqs.filter(r=>!edHas(p,r)).length?'warn':''}" style="cursor:default"><div class="k">Δικαιολογητικά</div>
+          <div class="v">${reqs.filter(r=>edHas(p,r)).length}<span class="dim" style="font-size:14px">/${reqs.length}</span></div>
+          <div class="s">${reqs.filter(r=>!edHas(p,r)).length?'λείπουν '+reqs.filter(r=>!edHas(p,r)).length:'πλήρης'}</div></div>
+      </div>
+      <div style="font-size:12.5px;margin-bottom:6px">${reqs.map(r=>{const has=edHas(p,r);
+        return `<div class="kv"><b style="flex:1">${esc(r.label)}</b>
+          <span class="${has?'':'dim'}" style="${has?'color:var(--ok)':''}">${has?'✓ παραλήφθηκε':'εκκρεμεί'}</span></div>`}).join('')}</div>
+      ${fl.length?`<div class="cflag">${fl.map(f=>`<b>${esc(f.kind)}:</b> ${esc(f.detail)}`).join(' · ')}</div>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
+        <button class="btn sm p" data-pu="${p.id}">Ανέβασμα δικαιολογητικού</button>
+        <button class="btn sm" data-pe="${p.id}">Τα στοιχεία μας</button></div>
+    </div>`};
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>Τα παιδιά μου</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Ό,τι αφορά τα παιδιά σου στο 76ο. Βλέπεις μόνο τα δικά σου.</div></div>
+    <div class="cgrid">${list.map(card).join('')}</div>`;
+  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu));
+  document.querySelectorAll('[data-pe]').forEach(b=>b.onclick=()=>parentEdit(b.dataset.pe));
+};
+function parentUpload(pid){
+  const p=D.bh.find(x=>x.id===pid);
+  const reqs=(D.dr||[]).filter(r=>r.active!==false&&!edHas(p,r));
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Ανέβασμα</div>
+      <div class="dim" style="font-size:12.5px">${esc(nm(p))}</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">
+      <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Τι ανεβάζεις
+        <select id="puK">${reqs.map(r=>`<option value="${r.code}">${esc(r.label)}</option>`).join('')||'<option value="">— δεν εκκρεμεί τίποτα —</option>'}</select></label>
+      <input type="file" id="puF" accept=".pdf,image/*">
+      <div class="dim" style="font-size:11.5px;margin-top:8px">PDF ή φωτογραφία, έως 12 MB. Το αρχείο το βλέπουν μόνο οι υπεύθυνοι βαθμοφόροι.</div></div>`;
+  drw.classList.add('on');
+  $('puF').onchange=async()=>{
+    const f=$('puF').files[0]; if(!f)return;
+    if(f.size>12*1024*1024)return toast('Πολύ μεγάλο (μέγιστο 12 MB)');
+    const code=$('puK').value; if(!code)return toast('Δεν εκκρεμεί κάτι');
+    const req=(D.dr||[]).find(r=>r.code===code);
+    toast('Ανέβασμα…');
+    try{
+      const doc=await docUpload(f,{person_id:pid,kind:req.label,title:req.label+' — '+YEAR});
+      const {data,error}=await sb.from('enrollment_docs').upsert({person_id:pid,req_code:code,
+        scout_year:req.cadence==='ετήσιο'?YEAR:null,received_on:new Date().toISOString().slice(0,10),
+        document_id:doc.id,notes:'Ανέβηκε από τον γονέα'},{onConflict:'person_id,req_code,scout_year'}).select().single();
+      if(error)throw error;
+      const i=(D.ed||[]).findIndex(x=>x.id===data.id); i>=0?D.ed[i]=data:(D.ed=D.ed||[]).push(data);
+      saveCache(); toast('Το λάβαμε — ευχαριστούμε'); drw.classList.remove('on'); V.mykids();
+    }catch(e){toast('Σφάλμα: '+(e.message||e))}};
+}
+function parentEdit(pid){
+  const p=D.bh.find(x=>x.id===pid), g=gOf(p.registry_no)||{};
+  const f=(k,l,v,ph)=>`<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">${l}<input id="pe_${k}" value="${esc(v||'')}" placeholder="${esc(ph||'')}"></label>`;
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Τα στοιχεία μας</div>
+      <div class="dim" style="font-size:12.5px">${esc(nm(p))}</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">
+      ${f('addr','Διεύθυνση σπιτιού',p.home_address)}
+      ${f('hp','Τηλέφωνο οικίας',p.home_phone)}
+      ${f('kp','Κινητό παιδιού',p.phone)}
+      ${f('ke','Email παιδιού',p.email)}
+    </div>
+    <div class="dsec" style="border:0">
+      <div class="dim" style="font-size:11.5px;margin-bottom:9px">Για αλλαγή ονόματος, τμήματος ή Α.Μ. γράψε στο <b>as@76.life</b> — αυτά αλλάζουν μόνο από τον Αρχηγό Συστήματος.</div>
+      <button class="btn p" id="peSave" style="width:100%;justify-content:center">Αποθήκευση</button></div>`;
+  drw.classList.add('on');
+  $('peSave').onclick=async()=>{
+    const v={home_address:$('pe_addr').value.trim()||null,home_phone:$('pe_hp').value.trim()||null,
+      phone:$('pe_kp').value.trim()||null,email:$('pe_ke').value.trim()||null};
+    const {error}=await sb.from('badgeholders').update(v).eq('id',pid);
+    if(error)return toast('Σφάλμα: '+error.message);
+    Object.assign(p,v); saveCache(); toast('Ευχαριστούμε'); drw.classList.remove('on'); V.mykids();};
+}
+
 /* ══ ΔΕΣΜΟΙ ΦΡΟΝΤΙΔΑΣ — η καρτέλα του παιδιού και του γονέα ══ */
 const RELS=['Μητέρα','Πατέρας','Θετή μητέρα','Θετός πατέρας','Γιαγιά','Παππούς','Αδελφή','Αδελφός','Θεία','Θείος','Ανάδοχος','Κηδεμόνας','Άλλο'];
 const linksOf=id=>(D.cl||[]).filter(x=>x.member_id===id);
-const linkedKidsOf=id=>(D.cl||[]).filter(x=>x.carer_id===id);
 function careDrawer(memberId){
   const p=D.bh.find(x=>x.id===memberId); if(!p)return;
   const ls=linksOf(memberId).map(l=>({l,c:D.bh.find(b=>b.id===l.carer_id)})).filter(x=>x.c)
@@ -2144,30 +2246,7 @@ V.myatt=()=>{
       <td>${map[s.id]==='Παρών'?'<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Παρών</span>':map[s.id]==='Απών'?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Απών</span>':'<span class="dim">—</span>'}</td></tr>`).join('')
     ||'<tr><td colspan="3" class="dim" style="padding:22px;text-align:center">Καμία συγκέντρωση</td></tr>'}</tbody></table></div>`;
 };
-V.mykids=()=>{
-  const kids=childrenOf(meRec());
-  if(!kids.length)return $('view').innerHTML=`<div class="uc"><div class="ico">${ic('home',26)}</div><h3>Δεν βρέθηκαν παιδιά</h3><p>Η σύνδεση γίνεται μέσω του μητρώου γονέων — αν λείπει, ζήτα από τον Α.Σ. να καταχωρήσει το email σου.</p></div>`;
-  $('view').innerHTML=kids.map(k=>{
-    const sec=secOf(k), y=myOf(k)||{};
-    const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR);
-    const mine=D.att.filter(a=>a.person_id===k.id&&ses.some(s=>s.id===a.session_id));
-    const pct=mine.length?Math.round(100*mine.filter(x=>x.status==='Παρών').length/mine.length):null;
-    const last=ses.filter(s=>mine.some(a=>a.session_id===s.id&&a.status==='Παρών')).sort((a,b)=>a.session_date<b.session_date?1:-1)[0];
-    return `<div class="card pad" style="margin-bottom:12px">
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${avatar(k,36)}${sdot(sec)}
-        <div><div style="font-size:17px;font-weight:600">${esc(nm(k))}</div>
-        <div class="dim" style="font-size:12.5px">${esc(sec||'')}${y.group_name?' · '+esc(y.group_name):''}${y.grade?' · '+esc(y.grade):''}</div></div>
-        <span class="sp"></span><button class="btn sm" data-p="${k.id}">Καρτέλα</button></div>
-      <div class="tiles" style="margin-top:12px">
-        <div class="tile" style="cursor:default"><div class="k">Προσέλευση ${esc(YEAR)}</div><div class="v">${pct===null?'—':pct+'%'}</div><div class="s">${mine.filter(x=>x.status==='Παρών').length}/${mine.length} συγκεντρώσεις</div></div>
-        <div class="tile" style="cursor:default"><div class="k">Τελευταία παρουσία</div><div class="v" style="font-size:16px">${last?fdate(last.session_date):'—'}</div><div class="s">&nbsp;</div></div>
-        <div class="tile" style="cursor:default"><div class="k">Εγγραφή</div><div class="v" style="font-size:16px">${y.registered?'Ολοκληρώθηκε':'Εκκρεμεί'}</div><div class="s">${y.triptycho_no?'τριπλότυπο '+esc(y.triptycho_no):'χωρίς τριπλότυπο'}</div></div>
-      </div></div>`}).join('');
-};
 
-/* ── Ρυθμίσεις ── */
-const DEF_TH={absencesInRow:3,lowAttendancePct:34,certWarnDays:90,selfServiceAge:16,ackHours:72};
-let TH={...DEF_TH};
 V.settings=()=>{
   const f=(k,l,h)=>`<div style="padding:11px 0;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:center;flex-wrap:wrap">
     <div style="flex:1;min-width:210px"><div style="font-size:14px">${esc(l)}</div><div class="dim" style="font-size:12px">${esc(h)}</div></div>
@@ -2435,7 +2514,13 @@ V.training=()=>{
 
 /* ── Ανέλιξη χρονιάς ── */
 const GRADES=['Α΄ Δημ.','Β΄ Δημ.','Γ΄ Δημ.','Δ΄ Δημ.','Ε΄ Δημ.','Στ΄ Δημ.','Α΄ Γυμν.','Β΄ Γυμν.','Γ΄ Γυμν.','Α΄ Λυκ.','Β΄ Λυκ.','Γ΄ Λυκ.'];
-const secForGrade=g=>{const i=GRADES.indexOf(g); if(i<0)return null; if(i<=1)return 'Μικρή Αγέλη'; if(i<=4)return 'Αγέλη'; if(i<=8)return 'Ομάδα'; return 'Κοινότητα'};
+const secForGrade=g=>{
+  const cfg=(D.sc||[]).find(s=>(s.grades||[]).includes(g));
+  if(cfg&&cfg.active!==false)return cfg.section;
+  // αν ο κλάδος δεν λειτουργεί, το παιδί πάει στον επόμενο ενεργό
+  const i=GRADES.indexOf(g); if(i<0)return null;
+  if(i<=1)return ((D.sc||[]).find(s=>s.section==='Μικρή Αγέλη')||{}).active?'Μικρή Αγέλη':'Αγέλη';
+  if(i<=4)return 'Αγέλη'; if(i<=8)return 'Ομάδα'; return 'Κοινότητα'};
 const nextGrade=g=>{const i=GRADES.indexOf(g); return i<0?null:(i>=GRADES.length-1?'ΑΠΟΦΟΙΤΗΣΗ':GRADES[i+1])};
 const nextYear=y=>{const m=/^(\d{4})-(\d{2})$/.exec(y||''); if(!m)return null; const a=+m[1]+1; return a+'-'+String(a+1).slice(2)};
 
@@ -2610,7 +2695,18 @@ V.issues=()=>{
         .map(id=>D.bh.find(p=>p.id===id)).filter(p=>p&&p.status==='Ενεργός')},
     {t:'Χωρίς ιατρικό δελτίο',w:'Απαραίτητο πριν από κατασκήνωση ή πολυήμερη δράση.',s:'warn',l:act.filter(p=>!(D.med||[]).some(m=>m.person_id===p.id))},
     {t:'Χωρίς επαφή έκτακτης ανάγκης',w:'Ποιον καλούμε αν συμβεί κάτι;',s:'warn',l:act.filter(p=>!(D.ecs||[]).some(e=>e.person_id===p.id))},
+    {t:'Λιγότερες από δύο προσιτές επαφές',w:'Ο κανόνας θέλει δύο. Αν δεν απαντήσει ο ένας, δεν υπάρχει επόμενος.',s:'bad',
+     l:mem.filter(p=>{const bad=t=>!t||/^(0+|9+|1+)$/.test(String(t).replace(/\D/g,''));
+       const g=gOf(p.registry_no)||{}; let n=0;
+       if(!bad(g.father_mobile))n++; if(!bad(g.mother_mobile))n++;
+       n+=(D.ecs||[]).filter(e=>e.person_id===p.id&&!bad(e.phone)).length; return n<2})},
+    {t:'Εκκρεμεί παραλαβή φακέλου',w:'Παιδί που αλλάζει κλάδο και ο νέος αρχηγός δεν έχει δει τις σημάνσεις του.',s:'warn',
+     l:(D.ho2||[]).filter(x=>!x.received_at).map(x=>D.bh.find(b=>b.id===x.person_id)).filter(Boolean)},
    ]},
+   {g:'Φάκελος εγγραφής',items:(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0)).map(r=>({
+     t:'Λείπει: '+r.label, w:r.cadence==='εφάπαξ'?'Ζητείται μία φορά — δεν το έχουμε ακόμη.':'Ανανεώνεται κάθε χρονιά.',
+     s:r.code==='YGEIA'?'bad':'warn',
+     l:mem.filter(p=>!(D.ed||[]).some(e=>e.person_id===p.id&&e.req_code===r.code&&(r.cadence==='εφάπαξ'||e.scout_year===YEAR)))}))},
    {g:'Μητρώο',items:[
     {t:'Πιθανές διπλοεγγραφές',w:'Το ίδιο άτομο καταχωρημένο δύο φορές.',s:'bad',pairs:dups},
     {t:'Χωρίς εγγραφή '+YEAR,w:'Δεν εμφανίζονται στον Κατάλογο Εγγραφών Κλιμακίου.',s:'warn',l:noReg},
@@ -2623,6 +2719,10 @@ V.issues=()=>{
      l:mem.filter(p=>{const g=gOf(p.registry_no);return !g||(!g.father_mobile&&!g.mother_mobile)})},
     {t:'Βαθμοφόροι χωρίς τηλέφωνο',w:'',s:'warn',l:led.filter(p=>!p.phone)},
     {t:'Βαθμοφόροι χωρίς email',w:'Δεν μπορούν να κάνουν login στο e76.',s:'warn',l:led.filter(p=>!p.email)},
+    {t:'Γονείς χωρίς email',w:'Χωρίς διεύθυνση δεν γίνεται λογαριασμός στην πύλη γονέα.',s:'warn',
+     l:D.bh.filter(b=>isPar(b)&&!b.email&&linkedKidsOf(b.id).length)},
+    {t:'Κοινότητα χωρίς δικό τους email',w:'Από την Κοινότητα και πάνω ζητείται δική τους διεύθυνση.',s:'warn',
+     l:mem.filter(p=>secOf(p)==='Κοινότητα'&&!(p.email&&/@/.test(p.email)))},
     {t:'Χωρίς διεύθυνση',w:'',s:'info',l:act.filter(p=>!p.home_address)},
     {t:'Μέλη χωρίς υποομάδα',w:'Δεν εμφανίζονται σε εξάδα/ενωμοτία/όμιλο.',s:'info',l:mem.filter(p=>!(myOf(p)||{}).group_name)},
    ]}];
@@ -2750,7 +2850,7 @@ V.calls=()=>{
       <b>Λίστα κλήσεων</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Ποιον παίρνεις, με τη σειρά. Αν δεν απαντήσει ο ένας, πατάς «—» και κατεβαίνεις στον επόμενο· μένει καταγεγραμμένο ποιον πήρες και πότε.</div>
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
-        ${chip('all','Όλα')}${chip('Αγέλη','Αγέλη')}${chip('Ομάδα','Ομάδα')}${chip('Κοινότητα','Κοινότητα')}
+        ${chip('all','Όλα')}${MEMSECS().map(s=>chip(s,s)).join('')}
         <span style="width:10px"></span>${only('','—')}${only('thin','Με μία επαφή ('+thin+')')}${only('flag','Με σημάνσεις')}
         <span class="sp"></span><button class="btn sm gh" onclick="window.print()">Εκτύπωση</button></div>
       ${nurg?`<div class="cflag urg" style="margin-top:10px">⚠ ${nurg} παιδιά με επείγουσα ιατρική σήμανση — φαίνονται στην κάρτα τους</div>`:''}
@@ -2979,7 +3079,7 @@ V.mails=()=>{
       <b>Λείπουν email</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Χωρίς διεύθυνση δεν γίνεται λογαριασμός. Αυτοί είναι όσοι πρέπει να ρωτηθούν — με το τηλέφωνό τους δίπλα, για Viber.</div>
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
-        ${chip('all','Όλα')}${chip('Αγέλη','Αγέλη')}${chip('Ομάδα','Ομάδα')}${chip('Κοινότητα','Κοινότητα')}
+        ${chip('all','Όλα')}${MEMSECS().map(s=>chip(s,s)).join('')}
         <span class="sp"></span>
         <button class="btn sm" id="meTel">Αντιγραφή τηλεφώνων</button>
         <button class="btn sm" id="meCsv">${ic('down',13)} CSV</button></div>
@@ -3023,7 +3123,7 @@ async function uploadLinks(reqCode){
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec"><div class="dim" style="font-size:12.5px">Δημιουργείται ένας μοναδικός σύνδεσμος ανά παιδί, για όσα λείπει το δικαιολογητικό. Ο γονέας ανοίγει, ανεβάζει, τέλος — χωρίς λογαριασμό. Ο σύνδεσμος <b>ισχύει μία φορά</b> και λήγει σε 45 μέρες.</div>
       <label style="font-size:12px;color:var(--ink3);display:block;margin:10px 0 8px">Τμήμα
-        <select id="ulSec"><option value="">Όλα</option>${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>`<option>${s}</option>`).join('')}</select></label>
+        <select id="ulSec"><option value="">Όλα</option>${MEMSECS().map(s=>`<option>${esc(s)}</option>`).join('')}</select></label>
       <button class="btn p sm" id="ulGo">Δημιουργία συνδέσμων</button></div>
     <div class="dsec" id="ulRes" style="border:0"></div>`;
   drw.classList.add('on');
@@ -3076,7 +3176,7 @@ V.enroll=()=>{
       <b>Φάκελος εγγραφής ${esc(YEAR)}</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Τι έχει φέρει το κάθε παιδί. Το πιστοποιητικό γεννήσεως ζητείται μία φορά· τα υπόλοιπα κάθε χρονιά.</div>
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
-        ${chip('all','Όλα')}${chip('Αγέλη','Αγέλη')}${chip('Ομάδα','Ομάδα')}${chip('Κοινότητα','Κοινότητα')}
+        ${chip('all','Όλα')}${MEMSECS().map(s=>chip(s,s)).join('')}
         <span style="width:8px"></span><button class="btn sm${ENONLY==='miss'?' p':' gh'}" id="enMiss">Μόνο όσα λείπουν</button>
         <span class="sp"></span>
         <button class="btn sm" id="enPrint">${ic('book',14)} Έντυπα εγγραφής</button>
@@ -3732,7 +3832,7 @@ V.cal=()=>{
 V.mark=()=>{
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
-        <select id="mSec" style="max-width:150px">${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>`<option>${s}</option>`).join('')}</select>
+        <select id="mSec" style="max-width:150px">${MEMSECS().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
         <select id="mSes" style="max-width:230px"></select>
         <button class="btn sm" id="mNew">+ Νέα συγκέντρωση</button>
         <span class="sp"></span><span class="pill" id="mCnt"></span>
@@ -3867,7 +3967,7 @@ V.members=()=>{
   const list=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&inScope(p)).sort(sortByName);
   $('view').innerHTML=`<div class="card pad" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
       <input id="fq" placeholder="Αναζήτηση…" style="max-width:230px">
-      <select id="fsec" style="max-width:160px"><option value="">Όλα τα τμήματα</option>${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>`<option>${s}</option>`).join('')}</select>
+      <select id="fsec" style="max-width:160px"><option value="">Όλα τα τμήματα</option>${MEMSECS().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
       <select id="fgrp" style="max-width:170px"><option value="">Όλες οι υποομάδες</option></select>
       <span class="sp"></span><span class="pill" id="cnt"></span></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Υποομάδα</th><th class="hide-s">Α.Μ.</th><th class="hide-s">Τάξη</th><th>Γονέας</th></tr></thead><tbody id="tb"></tbody></table></div>`;
