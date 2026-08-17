@@ -661,12 +661,25 @@ function banner(){
     ${navigator.onLine&&QUEUE.length?'<button class="btn sm" style="background:#fff;color:#000;border:0;padding:3px 9px" onclick="qFlush()">Συγχρονισμός</button>':''}`;
 }
 
+/* Το PostgREST επιστρέφει το πολύ 1000 γραμμές ανά αίτημα, ό,τι limit κι αν ζητήσεις.
+   Σιωπηλά — χωρίς σφάλμα. Γι' αυτό οι μεγάλοι πίνακες τραβιούνται σε σελίδες. */
+async function pageAll(table, cols, step=1000, cap=50000){
+  const out=[];
+  for(let from=0; from<cap; from+=step){
+    const {data,error}=await sb.from(table).select(cols).range(from, from+step-1);
+    if(error)return {data:out.length?out:null, error};
+    out.push(...(data||[]));
+    if(!data||data.length<step)break;
+  }
+  return {data:out, error:null};
+}
 async function loadAll(){
   const q=[
     sb.from('badgeholders').select('id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,photo_path,scout_name,nickname,same_as').limit(2000),
     sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
     sb.from('sessions').select('id,session_date,section,scout_year,status,title').order('session_date').limit(500),
-    sb.from('attendance').select('session_id,person_id,status').limit(20000),
+    // Το PostgREST κόβει στις 1000 όσο μεγάλο κι αν είναι το limit — χρειάζεται σελιδοποίηση
+    pageAll('attendance','session_id,person_id,status'),
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
     sb.from('guardians').select('*').limit(2000),
     sb.from('sensitive').select('person_id,dob').limit(2000),
