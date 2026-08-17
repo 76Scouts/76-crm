@@ -100,6 +100,12 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
   .chip{display:inline-block;font-size:9.5px;padding:1px 5px;border-radius:9px;background:var(--bg);border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
   .edot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 8px}
   .facross{color:#e74c3c;font-size:12px;font-weight:700}
+  .pencil{cursor:pointer;color:var(--ink3);font-size:13px;padding:0 3px;flex:0 0 auto}
+  .pencil:hover{color:var(--acc)}
+  .sedit{flex:1 0 100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 2px;padding:8px;background:var(--bg);border-radius:var(--rs)}
+  .sedit select{max-width:190px;font-size:12.5px;padding:5px 7px}
+  .ed-arch{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink2);white-space:nowrap}
+  .ed-arch input{width:auto}
   .vabar{display:flex;align-items:center;gap:9px;background:#8e2a2a;color:#fff;padding:8px 13px;border-radius:var(--r);font-size:12.5px;margin-bottom:12px}
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
   .grow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
@@ -517,7 +523,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-18 00:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-18 02:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1654,6 +1660,85 @@ const initials=p=>((p.first_name||' ')[0]+(p.last_name||' ')[0]).toUpperCase();
 
 /* ══ ΝΕΟ ΜΕΛΟΣ — το Α.Μ. έρχεται τελευταίο ══ */
 let INSEC='Αγέλη';
+/* ── Εισαγωγή λίστας αναμονής ─────────────────────────────
+   Οι ενδιαφερόμενοι έρχονται από παντού: φόρμα Smartespot, Viber, χαρτί στη συγκέντρωση.
+   Επικόλληση από οπουδήποτε — αναγνώριση στηλών, προεπισκόπηση, μετά γράψιμο. */
+const WL_FIELDS=[
+  ['first_name','Όνομα',/ονομα|first|fname/i],
+  ['last_name','Επώνυμο',/επων|επίθ|last|surname/i],
+  ['grade','Τάξη',/ταξη|τάξη|grade|class/i],
+  ['section','Τμήμα',/τμημα|τμήμα|κλαδ|section/i],
+  ['dob','Ημ. γέννησης',/γενν|dob|birth/i],
+  ['parent_name','Γονέας',/γονε|κηδεμ|parent|guardian|πατερ|μητερ/i],
+  ['phone','Τηλέφωνο',/τηλ|κινητ|phone|mobile/i],
+  ['email','Email',/mail/i],
+  ['note','Σημείωση',/σημει|note|comment|σχολ/i]
+];
+function wlParse(txt){
+  const d=sniffDelim(txt);
+  const rows=txt.trim().split(/\r?\n/).filter(l=>l.trim()).map(l=>splitLine(l,d));
+  if(!rows.length)return {head:[],rows:[],map:{}};
+  const head=rows[0].map(x=>String(x||'').trim());
+  const looksHeader=WL_FIELDS.some(([,,re])=>head.some(h=>re.test(h)));
+  const body=looksHeader?rows.slice(1):rows;
+  const map={};
+  if(looksHeader)WL_FIELDS.forEach(([k,,re])=>{const i=head.findIndex(h=>re.test(h)); if(i>=0)map[k]=i});
+  else {map.first_name=0; map.last_name=1; if(head.length>2)map.grade=2; if(head.length>3)map.phone=3}
+  return {head:looksHeader?head:head.map((_,i)=>'στήλη '+(i+1)),rows:body,map};
+}
+function splitLine(l,d){
+  const out=[]; let cur='',q=false;
+  for(let i=0;i<l.length;i++){const c=l[i];
+    if(c==='"'){ if(q&&l[i+1]==='"'){cur+='"';i++} else q=!q }
+    else if(c===d&&!q){out.push(cur);cur=''} else cur+=c}
+  out.push(cur); return out.map(x=>x.trim());
+}
+function wlImportUI(){
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+      <div style="font-size:17px;font-weight:600">Εισαγωγή στη λίστα αναμονής</div>
+      <div class="dim" style="font-size:12.5px">Επικόλλησε από Excel, Sheets, Smartespot ή απλό κείμενο</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec" style="border:0">
+      <textarea id="wlTxt" rows="7" placeholder="Όνομα	Επώνυμο	Τάξη	Τηλέφωνο
+Μαρία	Παπά	Γ΄	99123456" style="width:100%;font-family:ui-monospace,monospace;font-size:12px"></textarea>
+      <div class="grow" style="margin-top:8px">
+        <label>Προεπιλογή τμήματος<select id="wlSec">${MEMSECS().map(s=>`<option>${s}</option>`).join('')}</select></label>
+        <label>&nbsp;<button class="btn sm" id="wlPrev">Έλεγξε</button></label></div>
+      <div id="wlOut" style="margin-top:10px"></div></div>`;
+  document.getElementById('drw').classList.add('on');
+  $('wlPrev').onclick=()=>{
+    const p=wlParse($('wlTxt').value);
+    if(!p.rows.length)return $('wlOut').innerHTML='<div class="dim">Τίποτα να διαβάσω.</div>';
+    const val=r=>{const o={};WL_FIELDS.forEach(([k])=>{const i=p.map[k];o[k]=i==null?'':(r[i]||'').trim()});
+      if(!o.section)o.section=$('wlSec').value;
+      if(!o.grade&&o.dob)o.grade='';
+      return o};
+    const objs=p.rows.map(val).filter(o=>o.first_name||o.last_name);
+    const dup=o=>D.bh.some(b=>nameKey(b.first_name+' '+b.last_name)===nameKey(o.first_name+' '+o.last_name));
+    window.__WL=objs;
+    $('wlOut').innerHTML=`<div class="dim" style="font-size:12.5px;margin-bottom:6px">
+        ${objs.length} γραμμές · αναγνωρίστηκαν: ${WL_FIELDS.filter(([k])=>p.map[k]!=null).map(([,l])=>l).join(', ')||'—'}</div>
+      <div style="max-height:38vh;overflow:auto"><table style="font-size:12px">
+        <thead><tr><th>Παιδί</th><th>Τμήμα</th><th>Τάξη</th><th>Επικοινωνία</th><th></th></tr></thead>
+        <tbody>${objs.map((o,i)=>`<tr><td>${esc(o.first_name+' '+o.last_name)}</td><td>${esc(o.section)}</td>
+          <td>${esc(o.grade||'—')}</td><td class="dim">${esc([o.parent_name,o.phone,o.email].filter(Boolean).join(' · ')||'—')}</td>
+          <td>${dup(o)?'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">υπάρχει ήδη</span>':''}</td></tr>`).join('')}
+        </tbody></table></div>
+      <button class="btn p" id="wlGo" style="margin-top:10px">Πρόσθεσε ${objs.length} στη λίστα αναμονής</button>
+      <div class="dim" style="font-size:11.5px;margin-top:6px">Μπαίνουν ως «Αναμονή» — χωρίς Α.Μ., χωρίς εγγραφή. Τίποτα δεν στέλνεται στο Σ.Π.Κ.</div>`;
+    $('wlGo').onclick=async()=>{
+      $('wlGo').disabled=true;
+      const rows=window.__WL.map(o=>({first_name:o.first_name,last_name:o.last_name,kind:'Μέλος',
+        section:o.section,status:'Αναμονή',phone:o.phone||null,email:o.email||null,
+        special:o.note||null,father_name:o.parent_name||null}));
+      const {error}=await sb.from('badgeholders').insert(rows);
+      if(error){$('wlGo').disabled=false;return toast('Σφάλμα: '+error.message)}
+      document.getElementById('drw').classList.remove('on');
+      await loadAll(); route('intake'); toast(rows.length+' προστέθηκαν');
+    };
+  };
+}
+
 V.intake=()=>{
   const wait=D.bh.filter(p=>isMem(p)&&p.status==='Αναμονή').sort(sortByName);
   const noAM=D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&!p.registry_no).sort(sortByName);
@@ -1670,7 +1755,8 @@ V.intake=()=>{
         <input id="inFn" placeholder="Όνομα" style="max-width:130px">
         <input id="inLn" placeholder="Επώνυμο" style="max-width:150px">
         <select id="inGr" style="max-width:110px"><option value="">Τάξη…</option>${GRADES.map(g=>`<option>${g}</option>`).join('')}</select>
-        <button class="btn p sm" id="inAdd">+ Στη λίστα αναμονής</button></div></div>
+        <button class="btn p sm" id="inAdd">+ Στη λίστα αναμονής</button>
+        <button class="btn sm" id="inImp">Εισαγωγή λίστας…</button></div></div>
 
     <div class="sec"><h3>Λίστα αναμονής</h3><span class="n">${wait.length}</span></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th>Παιδί</th><th class="hide-s">Τμήμα</th><th class="hide-s">Τάξη</th><th>Γονείς</th><th></th></tr></thead>
@@ -1682,6 +1768,7 @@ V.intake=()=>{
       <tbody>${noAM.map(p=>row(p,x=>`<input data-am="${x.id}" placeholder="π.χ. 35240" style="max-width:110px;font-size:12.5px">`)).join('')
         ||'<tr><td colspan="5" class="dim" style="padding:20px;text-align:center">Όλοι έχουν Α.Μ. 🎉</td></tr>'}</tbody></table></div>`;
   $('inSec').onchange=e=>INSEC=e.target.value;
+  const imp=$('inImp'); if(imp)imp.onclick=wlImportUI;
   $('inAdd').onclick=async()=>{
     const fn=$('inFn').value.trim(), ln=$('inLn').value.trim();
     if(!fn||!ln)return toast('Θέλει όνομα και επώνυμο');
@@ -2647,6 +2734,120 @@ V.staff=()=>{
 /* ══ ΔΙΑΡΘΡΩΣΗ — πίνακας τμημάτων, όπως το τυπωμένο επιτελείο ══
    Το Οργανόγραμμα δείχνει ΙΕΡΑΡΧΙΑ (Σ.Π.Κ. → κάτω). Εδώ δείχνουμε ΣΥΝΘΕΣΗ:
    ποιοι είναι σε κάθε τμήμα, με επικοινωνία. Δύο διαφορετικές ερωτήσεις. */
+/* ── Επεξεργασία μέσα στη Διάρθρωση ─────────────────────────────
+   Ο κανόνας: ό,τι βλέπεις, το αλλάζεις εκεί. Καμία παραπομπή αλλού. */
+async function staffAssign(pid, roleCode, section, archived){
+  const p=D.bh.find(b=>b.id===pid); if(!p)return;
+  const jobs=[];
+  // 1) ο ρόλος της χρονιάς ζει στα «καπέλα»
+  const old=(D.ph||[]).find(h=>h.person_id===pid&&h.scout_year===SY&&h.role_code);
+  if(roleCode!==undefined&&roleCode!==null){
+    if(old&&old.role_code!==roleCode)
+      jobs.push(sb.from('person_hats').update({role_code:roleCode||null}).eq('id',old.id));
+    else if(!old&&roleCode){
+      const rc=(D.rc||[]).find(r=>r.code===roleCode)||{};
+      jobs.push(sb.from('person_hats').insert({person_id:pid,role_code:roleCode,title:rc.title,
+        kind:'leader',scope_level:rc.level==='Σύστημα'?'ΟΛΑ':'section',scope_value:rc.section||null,
+        scout_year:SY,valid_from:SY.slice(0,4)+'-09-01',note:'Από τη Διάρθρωση'}));
+    }
+  }
+  // 2) το τμήμα και η αρχειοθέτηση ζουν στην καρτέλα
+  const upd={};
+  if(section&&section!==p.section)upd.section=section;
+  if(archived!==undefined)upd.status=archived?'Αρχειοθετημένος':'Ενεργός';
+  if(Object.keys(upd).length)jobs.push(sb.from('badgeholders').update(upd).eq('id',pid));
+  if(!jobs.length)return;
+  const res=await Promise.all(jobs);
+  const err=res.find(r=>r&&r.error);
+  if(err)return toast('Δεν αποθηκεύτηκε: '+err.error.message);
+  await loadAll(); route('staff'); toast('Αποθηκεύτηκε');
+}
+async function saveMails(pid, list){
+  if(!list.length)return;
+  const cur=(D.pe||[]).filter(x=>x.person_id===pid);
+  const low=a=>a.toLowerCase();
+  const add=list.filter(a=>!cur.some(c=>low(c.address)===low(a)));
+  const del=cur.filter(c=>!list.some(a=>low(a)===low(c.address)));
+  const jobs=[];
+  if(add.length)jobs.push(sb.from('person_emails').insert(
+     add.map((a,i)=>({person_id:pid,address:a,is_primary:i===0&&!cur.length,label:'προσωπικό'}))));
+  if(del.length)jobs.push(sb.from('person_emails').delete().in('id',del.map(d=>d.id)));
+  jobs.push(sb.from('badgeholders').update({email:list[0]}).eq('id',pid));
+  const r=await Promise.all(jobs);
+  const e=r.find(x=>x&&x.error); if(e)toast('Τα email δεν αποθηκεύτηκαν: '+e.error.message);
+}
+function staffEditor(p){
+  const cur=(D.ph||[]).find(h=>h.person_id===p.id&&h.scout_year===SY&&h.role_code);
+  const sec=secOfYear(p,SY);
+  const roles=(D.rc||[]).filter(r=>r.active!==false&&(!r.section||r.section===sec)&&r.holder_kind!=='Μέλος')
+    .sort((a,b)=>(a.seq||0)-(b.seq||0));
+  return `<div class="sedit" data-ed="${p.id}">
+    <select class="ed-role">
+      <option value="">— χωρίς ρόλο —</option>
+      ${roles.map(r=>`<option value="${esc(r.code)}"${cur&&cur.role_code===r.code?' selected':''}>${esc(r.title)}</option>`).join('')}
+    </select>
+    <select class="ed-sec">
+      ${MEMSECS().concat(['Δίκτυο','Σύστημα']).map(s=>`<option${s===sec?' selected':''}>${s}</option>`).join('')}
+    </select>
+    <label class="ed-arch"><input type="checkbox" class="ed-ar"${p.status!=='Ενεργός'?' checked':''}> εκτός προβολής</label>
+    <button class="btn sm ed-save">Αποθήκευση</button>
+    <button class="btn sm gh ed-open">Άνοιξε προφίλ</button>
+    <button class="btn sm gh ed-cancel">Άκυρο</button>
+    <div style="flex:1 0 100%">
+      <div class="dim" style="font-size:11.5px;margin:4px 0 3px">Email — ένα ανά γραμμή. Το πρώτο είναι το κύριο.</div>
+      <textarea class="ed-mails" rows="2" style="width:100%;font-size:12.5px">${esc(
+        [p.email].concat((D.pe||[]).filter(x=>x.person_id===p.id).map(x=>x.address))
+          .filter((v,i,a)=>v&&a.indexOf(v)===i).join('\n'))}</textarea></div></div>`;
+}
+function bindStaffEdit(){
+  document.querySelectorAll('.pencil').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const id=b.dataset.pe, host=b.closest('.prow');
+    if(host.querySelector('.sedit'))return host.querySelector('.sedit').remove();
+    const p=D.bh.find(x=>x.id===id); if(!p)return;
+    host.insertAdjacentHTML('beforeend',staffEditor(p));
+    const box=host.querySelector('.sedit');
+    box.querySelector('.ed-cancel').onclick=()=>box.remove();
+    box.querySelector('.ed-open').onclick=()=>openProfile(id);
+    box.querySelector('.ed-save').onclick=async()=>{
+      const mails=box.querySelector('.ed-mails').value.split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean);
+      await saveMails(id,mails);
+      staffAssign(id, box.querySelector('.ed-role').value, box.querySelector('.ed-sec').value,
+        box.querySelector('.ed-ar').checked)};
+  });
+  const add=$('stAdd');
+  if(add)add.onclick=()=>{
+    const pool=D.bh.filter(x=>isLed(x)).sort(sortByName);
+    $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Πρόσθεσε στη διάρθρωση</div>
+        <div class="dim" style="font-size:12.5px">Διάλεξε πρόσωπο· ο ρόλος μπαίνει μετά με το ✎</div></div>
+        <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+      <div class="dsec" style="border:0"><input id="apq" placeholder="αναζήτηση"><div id="apl" style="max-height:52vh;overflow:auto;margin-top:8px"></div></div>`;
+    const draw=q=>{const k=nameKey(q||'');
+      $('apl').innerHTML=pool.filter(x=>!k||nameKey(nm(x)).includes(k)).slice(0,80)
+        .map(x=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center">
+          <span style="flex:1">${esc(nm(x))} <span class="dim" style="font-size:11.5px">${esc(x.section||'')}</span></span>
+          <button class="btn sm" data-add="${x.id}">Πρόσθεσε</button></div>`).join('')||'<div class="dim">—</div>';
+      document.querySelectorAll('[data-add]').forEach(b=>b.onclick=async()=>{
+        await staffAssign(b.dataset.add,undefined,undefined,false);
+        document.getElementById('drw').classList.remove('on')})};
+    draw(''); $('apq').oninput=e=>draw(e.target.value);
+    document.getElementById('drw').classList.add('on');
+  };
+  const ex=$('stExp');
+  if(ex)ex.onclick=()=>{
+    const rows=[['Τμήμα','Ρόλος','Επώνυμο','Όνομα','Προσκοπικό','Α.Μ.','Τηλέφωνο','Email','Τοποθεσία','Ν.91 λήγει','Κατάσταση']];
+    D.bh.filter(p=>isLed(p)).sort((a,b)=>sortByName(a,b)).forEach(p=>{
+      const cs=certState(p.id);
+      rows.push([secOfYear(p,SY),roleOfYear(p,SY),p.last_name,p.first_name,p.scout_name||'',
+        p.registry_no||'',p.phone||'',p.email||'',p.location||'',cs.exp||'',p.status||''])});
+    exportRows(rows,`Διάρθρωση ${SY}`,`76-diarthrwsi-${SY}`);
+  };
+  const pr=$('stPrint');
+  if(pr)pr.onclick=()=>openPrint('Διάρθρωση '+SY,
+    `<div class="fpage" style="min-height:auto">${letterhead('ΔΙΑΡΘΡΩΣΗ '+SY,'')}
+      ${$('view').querySelector('.grid2')?$('view').querySelector('.grid2').outerHTML:''}${letterfoot()}</div>`);
+}
+
 function staffBoard(years){
   const cfg=(D.sc||[]).filter(s=>s.active!==false&&s.section!=='Σύστημα')
                       .sort((a,b)=>(a.seq||0)-(b.seq||0));
@@ -2659,9 +2860,20 @@ function staffBoard(years){
   const hit=p=>!q||nameKey(nm(p)+' '+roleOfYear(p,SY)+' '+(p.scout_name||'')+' '+(p.email||'')).includes(q);
   const as=live.find(p=>p.category==='ΑΣ')||live.find(p=>/Αρχηγός Συστ/i.test(roleOfYear(p,SY)));
 
-  const contact=p=>[p.email?`<a href="mailto:${esc(p.email)}" class="lnk">${esc(p.email)}</a>`:'',
-                    p.phone?`<a href="tel:${esc(String(p.phone).replace(/\s/g,''))}" class="lnk">${esc(fphone(p.phone))}</a>`:'']
-                   .filter(Boolean).join(' · ');
+  /* Πολλά email ανά άτομο: η καρτέλα + όσα έχουν καταχωρηθεί χωριστά.
+     Ξεχωριστά από αυτά, το email του ΡΟΛΟΥ (π.χ. 76ageli@) που δεν ανήκει σε άνθρωπο. */
+  const mailsOf=p=>{const set=[];
+    if(p.email)set.push({a:p.email,l:'προσωπικό'});
+    (D.pe||[]).filter(x=>x.person_id===p.id&&x.address).forEach(x=>{
+      if(!set.some(y=>y.a.toLowerCase()===x.address.toLowerCase()))set.push({a:x.address,l:x.label||x.kind||''})});
+    const h=(D.ph||[]).find(x=>x.person_id===p.id&&!x.valid_to&&x.role_code);
+    if(h)(D.mb||[]).filter(m=>m.active!==false&&m.owner_kind==='ρόλος'&&m.role_code===h.role_code)
+      .forEach(m=>set.push({a:m.address,l:'του ρόλου',role:true}));
+    return set};
+  const contact=p=>{const ms=mailsOf(p);
+    const em=ms.map(m=>`<a href="mailto:${esc(m.a)}" class="lnk"${m.role?' style="font-style:italic"':''} title="${esc(m.l)}">${esc(m.a)}</a>`).join(' · ');
+    const ph=p.phone?`<a href="tel:${esc(String(p.phone).replace(/\s/g,''))}" class="lnk">${esc(fphone(p.phone))}</a>`:'';
+    return [em,ph].filter(Boolean).join(' · ')};
   const isHead=p=>/^Αρχηγός/i.test(roleOfYear(p,SY))&&!/Συστ/i.test(roleOfYear(p,SY));
 
   /* Ενδείξεις πάνω στο όνομα — ό,τι είχε το τυπωμένο επιτελείο */
@@ -2711,7 +2923,8 @@ function staffBoard(years){
             ${dot(p)}<span class="pn" data-p="${p.id}" style="font-size:13.5px;cursor:pointer">${esc(nm(p))}</span>
             ${p.scout_name?`<span class="dim" style="font-size:11.5px">«${esc(p.scout_name)}»</span>`:''}
             ${fa(p)}${chips(p,s.section)}</div>
-          <div class="dim" style="font-size:11.5px">${contact(p)}</div></div></div>`}).join('');
+          <div class="dim" style="font-size:11.5px">${contact(p)}</div></div>
+        <span class="pencil" data-pe="${p.id}" title="Ρόλος, τμήμα, προβολή">✎</span></div>`}).join('');
     return `<div class="card" style="overflow:hidden">
       <div class="bhead" style="background:${SECCOLOR[s.section]||'var(--ink3)'};color:${s.section==='Αγέλη'||s.section==='Ομάδα'?'#3d2f10':'#fff'};border-radius:0">
         <span style="flex:1">${esc(s.label||s.section)}${s.totem?` <span style="font-weight:400;opacity:.9">${esc(s.totem)}</span>`:''}</span>
@@ -2722,7 +2935,8 @@ function staffBoard(years){
               <div style="font-size:10.5px;color:var(--ink3);letter-spacing:.05em;text-transform:uppercase">${esc(roleOfYear(head,SY))}</div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                 ${dot(head)}<span class="pn" data-p="${head.id}" style="font-weight:600;font-size:14.5px;cursor:pointer">${esc(nm(head))}</span>
-                ${fa(head)}${chips(head,s.section)}</div>
+                ${fa(head)}${chips(head,s.section)}
+                <span class="pencil" data-pe="${head.id}" title="Ρόλος, τμήμα, προβολή">✎</span></div>
               <div class="dim" style="font-size:12px">${contact(head)}</div>
               ${s.email?`<div class="dim" style="font-size:12px">${esc(s.email)}</div>`:''}</div></div>`
           :'<div class="dim" style="font-size:12.5px;padding:6px 0;border-bottom:2px solid var(--line2);margin-bottom:4px">— χωρίς αρχηγό —</div>'}
@@ -2741,7 +2955,11 @@ function staffBoard(years){
     <div class="grow" style="margin-bottom:10px">
       <label style="max-width:260px">Χρονιά<select id="sy">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select></label>
       <label style="flex:2">Αναζήτηση<input id="stq" value="${esc(STQ)}" placeholder="όνομα, ρόλος, email"></label>
-      <label style="max-width:150px">&nbsp;<button class="btn sm" id="toOrg">Ιεραρχία →</button></label>
+      <label style="max-width:340px">&nbsp;<span style="display:flex;gap:6px">
+        <button class="btn sm" id="stAdd">+ Πρόσθεσε</button>
+        <button class="btn sm" id="stExp">Εξαγωγή</button>
+        <button class="btn sm" id="stPrint">Εκτύπωση</button>
+        <button class="btn sm gh" id="toOrg">Ιεραρχία →</button></span></label>
     </div>
 
     <div class="grid2">${secs.map(col).join('')}</div>
@@ -2760,6 +2978,7 @@ function staffBoard(years){
     document.querySelectorAll('#view .pill,#view [style*="opacity"]').forEach(()=>{}); V.staff();
     const n=$('stq'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}};
   const to=$('toOrg'); if(to)to.onclick=()=>route('org');
+  bindStaffEdit();
 }
 
 function staffDraft(years){
