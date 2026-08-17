@@ -84,6 +84,23 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
 /* stat tiles */
   .lnk{color:var(--acc);text-decoration:none}
   .lnk:hover{text-decoration:underline}
+  .lgd{margin:16px 0 4px;font-size:12.5px}
+  .lgd summary{cursor:pointer;color:var(--ink3);padding:6px 0;list-style:none}
+  .lgd summary::-webkit-details-marker{display:none}
+  .lgd summary:before{content:'ⓘ ';font-size:13px}
+  .lgd summary:hover{color:var(--ink2)}
+  .lgdbody{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px;margin-top:4px}
+  .lgdt{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);margin-bottom:6px}
+  .lgdi{display:flex;align-items:center;gap:8px;padding:2px 0;color:var(--ink2)}
+  .lgdi i{width:14px;height:9px;border-radius:2px;flex:0 0 14px;border:1px solid rgba(0,0,0,.08)}
+  .prow{display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--line)}
+  .prow .num{font-size:10.5px;color:var(--ink3);min-width:15px;text-align:right;padding-top:3px;flex:0 0 15px}
+  .subhead{font-size:9.5px;letter-spacing:.09em;color:var(--ink3);text-transform:uppercase;margin:9px 0 2px;border-bottom:1px solid var(--line2);padding-bottom:2px}
+  .chip{display:inline-block;font-size:9.5px;padding:1px 5px;border-radius:9px;background:var(--bg);border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
+  .edot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 8px}
+  .facross{color:#e74c3c;font-size:12px;font-weight:700}
+  .vabar{display:flex;align-items:center;gap:9px;background:#8e2a2a;color:#fff;padding:8px 13px;border-radius:var(--r);font-size:12.5px;margin-bottom:12px}
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
   .grow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
   .grow label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2);flex:1;min-width:150px}
@@ -380,7 +397,8 @@ th.srt.desc:after{content:"↓";opacity:.9}
       <button class="btn gh sm mob" id="mbtn" aria-label="Μενού"></button>
       <h2 id="ttl">Πίνακας</h2><span class="sub" id="sub"></span>
       <span class="sp"></span>
-      <select id="persona" class="btn sm" style="width:auto;padding:5px 8px;max-width:230px" title="Προβολή ως"></select>
+      <select id="persona" class="btn sm" style="width:auto;padding:5px 8px;max-width:230px" title="Η ιδιότητά μου"></select>
+      <select id="viewas" class="btn sm" style="width:auto;padding:5px 8px;max-width:190px" title="Δες την οθόνη με τα μάτια άλλου ρόλου"></select>
       <button class="btn gh sm" id="legbtn" title="Τι σημαίνουν τα σύμβολα">ⓘ</button><button class="btn gh sm" id="palbtn" title="Αναζήτηση (⌘K)"></button>
       <select id="yr" class="btn sm" style="width:auto;padding:5px 8px"></select>
     </header>
@@ -499,7 +517,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-17 22:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-18 00:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -850,9 +868,62 @@ function renderPersona(){
   sel.style.display=PERSONAS.length>1?'':'none';
   sel.onchange=e=>{PA=PERSONAS.find(p=>p.id===e.target.value);localStorage.setItem('e76:persona',PA.id);
     renderNav();route(PA.k==='member'?'me':PA.k==='parent'?'mykids':'dash')};
+  /* «Δες ως» — μόνο για όποιον έχει ούτως ή άλλως πλήρη εικόνα */
+  const va=$('viewas');
+  if(va){
+    const canVA=(ME.role==='admin')||(PA&&PA.sc==='ΟΛΑ');
+    va.style.display=canVA?'':'none';
+    if(canVA){
+      va.innerHTML=VA_OPTS().map(o=>`<option value="${esc(o.k)}"${VIEWAS&&VIEWAS.k===o.k?' selected':''}>${esc(o.t)}</option>`).join('');
+      va.onchange=e=>setViewAs(e.target.value);
+    }
+  }
 }
+/* ══ «ΔΕΣ ΩΣ» ══
+   Φακός, όχι ταυτότητα. Δείχνει τι ΘΑ ΕΒΛΕΠΕ κάποιος άλλος — τα δεδομένα εξακολουθούν
+   να έρχονται με τα δικά σου δικαιώματα. Δεν είναι πλαστοπροσωπία και δεν σου κρύβει
+   τίποτα μόνιμα· γι' αυτό υπάρχει μόνιμη κόκκινη μπάρα όσο είναι ενεργό. */
+let VIEWAS=null;
+try{VIEWAS=JSON.parse(sessionStorage.getItem('e76:viewas')||'null')}catch(e){VIEWAS=null}
+const VA_OPTS=()=>{
+  const o=[{k:'',t:'— κανονική προβολή —'}];
+  MEMSECS().concat(['Δίκτυο']).forEach(s=>o.push({k:'leader:'+s,t:'Βαθμοφόρος '+s,sec:s,role:'leader'}));
+  MEMSECS().forEach(s=>o.push({k:'head:'+s,t:'Αρχηγός '+s,sec:s,role:'section_head'}));
+  o.push({k:'member',t:'Μέλος',role:'member'});
+  o.push({k:'parent',t:'Γονέας',role:'parent'});
+  return o};
+function setViewAs(k){
+  VIEWAS=k?VA_OPTS().find(o=>o.k===k)||null:null;
+  if(VIEWAS)sessionStorage.setItem('e76:viewas',JSON.stringify(VIEWAS));
+  else sessionStorage.removeItem('e76:viewas');
+  renderNav(); route(ROUTE);
+}
+function viewAsBar(){
+  if(!VIEWAS)return '';
+  return `<div class="vabar">👁 Βλέπεις ως <b>${esc(VIEWAS.t)}</b>
+    <span class="dim" style="color:#fff;opacity:.75">— τα δικαιώματά σου δεν άλλαξαν, μόνο η οπτική</span>
+    <button class="btn sm" id="vaOff" style="margin-left:auto">Επιστροφή</button></div>`;
+}
+/* Τι κρύβει ο φακός */
+function vaHidesSection(sec){ return VIEWAS&&VIEWAS.sec&&sec&&sec!==VIEWAS.sec }
+function vaHidesPerson(p){
+  if(!VIEWAS)return false;
+  if(VIEWAS.role==='member')return p.id!==(ME.person_id||'');
+  if(VIEWAS.role==='parent')return !linkedKidsOf(meRec()||{}).some(k=>k.id===p.id);
+  if(VIEWAS.sec)return (secOf(p)||p.section)!==VIEWAS.sec;
+  return false;
+}
+function vaHidesRoute(r){
+  if(!VIEWAS)return false;
+  const admin=['access','grants','settings','forms','templates','fees','dedupe','warrants','reports'];
+  if(VIEWAS.role!=='section_head'&&VIEWAS.role!=='leader')
+    return !['me','myatt','progress','mykids'].includes(r);
+  return admin.includes(r);
+}
+
 const scopeSec=()=>(PA&&PA.k==='leader'&&PA.sc&&PA.sc!=='ΟΛΑ'&&['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].includes(PA.sc))?PA.sc:null;
-function inScope(p){const s=scopeSec(); if(!s)return true; return secOf(p)===s||p.section===s}
+function inScope(p){ if(vaHidesPerson(p))return false;
+  const s=scopeSec(); if(!s)return true; return secOf(p)===s||p.section===s}
 
 /* ══ NAV ══ */
 function renderNav(){
@@ -878,7 +949,9 @@ function route(r){
   renderNav(); window.scrollTo(0,0);
   if(m.s==='live'){
     // Αν μια οθόνη σκάσει, ΔΕΝ αφήνουμε την προηγούμενη στη θέση της — φαίνεται σαν παλιό αρχείο.
-    try{ (V[ROUTE]||V.dash)(); }
+    try{ (V[ROUTE]||V.dash)(); const lg=legendHTML(ROUTE); if(lg)$('view').insertAdjacentHTML('beforeend',lg);
+         const vb=viewAsBar(); if(vb){$('view').insertAdjacentHTML('afterbegin',vb);
+           const off=$('vaOff'); if(off)off.onclick=()=>setViewAs('')} }
     catch(e){
       console.error('e76 · '+ROUTE, e);
       $('view').innerHTML=`<div class="card pad">
@@ -1157,6 +1230,55 @@ function statusBar(p,mini){
 
 
 
+
+/* ══ ΥΠΟΜΝΗΜΑ ══
+   Κάθε οθόνη εξηγεί ΜΟΝΟ ό,τι δείχνει. Ένα γενικό υπόμνημα με σύμβολα που δεν υπάρχουν
+   στη σελίδα είναι χειρότερο από κανένα — κάνει τον αναγνώστη να ψάχνει κάτι ανύπαρκτο. */
+const LEGENDS={
+  sbarMember:{t:'Η μπάρα δίπλα στο όνομα — μέλη', items:[
+    ['var(--ageli)','1η λωρίδα: το τμήμα (χρώμα κλάδου)'],
+    ['#27ae60','2η: εγγραφή ολοκληρωμένη'],['#f39c12','2η: εγγραφή εκκρεμεί'],
+    ['#27ae60','3η: υπάρχει ιατρικό δελτίο'],
+    ['#27ae60','4η: υπάρχει επαφή έκτακτης ανάγκης'],
+    ['var(--line)','γκρι λωρίδα: λείπει']]},
+  sbarLeader:{t:'Η μπάρα δίπλα στο όνομα — βαθμοφόροι', items:[
+    ['var(--ageli)','1η λωρίδα: το τμήμα'],
+    ['#27ae60','2η: Ν.91(Ι) σε ισχύ'],['#f39c12','2η: λήγει σύντομα'],['#e74c3c','2η: έληξε'],
+    ['#2f86c9','3η: εκπαιδευτικό επίπεδο'],
+    ['#27ae60','4η: εντολή διοίκησης σε ισχύ'],
+    ['#27ae60','5η: εγγεγραμμένος φέτος'],
+    ['var(--line)','γκρι λωρίδα: λείπει']]},
+  certs:{t:'Χρώματα πιστοποιητικών', items:[
+    ['var(--ok)','σε ισχύ'],['var(--warn)','λήγει μέσα σε 90 μέρες'],['var(--bad)','έληξε'],
+    ['var(--ink3)','δεν έχει καταχωρηθεί']]},
+  sections:{t:'Χρώματα κλάδων', items:(()=>((D.sc||[]).filter(s=>s.active!==false)
+      .map(s=>[s.color||SECCOLOR[s.section],s.label||s.section])))()},
+  fees:{t:'Χρέωση', items:[
+    ['var(--warn)','πλήρωσε διαφορετικά από το οφειλόμενο'],
+    ['var(--ok)','συμφωνεί με τον τιμοκατάλογο Σ.Π.Κ.']]},
+  grants:{t:'Παραχωρήσεις', items:[
+    ['var(--warn)','στέλεχος — μέλος με δικαίωμα παρουσιών'],
+    ['var(--ok)','ενεργή παραχώρηση'],['var(--ink3)','έληξε ή ανακλήθηκε']]}
+};
+/* Ποια υπομνήματα αφορούν ποια οθόνη — και ΜΟΝΟ αυτά */
+const LEGEND_OF={
+  members:['sbarMember','sections'], leaders:['sbarLeader','certs','sections'],
+  medical:['sbarMember'], certs:['certs','sections'], warrants:['sbarLeader'],
+  training:['sbarLeader'], enroll:['sbarMember'], dash:['sections'],
+  year:['sections'], staff:['certs','sections'], org:['sections'],
+  fees:['fees'], grants:['grants'], access:['grants'], attend:['sections'], groups:['sections']
+};
+function legendHTML(route){
+  const keys=LEGEND_OF[route]||[];
+  if(!keys.length)return '';
+  const blocks=keys.map(k=>LEGENDS[k]).filter(x=>x&&x.items&&x.items.length);
+  if(!blocks.length)return '';
+  return `<details class="lgd"><summary>Τι σημαίνουν τα χρώματα σε αυτή τη σελίδα</summary>
+    <div class="lgdbody">${blocks.map(b=>`<div class="lgdb">
+      <div class="lgdt">${esc(b.t)}</div>
+      ${b.items.map(([c,t])=>`<div class="lgdi"><i style="background:${c}"></i><span>${esc(t)}</span></div>`).join('')}
+    </div>`).join('')}</div></details>`;
+}
 
 /* ── Φωτογραφίες προφίλ ── */
 const PHOTO=new Map();
@@ -1966,9 +2088,7 @@ ${rows.map((r,i)=>`<Row>${r.map(c=>i===0?cell(c).replace('<Cell>','<Cell ss:Styl
   const pdf=()=>{
     const head=rows[0], body=rows.slice(1);
     openPrint(title||name,`<div class="fpage" style="min-height:auto">
-      <div class="fhead"><div><div class="ft">${esc(title||name)}</div>
-        <div class="fs">${body.length} εγγραφές · ${fdate(new Date().toISOString().slice(0,10))}</div></div>
-        <div class="fs" style="text-align:right">76ο ΣΥΣΤΗΜΑ ΠΡΟΣΚΟΠΩΝ<br>ΣΤΡΟΒΟΛΟΥ</div></div>
+      ${letterhead(title||name, body.length+' εγγραφές')}
       <table style="width:100%;border-collapse:collapse;font-size:9.5px">
         <thead><tr>${head.map(h=>`<th style="text-align:left;border-bottom:1.5px solid #111;padding:4px 3px;font-size:8.5px;text-transform:uppercase;letter-spacing:.03em">${esc(h)}</th>`).join('')}</tr></thead>
         <tbody>${body.map(r=>`<tr>${r.map(c=>`<td style="border-bottom:1px solid #ddd;padding:4px 3px">${esc(c==null?'':c)}</td>`).join('')}</tr>`).join('')}</tbody>
@@ -2430,6 +2550,7 @@ function secOfYear(p,yr){
   return (sh&&sh.section)||p.section||'Σύστημα';
 }
 V.staff=()=>{
+  if(ROUTE==='staff')STMODE=(STMODE==='draft')?'draft':'board';
   const years=[...new Set([...(D.sh||[]).map(x=>x.scout_year),...D.my.map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
   const nx=nextY(years[0]||YEAR); if(nx&&!years.includes(nx))years.unshift(nx);
   if(!SY||!years.includes(SY))SY=years.find(y=>(D.sh||[]).some(x=>x.scout_year===y))||YEAR;
@@ -2543,32 +2664,70 @@ function staffBoard(years){
                    .filter(Boolean).join(' · ');
   const isHead=p=>/^Αρχηγός/i.test(roleOfYear(p,SY))&&!/Συστ/i.test(roleOfYear(p,SY));
 
+  /* Ενδείξεις πάνω στο όνομα — ό,τι είχε το τυπωμένο επιτελείο */
+  const chips=(p,sec)=>{let h='';
+    if(p.special==='7')       h+='<span class="chip" style="background:#7f52c4;color:#fff" title="7η Ομάδα">7η</span>';
+    else if(p.special==='Σ')  h+='<span class="chip" style="background:#48515f;color:#fff" title="Στέλεχος Συστήματος">Σ</span>';
+    if(p.location)            h+=`<span class="chip" title="Τοποθεσία">${esc(p.location)}</span>`;
+    if(p.is_network&&sec!=='Δίκτυο') h+='<span class="chip" style="background:#7f52c4;color:#fff" title="Συμμετέχει και στο Δίκτυο">Δίκτυο</span>';
+    if(isPT(p)&&sec!=='Δίκτυο') h+='<span class="chip" style="background:var(--warnbg);color:var(--warn)" title="Μερική παρουσία">P/T</span>';
+    (p.extra_sections||[]).filter(x=>x&&x!==sec).forEach(x=>
+      h+=`<span class="chip" title="Υπηρετεί και αλλού">κοινό ↤ ${esc(x)}</span>`);
+    return h};
+  /* Μία κουκκίδα «είναι εντάξει;»: Ν.91 + εκπαίδευση + εντολή */
+  const dot=p=>{const cs=certState(p.id), tl=trainLevel(p.id), w=warrantOf(p.id);
+    if(p.is_commissioner) return '<i class="edot" style="background:#8e44ad" title="Έφορος"></i>';
+    const c=cs.k==='expired'||w.k==='expired'?'#e74c3c'
+           :cs.k==='soon'||tl===0||w.k==='none'?'#f39c12':'#27ae60';
+    return `<i class="edot" style="background:${c}" title="${esc([CERTTXT[cs.k],TRTXT[tl],'εντολή: '+RINGTXT[w.k]].join(' · '))}"></i>`};
+  const fa=p=>{const c=(D.pc||[]).find(x=>x.person_id===p.id&&/ΠΡΩΤΕΣ|ΒΟΗΘ/i.test(x.type_code||'')
+      &&(!x.expires_on||x.expires_on>=new Date().toISOString().slice(0,10)));
+    return c?'<span class="facross" title="Ενεργές Α΄ Βοήθειες">✚</span>':''};
+
+  /* Ο «υπαρχηγός» δεν είναι βαθμίδα εδώ: αρχηγός είναι ένας, οι υπόλοιποι βαθμοφόροι.
+     Το P/T (μερική παρουσία) είναι η μόνη πραγματική διάκριση μεταξύ τους. */
+  const isPT=p=>{const h=hatOfYear(p,SY);
+    if(h){const rc=(D.rc||[]).find(r=>r.code===h.role_code); if(rc&&rc.part_time)return true}
+    return /P\/T|Part[- ]?time|μερικ/i.test(roleOfYear(p,SY)+' '+(p.special||''))};
+  const CATORD=p=>{const r=roleOfYear(p,SY);
+    if(/Αρχηγός Συστ/i.test(r))return 0;
+    if(/^Αρχηγός|^Υπεύθυν/i.test(r))return 1;
+    return isPT(p)?3:2};
+  const CATNAME=['','ΑΡΧΗΓΟΣ','ΒΑΘΜΟΦΟΡΟΙ','ΒΑΘΜΟΦΟΡΟΙ P/T'];
+
   const col=s=>{
-    const list=live.filter(p=>secOfYear(p,SY)===s.section)
-      .sort((a,b)=>ROLERANK(roleOfYear(a,SY))-ROLERANK(roleOfYear(b,SY))||sortByName(a,b));
+    const list=live.filter(p=>secOfYear(p,SY)===s.section||(p.extra_sections||[]).includes(s.section))
+      .sort((a,b)=>CATORD(a)-CATORD(b)||sortByName(a,b));
     const head=list.find(isHead), rest=list.filter(p=>p!==head);
     const mem=D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)&&secOf(x)===s.section).length;
+    let cat=-1, n=0;
+    const body=rest.map(p=>{const c=CATORD(p); let hd='';
+      if(c!==cat){cat=c;n=0;hd=`<div class="subhead">${CATNAME[c]||''}</div>`}
+      n++;
+      return hd+`<div class="prow" style="${hit(p)?'':'opacity:.28'}">
+        <span class="num">${n}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            ${dot(p)}<span class="pn" data-p="${p.id}" style="font-size:13.5px;cursor:pointer">${esc(nm(p))}</span>
+            ${p.scout_name?`<span class="dim" style="font-size:11.5px">«${esc(p.scout_name)}»</span>`:''}
+            ${fa(p)}${chips(p,s.section)}</div>
+          <div class="dim" style="font-size:11.5px">${contact(p)}</div></div></div>`}).join('');
     return `<div class="card" style="overflow:hidden">
       <div class="bhead" style="background:${SECCOLOR[s.section]||'var(--ink3)'};color:${s.section==='Αγέλη'||s.section==='Ομάδα'?'#3d2f10':'#fff'};border-radius:0">
         <span style="flex:1">${esc(s.label||s.section)}${s.totem?` <span style="font-weight:400;opacity:.9">${esc(s.totem)}</span>`:''}</span>
         <span style="font-weight:400;opacity:.9;font-size:12px">${list.length} βαθμ.${mem?' · '+mem+' μέλη':''}</span></div>
-      <div style="padding:10px 13px">
-        ${head?`<div style="padding:7px 0;border-bottom:2px solid var(--line2);margin-bottom:6px">
-            <div style="font-size:11px;color:var(--ink3);letter-spacing:.05em">${esc(roleOfYear(head,SY))}</div>
-            <div class="pn" data-p="${head.id}" style="font-weight:600;font-size:14px;cursor:pointer">${esc(nm(head))}</div>
-            <div class="dim" style="font-size:12px">${contact(head)}</div>
-            ${s.email?`<div class="dim" style="font-size:12px">${esc(s.email)}</div>`:''}</div>`
-          :`<div class="dim" style="font-size:12.5px;padding:7px 0;border-bottom:2px solid var(--line2);margin-bottom:6px">— χωρίς αρχηγό —</div>`}
-        ${rest.length?rest.map((p,i)=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);${hit(p)?'':'opacity:.3'}">
-            <div style="display:flex;gap:7px;align-items:baseline">
-              <span class="dim" style="font-size:11px;min-width:16px">${i+1}</span>
-              <span class="pn" data-p="${p.id}" style="font-size:13.5px;cursor:pointer">${esc(nm(p))}</span>
-              ${p.location?`<span class="pill" style="font-size:10px;padding:1px 6px">${esc(p.location)}</span>`:''}
-              ${(()=>{const c=certState(p.id);const m={expired:['bad','Ν.91 ληγμένο'],soon:['warn','Ν.91 λήγει'],none:['ink3','χωρίς Ν.91'],ok:['ok','']}[c.k];return m&&m[1]?`<span class="pill" title="Πιστοποιητικό Ν.91(Ι) — σεξουαλικά αδικήματα" style="font-size:10px;padding:1px 6px;color:var(--${m[0]});border-color:transparent;background:var(--${m[0]}bg)">${m[1]}</span>`:''})()}</div>
-            <div class="dim" style="font-size:11.5px;margin-left:23px">${contact(p)}</div></div>`).join('')
-          :'<div class="dim" style="font-size:12.5px">— κανένας άλλος —</div>'}
+      <div style="padding:9px 12px">
+        ${head?`<div class="prow" style="border-bottom:2px solid var(--line2);padding-bottom:8px;margin-bottom:4px">
+            <span class="num"></span><div style="flex:1;min-width:0">
+              <div style="font-size:10.5px;color:var(--ink3);letter-spacing:.05em;text-transform:uppercase">${esc(roleOfYear(head,SY))}</div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                ${dot(head)}<span class="pn" data-p="${head.id}" style="font-weight:600;font-size:14.5px;cursor:pointer">${esc(nm(head))}</span>
+                ${fa(head)}${chips(head,s.section)}</div>
+              <div class="dim" style="font-size:12px">${contact(head)}</div>
+              ${s.email?`<div class="dim" style="font-size:12px">${esc(s.email)}</div>`:''}</div></div>`
+          :'<div class="dim" style="font-size:12.5px;padding:6px 0;border-bottom:2px solid var(--line2);margin-bottom:4px">— χωρίς αρχηγό —</div>'}
+        ${body||'<div class="dim" style="font-size:12.5px">— κανένας άλλος —</div>'}
       </div></div>`};
-
   $('view').innerHTML=`
     <div class="card pad" style="text-align:center;margin-bottom:14px">
       <div style="font-size:11px;letter-spacing:.12em;color:var(--ink3)">ΔΙΑΡΘΡΩΣΗ 76ου Σ.Π. ΣΤΡΟΒΟΛΟΥ</div>
@@ -3602,11 +3761,7 @@ V.forms=()=>{
   form('reg');
 };
 function form(kind){
-  const head=(t)=>`<div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:12px;letter-spacing:.04em">ΣΩΜΑ ΠΡΟΣΚΟΠΩΝ ΚΥΠΡΟΥ</div>
-      <div style="font-size:16px;font-weight:600;margin:3px 0">76ο ΣΥΣΤΗΜΑ ΠΡΟΣΚΟΠΩΝ ΣΤΡΟΒΟΛΟΥ</div>
-      <div style="font-size:14px">${esc(t)}</div>
-      <div class="dim" style="font-size:12px;margin-top:3px">Προσκοπική περίοδος ${esc(YEAR)} · ${fdate(new Date().toISOString().slice(0,10))}</div></div>`;
+  const head=(t)=>letterhead(t);
   const sign=`<div style="display:flex;gap:40px;margin-top:34px;font-size:12.5px">
       <div style="flex:1;border-top:1px solid var(--ink3);padding-top:5px">Αρχηγός Συστήματος</div>
       <div style="flex:1;border-top:1px solid var(--ink3);padding-top:5px">Ημερομηνία</div></div>`;
@@ -4037,9 +4192,50 @@ const FCSS=`*{box-sizing:border-box}body{font:11.5px/1.35 system-ui,-apple-syste
   .ffoot{position:absolute;bottom:8mm;left:12mm;right:12mm;padding-top:5px;border-top:1px dashed #bbb;font-size:9px;color:#666;display:flex;justify-content:space-between}
   @media print{body{background:#fff}.fpage{margin:0}}`;
 
+/* ══ ΕΠΙΣΤΟΛΟΧΑΡΤΟ ══
+   Ένα σημείο αλήθειας για κάθε εκτύπωση. Διαβάζεται από το κλιμάκιο, ώστε όταν
+   έρθει δεύτερο Σύστημα να μη χρειαστεί να αγγίξει κανείς τις είκοσι εκτυπώσεις. */
+function myKlimakio(){
+  return (D.kl||[]).find(k=>k.kind==='Σύστημα')||{name:'76ο Σύστημα Προσκόπων Στροβόλου',short:'76ο'};
+}
+function letterhead(title,sub){
+  const k=myKlimakio(), par=(D.kl||[]).find(x=>x.id===k.parent_id);
+  const mb=(D.mb||[]).filter(m=>m.owner_kind==='κλιμάκιο'&&m.active!==false)
+                     .sort((a,b)=>(b.is_primary?1:0)-(a.is_primary?1:0))[0];
+  const logo=k.logo_path?`<img src="${esc(k.logo_path)}" alt="" style="height:46px;width:auto">`:'';
+  return `<div class="lh">
+    <div class="lh-l">${logo}</div>
+    <div class="lh-c">
+      <div class="lh-org">ΣΩΜΑ ΠΡΟΣΚΟΠΩΝ ΚΥΠΡΟΥ</div>
+      ${par?`<div class="lh-par">${esc(par.name)}</div>`:''}
+      <div class="lh-name">${esc((k.name||'').toUpperCase())}</div>
+      ${title?`<div class="lh-title">${esc(title)}</div>`:''}
+      <div class="lh-sub">${esc(sub||('Προσκοπική περίοδος '+YEAR))} · ${fdate(new Date().toISOString().slice(0,10))}</div>
+    </div>
+    <div class="lh-r">${[k.city,mb&&mb.address,k.email&&k.email!==(mb&&mb.address)?k.email:''].filter(Boolean).map(esc).join('<br>')}</div>
+  </div>`;
+}
+function letterfoot(){
+  const k=myKlimakio();
+  return `<div class="lf">${[esc(k.name),k.city?esc(k.city):'',k.email?esc(k.email):'']
+    .filter(Boolean).join(' · ')}</div>`;
+}
+const LHCSS=`
+.lh{display:flex;gap:14px;align-items:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:14px}
+.lh-l{flex:0 0 52px}.lh-r{flex:0 0 150px;text-align:right;font-size:8.5px;line-height:1.5;color:#555}
+.lh-c{flex:1;text-align:center}
+.lh-org{font-size:9px;letter-spacing:.14em;color:#555}
+.lh-par{font-size:9px;color:#666;margin-top:1px}
+.lh-name{font-size:14px;font-weight:700;letter-spacing:.01em;margin:2px 0}
+.lh-title{font-size:12.5px;margin-top:3px}
+.lh-sub{font-size:9.5px;color:#666;margin-top:2px}
+.lf{position:fixed;bottom:8mm;left:0;right:0;text-align:center;font-size:8px;color:#888;border-top:1px solid #ddd;padding-top:4px}
+@media print{.lf{position:fixed}}
+`;
+
 function openPrint(title,html){
   const w=window.open('','_blank');
-  w.document.write(`<!doctype html><html lang="el"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${FCSS}</style></head><body>${html}</body></html>`);
+  w.document.write(`<!doctype html><html lang="el"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${FCSS}${LHCSS}</style></head><body>${html}</body></html>`);
   w.document.close(); setTimeout(()=>w.print(),450);
 }
 const LN=(l,v,w,req)=>`<div class="ff${req?' req':''}" style="flex:${w||1}"><span>${l}</span><b>${v?esc(v):'&nbsp;'}</b></div>`;
@@ -4884,7 +5080,10 @@ V.certs=()=>{
   wireVQ();
 };
 
-V.org=()=>{
+/* Το Οργανόγραμμα δείχνει ΙΕΡΑΡΧΙΑ — το δέντρο Σ.Π.Κ. → 76ο → τμήμα → βαθμοφόρος.
+   Η Διάρθρωση δείχνει ΣΥΝΘΕΣΗ — ποιοι είναι σε κάθε τμήμα, όπως το τυπωμένο επιτελείο. */
+V.org=()=>{ STMODE='tree'; return V.staff(); };
+V.orgOld=()=>{
   const secs=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
   const ext=(D.or||[]).slice().sort((a,b)=>a.seq-b.seq);
   const lv=[...new Set(ext.map(r=>r.level))];
