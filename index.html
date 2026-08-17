@@ -72,7 +72,9 @@ button{font:inherit;color:inherit}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 9px}
 .hr{height:1px;background:var(--line);margin:14px 0}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
-th{text-align:left;font-weight:600;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);padding:9px 12px;border-bottom:1px solid var(--line);position:sticky;top:52px;background:var(--card);z-index:5}
+/* top:52px κολλούσε την κεφαλίδα 52px ΜΕΣΑ στην κάρτα (η .card έχει overflow:auto, άρα είναι
+   το δοχείο κύλισης) και άφηνε την πρώτη γραμμή να φαίνεται από πάνω — το «φάντασμα». */
+th{text-align:left;font-weight:600;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);padding:9px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:5}
 td{padding:9px 12px;border-bottom:1px solid var(--line)}
 tr:last-child td{border-bottom:0}
 tbody tr:hover td{background:var(--bg)}
@@ -80,6 +82,7 @@ input,select{font:inherit;padding:7px 10px;border:1px solid var(--line2);border-
 input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;border-color:var(--acc)}
 
 /* stat tiles */
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
   .grow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
   .grow label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2);flex:1;min-width:150px}
   .grow select,.grow input{padding:7px 8px;font-size:13px}
@@ -405,6 +408,11 @@ const fnum=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+'/'+
 const fgr=s=>{if(!s)return'';const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s).trim());return m?p2(m[1])+'/'+p2(m[2])+'/'+m[3]:s;};
 const fphone=p=>{if(!p)return'';const d=String(p).replace(/\D/g,'');return d.length===8?d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3'):p;};
 const SC={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)'};
+/* Σταθερά χρώματα κλάδου — για inline background όπου δεν περνούν οι μεταβλητές CSS */
+const SECCOLOR={'Αγέλη':'#dda50c','Ομάδα':'#b3924f','Κοινότητα':'#2f86c9','Δίκτυο':'#7f52c4','Σύστημα':'#48515f','Εφορεία':'#48515f'};
+/* Κατώφλια ειδοποιήσεων — προεπιλογές· επικαλύπτονται από τις ρυθμίσεις */
+const DEF_TH={absencesInRow:3, lowAttendancePct:34, certWarnDays:90, ackHours:48};
+let TH={...DEF_TH};
 const I={
  grid:'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
  users:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
@@ -459,7 +467,7 @@ const NAV=[
    {id:'certs',t:'Πιστοποιητικά',i:'shield',s:'live'},
    {id:'medical',t:'Ιατρικά & έκτακτη ανάγκη',i:'shield',s:'live'},
    {id:'calls',t:'Λίστα κλήσεων',i:'msg',s:'live'},
-   {id:'enroll',t:'Φάκελος εγγραφής',i:'book',s:'live'},
+   {id:'enroll',t:'Πιστοποιητικά εγγραφής',i:'book',s:'live'},
    {id:'mails',t:'Λείπουν email',i:'mail',s:'live'}]},
  {g:'Χρονιά',items:[
    {id:'year',t:'Η χρονιά που έρχεται',i:'trend',s:'live'},
@@ -485,7 +493,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-17 09:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-17 20:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -859,7 +867,18 @@ function route(r){
   ROUTE=MOD[r]?r:'dash'; location.hash=ROUTE;
   const m=MOD[ROUTE]; $('ttl').textContent=m.t; $('sub').textContent=(PA&&PA.sc&&PA.sc!=='ΟΛΑ')?('· '+PA.sc):'';
   renderNav(); window.scrollTo(0,0);
-  if(m.s==='live'){ (V[ROUTE]||V.dash)(); } else { uc(m); }
+  if(m.s==='live'){
+    // Αν μια οθόνη σκάσει, ΔΕΝ αφήνουμε την προηγούμενη στη θέση της — φαίνεται σαν παλιό αρχείο.
+    try{ (V[ROUTE]||V.dash)(); }
+    catch(e){
+      console.error('e76 · '+ROUTE, e);
+      $('view').innerHTML=`<div class="card pad">
+        <b style="color:var(--bad)">Η οθόνη «${esc(m.t)}» δεν φορτώθηκε</b>
+        <div class="dim" style="font-size:12.5px;margin-top:6px">${esc(String(e&&e.message||e))}</div>
+        <div class="dim" style="font-size:12px;margin-top:8px">Έκδοση ${esc(BUILD)}. Τα δεδομένα είναι εντάξει — το σφάλμα είναι στην εμφάνιση.</div>
+        <pre class="dim" style="font-size:11px;white-space:pre-wrap;margin-top:8px;max-height:180px;overflow:auto">${esc(String(e&&e.stack||''))}</pre></div>`;
+    }
+  } else { uc(m); }
 }
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(h.includes('=')) return; if(h&&h!==ROUTE)route(h)});
 
@@ -878,6 +897,13 @@ const nm=p=>p.first_name+' '+p.last_name;
 const sdot=s=>`<span class="dot" style="background:${SC[s]||'var(--ink3)'}" title="${esc(s||'')}"></span>`;
 const gOfRef={fn:r=>D.gu.find(g=>g.registry_no===r)}; const gOf=r=>gOfRef.fn(r);
 const nameKey=s=>(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+/* Τάξη: οι μεγάλοι δεν έχουν σχολική τάξη — δείχνουμε την ιδιότητά τους αντί για κενό. */
+const gradeOf=p=>{const y=myOf(p)||{};
+  if(y.grade)return y.grade;
+  if(isPar(p))return 'Γονέας';
+  const s=secOf(p)||p.section;
+  if(s==='Δίκτυο'||p.is_network)return 'Δίκτυο';
+  return isLed(p)?'Βαθμ.':'';};
 function sortByName(a,b){return nameKey(a.last_name+a.first_name).localeCompare(nameKey(b.last_name+b.first_name),'el')}
 
 /* ══ RETENTION ══ */
@@ -1502,7 +1528,7 @@ V.intake=()=>{
   const noAM=D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&!p.registry_no).sort(sortByName);
   const row=(p,extra)=>{const g=gOf(p.registry_no)||{}, y=myOf(p)||{};
     return `<tr><td>${pnm(p)}</td><td class="hide-s dim">${esc(secOf(p)||'')}</td>
-      <td class="hide-s dim">${esc(y.grade||'')}</td>
+      <td class="hide-s dim">${esc(gradeOf(p))}</td>
       <td class="dim" style="font-size:12px">${esc([g.father_name,g.mother_name].filter(Boolean).join(' · ')||'—')}</td>
       <td style="white-space:nowrap">${extra(p)}</td></tr>`};
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
@@ -1989,16 +2015,52 @@ V.year=()=>{
       <div style="margin-top:11px;display:flex;gap:7px;flex-wrap:wrap">
         <button class="btn p sm" data-go="staff">Στήσε επιτελεία</button>
         <button class="btn sm" data-go="rollover">Οδηγός μετάβασης</button>
-        <button class="btn sm" data-go="enroll">Φάκελος εγγραφής</button></div></div>
+        <button class="btn sm" data-go="enroll">Πιστοποιητικά εγγραφής</button></div></div>
 
     <div class="sec"><h3>Δύναμη</h3><span class="n">πρόβλεψη χωρίς νέα μέλη</span></div>
-    <div class="tiles">
-      ${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>{const d=proj[s]-now[s];
-        return tile(d<0?'warn':'', s, proj[s], `${now[s]} τώρα · ${d>0?'+':''}${d}`)}).join('')}
-      ${tile(grads.length?'bad':'', 'Αποφοιτούν', grads.length, 'φεύγουν από Κοινότητα')}
-    </div>
+    <div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Κλάδος</th><th style="text-align:right">Τώρα</th>
+        <th style="text-align:right">Φεύγουν</th><th style="text-align:right">Έρχονται</th>
+        <th style="text-align:right">Διαφορά</th><th style="text-align:right">${esc(NY)}</th></tr></thead>
+      <tbody>${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>{
+        const out=plan.filter(x=>x.curSec===s&&(x.grad||x.ns!==s)).length;
+        const inn=plan.filter(x=>x.ns===s&&x.curSec!==s).length;
+        const d=proj[s]-now[s];
+        return `<tr><td><b>${sdot(s)} ${s}</b></td>
+          <td style="text-align:right">${now[s]}</td>
+          <td style="text-align:right;color:${out?'var(--bad)':'var(--ink3)'}">${out?'−'+out:'—'}</td>
+          <td style="text-align:right;color:${inn?'var(--ok)':'var(--ink3)'}">${inn?'+'+inn:'—'}</td>
+          <td style="text-align:right"><b style="color:${d<0?'var(--bad)':d>0?'var(--ok)':'var(--ink3)'}">${d>0?'+':''}${d}</b></td>
+          <td style="text-align:right"><b>${proj[s]}</b></td></tr>`}).join('')}
+        ${(()=>{const nowT=['Αγέλη','Ομάδα','Κοινότητα'].reduce((a,s)=>a+now[s],0),
+                 prT=['Αγέλη','Ομάδα','Κοινότητα'].reduce((a,s)=>a+proj[s],0), dT=prT-nowT;
+          return `<tr style="border-top:2px solid var(--line2)"><td><b>Σύνολο μελών</b></td>
+            <td style="text-align:right"><b>${nowT}</b></td>
+            <td style="text-align:right;color:var(--bad)">${grads.length?'−'+grads.length:'—'}</td>
+            <td style="text-align:right;color:var(--ink3)">—</td>
+            <td style="text-align:right"><b style="color:${dT<0?'var(--bad)':dT>0?'var(--ok)':'var(--ink3)'}">${dT>0?'+':''}${dT}</b></td>
+            <td style="text-align:right"><b>${prT}</b></td></tr>`})()}
+      </tbody></table></div>
+    <div class="card pad"><div class="dim" style="font-size:12px">
+      «Φεύγουν» = όσοι αλλάζουν κλάδο ή αποχωρούν. «Έρχονται» = όσοι ανεβαίνουν από τον προηγούμενο κλάδο.
+      Η διαφορά του Συστήματος είναι <b>μόνο</b> όσοι αποχωρούν από την Κοινότητα — οι εσωτερικές μετακινήσεις αλληλοαναιρούνται.</div></div>
+
     ${moves.length?`<div class="sec"><h3>Αλλάζουν κλάδο</h3><span class="n">${moves.length}</span></div>
-      <div class="card pad">${chips(moves)}</div>`:''}
+      <div class="grid2">
+      ${[['Αγέλη','Ομάδα'],['Ομάδα','Κοινότητα']].map(([a,b])=>{
+         const l=moves.filter(x=>x.curSec===a&&x.ns===b);
+         return `<div class="card pad">
+           <div style="font-weight:600;font-size:13.5px;margin-bottom:8px">${sdot(a)} ${a} → ${sdot(b)} ${b}
+             <span class="pill" style="margin-left:6px">${l.length}</span></div>
+           ${l.length?l.map(x=>`<span class="pill" style="margin:3px 3px 0 0">
+             <span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span>
+             <span class="dim">${esc(x.cur||'')}→${esc(x.ng||'')}</span></span>`).join('')
+            :'<div class="dim" style="font-size:12.5px">— κανένας —</div>'}</div>`}).join('')}
+      </div>
+      ${(()=>{const other=moves.filter(x=>!((x.curSec==='Αγέλη'&&x.ns==='Ομάδα')||(x.curSec==='Ομάδα'&&x.ns==='Κοινότητα')));
+        return other.length?`<div class="card pad" style="margin-top:10px">
+          <div style="font-weight:600;font-size:13.5px;margin-bottom:8px">Άλλες μετακινήσεις
+            <span class="pill" style="margin-left:6px">${other.length}</span></div>${chips(other)}</div>`:''})()}`:''}
     ${grads.length?`<div class="sec"><h3>Αποφοιτούν από την Κοινότητα</h3><span class="n">${grads.length}</span></div>
       <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Δίκτυο, βαθμοφόροι ή αποχώρηση — δική σου απόφαση, ένας-ένας.</div>${chips(grads)}</div>`:''}
     ${teen18.length?`<div class="sec"><h3>Ενηλικιώνονται μέσα στη χρονιά</h3><span class="n">${teen18.length}</span></div>
@@ -2031,7 +2093,7 @@ const CAPS=[
  {k:'attendance',t:'Παρουσίες',             d:'Συγκεντρώσεις και παρουσιολόγιο'},
  {k:'progress',  t:'Προσκοπική πρόοδος',    d:'Στάδια, απαιτήσεις, πτυχία'},
  {k:'events',    t:'Δράσεις & συμμετοχές',  d:'Εκδρομές, κατασκηνώσεις, έντυπα'},
- {k:'enrollment',t:'Φάκελος εγγραφής',      d:'Δικαιολογητικά, συγκαταθέσεις'},
+ {k:'enrollment',t:'Πιστοποιητικά εγγραφής',      d:'Δικαιολογητικά, συγκαταθέσεις'},
  {k:'medical',   t:'Ιατρικά & σημάνσεις',   d:'Χωριστά — δεν έρχεται μαζί με τα υπόλοιπα'},
  {k:'finance',   t:'Χρέωση & ταμείο',       d:'Ποσά εγγραφών, πληρωμές'},
  {k:'admin',     t:'Διαχείριση',            d:'Ρόλοι, πρότυπα, ρυθμίσεις — μόνο ο Α.Σ. το δίνει'}
@@ -2972,7 +3034,7 @@ V.issues=()=>{
     {t:'Εκκρεμεί παραλαβή φακέλου',w:'Παιδί που αλλάζει κλάδο και ο νέος αρχηγός δεν έχει δει τις σημάνσεις του.',s:'warn',
      l:(D.ho2||[]).filter(x=>!x.received_at).map(x=>D.bh.find(b=>b.id===x.person_id)).filter(Boolean)},
    ]},
-   {g:'Φάκελος εγγραφής',items:(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0)).map(r=>({
+   {g:'Πιστοποιητικά εγγραφής',items:(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0)).map(r=>({
      t:'Λείπει: '+r.label, w:r.cadence==='εφάπαξ'?'Ζητείται μία φορά — δεν το έχουμε ακόμη.':'Ανανεώνεται κάθε χρονιά.',
      s:r.code==='YGEIA'?'bad':'warn',
      l:mem.filter(p=>!(D.ed||[]).some(e=>e.person_id===p.id&&e.req_code===r.code&&(r.cadence==='εφάπαξ'||e.scout_year===YEAR)))}))},
@@ -3024,6 +3086,34 @@ V.issues=()=>{
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const d=$(b.dataset.x+'_b');d.style.display=d.style.display==='none'?'block':'none'});
   document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>route(b.dataset.goto));
 };
+
+/* Πιθανές διπλοεγγραφές: ίδιο ονοματεπώνυμο χωρίς τόνους, ανεξάρτητα σειράς.
+   Επιστρέφει υποψήφια ζεύγη με τα σήματα που τα στηρίζουν — ΠΟΤΕ δεν συγχωνεύει.
+   Δύο άνθρωποι μπορεί κάλλιστα να έχουν το ίδιο όνομα (Γεωργίου, Κωνσταντίνου, Κόζας, Σιεκκερή). */
+function dupPairs(){
+  const key=p=>[nameKey(p.first_name||''),nameKey(p.last_name||'')].sort().join('|');
+  const dig=s=>String(s||'').replace(/\D/g,'');
+  const byKey={};
+  (D.bh||[]).forEach(p=>{const k=key(p); if(k.replace(/\|/g,''))(byKey[k]=byKey[k]||[]).push(p)});
+  const out=[];
+  Object.values(byKey).forEach(list=>{
+    if(list.length<2)return;
+    for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
+      const a=list[i], b=list[j];
+      if(a.same_as===b.id||b.same_as===a.id)continue;          // ήδη δηλωμένο ίδιο πρόσωπο
+      if(a.disambiguation&&b.disambiguation&&a.disambiguation!==b.disambiguation)continue;
+      const sig=['ίδιο όνομα'];
+      if(a.registry_no&&a.registry_no===b.registry_no)         sig.push('ίδιο Α.Μ.');
+      if(dig(a.phone)&&dig(a.phone)===dig(b.phone))            sig.push('ίδιο τηλέφωνο');
+      if(a.email&&b.email&&a.email.toLowerCase()===b.email.toLowerCase()) sig.push('ίδιο email');
+      if(a.father_name&&a.father_name===b.father_name)         sig.push('ίδιος πατέρας');
+      if(a.mother_name&&a.mother_name===b.mother_name)         sig.push('ίδια μητέρα');
+      if((a.kind||'')!==(b.kind||''))                          sig.push('διαφορετική ιδιότητα');
+      out.push({a,b,sig});
+    }
+  });
+  return out.sort((x,y)=>y.sig.length-x.sig.length);
+}
 
 /* ── Ταυτοποίηση ── */
 V.dedupe=()=>{
@@ -3232,7 +3322,7 @@ function form(kind){
     const rows=D.bh.filter(p=>inYear(p)&&p.status==='Ενεργός').sort((a,b)=>{const s=(secOf(a)||'').localeCompare(secOf(b)||'','el');return s||sortByName(a,b)});
     body=head('ΚΑΤΑΛΟΓΟΣ ΕΓΓΡΑΦΩΝ ΚΛΙΜΑΚΙΟΥ')+`<table style="font-size:12px"><thead><tr><th>Α/Α</th><th>Αρ. Μητρώου</th><th>Ονοματεπώνυμο</th><th>Τμήμα</th><th>Τάξη</th><th>Όν. Πατέρα</th><th>Όν. Μητέρας</th><th>Τηλέφωνο</th></tr></thead><tbody>${
       rows.map((p,i)=>{const g=gOf(p.registry_no)||{},y=myOf(p)||{};
-      return `<tr><td>${i+1}</td><td>${esc(p.registry_no||'')}</td><td>${esc(nm(p))}</td><td>${esc(secOf(p)||'')}</td><td>${esc(y.grade||'')}</td>
+      return `<tr><td>${i+1}</td><td>${esc(p.registry_no||'')}</td><td>${esc(nm(p))}</td><td>${esc(secOf(p)||'')}</td><td>${esc(gradeOf(p))}</td>
         <td>${esc(g.father_name||p.father_name||'')}</td><td>${esc(g.mother_name||p.mother_name||'')}</td><td>${esc(fphone(g.father_mobile||g.mother_mobile||p.phone||''))}</td></tr>`}).join('')}</tbody></table>
       <div style="margin-top:12px;font-size:13px">Σύνολο εγγεγραμμένων: <b>${rows.length}</b></div>`+sign;
   }
@@ -3361,7 +3451,7 @@ V.mails=()=>{
       <div class="card" style="overflow:auto"><table><thead><tr><th>Ονοματεπώνυμο</th><th class="hide-s">Τάξη</th><th>Δικό του κινητό</th><th class="hide-s">Τηλ. γονέα</th></tr></thead><tbody>
       ${teens.map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
         const gt=[g.mother_mobile,g.father_mobile].find(x=>!badTel(x));
-        return `<tr><td>${pnm(p)}</td><td class="hide-s dim">${esc(y.grade||'')}</td>
+        return `<tr><td>${pnm(p)}</td><td class="hide-s dim">${esc(gradeOf(p))}</td>
           <td>${p.phone&&!badTel(p.phone)?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'<span class="dim">—</span>'}</td>
           <td class="hide-s dim">${gt?fphone(gt):'—'}</td></tr>`}).join('')}</tbody></table></div>`:''}
     <div class="sec"><h3>Γονείς</h3><span class="n">${gaps.length}</span></div>
@@ -3442,7 +3532,7 @@ V.enroll=()=>{
   const cell=(p,r)=>{const h=edHas(p,r);
     return `<td style="text-align:center"><button class="edb${h?' on':''}" data-ed="${p.id}" data-rc="${r.code}" title="${h?'Παραλήφθηκε '+(h.received_on?fdate(h.received_on):''):'Λείπει'}">${h?'✓':'—'}</button></td>`};
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
-      <b>Φάκελος εγγραφής ${esc(YEAR)}</b>
+      <b>Πιστοποιητικά εγγραφής ${esc(YEAR)}</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Τι έχει φέρει το κάθε παιδί. Το πιστοποιητικό γεννήσεως ζητείται μία φορά· τα υπόλοιπα κάθε χρονιά.</div>
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
         ${chip('all','Όλα')}${MEMSECS().map(s=>chip(s,s)).join('')}
@@ -3683,7 +3773,7 @@ function enrollForms(kids){
       <div class="fsec">Ατομικά στοιχεία παιδιού</div>
       <div class="frow">${LN('Όνομα',p.first_name,1.3,1)}${LN('Επώνυμο',p.last_name,1.5,1)}${LN('Αρ. ταυτότητας',s.adt,1,1)}</div>
       <div class="frow">${LN('Ημερομηνία γέννησης',s.dob?fdate(s.dob):'',1.2,1)}${LN('Τόπος γέννησης',p.birthplace,1.2,1)}${LN('Υπηκοότητα',s.nationality,1,1)}${LN('Θρήσκευμα',s.religion,1,1)}</div>
-      <div class="frow">${LN('Τάξη / γραμματειακές γνώσεις',y.grade||p.education_level,1.2,1)}${LN('Τμήμα',(secOf(p)||'')+(y.group_name?' · '+y.group_name:''),1.4)}${LN('Κινητό παιδιού',fphone(p.phone),1)}</div>
+      <div class="frow">${LN('Τάξη / γραμματειακές γνώσεις',gradeOf(p)||p.education_level,1.2,1)}${LN('Τμήμα',(secOf(p)||'')+(y.group_name?' · '+y.group_name:''),1.4)}${LN('Κινητό παιδιού',fphone(p.phone),1)}</div>
       <div class="frow">${LN('Διεύθυνση σπιτιού',p.home_address,3,1)}${LN('Τηλ. οικίας',fphone(p.home_phone),1)}</div>
       <div class="frow">${LN(secOf(p)==='Κοινότητα'?'Email παιδιού (υποχρεωτικό στην Κοινότητα)':'Email παιδιού (προαιρετικό)',p.email,3,secOf(p)==='Κοινότητα')}
         <div class="ff" style="flex:2"><span>Μέγεθος φανέλας</span>
@@ -3958,7 +4048,7 @@ function partForms(eid){
         <div class="fs" style="text-align:right">76ο Σύστημα Προσκόπων<br>Στροβόλου</div></div>
       <div class="fsec">Στοιχεία μέλους</div>
       <div class="frow">${ln('Ονοματεπώνυμο',nm(p),2)}${ln('Α.Μ.',p.registry_no)}${ln('Τμήμα',(secOf(p)||'')+(y.group_name?' · '+y.group_name:''),1.4)}</div>
-      <div class="frow">${ln('Τάξη',y.grade)}${ln('Ημ. γέννησης',p.dob?fdate(p.dob):'')}${ln('Διεύθυνση',p.home_address,2.4)}</div>
+      <div class="frow">${ln('Τάξη',gradeOf(p))}${ln('Ημ. γέννησης',p.dob?fdate(p.dob):'')}${ln('Διεύθυνση',p.home_address,2.4)}</div>
       <div class="fsec">Γονείς / κηδεμόνες <span class="fn">— διόρθωσε ό,τι έχει αλλάξει</span></div>
       <div class="frow">${ln('Πατέρας'+(pri==='Πατέρας'?' ★':''),g.father_name,1.6)}${ln('Κινητό',fphone(g.father_mobile))}${ln('Email',g.father_email,1.8)}</div>
       <div class="frow">${ln('Μητέρα'+(pri==='Μητέρα'?' ★':''),g.mother_name,1.6)}${ln('Κινητό',fphone(g.mother_mobile))}${ln('Email',g.mother_email,1.8)}</div>
@@ -4248,7 +4338,7 @@ V.members=()=>{
     $('cnt').textContent=r.length+' μέλη';
     $('tb').innerHTML=r.map(p=>{const y=myOf(p)||{},gu=gOf(p.registry_no)||{};
       const pn=gu.father_name||gu.mother_name||'', ph=gu.father_mobile||gu.mother_mobile||'';
-      return `<tr data-sec="${esc(secOf(p)||'')}" data-grp="${esc(y.group_name||'')}"><td>${statusBar(p)}</td><td>${pnm(p)}</td><td class="hide-s">${esc(y.group_name||'—')}</td><td class="hide-s dim">${esc(p.registry_no||'—')}</td><td class="hide-s dim">${esc(y.grade||'—')}</td>
+      return `<tr data-sec="${esc(secOf(p)||'')}" data-grp="${esc(y.group_name||'')}"><td>${statusBar(p)}</td><td>${pnm(p)}</td><td class="hide-s">${esc(y.group_name||'—')}</td><td class="hide-s dim">${esc(p.registry_no||'—')}</td><td class="hide-s dim">${esc(gradeOf(p)||'—')}</td>
         <td>${pn?esc(pn)+(ph?` <a href="tel:${esc(ph)}" class="dim">${fphone(ph)}</a>`:''):'<span class="dim">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="6" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα</td></tr>';
   };
   ['fq','fsec','fgrp'].forEach(id=>{$(id).addEventListener('input',draw);$(id).addEventListener('change',draw)});
