@@ -493,7 +493,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-17 20:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-17 20:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -723,9 +723,10 @@ async function loadAll(){
     sb.from('profiles').select('*'),
     sb.from('section_config').select('*'),
     sb.from('fee_schedule').select('*'),
-    sb.from('grants').select('*').order('valid_to',{ascending:false}).limit(500)
+    sb.from('grants').select('*').order('valid_to',{ascending:false}).limit(500),
+    sb.from('role_catalog').select('*').order('seq')
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog'];
   const _t0=Date.now();
   const TMO=12000;
   const guard=(pr,label)=>new Promise(res=>{
@@ -750,7 +751,7 @@ async function loadAll(){
   }
   LOADED=true;
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   ensurePhotos((D.bh||[]).map(x=>x.photo_path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
@@ -1815,14 +1816,51 @@ V.access=()=>{
           ${ACCROLES.map(([v,l])=>`<option value="${v}"${pr.access_role===v?' selected':''}>${l}</option>`).join('')}</select></td>
         <td class="hide-s dim" style="font-size:12px">${(pr.sections||[]).join(' · ')||(p&&p.section?esc(p.section):'—')}</td></tr>`).join('')}
       </tbody></table></div>
+    <div class="sec"><h3>Το δέντρο των ρόλων</h3><span class="n">ποιος κρέμεται από ποιον</span></div>
+    <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:10px">
+      Ο καθένας βλέπει <b>όσους είναι από κάτω του</b>. Τα <b>στελέχη</b> (ενωμοτάρχες, εξάρχες, υπεύθυνοι ομάδας εργασίας)
+      είναι <b>μέλη</b>, όχι βαθμοφόροι — παίρνουν παρουσίες της υποομάδας τους και τίποτα άλλο.</div>
+      ${(()=>{const rc=(D.rc||[]).filter(r=>r.active!==false);
+        if(!rc.length)return '<div class="dim">— ο κατάλογος ρόλων δεν έχει φορτωθεί —</div>';
+        const byPar={}; rc.forEach(r=>{(byPar[r.parent_code||'']=byPar[r.parent_code||'']||[]).push(r)});
+        Object.values(byPar).forEach(a=>a.sort((x,y)=>(x.seq||0)-(y.seq||0)));
+        const held=c=>(D.ph||[]).filter(h=>h.role_code===c&&!h.valid_to)
+            .map(h=>D.bh.find(b=>b.id===h.person_id)).filter(Boolean);
+        const draw=(code,d)=>(byPar[code]||[]).map(r=>{
+          const who=held(r.code), stel=r.holder_kind==='Μέλος';
+          return `<div style="margin-left:${d*18}px;padding:5px 0;border-bottom:1px solid var(--line)">
+            <span class="pill"${stel?' style="background:var(--warnbg);color:var(--warn);border-color:transparent"':''}>
+              ${r.section?sdot(r.section):''}<b>${esc(r.title)}</b>${r.short?' <span class="dim">'+esc(r.short)+'</span>':''}</span>
+            ${stel?'<span class="dim" style="font-size:11.5px;margin-left:6px">στέλεχος · μέλος</span>':''}
+            ${who.length?' '+who.map(p=>`<span class="pn" data-p="${p.id}" style="font-size:13px">${esc(nm(p))}</span>`).join(', ')
+                        :' <span class="dim" style="font-size:12px">— κενό —</span>'}
+            <span class="dim" style="font-size:11px;margin-left:8px">${(r.caps||[]).map(c=>capT(c)).join(' · ')}</span>
+          </div>`+draw(r.code,d+1)}).join('');
+        return draw('',0)})()}
+    </div>
+
+    <div class="sec"><h3>Αυξημένα δικαιώματα</h3><span class="n">πάνω από τον ρόλο</span></div>
+    <div class="card pad">
+      ${(()=>{const g=(D.gr||[]).filter(x=>!x.revoked_at&&x.valid_to>=new Date().toISOString().slice(0,10));
+        if(!g.length)return '<div class="dim" style="font-size:12.5px">Κανείς — ο καθένας έχει ό,τι του δίνει ο ρόλος του. <button class="btn sm" data-go="grants" style="margin-left:8px">Δώσε παραχώρηση</button></div>';
+        return g.map(x=>{const p=D.bh.find(b=>b.id===x.person_id);
+          return `<div style="padding:5px 0;border-bottom:1px solid var(--line)">
+            ${p?pnm(p):'—'} <span class="dim">· ${esc(capT(x.capability))} ${x.can_write?'(γράφει)':'(βλέπει)'}
+            · ${esc(x.scope_value||'ΟΛΑ')} · ως ${fdate(x.valid_to)}</span></div>`}).join('')
+          +'<button class="btn sm" data-go="grants" style="margin-top:10px">Διαχείριση παραχωρήσεων</button>'})()}
+    </div>
+
     <div class="sec"><h3>Τι βλέπει ο καθένας</h3></div>
     <div class="card pad"><table style="width:100%;font-size:12.5px"><thead><tr>
       <th style="text-align:left">Ρόλος</th><th>Πρόσωπα</th><th>Γονείς</th><th>Ιατρικά</th><th>Κηδεμονικά</th></tr></thead><tbody>
       ${[['Α.Σ.','όλα','όλοι','όλα','ναι'],['Αρχηγός τμήματος','το τμήμα','του τμήματος','του τμήματος','όχι'],
         ['Βαθμοφόρος','το τμήμα','του τμήματος','του τμήματος','όχι'],['Έφορος','όλα τα τμήματα','όλοι','όλα','όχι'],
+        ['Στέλεχος (ενωμοτάρχης κ.λπ.)','η υποομάδα του','κανένας','όχι','όχι'],
         ['Μέλος','ο εαυτός','οι γονείς του','δικά του','όχι'],['Γονέας','τα παιδιά του','ο εαυτός','των παιδιών','όχι']]
         .map(r=>`<tr><td style="padding:5px 0"><b>${r[0]}</b></td>${r.slice(1).map(c=>`<td style="text-align:center;color:${c==='όχι'?'var(--bad)':'var(--ink2)'}">${c}</td>`).join('')}</tr>`).join('')}
-      </tbody></table></div>`;
+      </tbody></table>
+      <div class="dim" style="font-size:12px;margin-top:8px">Τα <b>κηδεμονικά</b> δεν παραχωρούνται ποτέ — ούτε από τον Α.Σ.</div></div>`;
+
   document.querySelectorAll('[data-ar]').forEach(s=>s.onchange=async()=>{
     const {error}=await sb.from('profiles').update({access_role:s.value}).eq('id',s.dataset.ar);
     if(error)return toast('Σφάλμα: '+error.message);
