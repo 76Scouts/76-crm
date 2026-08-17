@@ -82,6 +82,8 @@ input,select{font:inherit;padding:7px 10px;border:1px solid var(--line2);border-
 input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;border-color:var(--acc)}
 
 /* stat tiles */
+  .lnk{color:var(--acc);text-decoration:none}
+  .lnk:hover{text-decoration:underline}
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
   .grow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
   .grow label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2);flex:1;min-width:150px}
@@ -408,8 +410,12 @@ const fnum=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+'/'+
 const fgr=s=>{if(!s)return'';const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s).trim());return m?p2(m[1])+'/'+p2(m[2])+'/'+m[3]:s;};
 const fphone=p=>{if(!p)return'';const d=String(p).replace(/\D/g,'');return d.length===8?d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3'):p;};
 const SC={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)'};
-/* Σταθερά χρώματα κλάδου — για inline background όπου δεν περνούν οι μεταβλητές CSS */
-const SECCOLOR={'Αγέλη':'#dda50c','Ομάδα':'#b3924f','Κοινότητα':'#2f86c9','Δίκτυο':'#7f52c4','Σύστημα':'#48515f','Εφορεία':'#48515f'};
+/* Χρώματα κλάδου. Τα διαβάζουμε από τη βάση (section_config.color) ώστε κάθε Σύστημα
+   να ορίζει τα δικά του — οι τιμές εδώ είναι μόνο εφεδρεία πριν φορτώσουν τα δεδομένα. */
+const SECFALLBACK={'Αγέλη':'#dda50c','Ομάδα':'#b3924f','Κοινότητα':'#2f86c9','Δίκτυο':'#7f52c4','Μικρή Αγέλη':'#e08a3c','Σύστημα':'#48515f','Εφορεία':'#48515f'};
+const SECCOLOR=new Proxy({},{get:(_,k)=>{
+  const c=(D.sc||[]).find(x=>x.section===k);
+  return (c&&c.color)||SECFALLBACK[k]||'#9aa3ae'}});
 /* Κατώφλια ειδοποιήσεων — προεπιλογές· επικαλύπτονται από τις ρυθμίσεις */
 const DEF_TH={absencesInRow:3, lowAttendancePct:34, certWarnDays:90, ackHours:48};
 let TH={...DEF_TH};
@@ -493,7 +499,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-17 20:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-17 22:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -702,7 +708,7 @@ async function loadAll(){
     sb.from('request_steps').select('*').limit(6000),
     sb.from('reports').select('*').limit(2000),
     sb.from('org_roles').select('*').order('seq'),
-    sb.from('person_hats').select('*').limit(500),
+    sb.from('person_hats').select('*').limit(2000),
     sb.from('service_history').select('*').limit(3000),
     sb.from('honors').select('*').limit(500),
     sb.from('person_emails').select('*').limit(2000),
@@ -721,12 +727,14 @@ async function loadAll(){
     sb.from('subgroups').select('*').limit(500),
     sb.from('care_links').select('*').limit(3000),
     sb.from('profiles').select('*'),
-    sb.from('section_config').select('*'),
+    sb.from('section_config').select('*').order('seq'),
     sb.from('fee_schedule').select('*'),
     sb.from('grants').select('*').order('valid_to',{ascending:false}).limit(500),
-    sb.from('role_catalog').select('*').order('seq')
+    sb.from('role_catalog').select('*').order('seq'),
+    sb.from('mailboxes').select('*'),
+    sb.from('klimakia').select('*')
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia'];
   const _t0=Date.now();
   const TMO=12000;
   const guard=(pr,label)=>new Promise(res=>{
@@ -751,7 +759,7 @@ async function loadAll(){
   }
   LOADED=true;
   D.bh=r[0].data||[]; D.my=r[1].data||[]; D.ss=r[2].data||[]; D.att=r[3].data||[]; D.cert=r[4].data||[]; D.gu=r[5].data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[]; D.mb=r[41]?.data||[]; D.kl=r[42]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   saveCache(); qFlush();
   ensurePhotos((D.bh||[]).map(x=>x.photo_path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
@@ -1806,16 +1814,48 @@ const ACCROLES=[['admin','Α.Σ. — τα βλέπει όλα'],['section_head',
   ['commissioner','Έφορος — όλα τα τμήματα, χωρίς ευαίσθητα'],['member','Μέλος — μόνο ο εαυτός του'],
   ['guardian','Γονέας — μόνο τα παιδιά του'],['viewer','Χωρίς πρόσβαση']];
 V.access=()=>{
-  const rows=(D.pr||[]).map(pr=>({pr,p:D.bh.find(b=>b.id===pr.person_id)}));
+  /* Ένας άνθρωπος μπορεί να έχει ΠΟΛΛΟΥΣ λογαριασμούς σύνδεσης (προσωπικό email, email ρόλου).
+     Ομαδοποιούμε ανά πρόσωπο — αλλιώς ο ίδιος εμφανίζεται δύο φορές και μοιάζει με λάθος. */
+  const byPerson={};
+  (D.pr||[]).forEach(pr=>{const k=pr.person_id||('χωρίς:'+pr.id);(byPerson[k]=byPerson[k]||[]).push(pr)});
+  const rows=Object.entries(byPerson).map(([k,prs])=>({prs,p:D.bh.find(b=>b.id===k)}));
+  const mb=(D.mb||[]);
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Ρόλοι & προσβάσεις</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Ποιος βλέπει τι. Η εμβέλεια <b>επιβάλλεται από τη βάση</b> — δεν είναι απλώς κρυμμένα κουμπιά.</div></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th>Πρόσωπο</th><th>Ρόλος</th><th class="hide-s">Τμήματα</th></tr></thead><tbody>
-      ${rows.map(({pr,p})=>`<tr><td>${p?pnm(p):'<span class="dim">—</span>'}</td>
-        <td><select data-ar="${pr.id}" style="max-width:230px;font-size:12.5px">
+      ${rows.map(({prs,p})=>{const pr=prs[0];return `<tr><td>${p?pnm(p):'<span class="dim">—</span>'}
+        ${prs.length>1?`<div class="dim" style="font-size:11px">${prs.length} λογαριασμοί σύνδεσης — ένας άνθρωπος</div>`:''}</td>
+        <td><select data-ar="${prs.map(x=>x.id).join(',')}" style="max-width:230px;font-size:12.5px">
           ${ACCROLES.map(([v,l])=>`<option value="${v}"${pr.access_role===v?' selected':''}>${l}</option>`).join('')}</select></td>
-        <td class="hide-s dim" style="font-size:12px">${(pr.sections||[]).join(' · ')||(p&&p.section?esc(p.section):'—')}</td></tr>`).join('')}
+        <td class="hide-s dim" style="font-size:12px">${(pr.sections||[]).join(' · ')||(p&&p.section?esc(p.section):'—')}</td></tr>`}).join('')}
       </tbody></table></div>
+    <div class="sec"><h3>Θεσμικές διευθύνσεις</h3><span class="n">δεν ανήκουν σε άνθρωπο</span></div>
+    <div class="card pad">
+      <div class="dim" style="font-size:12.5px;margin-bottom:10px">
+        Το <b>as@76.life</b> δεν είναι το email του Ανδρέα — είναι το email του <b>Αρχηγού Συστήματος</b>,
+        και περνά στον επόμενο. Το <b>76sp@cyprusscouts.org</b> ανήκει στο <b>Σύστημα</b>.
+        Μόνο το προσωπικό email ακολουθεί τον άνθρωπο.</div>
+      ${(D.mb||[]).length?`<div class="card" style="overflow:auto;box-shadow:none"><table>
+        <thead><tr><th>Διεύθυνση</th><th>Είδος</th><th>Ανήκει σε</th><th class="hide-s">Ποιος τη χειρίζεται σήμερα</th></tr></thead>
+        <tbody>${(D.mb||[]).filter(m=>m.active!==false).map(m=>{
+          const who=m.owner_kind==='ρόλος'
+            ? (D.ph||[]).filter(h=>h.role_code===m.role_code&&!h.valid_to).map(h=>D.bh.find(b=>b.id===h.person_id)).filter(Boolean)
+            : m.owner_kind==='τμήμα'
+            ? (D.ph||[]).filter(h=>!h.valid_to&&(D.rc||[]).some(r=>r.code===h.role_code&&r.section===m.section&&/^Αρχηγός/.test(r.title)))
+                .map(h=>D.bh.find(b=>b.id===h.person_id)).filter(Boolean) : [];
+          const anikei=m.owner_kind==='ρόλος'?((D.rc||[]).find(r=>r.code===m.role_code)||{}).title||m.role_code
+                     :m.owner_kind==='τμήμα'?m.section
+                     :((D.kl||[]).find(k=>k.id===m.klimakio_id)||{}).name||'το Σύστημα';
+          return `<tr><td><a href="mailto:${esc(m.address)}" class="lnk">${esc(m.address)}</a></td>
+            <td><span class="pill">${esc(m.label||'—')}</span></td>
+            <td>${esc(anikei)} <span class="dim" style="font-size:11px">${esc(m.owner_kind)}</span></td>
+            <td class="hide-s">${who.length?who.map(x=>`<span class="pn" data-p="${x.id}">${esc(nm(x))}</span>`).join(', '):'<span class="dim">—</span>'}</td></tr>`}).join('')}
+        </tbody></table></div>`:'<div class="dim">— καμία καταχωρημένη —</div>'}
+      <div class="dim" style="font-size:12px;margin-top:8px">Στην παράδοση καθηκόντων αλλάζει <b>ο κάτοχος του ρόλου</b>,
+        όχι η διεύθυνση. Έτσι κανένα αρχείο αλληλογραφίας δεν χάνεται και καμία λίστα δεν χρειάζεται ενημέρωση.</div>
+    </div>
+
     <div class="sec"><h3>Το δέντρο των ρόλων</h3><span class="n">ποιος κρέμεται από ποιον</span></div>
     <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:10px">
       Ο καθένας βλέπει <b>όσους είναι από κάτω του</b>. Τα <b>στελέχη</b> (ενωμοτάρχες, εξάρχες, υπεύθυνοι ομάδας εργασίας)
@@ -1862,10 +1902,11 @@ V.access=()=>{
       <div class="dim" style="font-size:12px;margin-top:8px">Τα <b>κηδεμονικά</b> δεν παραχωρούνται ποτέ — ούτε από τον Α.Σ.</div></div>`;
 
   document.querySelectorAll('[data-ar]').forEach(s=>s.onchange=async()=>{
-    const {error}=await sb.from('profiles').update({access_role:s.value}).eq('id',s.dataset.ar);
+    const ids=s.dataset.ar.split(',');       // ο ρόλος ανήκει στον άνθρωπο, όχι στον λογαριασμό
+    const {error}=await sb.from('profiles').update({access_role:s.value}).in('id',ids);
     if(error)return toast('Σφάλμα: '+error.message);
-    const pr=(D.pr||[]).find(x=>x.id===s.dataset.ar); if(pr)pr.access_role=s.value;
-    saveCache(); toast('Αποθηκεύτηκε')});
+    ids.forEach(id=>{const pr=(D.pr||[]).find(x=>x.id===id); if(pr)pr.access_role=s.value});
+    saveCache(); toast(ids.length>1?'Αποθηκεύτηκε και στους '+ids.length+' λογαριασμούς':'Αποθηκεύτηκε')});
 };
 
 /* ══ ΠΤΥΧΙΑ & ΔΑΦΝΕΣ ══ */
@@ -2368,12 +2409,23 @@ const ROLERANK=r=>{const s=String(r||'');
   if(/^Έφορος|^Βοηθός Έφ/i.test(s))return 4;
   if(/P\/T|Part/i.test(s))return 6;
   return 5;};
+/* Σειρά αλήθειας: το «καπέλο» της χρονιάς (person_hats) → η διοικητική μεταβολή → η καρτέλα.
+   Το καπέλο υπερισχύει γιατί καταγράφει τι έκανε ΤΟΤΕ, ανεξάρτητα από το τι κάνει σήμερα. */
+function hatOfYear(p,yr){
+  return (D.ph||[]).find(h=>h.person_id===p.id&&h.scout_year===yr&&h.role_code)||null;
+}
 function roleOfYear(p,yr){
+  const h=hatOfYear(p,yr);
+  if(h){const rc=(D.rc||[]).find(r=>r.code===h.role_code); if(rc)return rc.title}
   const sh=(D.sh||[]).find(x=>x.person_id===p.id&&x.scout_year===yr&&(x.appointment||x.role));
   return (sh&&(sh.appointment||sh.role))||p.appointment||p.headrole||
     (p.category==='ΑΣ'?'Αρχηγός Συστήματος':(p.category&&p.category!=='Βαθμοφόρος'?p.category:'Βαθμοφόρος'));
 }
 function secOfYear(p,yr){
+  const h=hatOfYear(p,yr);
+  if(h){const rc=(D.rc||[]).find(r=>r.code===h.role_code);
+        if(rc&&rc.section)return rc.section;
+        if(h.scope_value)return h.scope_value}
   const sh=(D.sh||[]).find(x=>x.person_id===p.id&&x.scout_year===yr&&x.section);
   return (sh&&sh.section)||p.section||'Σύστημα';
 }
@@ -2382,6 +2434,7 @@ V.staff=()=>{
   const nx=nextY(years[0]||YEAR); if(nx&&!years.includes(nx))years.unshift(nx);
   if(!SY||!years.includes(SY))SY=years.find(y=>(D.sh||[]).some(x=>x.scout_year===y))||YEAR;
   if(STMODE==='draft')return staffDraft(years);
+  if(STMODE!=='tree')return staffBoard(years);
 
   const led=D.bh.filter(p=>isLed(p)&&p.status!=='Αρχειοθετημένος');
   const q=nameKey(STQ);
@@ -2469,6 +2522,86 @@ V.staff=()=>{
     const csv='﻿'+rows.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
     saveBlob(csv,'text/csv;charset=utf-8',`76-diarthrwsi-${SY}.csv`)};
 };
+
+/* ══ ΔΙΑΡΘΡΩΣΗ — πίνακας τμημάτων, όπως το τυπωμένο επιτελείο ══
+   Το Οργανόγραμμα δείχνει ΙΕΡΑΡΧΙΑ (Σ.Π.Κ. → κάτω). Εδώ δείχνουμε ΣΥΝΘΕΣΗ:
+   ποιοι είναι σε κάθε τμήμα, με επικοινωνία. Δύο διαφορετικές ερωτήσεις. */
+function staffBoard(years){
+  const cfg=(D.sc||[]).filter(s=>s.active!==false&&s.section!=='Σύστημα')
+                      .sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const secs=cfg.length?cfg:[{section:'Αγέλη',label:'ΑΓΕΛΗ ΛΥΚΟΠΟΥΛΩΝ'},{section:'Ομάδα',label:'ΟΜΑΔΑ ΠΡΟΣΚΟΠΩΝ'},
+                             {section:'Κοινότητα',label:'ΚΟΙΝΟΤΗΤΑ ΑΝΙΧΝΕΥΤΩΝ'},{section:'Δίκτυο',label:'ΠΡΟΣΚΟΠΙΚΟ ΔΙΚΤΥΟ'}];
+  const all=D.bh.filter(p=>isLed(p));
+  const arch=all.filter(p=>p.status!=='Ενεργός'||p.category==='YOLO'||p.category==='Αρχειοθετημένος');
+  const live=all.filter(p=>!arch.includes(p));
+  const q=nameKey(STQ);
+  const hit=p=>!q||nameKey(nm(p)+' '+roleOfYear(p,SY)+' '+(p.scout_name||'')+' '+(p.email||'')).includes(q);
+  const as=live.find(p=>p.category==='ΑΣ')||live.find(p=>/Αρχηγός Συστ/i.test(roleOfYear(p,SY)));
+
+  const contact=p=>[p.email?`<a href="mailto:${esc(p.email)}" class="lnk">${esc(p.email)}</a>`:'',
+                    p.phone?`<a href="tel:${esc(String(p.phone).replace(/\s/g,''))}" class="lnk">${esc(fphone(p.phone))}</a>`:'']
+                   .filter(Boolean).join(' · ');
+  const isHead=p=>/^Αρχηγός/i.test(roleOfYear(p,SY))&&!/Συστ/i.test(roleOfYear(p,SY));
+
+  const col=s=>{
+    const list=live.filter(p=>secOfYear(p,SY)===s.section)
+      .sort((a,b)=>ROLERANK(roleOfYear(a,SY))-ROLERANK(roleOfYear(b,SY))||sortByName(a,b));
+    const head=list.find(isHead), rest=list.filter(p=>p!==head);
+    const mem=D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)&&secOf(x)===s.section).length;
+    return `<div class="card" style="overflow:hidden">
+      <div class="bhead" style="background:${SECCOLOR[s.section]||'var(--ink3)'};color:${s.section==='Αγέλη'||s.section==='Ομάδα'?'#3d2f10':'#fff'};border-radius:0">
+        <span style="flex:1">${esc(s.label||s.section)}${s.totem?` <span style="font-weight:400;opacity:.9">${esc(s.totem)}</span>`:''}</span>
+        <span style="font-weight:400;opacity:.9;font-size:12px">${list.length} βαθμ.${mem?' · '+mem+' μέλη':''}</span></div>
+      <div style="padding:10px 13px">
+        ${head?`<div style="padding:7px 0;border-bottom:2px solid var(--line2);margin-bottom:6px">
+            <div style="font-size:11px;color:var(--ink3);letter-spacing:.05em">${esc(roleOfYear(head,SY))}</div>
+            <div class="pn" data-p="${head.id}" style="font-weight:600;font-size:14px;cursor:pointer">${esc(nm(head))}</div>
+            <div class="dim" style="font-size:12px">${contact(head)}</div>
+            ${s.email?`<div class="dim" style="font-size:12px">${esc(s.email)}</div>`:''}</div>`
+          :`<div class="dim" style="font-size:12.5px;padding:7px 0;border-bottom:2px solid var(--line2);margin-bottom:6px">— χωρίς αρχηγό —</div>`}
+        ${rest.length?rest.map((p,i)=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);${hit(p)?'':'opacity:.3'}">
+            <div style="display:flex;gap:7px;align-items:baseline">
+              <span class="dim" style="font-size:11px;min-width:16px">${i+1}</span>
+              <span class="pn" data-p="${p.id}" style="font-size:13.5px;cursor:pointer">${esc(nm(p))}</span>
+              ${p.location?`<span class="pill" style="font-size:10px;padding:1px 6px">${esc(p.location)}</span>`:''}
+              ${(()=>{const c=certState(p.id);const m={expired:['bad','Ν.91 ληγμένο'],soon:['warn','Ν.91 λήγει'],none:['ink3','χωρίς Ν.91'],ok:['ok','']}[c.k];return m&&m[1]?`<span class="pill" title="Πιστοποιητικό Ν.91(Ι) — σεξουαλικά αδικήματα" style="font-size:10px;padding:1px 6px;color:var(--${m[0]});border-color:transparent;background:var(--${m[0]}bg)">${m[1]}</span>`:''})()}</div>
+            <div class="dim" style="font-size:11.5px;margin-left:23px">${contact(p)}</div></div>`).join('')
+          :'<div class="dim" style="font-size:12.5px">— κανένας άλλος —</div>'}
+      </div></div>`};
+
+  $('view').innerHTML=`
+    <div class="card pad" style="text-align:center;margin-bottom:14px">
+      <div style="font-size:11px;letter-spacing:.12em;color:var(--ink3)">ΔΙΑΡΘΡΩΣΗ 76ου Σ.Π. ΣΤΡΟΒΟΛΟΥ</div>
+      <div style="font-size:22px;font-weight:600;letter-spacing:-.01em">${esc(SY)}</div>
+      ${as?`<div style="margin-top:8px">
+        <span class="dim" style="font-size:11.5px;letter-spacing:.05em">ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</span>
+        <div class="pn" data-p="${as.id}" style="font-weight:600;font-size:15px;cursor:pointer">${esc(nm(as))}</div>
+        <div class="dim" style="font-size:12.5px">${contact(as)}</div></div>`:''}
+    </div>
+
+    <div class="grow" style="margin-bottom:10px">
+      <label style="max-width:260px">Χρονιά<select id="sy">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select></label>
+      <label style="flex:2">Αναζήτηση<input id="stq" value="${esc(STQ)}" placeholder="όνομα, ρόλος, email"></label>
+      <label style="max-width:150px">&nbsp;<button class="btn sm" id="toOrg">Ιεραρχία →</button></label>
+    </div>
+
+    <div class="grid2">${secs.map(col).join('')}</div>
+
+    ${arch.length?`<div class="sec"><h3>Αρχειοθετημένοι &amp; YOLO</h3><span class="n">${arch.length}</span></div>
+      <div class="card pad">
+        <div class="dim" style="font-size:12.5px;margin-bottom:8px">Βαθμοφόροι που δεν υπηρετούν φέτος — εξωτερικό, παύση ή αποχώρηση.
+          Επικοινωνία μέσω Α.Σ.</div>
+        ${arch.sort(sortByName).map(p=>`<span class="pill" style="margin:3px 3px 0 0;${hit(p)?'':'opacity:.3'}">
+          <span class="pn" data-p="${p.id}">${esc(nm(p))}</span>
+          ${p.location?`<span class="dim">${esc(p.location)}</span>`:''}</span>`).join('')}
+      </div>`:''}`;
+
+  const sy=$('sy'); if(sy)sy.onchange=e=>{SY=e.target.value;V.staff()};
+  const st=$('stq'); if(st)st.oninput=e=>{STQ=e.target.value;
+    document.querySelectorAll('#view .pill,#view [style*="opacity"]').forEach(()=>{}); V.staff();
+    const n=$('stq'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}};
+  const to=$('toOrg'); if(to)to.onclick=()=>route('org');
+}
 
 function staffDraft(years){
   loadDraft();
@@ -2601,10 +2734,132 @@ V.me=()=>{
         ${row('Εγγραφή',esc(sd.Registration||''))}${row('Υπόσχεση Λυκ.',esc(fgr(sd.CubPromise||sd.CubDate)))}${row('Υπόσχεση Προσκ.',esc(fgr(sd.ScoutPromise||sd.ScoutDate)))}
         ${row('Πρόσκ. Δημοκρατίας',esc(fgr(sd.RepublicDate)))}${row('Έγινε βαθμοφόρος',esc(fgr(sd.LeaderDate)))}
         ${!Object.keys(sd).length?'<span class="dim" style="font-size:13px">Χωρίς καταχωρημένες ημερομηνίες</span>':''}</div>
-      ${c.sexoxarto_expiry?`<div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Πιστοποιητικά</h3>
-        ${row('Πιστοποιητικό Ν.91(Ι)',fdate(c.sexoxarto_date)+' → <b>'+fdate(c.sexoxarto_expiry)+'</b>')}</div>`:''}
-    </div>`;
+    </div>
+
+    <div class="sec"><h3>Τα πιστοποιητικά μου</h3><span class="n">${(D.pc||[]).filter(x=>x.person_id===p.id).length}</span></div>
+    <div class="card pad">
+      <div class="dim" style="font-size:12.5px;margin-bottom:10px">Ανέβασέ τα μόνος σου — σεξόχαρτο, πρώτες βοήθειες, άδεια οδήγησης.
+        Ο Α.Σ. τα βλέπει· δεν χρειάζεται να του τα στείλεις.</div>
+      ${(()=>{const cs=(D.pc||[]).filter(x=>x.person_id===p.id)
+          .sort((a,b)=>(a.expires_on||'9999').localeCompare(b.expires_on||'9999'));
+        const ct=c=>((D.ct||[]).find(t=>t.code===c)||{}).name||c;
+        const st=e=>{ if(!e)return ['','χωρίς λήξη'];
+          const d=Math.round((new Date(e)-new Date())/864e5);
+          return d<0?['bad','Έληξε '+fdate(e)]:d<=90?['warn','Λήγει '+fdate(e)]:['ok','Ως '+fdate(e)]};
+        if(!cs.length)return '<div class="dim" style="font-size:12.5px">— κανένα καταχωρημένο —</div>';
+        return cs.map(x=>{const [k,t]=st(x.expires_on);
+          return `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+            <b style="font-size:13.5px;flex:1;min-width:170px">${esc(ct(x.type_code))}${x.label?` <span class="dim">${esc(x.label)}</span>`:''}</b>
+            <span class="pill"${k?` style="background:var(--${k}bg);color:var(--${k});border-color:transparent"`:''}>${esc(t)}</span>
+            ${x.document_id?'<span class="pill">📎 αρχείο</span>':'<span class="pill" title="Δεν έχει ανέβει έγγραφο — μόνο ημερομηνία">χωρίς αρχείο</span>'}
+          </div>`}).join('')})()}
+      <div class="grow" style="margin-top:12px">
+        <label>Τι<select id="cT">${(D.ct||[]).sort((a,b)=>(a.seq||0)-(b.seq||0)).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')}</select></label>
+        <label>Λεπτομέρεια<input id="cL" placeholder="π.χ. κατηγορία B"></label>
+        <label>Εκδόθηκε<input type="date" id="cI"></label>
+        <label>Λήγει<input type="date" id="cE"></label>
+        <label>Αρχείο<input type="file" id="cF" accept="application/pdf,image/*"></label>
+      </div>
+      <button class="btn" id="cAdd">Προσθήκη πιστοποιητικού</button>
+      <span class="dim" id="cMsg" style="margin-left:10px;font-size:12.5px"></span>
+    </div>
+
+    <div class="sec"><h3>Τα οχήματά μου</h3></div>
+    <div class="card pad">
+      <div class="dim" style="font-size:12.5px;margin-bottom:10px">Δήλωσε όχημα για τις δράσεις. Μπορείς να το <b>μοιραστείς</b>
+        με άλλον βαθμοφόρο της οικογένειας ή να το <b>δανείσεις</b> για μια περίοδο — χωρίς να πάψει να είναι δικό σου.</div>
+      ${(()=>{const mine=(D.veh||[]).filter(v=>v.owner_id===p.id
+            ||(D.vl||[]).some(l=>l.vehicle_id===v.id&&l.person_id===p.id));
+        if(!mine.length)return '<div class="dim" style="font-size:12.5px">— κανένα —</div>';
+        return mine.map(v=>{const ins=(D.vi||[]).filter(i=>i.vehicle_id===v.id)
+              .sort((a,b)=>(b.expires_on||'').localeCompare(a.expires_on||''))[0];
+          const d=ins&&ins.expires_on?Math.round((new Date(ins.expires_on)-new Date())/864e5):null;
+          const links=(D.vl||[]).filter(l=>l.vehicle_id===v.id);
+          return `<div style="padding:8px 0;border-bottom:1px solid var(--line)">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <b style="font-size:14px">${esc(v.plate||'—')}</b>
+              <span class="dim" style="font-size:12.5px">${esc([v.make,v.model,v.seats?v.seats+' θέσεις':''].filter(Boolean).join(' · '))}</span>
+              ${v.owner_id===p.id?'<span class="pill">δικό μου</span>':'<span class="pill">κοινόχρηστο</span>'}
+              ${ins?`<span class="pill" style="background:var(--${d<0?'bad':d<=45?'warn':'ok'}bg);color:var(--${d<0?'bad':d<=45?'warn':'ok'});border-color:transparent">
+                 Ασφάλεια ${d<0?'έληξε':'ως'} ${fdate(ins.expires_on)}</span>`
+                :'<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">χωρίς ασφάλεια</span>'}
+            </div>
+            ${links.length?`<div class="dim" style="font-size:11.5px;margin-top:3px">${links.map(l=>{
+              const q=D.bh.find(b=>b.id===l.person_id);
+              return (q?esc(nm(q)):'—')+' · '+esc(l.relation||'οδηγός')+(l.valid_to?' ως '+fdate(l.valid_to):'')}).join(' | ')}</div>`:''}
+          </div>`}).join('')})()}
+      <div class="grow" style="margin-top:12px">
+        <label>Αριθμός<input id="vP" placeholder="ΚΑΑ 123" style="text-transform:uppercase"></label>
+        <label>Μάρκα<input id="vM" placeholder="Toyota"></label>
+        <label>Μοντέλο<input id="vD" placeholder="Hiace"></label>
+        <label>Θέσεις<input type="number" id="vS" min="1" max="60"></label>
+      </div>
+      <button class="btn" id="vAdd">Δήλωση οχήματος</button>
+      <span class="dim" id="vMsg" style="margin-left:10px;font-size:12.5px"></span>
+    </div>
+
+    ${meTabs(p)}`;
+
+  const cm=t=>{const e=$('cMsg'); if(e)e.textContent=t};
+  const ca=$('cAdd'); if(ca)ca.onclick=async()=>{
+    const type=$('cT').value, lab=$('cL').value.trim(), iss=$('cI').value, exp=$('cE').value, f=$('cF').files[0];
+    if(!exp&&!iss)return cm('Βάλε τουλάχιστον μία ημερομηνία.');
+    ca.disabled=true; cm('Ανεβάζω…');
+    let docId=null;
+    if(f){ const path=`certs/${p.id}/${Date.now()}_${f.name.replace(/[^\w.\-]/g,'_')}`;
+      const up=await sb.storage.from('e76').upload(path,f,{upsert:false});
+      if(up.error){ca.disabled=false;return cm('Το αρχείο δεν ανέβηκε: '+up.error.message)}
+      const {data:dd,error:de}=await sb.from('documents').insert({person_id:p.id,kind:type,title:lab||type,
+        path,mime:f.type,size_bytes:f.size,issued_on:iss||null,expires_on:exp||null}).select('id').single();
+      if(de){ca.disabled=false;return cm('Σφάλμα εγγράφου: '+de.message)}
+      docId=dd.id; }
+    const {error}=await sb.from('person_certificates').insert({person_id:p.id,type_code:type,label:lab||null,
+      issued_on:iss||null,expires_on:exp||null,document_id:docId,source:'self'});
+    if(error){ca.disabled=false;return cm('Σφάλμα: '+error.message)}
+    await loadAll(); route('me');
+  };
+  const vm=t=>{const e=$('vMsg'); if(e)e.textContent=t};
+  const va=$('vAdd'); if(va)va.onclick=async()=>{
+    const plate=($('vP').value||'').trim().toUpperCase();
+    if(!plate)return vm('Βάλε αριθμό εγγραφής.');
+    va.disabled=true; vm('…');
+    const {data:v,error}=await sb.from('vehicles').insert({plate,make:$('vM').value.trim()||null,
+      model:$('vD').value.trim()||null,seats:parseInt($('vS').value)||null,
+      owner_id:p.id,created_by:p.id}).select('id').single();
+    if(error){va.disabled=false;return vm('Σφάλμα: '+error.message)}
+    await sb.from('vehicle_links').insert({vehicle_id:v.id,person_id:p.id,relation:'Ιδιοκτήτης',valid_from:new Date().toISOString().slice(0,10)});
+    await loadAll(); route('me');
+  };
 };
+
+/* Τι κουβαλά ο άνθρωπος: εκπαιδεύσεις, σχολές, δράσεις, διοικητικές μεταβολές, πρόοδος */
+function meTabs(p){
+  const tr=(D.tr||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const sh=(D.sh||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.start_date||'').localeCompare(a.start_date||''));
+  const pa=(D.pa||[]).filter(x=>x.person_id===p.id)
+      .map(x=>({x,e:(D.ev||[]).find(e=>e.id===x.event_id)})).filter(x=>x.e)
+      .sort((a,b)=>(b.e.event_date||'').localeCompare(a.e.event_date||''));
+  const ho=(D.ho||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.award_date||'').localeCompare(a.award_date||''));
+  const box=(title,n,inner)=>`<div class="sec"><h3>${title}</h3><span class="n">${n}</span></div>
+    <div class="card pad">${n?inner:'<div class="dim" style="font-size:12.5px">— τίποτα καταγεγραμμένο —</div>'}</div>`;
+  return box('Οι εκπαιδεύσεις μου',tr.length,
+      tr.map(t=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
+        <b style="font-size:13.5px;flex:1;min-width:160px">${esc(t.type||'')}${t.section?' · '+esc(t.section):''}</b>
+        <span class="dim" style="font-size:12.5px">${esc(t.code||'')} ${t.date?fdate(t.date):''} ${esc(t.body||'')}</span></div>`).join(''))
+   + box('Οι δράσεις μου',pa.length,
+      pa.map(({x,e})=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
+        <b style="font-size:13.5px;flex:1;min-width:160px">${esc(e.title||'')}</b>
+        <span class="dim" style="font-size:12.5px">${e.event_date?fdate(e.event_date):''}${e.place?' · '+esc(e.place):''}${x.is_staff?' · επιτελείο':''}</span></div>`).join(''))
+   + box('Οι διοικητικές μου μεταβολές',sh.length,
+      sh.map(s=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
+        <b style="font-size:13.5px;flex:1;min-width:180px">${esc(s.appointment||s.role||'')}</b>
+        <span class="dim" style="font-size:12.5px">${esc(s.warrant_type||'')}${s.appointment_no?' #'+esc(s.appointment_no):''}
+          ${s.start_date?fdate(s.start_date):''}${s.end_date?' → '+fdate(s.end_date):''}</span></div>`).join(''))
+   + box('Πτυχία & διακρίσεις',ho.length,
+      ho.map(h=>`<span class="pill" style="margin:3px 3px 0 0">${esc(h.title||'')}
+        <span class="dim">${h.award_date?fdate(h.award_date):''}</span></span>`).join(''));
+}
+
 V.myatt=()=>{
   const p=meRec(); if(!p)return V.me();
   const sec=secOf(p);
