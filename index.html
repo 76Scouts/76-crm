@@ -365,13 +365,32 @@ th.srt.desc:after{content:"↓";opacity:.9}
     </div>
     <div id="glogin">
     <input id="gmail" type="text" placeholder="Email ή Αρ. Μητρώου" autocomplete="username">
-    <input id="gpass" type="password" placeholder="Κωδικός πρόσβασης" autocomplete="current-password">
+    <div style="position:relative">
+      <input id="gpass" type="password" placeholder="Κωδικός πρόσβασης" autocomplete="current-password" style="padding-right:42px">
+      <button type="button" id="geye" title="Δείξε τον κωδικό"
+        style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;color:var(--ink3);font-size:16px;padding:4px 8px">👁</button>
+    </div>
     <button class="btn p" id="gbtn" style="width:100%;justify-content:center;padding:11px">Είσοδος</button>
     <div style="margin-top:9px;font-size:13px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <a href="#" id="forgot" style="color:var(--ink2)">Ξέχασα τον κωδικό μου / δεν έχω ακόμα κωδικό</a>
+      <a href="#" id="firstIn" style="color:var(--acc);font-weight:600">Έχω κωδικό πρόσκλησης — πρώτη φορά</a>
+      <a href="#" id="forgot" style="color:var(--ink2)">Ξέχασα τον κωδικό μου</a>
       <a href="#" id="useOtp" style="display:none"></a></div>
     <input id="gotp" type="text" placeholder="Κωδικός email ή επικόλληση συνδέσμου" style="display:none;margin-top:9px">
     <div id="gmsg" class="muted"></div>
+    <div id="invbox" style="display:none;text-align:left;margin-top:14px;padding:14px;background:var(--bg);border-radius:var(--r)">
+      <div style="font-weight:600;font-size:14px;margin-bottom:3px">Πρώτη είσοδος</div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:10px">Γράψε το email σου, τον <b>εξαψήφιο κωδικό</b>
+        που σου δόθηκε, και <b>διάλεξε δικό σου συνθηματικό</b>. Ο κωδικός ισχύει μία φορά.</div>
+      <input id="ivMail" type="email" placeholder="Το email σου" autocomplete="email" style="margin-bottom:7px">
+      <input id="ivCode" type="text" inputmode="numeric" maxlength="6" placeholder="Εξαψήφιος κωδικός"
+        style="margin-bottom:7px;letter-spacing:.3em;text-align:center;font-size:17px">
+      <div style="position:relative;margin-bottom:7px">
+        <input id="ivPw" type="password" placeholder="Νέο συνθηματικό (8+ χαρακτήρες)" autocomplete="new-password" style="padding-right:42px">
+        <button type="button" id="ivEye" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;color:var(--ink3);font-size:16px;padding:4px 8px">👁</button>
+      </div>
+      <button class="btn p" id="ivGo" style="width:100%;justify-content:center">Δημιουργία λογαριασμού</button>
+      <div id="ivMsg" class="muted" style="font-size:12.5px;margin-top:8px"></div>
+    </div>
     <details style="margin-top:20px;text-align:left;font-size:13px" id="ghelp">
       <summary style="cursor:pointer;color:var(--ink2);text-align:center">Πώς μπαίνω;</summary>
       <ol style="color:var(--ink2);padding-left:20px;line-height:1.75;margin:12px 0 0">
@@ -532,7 +551,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-18 15:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-18 17:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -588,6 +607,41 @@ $('npSave').onclick=async()=>{
 $('useOtp').onclick=e=>{e.preventDefault();OTPMODE=true;RECOVER=false;
   $('gpass').style.display='none'; $('useOtp').style.display='none'; $('forgot').style.display='none';
   $('gbtn').textContent='Στείλε μου κωδικό'; $('ghelp').open=true; $('gmail').focus();};
+/* Μάτι στο συνθηματικό — και στα δύο πεδία. Χωρίς αυτό, όποιος πληκτρολογεί σε κινητό
+   με βρεγμένα χέρια στην αίθουσα δοκιμάζει τυφλά και «κόβεται» χωρίς να ξέρει γιατί. */
+function eyeToggle(btnId, inpId){
+  const b=$(btnId), i=$(inpId); if(!b||!i)return;
+  b.onclick=()=>{const on=i.type==='password'; i.type=on?'text':'password';
+    b.textContent=on?'🙈':'👁'; b.title=on?'Κρύψε τον κωδικό':'Δείξε τον κωδικό'; i.focus()};
+}
+eyeToggle('geye','gpass');
+
+/* Πρώτη είσοδος με κωδικό πρόσκλησης */
+$('firstIn').onclick=e=>{e.preventDefault();
+  const box=$('invbox'), on=box.style.display==='none';
+  box.style.display=on?'':'none';
+  if(on){ eyeToggle('ivEye','ivPw');
+    const m=$('gmail').value.trim(); if(m&&/@/.test(m))$('ivMail').value=m;
+    $('ivCode').focus();
+    $('ivGo').onclick=async()=>{
+      const mail=$('ivMail').value.trim(), code=$('ivCode').value.trim(), pw=$('ivPw').value, msg=$('ivMsg');
+      if(!mail||!code||!pw){msg.style.color='var(--bad)';msg.textContent='Συμπλήρωσε και τα τρία.';return}
+      if(pw.length<8){msg.style.color='var(--bad)';msg.textContent='Το συνθηματικό θέλει 8+ χαρακτήρες.';return}
+      msg.style.color='var(--ink2)'; msg.textContent='Δημιουργία…'; $('ivGo').disabled=true;
+      try{
+        const r=await fetch(SB_URL+'/functions/v1/redeem-invite',{method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+          body:JSON.stringify({email:mail,code,password:pw})});
+        const j=await r.json();
+        if(!r.ok||j.error){msg.style.color='var(--bad)';msg.textContent=j.error||'Δεν έγινε.';$('ivGo').disabled=false;return}
+        msg.style.color='var(--ok)'; msg.textContent='Έτοιμο — σε συνδέω…';
+        const {data,error}=await sb.auth.signInWithPassword({email:mail,password:pw});
+        if(error){msg.style.color='var(--bad)';msg.textContent='Ο λογαριασμός φτιάχτηκε. Μπες κανονικά με email και συνθηματικό.';$('ivGo').disabled=false;return}
+        ME.email=data.user.email; start();
+      }catch(err){msg.style.color='var(--bad)';msg.textContent='Σφάλμα δικτύου: '+(err.message||err);$('ivGo').disabled=false}
+    };
+  }};
+
 $('forgot').onclick=async e=>{
   e.preventDefault();
   const m=$('gmsg'), id=$('gmail').value.trim();
