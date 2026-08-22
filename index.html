@@ -402,6 +402,12 @@ th.srt.desc:after{content:"↓";opacity:.9}
         <b>8 χαρακτήρες ή περισσότεροι.</b> Δεκτά όλα — γράμματα, αριθμοί, σύμβολα, ελληνικά.
         Δεν χρειάζεται κεφαλαίο ή σύμβολο. <b>Μια φράση που θυμάσαι</b> είναι καλύτερη από κάτι σύντομο και δύσκολο.
       </div>
+      <div id="ivAmWrap" style="display:none;margin-bottom:9px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:3px">Αριθμός Μητρώου</div>
+        <div class="dim" style="font-size:11.5px;margin-bottom:4px">Δικός σου ή του παιδιού σου —
+          τυπωμένος στο τρίπτυχο. Τον ζητάμε μία φορά, για να είμαστε σίγουροι ότι είσαι εσύ.</div>
+        <input id="ivAm" type="text" inputmode="numeric" placeholder="π.χ. 5402">
+      </div>
       <div id="ivMsg" style="font-size:12.5px;margin-bottom:8px"></div>
       <button class="btn p" id="ivGo" style="width:100%;justify-content:center">Δημιουργία λογαριασμού</button>
     </div>
@@ -599,7 +605,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-19 04:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-20 16:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -690,9 +696,10 @@ eyeToggle('ivEye','ivPw');
       try{
         const r=await fetch(SB_URL+'/functions/v1/redeem-invite',{method:'POST',
           headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
-          body:JSON.stringify({email:mail,code,password:pw})});
+          body:JSON.stringify({email:mail,code,password:pw,am:($('ivAm').value||'').trim()||null})});
         const j=await r.json();
         if(!r.ok||j.error){
+          if(j.need==='am'){ $('ivAmWrap').style.display=''; $('ivAm').focus(); }
           say(j.error||'Δεν έγινε.','var(--bad)');
           if(j.hint){const m=$('ivMsg');
             m.innerHTML=esc(j.error)+'<div style="color:var(--ink2);margin-top:4px">Δόθηκε στο <b>'+esc(j.hint)+'</b></div>';
@@ -3590,6 +3597,23 @@ V.accounts=()=>{
       <label style="flex:2">Αναζήτηση<input id="accq" value="${esc(ACCQ)}" placeholder="όνομα ή email"></label>
       ${ACCF?`<label style="max-width:230px">&nbsp;<button class="btn sm" id="accAll">Όλοι (${rows.length})</button></label>`:''}
       <label style="max-width:150px">&nbsp;<button class="btn sm" id="accExp">Εξαγωγή</button></label>
+      <label style="max-width:210px">&nbsp;<button class="btn sm p" id="accMail">Αποστολή κωδικών με email</button></label>
+    </div>
+
+    <div id="accMailBox" style="display:none" class="card pad">
+      <b>Αποστολή κωδικών με email</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px;line-height:1.6">
+        Στέλνονται <b>μόνο σε όσους έχουν ήδη ενεργό κωδικό</b> που δεν χρησιμοποιήθηκε.
+        Ο κωδικός δεν περνά από αυτή τη σελίδα — διαβάζεται στον διακομιστή και φεύγει κατευθείαν.
+        Τα μηνύματα φεύγουν από το <b>as@76.life</b> και μένουν στα Απεσταλμένα του.
+        <br><b>Όπου η διεύθυνση δεν προέρχεται από υπογεγραμμένο έντυπο</b>, η εξαργύρωση θα ζητήσει
+        και τον Αριθμό Μητρώου. Έτσι ένα email που πήγε σε λάθος διεύθυνση δεν ανοίγει τίποτα.
+      </div>
+      <div id="accMailList" style="margin-top:10px;max-height:190px;overflow:auto"></div>
+      <div style="display:flex;gap:7px;margin-top:10px">
+        <button class="btn p" id="accMailGo">Αποστολή</button>
+        <button class="btn" id="accMailNo">Άκυρο</button></div>
+      <div id="accMailMsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>
     </div>
 
     <div class="card" style="overflow:auto"><table>
@@ -3615,6 +3639,47 @@ V.accounts=()=>{
   const al=$('accAll'); if(al)al.onclick=()=>{ACCF='';V.accounts()};
   const i=$('accq'); if(i)i.oninput=e=>{ACCQ=e.target.value;V.accounts();
     const n=$('accq'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}};
+  /* ── Μαζική αποστολή κωδικών ─────────────────────────────────────────────
+     Η οθόνη ΔΕΝ στέλνει τον κωδικό — στέλνει ταυτοτικά προσώπων. Ο κωδικός
+     διαβάζεται στον διακομιστή και φεύγει από εκεί. Αν τον έστελνε η οθόνη,
+     θα έμενε στο ιστορικό του δικτύου και σε κάθε ενδιάμεσο. */
+  const mb=$('accMail');
+  if(mb)mb.onclick=()=>{
+    const box=$('accMailBox'), on=box.style.display==='none';
+    box.style.display=on?'':'none'; if(!on)return;
+    const targets=shown.filter(r=>r.kodikos&&r.email);
+    $('accMailList').innerHTML=targets.length
+      ?targets.map(r=>`<label class="kv" style="cursor:pointer">
+          <input type="checkbox" class="amx" value="${r.id}" checked style="width:auto;margin-right:7px">
+          <span style="flex:1">${esc(r.onoma)}</span>
+          <span class="dim" style="font-size:11.5px">${esc(r.email)}</span></label>`).join('')
+      :'<div class="dim" style="font-size:13px">Κανείς από τους εμφανιζόμενους δεν έχει ενεργό κωδικό <b>και</b> email.</div>';
+    box.scrollIntoView({behavior:'smooth',block:'center'});
+  };
+  const mn=$('accMailNo'); if(mn)mn.onclick=()=>{$('accMailBox').style.display='none'};
+  const mg=$('accMailGo');
+  if(mg)mg.onclick=async()=>{
+    const ids=[...document.querySelectorAll('.amx:checked')].map(x=>x.value);
+    const m=$('accMailMsg');
+    if(!ids.length){m.style.color='var(--bad)';m.textContent='Δεν διάλεξες κανέναν.';return}
+    m.style.color='var(--ink2)'; m.textContent='Αποστολή σε '+ids.length+'…'; mg.disabled=true;
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      const r=await fetch(SB_URL+'/functions/v1/send-invite',{method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SB_KEY,
+                 'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
+        body:JSON.stringify({person_ids:ids})});
+      const j=await r.json();
+      if(!r.ok||j.error){m.style.color='var(--bad)';m.textContent=j.error||'Δεν στάλθηκε.';mg.disabled=false;return}
+      m.style.color='var(--ok)';
+      m.innerHTML='Στάλθηκαν <b>'+(j.sent||[]).length+'</b>.'
+        +(typeof j.quota==='number'?' <span class="dim">Απομένουν '+j.quota+' για σήμερα.</span>':'')
+        +((j.failed||[]).length?'<div style="color:var(--bad);margin-top:5px">Δεν στάλθηκαν: '
+          +j.failed.map(f=>esc(f.name)+' ('+esc(f.why)+')').join(' · ')+'</div>':'');
+      mg.disabled=false;
+    }catch(e){m.style.color='var(--bad)';m.textContent='Σφάλμα δικτύου: '+(e.message||e);mg.disabled=false}
+  };
+
   const ex=$('accExp'); if(ex)ex.onclick=()=>{
     const rr=[['Όνομα','Ιδιότητα','Τμήμα','Email','Κατάσταση','Κωδικός','Λήξη κωδικού','Παιδιά']];
     shown.forEach(r=>rr.push([r.onoma,r.idiotita,r.tmima||'',r.email||'',r.katastasi,
