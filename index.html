@@ -356,6 +356,17 @@ th.srt.desc:after{content:"↓";opacity:.9}
 .cfl{display:flex;gap:5px;align-items:center;font-size:12px;color:var(--ink2);white-space:nowrap}
 .cfl input{width:auto;margin:0}
 .dsec.restr{background:var(--badbg);border-radius:10px}
+  .crop-bg{position:fixed;inset:0;background:#0d1520;display:none;flex-direction:column;z-index:200}
+  .crop-bg.show{display:flex}
+  .crop-hint{color:#dfe8f5;text-align:center;font-size:13px;padding:10px 12px}
+  .crop-stage{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
+  #cropCanvas{max-width:100%;max-height:100%;touch-action:none;background:#000;border-radius:4px}
+  .crop-acts{display:flex;gap:8px;padding:12px;background:#0d1520}
+  .cbtn{flex:1;padding:13px 8px;border-radius:10px;font-size:15px;font-weight:600;border:1px solid #33465e;cursor:pointer}
+  .cghost{background:#1b2635;color:#dfe8f5}
+  .cprimary{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .crop-busy{position:fixed;inset:0;background:rgba(13,21,32,.75);display:none;align-items:center;justify-content:center;color:#fff;font-size:15px;z-index:210}
+  .crop-busy.show{display:flex}
 </style>
 </head>
 <body>
@@ -559,7 +570,7 @@ const NAV=[
    {id:'me',t:'Η καρτέλα μου',i:'users',s:'live'},
    {id:'myatt',t:'Οι παρουσίες μου',i:'check',s:'live'},
    {id:'mykids',t:'Τα παιδιά μου',i:'home',s:'live'},
-   {id:'kidhealth',t:'Ιατρικά & συγκαταθέσεις',i:'shield',s:'live'},
+   {id:'kidhealth',t:'Έντυπα & συγκαταθέσεις',i:'shield',s:'live'},
    {id:'kidfile',t:'Πρόοδος & ιστορία',i:'award',s:'live'},
    {id:'kidprog',t:'Τι έχουμε μπροστά',i:'cal',s:'live'},
    {id:'myfees',t:'Τι οφείλω',i:'card',s:'live'},
@@ -620,7 +631,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-24 18:34'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-24 20:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2938,96 +2949,68 @@ const MEDQ=[
 
 V.kidhealth=()=>{
   const kid=kidPick(); if(!kid)return $('view').innerHTML=noKids();
-  const m=(D.med||[]).find(x=>x.person_id===kid.id)||{person_id:kid.id};
   const CN=(D.ci||[]).slice().sort((a,b)=>(a.seq||0)-(b.seq||0));
   const cs=(D.cons||[]).filter(c=>c.person_id===kid.id&&c.scout_year===YEAR);
-
-  const row=q=>{
-    if(q.g)return `<div style="margin:16px 0 7px"><b style="font-size:13px">${esc(q.g)}</b>${
-      q.n?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(q.n)}</div>`:''}</div>`;
-    const v=m[q.k];
-    if(q.type==='sel')return `<div class="kv"><span style="flex:1">${esc(q.t)}</span>
-      <select data-med="${q.k}" style="max-width:180px">${q.opts.map(o=>
-        `<option value="${esc(o)}"${(v||'')===o?' selected':''}>${o||'—'}</option>`).join('')}</select></div>`;
-    if(q.type==='txt')return `<div class="kv"><span style="flex:1">${esc(q.t)}</span>
-      <input data-med="${q.k}" value="${esc(v||'')}" style="max-width:220px"></div>`;
-    if(q.type==='area')return `<div style="margin-top:6px"><div style="font-size:12.5px;margin-bottom:3px">${esc(q.t)}</div>
-      <textarea data-med="${q.k}" rows="3">${esc(v||'')}</textarea></div>`;
-    // ναι/όχι + λεπτομέρεια
-    const on=v===true, off=v===false;
-    return `<div class="kv" style="align-items:flex-start"><span style="flex:1;padding-top:5px">${esc(q.t)}</span>
-      <span style="display:flex;gap:5px;flex:0 0 auto">
-        <button class="btn sm${off?' p':''}" data-yn="${q.k}" data-v="0">Όχι</button>
-        <button class="btn sm${on?' p':''}" data-yn="${q.k}" data-v="1">Ναι</button></span></div>
-      ${q.det?`<div data-detwrap="${q.k}" style="${on?'':'display:none'};margin:-2px 0 8px">
-        <input data-med="${q.det}" type="${q.detType||'text'}" placeholder="${esc(q.detT)}"
-          value="${esc(m[q.det]||'')}"></div>`:''}`;
-  };
+  const reqs=(D.dr||[]).filter(r=>r.active!==false&&(r.applies_to||'Μέλος')==='Μέλος')
+                       .sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const has=r=>(D.ed||[]).find(x=>x.person_id===kid.id&&x.req_code===r.code
+                 &&(r.cadence==='ετήσιο'?x.scout_year===YEAR:true));
 
   $('view').innerHTML=`${kidTabs()}
     <div class="card pad" style="margin-bottom:14px">
-      <b>Ιατρικά — ${esc(nm(kid))}</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px">Ό,τι θα έγραφες στο έντυπο της κατασκήνωσης.
-        Το συμπληρώνεις <b>μία φορά</b> και ισχύει για όλη τη χρονιά — δεν ξαναγράφεται σε κάθε δράση.
-        Αν κάτι αλλάξει, μπες και άλλαξέ το.</div>
-      ${m.declared_at?`<div class="dim" style="font-size:11.5px;margin-top:7px">Τελευταία ενημέρωση: ${fdate(m.declared_at)}</div>`:''}
-    </div>
-    <div class="card pad">${MEDQ.map(row).join('')}
-      <button class="btn p" id="medSave" style="width:100%;margin-top:14px">Αποθήκευση</button>
-      <div id="medMsg" class="dim" style="font-size:12.5px;margin-top:8px;text-align:center"></div>
+      <b>Ιατρικά</b>
+      <div class="muted" style="margin-top:6px;font-size:13.5px;line-height:1.65">
+        Δεν συμπληρώνονται εδώ. Τα ζητάει <b>η φόρμα</b> — της εγγραφής ή της κάθε δράσης —
+        και το e76 κρατά την απάντηση ώστε να μην τα ξαναγράφεις κάθε φορά.
+        <br>Μία πηγή· δύο αντίγραφα των ίδιων ιατρικών θα σήμαινε ότι κάποια στιγμή
+        θα διαφωνούσαν και δεν θα ξέραμε ποιο ισχύει.
+      </div>
+      <div id="mfBox" class="dim" style="margin-top:10px;font-size:12.5px">…</div>
     </div>
 
-    <div class="card pad" style="margin-top:14px">
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Έντυπα εγγραφής</b>
+      <div class="muted" style="margin-top:5px;font-size:13px">Μπορείς να τα ανεβάσεις εσύ,
+        ή να τα φέρεις τυπωμένα στο τραπέζι των εγγραφών.</div>
+      <div style="margin-top:10px">${reqs.map(r=>{const e=has(r);
+        return `<div class="kv" style="border-top:1px solid var(--line);padding:8px 0">
+          <span style="flex:1;min-width:0"><b style="font-size:13.5px">${esc(r.label)}</b>
+            <div class="dim" style="font-size:11.5px">${esc(r.cadence)}${
+              e&&e.received_on?' · λάβαμε '+fdate(e.received_on):''}</div></span>
+          ${e?'<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">✓ το έχουμε</span>'
+             :'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">εκκρεμεί</span>'}
+        </div>`}).join('')||'<div class="dim">—</div>'}</div>
+      <button class="btn p sm" data-pu="${kid.id}" style="margin-top:11px">Ανέβασμα εντύπου</button>
+    </div>
+
+    <div class="card pad">
       <b>Συγκαταθέσεις</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px">Τις δίνεις και τις <b>παίρνεις πίσω</b> όποτε θες,
-        με το ίδιο ένα πάτημα. Η ανάκληση ισχύει από τη στιγμή που θα την κάνεις και μετά.</div>
-      ${CN.length?CN.map(c=>{const cur=cs.find(x=>x.code===c.code);
-        const g=cur?cur.granted:null;
-        return `<div class="kv" style="align-items:flex-start;margin-top:10px">
-          <span style="flex:1;font-size:13px;padding-top:5px">${esc(c.text||c.code)}</span>
-          <span style="display:flex;gap:5px;flex:0 0 auto">
-            <button class="btn sm${g===false?' p':''}" data-cons="${esc(c.code)}" data-v="0">Όχι</button>
-            <button class="btn sm${g===true?' p':''}" data-cons="${esc(c.code)}" data-v="1">Ναι</button></span></div>
-          ${cur?`<div class="dim" style="font-size:11px;margin-top:-4px">δηλώθηκε ${fdate(cur.decided_at)}</div>`:''}`}).join('')
-        :'<div class="dim" style="margin-top:10px;font-size:12.5px">Δεν έχουν οριστεί ακόμη κείμενα συγκατάθεσης.</div>'}
+      <div class="muted" style="margin-top:5px;font-size:13px">Ό,τι έχει καταγραφεί από το
+        υπογεγραμμένο έντυπο. Αλλάζει με νέο έντυπο, όχι από εδώ.</div>
+      <div style="margin-top:9px">${CN.map(c=>{
+        const r=cs.find(x=>x.code===c.code);
+        const st=!r?['var(--ink3)','δεν έχει καταγραφεί']
+                 :r.granted?['var(--ok)','δόθηκε']:['var(--bad)','δεν δόθηκε'];
+        return `<div class="kv" style="border-top:1px solid var(--line);padding:7px 0">
+          <span style="flex:1;font-size:13px">${esc(c.label||c.code)}</span>
+          <span style="color:${st[0]};font-size:12.5px">${st[1]}</span></div>`;
+      }).join('')||'<div class="dim">—</div>'}</div>
     </div>`;
-  wireKidTabs();
 
-  const draft={};
-  document.querySelectorAll('[data-yn]').forEach(b=>b.onclick=()=>{
-    const k=b.dataset.yn, val=b.dataset.v==='1';
-    draft[k]=val; m[k]=val;
-    document.querySelectorAll(`[data-yn="${k}"]`).forEach(x=>
-      x.classList.toggle('p', (x.dataset.v==='1')===val));
-    const w=document.querySelector(`[data-detwrap="${k}"]`); if(w)w.style.display=val?'':'none';
-  });
-  document.querySelectorAll('[data-med]').forEach(i=>i.onchange=()=>{
-    draft[i.dataset.med]=i.value===''?null:i.value; });
-
-  $('medSave').onclick=async()=>{
-    const msg=$('medMsg'); msg.style.color='var(--ink2)'; msg.textContent='Αποθήκευση…';
-    const body={...draft, person_id:kid.id, declared_by:ME.person_id||null,
-                declared_at:new Date().toISOString(), updated_by_parent:new Date().toISOString()};
-    const {error}=await sb.from('person_medical').upsert(body,{onConflict:'person_id'});
-    if(error){msg.style.color='var(--bad)';msg.textContent=error.message;return}
-    const i=(D.med||[]).findIndex(x=>x.person_id===kid.id);
-    if(i>=0)D.med[i]={...D.med[i],...body}; else (D.med=D.med||[]).push(body);
-    msg.style.color='var(--ok)'; msg.textContent='Αποθηκεύτηκε.'; toast('Τα ιατρικά ενημερώθηκαν');
-  };
-
-  document.querySelectorAll('[data-cons]').forEach(b=>b.onclick=async()=>{
-    const code=b.dataset.cons, g=b.dataset.v==='1';
-    const rec={person_id:kid.id, code, scout_year:YEAR, granted:g,
-               decided_by:ME.person_id||null, decided_at:new Date().toISOString()};
-    const {error}=await sb.from('consents').upsert(rec,{onConflict:'person_id,code,scout_year'});
-    if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
-    D.cons=(D.cons||[]).filter(x=>!(x.person_id===kid.id&&x.code===code&&x.scout_year===YEAR));
-    D.cons.push(rec);
-    toast(g?'Δόθηκε':'Ανακλήθηκε'); V.kidhealth();
+  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu));
+  /* Πόσο φρέσκα είναι — χωρίς να δείξουμε τι λένε. */
+  sb.rpc('medical_freshness',{p_person:kid.id}).then(({data})=>{
+    const el=$('mfBox'); if(!el)return;
+    const m=Array.isArray(data)?data[0]:data;
+    if(!m||!m.exoume){el.textContent='Δεν έχουμε ακόμη ιατρικά για το παιδί σου. Θα τα ζητήσει η επόμενη φόρμα.';return}
+    const lixi=m.valid_until, ligei=lixi&&new Date(lixi)<new Date();
+    el.innerHTML='Τα έχουμε — τελευταία ενημέρωση <b>'+fdate(m.updated_on)+'</b>'
+      +(m.source_form?' <span class="dim">από «'+esc(m.source_form)+'»</span>':'')
+      +(lixi?'<br>'+(ligei?'<b style="color:var(--bad)">Έληξαν '+fdate(lixi)+' — θα τα ζητήσει η επόμενη φόρμα.</b>'
+                          :'Ισχύουν μέχρι <b>'+fdate(lixi)+'</b>.'):'');
   });
 };
 
-/* ── ΠΡΟΟΔΟΣ & ΙΣΤΟΡΙΑ ────────────────────────────────────────────────────── */
 V.kidfile=()=>{
   const kid=kidPick(); if(!kid)return $('view').innerHTML=noKids();
   const ys=(D.my||[]).filter(y=>y.person_id===kid.id&&!y.voided_at)
@@ -3336,6 +3319,196 @@ V.mykids=()=>{
   document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu));
   document.querySelectorAll('[data-pe]').forEach(b=>b.onclick=()=>parentEdit(b.dataset.pe));
 };
+
+/* ══ ΣΑΡΩΣΗ ΜΕ ΤΕΣΣΕΡΙΣ ΓΩΝΙΕΣ ══
+   Ίδιος κώδικας με τις αποδείξεις της Επιστροφής Εξόδων — ίδιο πρόβλημα:
+   φωτογραφία εγγράφου υπό γωνία, που πρέπει να διαβάζεται σαν σκαναρισμένη.
+   Καθαρή JS χωρίς βιβλιοθήκη: ομογραφία 8×8 και διγραμμική δειγματοληψία. */
+
+/* EXIF-σωστός προσανατολισμός */
+function loadOriented(file, cb){
+  if(window.createImageBitmap){
+    try{
+      createImageBitmap(file,{imageOrientation:'from-image'}).then(function(b){ cb(b); }).catch(fallback);
+      return;
+    }catch(err){ /* fall through */ }
+  }
+  fallback();
+  function fallback(){
+    var fr=new FileReader();
+    fr.onload=function(){ var img=new Image(); img.onload=function(){ cb(img); }; img.src=fr.result; };
+    fr.readAsDataURL(file);
+  }
+}
+
+/* Καμβάς πηγής, scaled ≤ maxDim, άσπρο background */
+function fitCanvas(src, maxDim){
+  var w=src.width, h=src.height, sc=Math.min(1, maxDim/Math.max(w,h));
+  var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc));
+  var cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
+  var ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch); ctx.drawImage(src,0,0,cw,ch);
+  return cv;
+}
+
+/* Enhance ανά pixel: v=(v-128)*1.18+128+6 */
+function enhanceCanvas(cv){
+  var ctx=cv.getContext('2d'), img=ctx.getImageData(0,0,cv.width,cv.height), d=img.data, i, c, v;
+  for(i=0;i<d.length;i+=4){ for(c=0;c<3;c++){ v=(d[i+c]-128)*1.18+128+6; d[i+c]= v<0?0:(v>255?255:v); } }
+  ctx.putImageData(img,0,0);
+}
+
+/* Gaussian elimination 8×8 (partial pivoting) */
+function solve8(A,b){
+  var n=8,i,r,c,p,t,f,piv,x=new Array(n);
+  for(i=0;i<n;i++){
+    p=i; for(r=i+1;r<n;r++){ if(Math.abs(A[r][i])>Math.abs(A[p][i])) p=r; }
+    if(p!==i){ t=A[p];A[p]=A[i];A[i]=t; t=b[p];b[p]=b[i];b[i]=t; }
+    piv=A[i][i]||1e-9;
+    for(r=0;r<n;r++){ if(r===i) continue; f=A[r][i]/piv; for(c=i;c<n;c++){ A[r][c]-=f*A[i][c]; } b[r]-=f*b[i]; }
+  }
+  for(i=0;i<n;i++) x[i]=b[i]/(A[i][i]||1e-9);
+  return x;
+}
+/* Homography output(U,V) → source(X,Y). src=[TL,TR,BR,BL], dst=output corners */
+function homographyOutToSrc(src, W, H){
+  var dst=[[0,0],[W,0],[W,H],[0,H]], A=[], b=[], i, U,V,X,Y;
+  for(i=0;i<4;i++){
+    U=dst[i][0]; V=dst[i][1]; X=src[i][0]; Y=src[i][1];
+    A.push([U,V,1,0,0,0,-U*X,-V*X]); b.push(X);
+    A.push([0,0,0,U,V,1,-U*Y,-V*Y]); b.push(Y);
+  }
+  return solve8(A,b); // [a,b,c,d,e,f,g,h]
+}
+function dist(p,q){ var dx=p[0]-q[0], dy=p[1]-q[1]; return Math.sqrt(dx*dx+dy*dy); }
+
+/* Perspective warp του quad (corners σε work-coords) → ίσιο ορθογώνιο */
+function warpCanvas(work, corners){
+  var TL=corners[0],TR=corners[1],BR=corners[2],BL=corners[3];
+  var W=Math.round(Math.max(dist(TL,TR),dist(BL,BR)));
+  var H=Math.round(Math.max(dist(TL,BL),dist(TR,BR)));
+  W=Math.max(1,W); H=Math.max(1,H);
+  var m=Math.max(W,H); if(m>1600){ var s=1600/m; W=Math.max(1,Math.round(W*s)); H=Math.max(1,Math.round(H*s)); }
+  var h=homographyOutToSrc([[TL[0],TL[1]],[TR[0],TR[1]],[BR[0],BR[1]],[BL[0],BL[1]]], W, H);
+  var a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];
+  var sctx=work.getContext('2d'), sw=work.width, sh=work.height;
+  var sd=sctx.getImageData(0,0,sw,sh).data;
+  var out=document.createElement('canvas'); out.width=W; out.height=H;
+  var octx=out.getContext('2d'), oimg=octx.createImageData(W,H), od=oimg.data;
+  var u,v,den,sx,sy,oi=0;
+  for(v=0;v<H;v++){
+    for(u=0;u<W;u++){
+      den=g*u+hh*v+1; sx=(a*u+b*v+c)/den; sy=(d*u+e*v+f)/den;
+      sampleBilinear(sd,sw,sh,sx,sy,od,oi); oi+=4;
+    }
+  }
+  octx.putImageData(oimg,0,0);
+  return out;
+}
+function sampleBilinear(sd,sw,sh,x,y,od,oi){
+  if(x<0||y<0||x>sw-1||y>sh-1){ od[oi]=255;od[oi+1]=255;od[oi+2]=255;od[oi+3]=255; return; }
+  var x0=Math.floor(x),y0=Math.floor(y),x1=Math.min(x0+1,sw-1),y1=Math.min(y0+1,sh-1),fx=x-x0,fy=y-y0,c,i00,i10,i01,i11,top,bot;
+  for(c=0;c<3;c++){
+    i00=(y0*sw+x0)*4+c; i10=(y0*sw+x1)*4+c; i01=(y1*sw+x0)*4+c; i11=(y1*sw+x1)*4+c;
+    top=sd[i00]*(1-fx)+sd[i10]*fx; bot=sd[i01]*(1-fx)+sd[i11]*fx;
+    od[oi+c]=top*(1-fy)+bot*fy;
+  }
+  od[oi+3]=255;
+}
+
+/* Meaningful filename: ΗΜ/ΝΙΑ_Κατηγορία_Vendor_Ποσό€.jpg */
+function buildName(){
+  var d=($('[name="purchaseDate"]').value||'').trim(),
+      fund=($('[name="fund"]').value||'').trim(),
+      sup=($('[name="supplier"]').value||'').trim(),
+      amt=(($('[name="amount"]').value||'')+'').trim();
+  var base=[d,fund,sup, amt?amt+'€':''].filter(Boolean).join('_') || 'apodeixi';
+  base=base.replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+  return (base||'apodeixi')+'.jpg';
+}
+
+/* Crop overlay */
+var _cropWork=null, _cropCorners=null, _cropDone=null, _cropDrag=-1;
+function cropDraw(){
+  var cv=$('cropCanvas'), ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(_cropWork,0,0);
+  ctx.lineWidth=Math.max(2, cv.width*0.004); ctx.strokeStyle='#1b56a8';
+  ctx.beginPath();
+  ctx.moveTo(_cropCorners[0][0],_cropCorners[0][1]);
+  for(var i=1;i<4;i++) ctx.lineTo(_cropCorners[i][0],_cropCorners[i][1]);
+  ctx.closePath(); ctx.stroke();
+  var rad=Math.max(10, cv.width*0.02);
+  for(i=0;i<4;i++){
+    ctx.beginPath(); ctx.arc(_cropCorners[i][0],_cropCorners[i][1],rad,0,6.2832);
+    ctx.fillStyle='rgba(255,255,255,.9)'; ctx.fill(); ctx.lineWidth=Math.max(2,cv.width*0.005); ctx.strokeStyle='#1b56a8'; ctx.stroke();
+  }
+}
+function cropPt(e){
+  var cv=$('cropCanvas'), r=cv.getBoundingClientRect();
+  return [ (e.clientX-r.left)*(cv.width/r.width), (e.clientY-r.top)*(cv.height/r.height) ];
+}
+function openCrop(work, onDone){
+  _cropWork=work; _cropDone=onDone;
+  var iw=work.width, ih=work.height;
+  _cropCorners=[[iw*0.08,ih*0.08],[iw*0.92,ih*0.08],[iw*0.92,ih*0.92],[iw*0.08,ih*0.92]];
+  var cv=$('cropCanvas'); cv.width=iw; cv.height=ih;
+  cropDraw();
+  $('cropOverlay').classList.add('show');
+}
+(function(){
+  var cv=$('cropCanvas');
+  cv.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    var p=cropPt(e), best=-1, bd=1e9, thr=Math.max(cv.width,cv.height)*0.06;
+    for(var i=0;i<4;i++){ var dd=dist(p,_cropCorners[i]); if(dd<bd){ bd=dd; best=i; } }
+    if(bd<=thr){ _cropDrag=best; try{ cv.setPointerCapture(e.pointerId); }catch(x){} }
+  });
+  cv.addEventListener('pointermove', function(e){
+    if(_cropDrag<0) return; e.preventDefault();
+    var p=cropPt(e);
+    p[0]=Math.max(0,Math.min(cv.width,p[0])); p[1]=Math.max(0,Math.min(cv.height,p[1]));
+    _cropCorners[_cropDrag]=p; cropDraw();
+  });
+  function up(){ _cropDrag=-1; }
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+
+  function finish(mode){
+    $('cropOverlay').classList.remove('show');
+    var corners=_cropCorners.map(function(c){ return [c[0],c[1]]; }), work=_cropWork, done=_cropDone;
+    _cropDone=null;
+    if(!done) return;
+    if(mode==='cancel'){ done(null); return; }
+    $('cropBusy').classList.add('show');
+    setTimeout(function(){
+      var out = (mode==='crop') ? warpCanvas(work, corners) : work;   // nocrop: work ≤1500 (≤1600)
+      enhanceCanvas(out);
+      
+      $('cropBusy').classList.remove('show');
+      done(out);
+    }, 30);
+  }
+  $('cropApply').addEventListener('click', function(){ finish('crop'); });
+  $('cropNo').addEventListener('click', function(){ finish('nocrop'); });
+  $('cropCancel').addEventListener('click', function(){ finish('cancel'); });
+})();
+
+function processImage(file, cb){
+  loadOriented(file, function(src){
+    var work=fitCanvas(src, 1500);
+    openCrop(work, function(res){ cb(res); });   // res = {name,data} ή null (άκυρο)
+  });
+}
+/* Από φωτογραφία σε ίσιο JPEG αρχείο, έτοιμο για ανέβασμα. */
+function scanToFile(file, baseName){
+  return new Promise(resolve=>{
+    if(!/^image\//.test(file.type))return resolve(file);      // PDF περνά ως έχει
+    processImage(file, out=>{
+      if(!out)return resolve(null);                            // άκυρο
+      out.toBlob(b=>resolve(new File([b],(baseName||'scan')+'.jpg',{type:'image/jpeg'})),
+                 'image/jpeg', 0.82);
+    });
+  });
+}
+
 function parentUpload(pid){
   const p=D.bh.find(x=>x.id===pid);
   const reqs=(D.dr||[]).filter(r=>r.active!==false&&!edHas(p,r));
@@ -3345,14 +3518,21 @@ function parentUpload(pid){
     <div class="dsec">
       <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Τι ανεβάζεις
         <select id="puK">${reqs.map(r=>`<option value="${r.code}">${esc(r.label)}</option>`).join('')||'<option value="">— δεν εκκρεμεί τίποτα —</option>'}</select></label>
-      <input type="file" id="puF" accept=".pdf,image/*">
-      <div class="dim" style="font-size:11.5px;margin-top:8px">PDF ή φωτογραφία, έως 12 MB. Το αρχείο το βλέπουν μόνο οι υπεύθυνοι βαθμοφόροι.</div></div>`;
+      <input type="file" id="puF" accept=".pdf,image/*" capture="environment">
+      <div class="dim" style="font-size:11.5px;margin-top:8px">PDF ή φωτογραφία, έως 12 MB. Αν βγάλεις φωτογραφία, θα σου ζητήσω να σύρεις τις τέσσερις γωνίες ώστε να ισιώσει. Το αρχείο το βλέπουν μόνο οι υπεύθυνοι βαθμοφόροι.</div></div>`;
   drw.classList.add('on');
   $('puF').onchange=async()=>{
-    const f=$('puF').files[0]; if(!f)return;
-    if(f.size>12*1024*1024)return toast('Πολύ μεγάλο (μέγιστο 12 MB)');
+    let f=$('puF').files[0]; if(!f)return;
     const code=$('puK').value; if(!code)return toast('Δεν εκκρεμεί κάτι');
     const req=(D.dr||[]).find(r=>r.code===code);
+    /* Φωτογραφία εγγράφου: ίσιωμα από τις τέσσερις γωνίες πριν ανέβει.
+       Η φωτογραφία υπό γωνία διαβάζεται δύσκολα και δεν τυπώνεται σωστά. */
+    if(/^image\//.test(f.type)){
+      const scanned=await scanToFile(f, req.code.toLowerCase());
+      if(!scanned)return;                       // πάτησε άκυρο
+      f=scanned;
+    }
+    if(f.size>12*1024*1024)return toast('Πολύ μεγάλο (μέγιστο 12 MB)');
     toast('Ανέβασμα…');
     try{
       const doc=await docUpload(f,{person_id:pid,kind:req.label,title:req.label+' — '+YEAR});
@@ -4278,10 +4458,14 @@ const ACC_STEP={'χωρίς email':0,'έχει email — χωρίς κωδικό
 /* Ο κωδικός που κάθεται εκδομένος δεν βοηθά κανέναν — είναι εκκρεμότητα, όχι πρόοδος. */
 const ACC_PEND=['εκδόθηκε — δεν δόθηκε'];
 const ACC_COL=['bad','warn','warn','warn','ok'];
-let ACCQ='', ACCF='';
+let ACCQ='', ACCF='', ACCALL=false;
 V.accounts=()=>{
-  const rows=(D.ac||[]).slice().sort((a,b)=>
+  /* Γονέας βαθμοφόρου δεν χρειάζεται λογαριασμό — ο βαθμοφόρος μπαίνει μόνος του.
+     Μένουν στη βάση, αλλά δεν μετριούνται ως έλλειψη. */
+  const all=(D.ac||[]).slice().sort((a,b)=>
     (ACC_STEP[a.katastasi]||0)-(ACC_STEP[b.katastasi]||0) || (a.onoma||'').localeCompare(b.onoma||'','el'));
+  const nOff=all.filter(r=>r.xreiazetai===false).length;
+  const rows=ACCALL?all:all.filter(r=>r.xreiazetai!==false);
   const q=nameKey(ACCQ);
   const accf=ACCF?ACCF.split('|'):null;
   const shown=rows.filter(r=>(!q||nameKey(r.onoma+' '+(r.email||'')).includes(q))
@@ -4297,7 +4481,11 @@ V.accounts=()=>{
       <b>Λογαριασμοί</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Πού βρίσκεται ο καθένας. Ο κωδικός που δίνεις
         στο χέρι είναι <b>εισιτήριο μιας χρήσης</b> — στην πρώτη είσοδο ο χρήστης ορίζει
-        <b>δικό του συνθηματικό</b> και ο κωδικός καίγεται.</div></div>
+        <b>δικό του συνθηματικό</b> και ο κωδικός καίγεται.</div>
+      ${nOff?`<div style="margin-top:9px;font-size:12.5px">
+        <button class="btn sm" id="accToggle">${ACCALL?'Κρύψε':'Δείξε'} ${nOff} γονείς βαθμοφόρων</button>
+        <span class="dim" style="margin-left:7px">Δεν χρειάζονται λογαριασμό — το παιδί τους είναι ενήλικας βαθμοφόρος.</span>
+        </div>`:''}</div>
 
     <div class="tiles">
       ${tile('Ενεργοί',by['ενεργός']||0,'έχουν συνθηματικό','ok','ενεργός')}
@@ -4367,6 +4555,7 @@ V.accounts=()=>{
   document.querySelectorAll('[data-accf]').forEach(b=>b.onclick=()=>{
     ACCF=(ACCF===b.dataset.accf)?'':b.dataset.accf; V.accounts()});
   const al=$('accAll'); if(al)al.onclick=()=>{ACCF='';V.accounts()};
+  const tg=$('accToggle'); if(tg)tg.onclick=()=>{ACCALL=!ACCALL;V.accounts()};
   const i=$('accq'); if(i)i.oninput=e=>{ACCQ=e.target.value;V.accounts();
     const n=$('accq'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}};
   /* ── Μαζική αποστολή κωδικών ─────────────────────────────────────────────
@@ -4377,12 +4566,19 @@ V.accounts=()=>{
   if(mb)mb.onclick=()=>{
     const box=$('accMailBox'), on=box.style.display==='none';
     box.style.display=on?'':'none'; if(!on)return;
-    const targets=shown.filter(r=>r.kodikos&&r.email);
+    /* Όποιος τον πήρε ήδη εμφανίζεται ΞΕΤΣΕΚΑΡΙΣΜΕΝΟΣ και τελευταίος.
+       Δεύτερη αποστολή επιτρέπεται — αλλά πρέπει να τη ζητήσεις, όχι να σου ξεφύγει. */
+    const done=r=>r.katastasi==='στάλθηκε με email'||r.katastasi==='δόθηκε στο χέρι';
+    const targets=shown.filter(r=>r.kodikos&&r.email)
+      .sort((a,b)=>(done(a)?1:0)-(done(b)?1:0)||a.onoma.localeCompare(b.onoma,'el'));
+    const nNew=targets.filter(r=>!done(r)).length;
     $('accMailList').innerHTML=targets.length
-      ?targets.map(r=>`<label class="kv" style="cursor:pointer">
-          <input type="checkbox" class="amx" value="${r.id}" checked style="width:auto;margin-right:7px">
+      ?targets.map(r=>`<label class="kv" style="cursor:pointer;${done(r)?'opacity:.6':''}">
+          <input type="checkbox" class="amx" value="${r.id}"${done(r)?'':' checked'} style="width:auto;margin-right:7px">
           <span style="flex:1">${esc(r.onoma)}</span>
+          ${done(r)?`<span class="pill" style="font-size:10.5px;background:var(--okbg);color:var(--ok);border-color:transparent">${r.katastasi==='στάλθηκε με email'?'στάλθηκε ήδη':'δόθηκε ήδη'}</span>`:''}
           <span class="dim" style="font-size:11.5px">${esc(r.email)}</span></label>`).join('')
+        +(nNew?'':'<div class="dim" style="font-size:12.5px;margin-top:8px">Όλοι όσοι φαίνονται τον έχουν ήδη πάρει. Τσέκαρε κάποιον μόνο αν θέλεις να ξανασταλεί.</div>')
       :'<div class="dim" style="font-size:13px">Κανείς από τους εμφανιζόμενους δεν έχει ενεργό κωδικό <b>και</b> email.</div>';
     box.scrollIntoView({behavior:'smooth',block:'center'});
   };
@@ -4407,6 +4603,11 @@ V.accounts=()=>{
         +((j.failed||[]).length?'<div style="color:var(--bad);margin-top:5px">Δεν στάλθηκαν: '
           +j.failed.map(f=>esc(f.name)+' ('+esc(f.why)+')').join(' · ')+'</div>':'');
       mg.disabled=false;
+      /* Η κατάσταση αλλάζει στη βάση τη στιγμή που φεύγει το email.
+         Χωρίς αυτό, η οθόνη έδειχνε ακόμη «εκδόθηκε — δεν δόθηκε». */
+      const {data:acc}=await sb.from('v_accounts').select('*');
+      if(acc){D.ac=acc; saveCache();
+        setTimeout(()=>{$('accMailBox').style.display='none'; V.accounts()},1200)}
     }catch(e){m.style.color='var(--bad)';m.textContent='Σφάλμα δικτύου: '+(e.message||e);mg.disabled=false}
   };
 
@@ -6572,9 +6773,15 @@ function medForm(id){
       <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
         <input id="ecN" placeholder="Όνομα" style="flex:1;min-width:110px"><input id="ecR" placeholder="Σχέση" style="max-width:96px"><input id="ecP" placeholder="Τηλέφωνο" style="max-width:118px">
         <button class="btn sm" id="ecAdd">+</button></div></div>
-    <div class="dsec" style="border:0"><button class="btn p" id="mSaveAll" style="width:100%;justify-content:center">Αποθήκευση</button></div>`;
+    <div class="dsec" style="border:0">
+      <div class="muted" style="font-size:12px;margin-bottom:9px;line-height:1.6">
+        Τα ιατρικά τα γράφει <b>η φόρμα</b>, όχι αυτή η οθόνη — έτσι υπάρχει μία πηγή.
+        ${ME.role==='admin'?'Ως Α.Σ. μπορείς να διορθώσεις λάθος καταχώρηση.'
+                           :'Αν κάτι είναι λάθος, ζήτησε νέα υποβολή ή πες το στον Α.Σ.'}</div>
+      ${ME.role==='admin'?`<button class="btn p" id="mSaveAll" style="width:100%;justify-content:center">Διόρθωση</button>`:''}
+    </div>`;
   drw.classList.add('on');
-  $('mSaveAll').onclick=async()=>{
+  if($('mSaveAll'))$('mSaveAll').onclick=async()=>{
     const rec={person_id:id,blood_type:$('m_blood').value.trim()||null,allergies:$('m_all').value.trim()||null,
       conditions:$('m_cond').value.trim()||null,medication:$('m_med').value.trim()||null,dietary:$('m_diet').value.trim()||null,
       doctor_name:$('m_doc').value.trim()||null,doctor_phone:$('m_docp').value.trim()||null,
@@ -6916,6 +7123,17 @@ function deskSheet(kids){
       @page{size:A4 landscape;margin:0}
       @media print{body{background:#fff}.dpage{margin:0}}
     </style></head><body>${Object.entries(bySec).map(([s,l])=>page(s,l.sort(sortByName))).join('')}<button id="toTop" title="Πάνω">↑</button>
+
+<div id="cropOverlay" class="crop-bg">
+  <div class="crop-hint">Σύρε τις τέσσερις γωνίες γύρω από το έντυπο — θα ισιωθεί σαν σκαναρισμένο.</div>
+  <div class="crop-stage"><canvas id="cropCanvas"></canvas></div>
+  <div class="crop-acts">
+    <button type="button" id="cropCancel" class="cbtn cghost">Άκυρο</button>
+    <button type="button" id="cropNo" class="cbtn cghost">Χωρίς ίσιωμα</button>
+    <button type="button" id="cropApply" class="cbtn cprimary">✓ Εφαρμογή</button>
+  </div>
+</div>
+<div id="cropBusy" class="crop-busy">Επεξεργασία εικόνας…</div>
 </body></html>`);
   w.document.close(); setTimeout(()=>w.print(),400);
 }
