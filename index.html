@@ -632,7 +632,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-24 21:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-24 22:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2942,9 +2942,9 @@ const MEDQ=[
  {k:'night_toilet', t:'Σηκώνεται τουαλέτα το βράδυ;', det:'night_toilet_txt', detT:'Πόσο συχνά'},
  {k:'sleep_other', t:'Κάτι άλλο για τον ύπνο;', det:'sleep_other_txt', detT:'Τι'},
  {g:'Γιατρός'},
- {k:'doctor_name', t:'Όνομα γιατρού', type:'txt'},
+ {k:'doctor_name', t:'Θεράπων ιατρός (ένας ανά γραμμή)', type:'area'},
  {k:'doctor_phone', t:'Τηλέφωνο γιατρού', type:'txt'},
- {k:'insurance_no', t:'Αρ. ασφάλισης', type:'txt'},
+ {k:'insurance_no', t:'Ιδιωτική ασφάλιση (εταιρεία & αρ. συμβολαίου)', type:'txt'},
  {k:'notes', t:'Οτιδήποτε άλλο θέλεις να ξέρουμε', type:'area'},
 ];
 
@@ -4962,15 +4962,19 @@ async function reloadProgress(){
    μήνυμα λάθους. Η επιστροφή τα ξαναγυρίζει σε boolean. */
 const YN = v => v===true||v==='true'||v===1 ? 'Ναι'
               : v===false||v==='false'||v===0 ? 'Όχι' : '';
+/* Το «fasting» ΔΕΝ στέλνεται: βγήκε συνειδητά από τη φόρμα βαθμοφόρων.
+   Η στήλη μένει για τα μέλη — για τους βαθμοφόρους θα είναι πάντα κενή.
+   Ούτε tmima / appointment / leader_registry_no στέλνονται: δεν υπάρχουν πια
+   ως πεδία, και τα δύο πρώτα είναι διοικητικές αποφάσεις. */
 const YN_FIELDS = ['tetanus','recent_illness','chronic','mental','on_medication',
   'allergy_drugs','allergy_food','allergy_other','other_medical',
-  'sleep_talks','night_toilet','sleep_other','fasting','dietary_yes'];
+  'sleep_talks','night_toilet','sleep_other','dietary_yes'];
 const MED_TEXT = ['blood_type','tetanus_until','recent_illness_txt','allergies',
   'allergy_drugs_txt','allergy_food_txt','allergy_other_txt','conditions','mental_txt',
   'medication','mobility','dietary','night_toilet_txt','sleep_other_txt',
   'doctor_name','doctor_phone','insurance_no','notes'];
 /* Το Quform δέχεται μόνο αυτά — ό,τι άλλο αγνοείται σιωπηλά. */
-const FANELA_OK = ['Extra Small','Small','Medium','Large','Extra Large','XXL'];
+const FANELA_OK = ['Extra Small','Small','Medium','Large','Extra Large','XXL','3XL','4XL'];
 
 const ddmmyyyy = d => { if(!d) return '';
   const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
@@ -6877,7 +6881,8 @@ function medForm(id){
       ${f('cond','Παθήσεις',m.conditions,'π.χ. άσθμα')}
       ${f('med','Φαρμακευτική αγωγή',m.medication,'φάρμακο, δόση, πότε')}
       ${f('diet','Διατροφή',m.dietary,'π.χ. χωρίς γλουτένη')}
-      ${f('doc','Γιατρός',m.doctor_name)}
+      <div class="ff" style="flex:1"><span>Ιατρός — ένας ανά γραμμή</span>
+        <textarea id="m_doc" rows="2">${esc(m.doctor_name||'')}</textarea></div>
       ${f('docp','Τηλέφωνο γιατρού',m.doctor_phone)}
       ${f('vu','Ισχύει έως (ΕΕΕΕ-ΜΜ-ΗΗ)',m.valid_until,'2027-08-31')}
     </div>
@@ -7341,7 +7346,7 @@ function tplEdit(id){
 }
 
 /* ══ ΕΝΤΥΠΑ ΕΓΓΡΑΦΗΣ — δομή Σ.Π.Κ. ══ */
-const SIZES=['4-5','6-7','8-9','10-11','12-13','14-15','S','M','L','XL','XXL'];
+const SIZES=['4-5','6-7','8-9','10-11','12-13','14-15','S','M','L','XL','XXL','3XL','4XL'];
 const FCSS=`*{box-sizing:border-box}body{font:11.5px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111;margin:0;background:#f4f4f5}
   .fpage{background:#fff;width:210mm;min-height:296mm;padding:12mm 12mm 10mm;margin:0 auto 10px;page-break-after:always;position:relative}
   .fhead{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #111;padding-bottom:7px;margin-bottom:9px}
@@ -7703,7 +7708,9 @@ function partForms(eid){
   const e=D.ev.find(x=>x.id===eid); if(!e)return;
   const ps=(D.pa||[]).filter(x=>x.event_id===eid).map(x=>D.bh.find(b=>b.id===x.person_id)).filter(p=>p&&(p.kind||'')==='Μέλος').sort(sortByName);
   if(!ps.length)return toast('Καμία δηλωμένη συμμετοχή');
-  const ln=(l,v,w)=>`<div class="ff" style="flex:${w||1}"><span>${l}</span><b>${v?esc(v):'&nbsp;'}</b></div>`;
+  /* white-space:pre-line — ο ιατρός δέχεται πολλές γραμμές (μία ανά γιατρό)
+     και το ίδιο ισχύει για παθήσεις/αγωγή. Χωρίς αυτό κολλάνε όλα σε μία σειρά. */
+  const ln=(l,v,w)=>`<div class="ff" style="flex:${w||1}"><span>${l}</span><b style="white-space:pre-line">${v?esc(v):'&nbsp;'}</b></div>`;
   const page=p=>{
     const g=gOf(p.registry_no)||{}, y=myOf(p)||{}, m=(D.med||[]).find(x=>x.person_id===p.id)||{};
     const fl=(D.mf||[]).filter(f=>f.person_id===p.id&&['Ιατρικό','Διατροφή'].includes(f.kind));
@@ -7721,7 +7728,7 @@ function partForms(eid){
       <div class="frow">${ln('Επιπλέον επαφή για τη δράση (όνομα & σχέση)','',2)}${ln('Τηλέφωνο','',1)}</div>
       <div class="fsec">Υγεία</div>
       <div class="frow">${ln('Ομάδα αίματος',m.blood_type)}${ln('Αλλεργίες',m.allergies,2)}${ln('Αγωγή',m.medication,2)}</div>
-      <div class="frow">${ln('Παθήσεις',m.conditions,2)}${ln('Διατροφή',m.dietary,2)}${ln('Γιατρός',(m.doctor_name||'')+(m.doctor_phone?' · '+m.doctor_phone:''),2)}</div>
+      <div class="frow">${ln('Παθήσεις',m.conditions,2)}${ln('Διατροφή',m.dietary,2)}${ln('Ιατρός',(m.doctor_name||'')+(m.doctor_phone?'\n'+m.doctor_phone:''),2)}</div>
       ${fl.length?`<div class="fflag">${fl.map(f=>`<b>${esc(f.kind)}:</b> ${esc(f.detail)}`).join(' &nbsp;·&nbsp; ')}</div>`:''}
       <div class="fsec">Δήλωση</div>
       <div class="fdec">Δηλώνω ότι τα πιο πάνω στοιχεία είναι ακριβή και επιτρέπω τη συμμετοχή του παιδιού μου στη δράση. Σε περίπτωση ανάγκης, εξουσιοδοτώ τους βαθμοφόρους να ζητήσουν ιατρική βοήθεια.</div>
