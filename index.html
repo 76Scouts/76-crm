@@ -592,6 +592,7 @@ const NAV=[
    {id:'events',t:'Δράσεις',i:'flag',s:'live'},
    {id:'cal',t:'Ημερολόγιο',i:'cal',s:'live'}]},
  {g:'Ανάπτυξη',items:[
+   {id:'myforms',t:'Οι φόρμες μου',i:'book',s:'live'},
    {id:'pass',t:'Πέρασμα απαιτήσεων',i:'check',s:'live'},
    {id:'progress',t:'Πίνακας Προόδου',i:'trend',s:'live'},
    {id:'badges',t:'Πτυχία & Δάφνες',i:'award',s:'live'}]},
@@ -631,7 +632,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-24 20:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-24 21:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1165,7 +1166,7 @@ async function loadAll(){
 
 /* ══ ΙΔΙΟΤΗΤΕΣ (personas) ══ */
 let PERSONAS=[], PA=null;
-const NAV_MEMBER=['me','myatt','progress','synod','hkade'];
+const NAV_MEMBER=['me','myatt','progress','synod','hkade','myforms'];
 const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile'];
 const NAV_DEV=['dev','audit','access','grants','settings','templates','forms','mysys'];
 /* Οι κάρτες που είναι ο ΙΔΙΟΣ άνθρωπος με εμένα:
@@ -4945,6 +4946,116 @@ async function reloadProgress(){
     sb.from('progress_request').select('*').order('created_at',{ascending:false}).limit(2000)]);
   if(a.data)D.mreq=a.data; if(b.data)D.prq=b.data; saveCache();
 }
+
+
+/* ══ ΑΝΟΙΧΤΕΣ ΦΟΡΜΕΣ ══
+   Η φόρμα του Smartespot ΔΕΝ ρωτά ποτέ το e76 — δεν υπάρχει κλήση προς τη βάση.
+   Διαβάζει μόνο query string. Άρα το link φτιάχνεται ΕΔΩ, τη στιγμή του κλικ,
+   από τα δεδομένα του συνδεδεμένου. Δεν στέλνεται ποτέ με email: θα κουβαλούσε
+   Α.Μ., τηλέφωνα και ιατρικά μέσα στο γραμματοκιβώτιο. */
+
+/* Τα ναι/όχι πάνε ως «Ναι»/«Όχι». Το Quform κάνει ακριβή ταύτιση με το value
+   του radio — το true δεν ταιριάζει με τίποτα και το πεδίο μένει κενό, ΧΩΡΙΣ
+   μήνυμα λάθους. Η επιστροφή τα ξαναγυρίζει σε boolean. */
+const YN = v => v===true||v==='true'||v===1 ? 'Ναι'
+              : v===false||v==='false'||v===0 ? 'Όχι' : '';
+const YN_FIELDS = ['tetanus','recent_illness','chronic','mental','on_medication',
+  'allergy_drugs','allergy_food','allergy_other','other_medical',
+  'sleep_talks','night_toilet','sleep_other','fasting','dietary_yes'];
+const MED_TEXT = ['blood_type','tetanus_until','recent_illness_txt','allergies',
+  'allergy_drugs_txt','allergy_food_txt','allergy_other_txt','conditions','mental_txt',
+  'medication','mobility','dietary','night_toilet_txt','sleep_other_txt',
+  'doctor_name','doctor_phone','insurance_no','notes'];
+/* Το Quform δέχεται μόνο αυτά — ό,τι άλλο αγνοείται σιωπηλά. */
+const FANELA_OK = ['Extra Small','Small','Medium','Large','Extra Large','XXL'];
+
+const ddmmyyyy = d => { if(!d) return '';
+  const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
+
+function formUrl(base, p){
+  const me = D.bh.find(b=>b.id===p);
+  if(!me) return null;
+  const med = (D.med||[]).find(x=>x.person_id===p) || {};
+  const sen = (D.sen||[]).find(x=>x.person_id===p) || {};
+  const ec  = (D.ecs||[]).filter(x=>x.person_id===p && !x.event_id)
+                         .sort((a,b)=>(a.priority||9)-(b.priority||9));
+  const q = {
+    e76key:'e76-'+p.replace(/-/g,'').slice(0,6),
+    epitheto: me.last_name, onoma: me.first_name,
+    am: me.registry_no, dob: ddmmyyyy(sen.dob),
+    scout_name: me.scout_name, occupation: me.occupation,
+    home_address: me.home_address, home_phone: me.home_phone,
+    ait_email: me.email, ait_tilefono: me.phone,
+    fanela: FANELA_OK.includes(me.shirt_size) ? me.shirt_size : ''
+  };
+  MED_TEXT.forEach(k=>{ if(med[k]!=null&&med[k]!=='') q[k]=med[k] });
+  YN_FIELDS.forEach(k=>{ const v=YN(med[k]); if(v) q[k]=v });
+  ec.slice(0,2).forEach((c,i)=>{ const n=i+1;
+    if(c.name)      q['ec'+n+'_onoma']=c.name;
+    if(c.relation)  q['ec'+n+'_sxesi']=c.relation;
+    if(c.phone)     q['ec'+n+'_tilefono']=c.phone;
+    if(c.alt_phone) q['ec'+n+'_tilefono2']=c.alt_phone; });
+
+  /* encodeURIComponent παντού: το «O+» της ομάδας αίματος φτάνει αλλιώς ως «O ». */
+  const qs=Object.entries(q).filter(([,v])=>v!=null&&String(v).trim()!=='')
+    .map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(String(v).trim())).join('&');
+  return base + (base.includes('?')?'&':'?') + qs;
+}
+
+const FST={'δεν έχει υποβληθεί':['bad','Δεν το έχεις στείλει ακόμη'],
+           'έληξε — θέλει ανανέωση':['bad','Πέρασε χρόνος — θέλει ανανέωση'],
+           'λήγει σύντομα':['warn','Λήγει σύντομα'],
+           'εντάξει':['ok','Είναι ενημερωμένο']};
+let FORMS=null, FWHO=null;
+V.myforms=()=>{
+  const who = FWHO || ME.person_id;
+  const p = D.bh.find(b=>b.id===who);
+  if(!p) return $('view').innerHTML='<div class="uc"><h3>Χωρίς καρτέλα</h3><p>Ο λογαριασμός σου δεν είναι δεμένος με πρόσωπο.</p></div>';
+  const mine = who===ME.person_id;
+  const led = ME.role==='admin' && D.bh.filter(b=>b.kind==='Βαθμοφόρος'&&b.status==='Ενεργός')
+                                        .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
+
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        ${avatar(p,38)}<div style="flex:1;min-width:0">
+          <b style="font-size:15px">${esc(nm(p))}</b>
+          <div class="dim" style="font-size:12px">Ανοιχτές φόρμες</div></div>
+        ${led&&led.length?`<select id="fwPick" style="max-width:220px">
+          ${led.map(b=>`<option value="${b.id}"${b.id===who?' selected':''}>${esc(nm(b))}</option>`).join('')}</select>`:''}
+      </div>
+      <div class="muted" style="margin-top:9px;font-size:12.5px;line-height:1.65">
+        Ο σύνδεσμος φτιάχνεται <b>τη στιγμή που τον πατάς</b>, με ό,τι ήδη ξέρουμε.
+        Δεν χρειάζεται να ξαναγράψεις τίποτα — μόνο να <b>επιβεβαιώσεις</b> και να
+        διορθώσεις ό,τι άλλαξε.
+        ${mine?'':'<br><b>Προσοχή:</b> ανοίγεις τη φόρμα κάποιου άλλου. Στείλ΄ του τον σύνδεσμο μόνο αν σου τον ζήτησε.'}
+      </div></div>
+    <div id="fwList" class="card"><div class="pad dim">Φόρτωση…</div></div>`;
+
+  const pk=$('fwPick'); if(pk)pk.onchange=e=>{FWHO=e.target.value;V.myforms()};
+
+  sb.rpc('open_forms',{p_person:who}).then(({data,error})=>{
+    const box=$('fwList'); if(!box)return;
+    if(error)return box.innerHTML='<div class="pad" style="color:var(--bad)">'+esc(error.message)+'</div>';
+    if(!data||!data.length)return box.innerHTML='<div class="pad dim">Καμία ανοιχτή φόρμα.</div>';
+    box.innerHTML=data.map(f=>{const st=FST[f.katastasi]||['','']; 
+      return `<div class="kv" style="border-top:1px solid var(--line);padding:11px 13px;align-items:flex-start">
+        <span style="flex:1;min-width:0">
+          <b style="font-size:14px">${esc(f.title)}</b>
+          <div style="margin-top:3px">
+            <span class="pill" style="background:var(--${st[0]}bg);color:var(--${st[0]});border-color:transparent">${esc(st[1])}</span>
+            ${f.last_on?`<span class="dim" style="font-size:11.5px;margin-left:6px">στάλθηκε ${fdate(f.last_on)}${
+              f.valid_until?' · ισχύει ως '+fdate(f.valid_until):''}</span>`:''}
+          </div></span>
+        <button class="btn p sm" data-fopen="${esc(f.url)}">Άνοιγμα</button>
+      </div>`}).join('');
+    document.querySelectorAll('[data-fopen]').forEach(b=>b.onclick=()=>{
+      const u=formUrl(b.dataset.fopen, who);
+      if(!u)return toast('Δεν βρέθηκαν στοιχεία');
+      window.open(u,'_blank','noopener');
+    });
+  });
+};
 
 V.badges=()=>{
   const hs=(D.ho||[]).map(h=>({h,p:D.bh.find(b=>b.id===h.person_id)})).filter(x=>x.p)
