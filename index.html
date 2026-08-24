@@ -632,7 +632,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-24 22:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-24 22:38'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -4969,12 +4969,30 @@ const YN = v => v===true||v==='true'||v===1 ? 'Ναι'
 const YN_FIELDS = ['tetanus','recent_illness','chronic','mental','on_medication',
   'allergy_drugs','allergy_food','allergy_other','other_medical',
   'sleep_talks','night_toilet','sleep_other','dietary_yes'];
-const MED_TEXT = ['blood_type','tetanus_until','recent_illness_txt','allergies',
+/* Το tetanus_until στέλνεται ΟΠΩΣ το έγραψε ο ίδιος — «2029», «ΔΕΝ ΓΝΩΡΙΖΩ»
+   — ώστε να μη δει ημερομηνία που δεν έδωσε ποτέ. */
+const MED_TEXT = ['blood_type','recent_illness_txt','allergies',
   'allergy_drugs_txt','allergy_food_txt','allergy_other_txt','conditions','mental_txt',
   'medication','mobility','dietary','night_toilet_txt','sleep_other_txt',
   'doctor_name','doctor_phone','insurance_no','notes'];
 /* Το Quform δέχεται μόνο αυτά — ό,τι άλλο αγνοείται σιωπηλά. */
 const FANELA_OK = ['Extra Small','Small','Medium','Large','Extra Large','XXL','3XL','4XL'];
+
+/* Ομάδα αίματος: οκτώ τιμές, λατινικά γράμματα, παύλα ASCII.
+   Το ελληνικό «Ο» μοιάζει ΑΚΡΙΒΩΣ με το λατινικό, και το μηδέν σχεδόν. Σε
+   δεδομένα γραμμένα με το χέρι υπάρχουν και τα τρία. Αν σταλεί λάθος, το
+   select δεν ταιριάζει και το πεδίο έρχεται κενό — χωρίς μήνυμα λάθους.
+   Ό,τι δεν αναγνωρίζεται ΔΕΝ στέλνεται καθόλου: καλύτερα κενό που το βλέπει
+   ο ίδιος, παρά τιμή που χάθηκε στη διαδρομή. */
+const BLOOD_OK=['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+const normBlood = t => {
+  if(!t) return '';
+  const v = String(t).toUpperCase().trim()
+    .replace(/[ΑА]/g,'A').replace(/[ΒВ]/g,'B').replace(/[ΟО0]/g,'O')
+    .replace(/[\u2212\u2013\u2014\u2012]/g,'-')
+    .replace(/[^AB O+\-]/g,'').replace(/\s+/g,'');
+  return BLOOD_OK.includes(v) ? v : '';
+};
 
 const ddmmyyyy = d => { if(!d) return '';
   const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
@@ -4996,6 +5014,11 @@ function formUrl(base, p){
     fanela: FANELA_OK.includes(me.shirt_size) ? me.shirt_size : ''
   };
   MED_TEXT.forEach(k=>{ if(med[k]!=null&&med[k]!=='') q[k]=med[k] });
+  q.blood_type = normBlood(med.blood_type);   // αναγνωρίσιμο ή τίποτα
+  if(med.tetanus_until_raw) q.tetanus_until = med.tetanus_until_raw;
+  else if(med.tetanus_until) q.tetanus_until = med.tetanus_until_approx
+        ? String(med.tetanus_until).slice(0,4)            // μόνο η χρονιά
+        : ddmmyyyy(med.tetanus_until);
   YN_FIELDS.forEach(k=>{ const v=YN(med[k]); if(v) q[k]=v });
   ec.slice(0,2).forEach((c,i)=>{ const n=i+1;
     if(c.name)      q['ec'+n+'_onoma']=c.name;
@@ -6870,6 +6893,23 @@ V.medical=()=>{
   wireVQ();
   document.querySelectorAll('[data-med]').forEach(b=>b.onclick=()=>medForm(b.dataset.med));
 };
+/* Το αντιτετανικό είναι δύο ερωτήσεις με διαφορετική βεβαιότητα: «έχω;» και
+   «ως πότε;». Πολλοί ξέρουν το πρώτο και όχι το δεύτερο. Δείχνουμε ό,τι ξέρουμε,
+   όχι μια ημερομηνία που δεν έδωσε ποτέ κανείς. */
+function tetLine(m){
+  if(m.tetanus===null||m.tetanus===undefined) return '';
+  const head = m.tetanus ? 'Ναι' : 'Όχι';
+  let d = '';
+  if(m.tetanus_until && m.tetanus_until_approx)
+    d = ' · ισχύει μέχρι <b>'+String(m.tetanus_until).slice(0,4)+'</b> <span class="dim">(κατά προσέγγιση)</span>';
+  else if(m.tetanus_until)
+    d = ' · ισχύει μέχρι <b>'+ddmmyyyy(m.tetanus_until)+'</b>';
+  else if(m.tetanus)
+    d = ' · <span class="dim">δεν ξέρουμε μέχρι πότε</span>';
+  const raw = m.tetanus_until_raw && !m.tetanus_until
+    ? '<div class="dim" style="font-size:11.5px;margin-top:2px">Δήλωσε: «'+esc(m.tetanus_until_raw)+'»</div>' : '';
+  return '<div class="kv" style="margin-bottom:9px"><b>Αντιτετανικό</b><span>'+head+d+raw+'</span></div>';
+}
 function medForm(id){
   const p=D.bh.find(x=>x.id===id); const m=(D.med||[]).find(x=>x.person_id===id)||{}; const cs=(D.ecs||[]).filter(x=>x.person_id===id);
   const f=(k,l,v,ph='')=>`<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">${l}<input id="m_${k}" value="${esc(v||'')}" placeholder="${esc(ph)}"></label>`;
@@ -6877,6 +6917,7 @@ function medForm(id){
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec">
       ${f('blood','Ομάδα αίματος',m.blood_type,'π.χ. Ο+')}
+      ${tetLine(m)}
       ${f('all','Αλλεργίες',m.allergies,'ουσία, σοβαρότητα, αντίδραση')}
       ${f('cond','Παθήσεις',m.conditions,'π.χ. άσθμα')}
       ${f('med','Φαρμακευτική αγωγή',m.medication,'φάρμακο, δόση, πότε')}
