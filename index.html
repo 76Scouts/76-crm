@@ -620,7 +620,7 @@ const NAV=[
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-24 18:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-24 18:34'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1738,7 +1738,8 @@ const LEGENDS=()=>({
 
   accounts:{t:'Κατάσταση λογαριασμού', items:[
     ['var(--ok)','ενεργός — έχει ορίσει δικό του συνθηματικό'],
-    ['var(--warn)','πήρε κωδικό πρόσκλησης, δεν τον χρησιμοποίησε ακόμη'],
+    ['var(--bad)','ο κωδικός εκδόθηκε αλλά ΔΕΝ του δόθηκε ποτέ — εκκρεμότητα δική μας'],
+    ['var(--warn)','στάλθηκε ή δόθηκε στο χέρι, δεν τον χρησιμοποίησε ακόμη'],
     ['var(--warn)','έχει email αλλά δεν του δόθηκε κωδικός'],
     ['var(--bad)','χωρίς email — δεν μπορεί να μπει καθόλου']]},
 
@@ -4272,15 +4273,19 @@ function setPasswordScreen(){
    Ο κωδικός πρόσκλησης είναι ΕΙΣΙΤΗΡΙΟ, όχι συνθηματικό — γι' αυτό φαίνεται ξεχωριστά
    ποιος έχει απλώς πάρει χαρτί και ποιος έχει πραγματικά λογαριασμό. */
 const ACC_STEP={'χωρίς email':0,'έχει email — χωρίς κωδικό':1,'ο κωδικός έληξε':1,
-  'πήρε κωδικό':2,'χρησιμοποίησε τον κωδικό':3,'έφτιαξε λογαριασμό — χωρίς συνθηματικό':3,'ενεργός':4};
+  'εκδόθηκε — δεν δόθηκε':2,'στάλθηκε με email':3,'δόθηκε στο χέρι':3,
+  'χρησιμοποίησε τον κωδικό':4,'έφτιαξε λογαριασμό — χωρίς συνθηματικό':4,'ενεργός':5};
+/* Ο κωδικός που κάθεται εκδομένος δεν βοηθά κανέναν — είναι εκκρεμότητα, όχι πρόοδος. */
+const ACC_PEND=['εκδόθηκε — δεν δόθηκε'];
 const ACC_COL=['bad','warn','warn','warn','ok'];
 let ACCQ='', ACCF='';
 V.accounts=()=>{
   const rows=(D.ac||[]).slice().sort((a,b)=>
     (ACC_STEP[a.katastasi]||0)-(ACC_STEP[b.katastasi]||0) || (a.onoma||'').localeCompare(b.onoma||'','el'));
   const q=nameKey(ACCQ);
+  const accf=ACCF?ACCF.split('|'):null;
   const shown=rows.filter(r=>(!q||nameKey(r.onoma+' '+(r.email||'')).includes(q))
-                          &&(!ACCF||r.katastasi===ACCF));
+                          &&(!accf||accf.includes(r.katastasi)));
   const by={}; rows.forEach(r=>{by[r.katastasi]=(by[r.katastasi]||0)+1});
   const step=s=>ACC_STEP[s]||0;
 
@@ -4296,7 +4301,8 @@ V.accounts=()=>{
 
     <div class="tiles">
       ${tile('Ενεργοί',by['ενεργός']||0,'έχουν συνθηματικό','ok','ενεργός')}
-      ${tile('Πήραν κωδικό',(by['πήρε κωδικό']||0),'δεν τον χρησιμοποίησαν ακόμη','warn','πήρε κωδικό')}
+      ${tile('Εκδόθηκε, δεν δόθηκε',(by['εκδόθηκε — δεν δόθηκε']||0),'κάθεται — στείλ΄ τον','bad','εκδόθηκε — δεν δόθηκε')}
+      ${tile('Στάλθηκε',((by['στάλθηκε με email']||0)+(by['δόθηκε στο χέρι']||0)),'δεν τον χρησιμοποίησαν ακόμη','warn','στάλθηκε με email|δόθηκε στο χέρι')}
       ${tile('Έχουν email',(by['έχει email — χωρίς κωδικό']||0),'δεν πήραν κωδικό','','έχει email — χωρίς κωδικό')}
       ${tile('Χωρίς email',(by['χωρίς email']||0),'δεν μπορούν να μπουν','bad','χωρίς email')}
     </div>
@@ -4335,13 +4341,29 @@ V.accounts=()=>{
             ?`<code style="font-size:14px;letter-spacing:.09em"><b>${esc(r.kodikos)}</b></code>
               <div class="dim" style="font-size:10.5px">ως ${fdate(r.lixi_kodikou)}</div>`
             :'<span class="dim">—</span>'}</td>
-          <td style="white-space:nowrap">${r.email
+          <td style="white-space:nowrap">
+            ${r.katastasi==='εκδόθηκε — δεν δόθηκε'
+              ?`<button class="btn sm" data-gave="${r.id}" title="Τον έδωσα τυπωμένο ή προφορικά">Το έδωσα</button> `:''}
+            ${r.email
             ?`<button class="btn sm" data-newinv="${r.id}" data-em="${esc(r.email)}">${r.kodikos?'Νέος':'Κωδικός'}</button>`
             :'<span class="dim" style="font-size:11.5px">θέλει email</span>'}</td></tr>`}).join('')}
       </tbody></table></div>
     <div class="card pad"><div class="dim" style="font-size:12px">
       ${shown.length} από ${rows.length}. «Νέος» ακυρώνει τον προηγούμενο κωδικό — ο παλιός παύει να δουλεύει αμέσως.</div></div>`;
 
+  /* Ο κωδικός που κάθεται εκδομένος είναι δική μας εκκρεμότητα, όχι του παραλήπτη.
+     Το «Το έδωσα» καταγράφει ΓΕΓΟΝΟΣ: ποιος και πότε. */
+  document.querySelectorAll('[data-gave]').forEach(b=>b.onclick=async()=>{
+    b.disabled=true;
+    const {data,error}=await sb.rpc('mark_invite_delivered',
+      {p_person:b.dataset.gave,p_how:'στο χέρι'});
+    if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
+    if(data&&data.error){b.disabled=false;return toast(data.error)}
+    toast('Καταγράφηκε ότι δόθηκε');
+    const {data:acc}=await sb.from('v_accounts').select('*');
+    if(acc){D.ac=acc; saveCache()}
+    V.accounts();
+  });
   document.querySelectorAll('[data-accf]').forEach(b=>b.onclick=()=>{
     ACCF=(ACCF===b.dataset.accf)?'':b.dataset.accf; V.accounts()});
   const al=$('accAll'); if(al)al.onclick=()=>{ACCF='';V.accounts()};
