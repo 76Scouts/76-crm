@@ -637,27 +637,19 @@ const NAV=[
    {id:'progKA',t:'Πρόοδος Κοινότητας (Η.Κ.Α.Δ.Ε.)',i:'award',s:'live'},
    {id:'synod',t:'Σύνοδος Κοινότητας',i:'users',s:'live'}]},
 
- {g:'Ετοιμότητα', d:'Τι χρειάζεται πριν βγούμε έξω', items:[
-   {id:'medical',t:'Ιατρικά & έκτακτη ανάγκη',i:'shield',s:'live'},
-   {id:'certs',t:'Πιστοποιητικά',i:'shield',s:'live'},
-   {id:'enroll',t:'Πιστοποιητικά εγγραφής',i:'book',s:'live'},
-   {id:'calls',t:'Λίστα κλήσεων',i:'msg',s:'live'},
-   {id:'mails',t:'Λείπουν email',i:'mail',s:'live'}]},
-
- {g:'Εγγραφές & χρονιά', d:'Ποιος μπαίνει, ποιος φεύγει, ποιος πλήρωσε', items:[
+ {g:'Εγγραφές', d:'Ποιος μπαίνει, ποιος πλήρωσε, τι τυπώνεται', items:[
    {id:'desk',t:'Τραπέζι εγγραφών',i:'check',s:'live'},
    {id:'intake',t:'Νέα μέλη & Α.Μ.',i:'user',s:'live'},
    {id:'reg',t:'Εγγραφές & εισπράξεις',i:'card',s:'live'},
    {id:'fees',t:'Χρέωση εγγραφών',i:'book',s:'live'},
-   {id:'year',t:'Η χρονιά που έρχεται',i:'trend',s:'live'},
-   {id:'handover',t:'Παραλαβή φακέλου',i:'check',s:'live'},
-   {id:'transfers',t:'Μεταγραφές',i:'trend',s:'live'},
-   {id:'rollover',t:'Μετάβαση χρονιάς',i:'trend',s:'live'},
+   {id:'enroll',t:'Πιστοποιητικά εγγραφής',i:'book',s:'live'},
+   {id:'mails',t:'Λείπουν email',i:'mail',s:'live'},
    {id:'esimport',t:'Εισαγωγή από e-Scouts',i:'down',s:'live'},
    {id:'fimport',t:'Εισαγωγή ιστορικού φορμών',i:'down',s:'live'}]},
 
  {g:'Διοίκηση', d:'Ό,τι υπογράφεται ή στέλνεται', items:[
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
+   {id:'honours',t:'Τιμητικές διακρίσεις',i:'award',s:'live'},
    {id:'approvals',t:'Αιτήσεις & εγκρίσεις',i:'check',s:'live'},
    {id:'training',t:'Εκπαιδεύσεις',i:'book',s:'live'},
    {id:'reports',t:'Αναφορές & Παράπονα',i:'lock',s:'live'},
@@ -720,8 +712,8 @@ const SUBS={
 
 
  medical:'Ιατρικά δελτία και επαφές έκτακτης ανάγκης — ποιανού λείπει',
- certs:'Λευκά ποινικά, πιστοποιητικά υγείας, άδειες',
- enroll:'Βεβαιώσεις εγγραφής προς εκτύπωση',
+
+ enroll:'Βεβαιώσεις μελών και Ν.91(Ι) βαθμοφόρων',
  calls:'Λίστα τηλεφωνημάτων με σειρά προτεραιότητας',
  mails:'Οικογένειες χωρίς email — δεν τις φτάνει τίποτα',
 
@@ -738,6 +730,7 @@ const SUBS={
  fimport:'Επικόλληση από εξαγωγή φόρμας — ιατρικά προηγούμενων ετών',
 
  warrants:'Εντολές Διοίκησης και Αναθέσεις Καθηκόντων',
+ honours:'Εύφημες μνείες και μετάλλια — σχεδόν πάντα βαθμοφόρων',
  approvals:'Αιτήσεις που περιμένουν υπογραφή',
  training:'Σχολές και επίπεδο εκπαίδευσης ανά βαθμοφόρο',
  reports:'Αναφορές και παράπονα — κλειστό κανάλι',
@@ -757,7 +750,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-25 18:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-25 18:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1118,7 +1111,7 @@ async function start(){
   if(!localStorage.getItem('e76:persona')&&PERSONAS.length>1){showPicker();}
   else route(PA&&PA.k==='member'?'me':PA&&PA.k==='parent'?'mykids':ROUTE);
   const me=meRec();
-  if(me)$('whoami').innerHTML=`<b style="color:var(--sidein)">${esc(nm(me))}</b><div style="font-size:10.5px">${esc(ledLabel(me,true))}</div>`;
+  if(me)$('whoami').innerHTML=`<b style="color:var(--sidein)">${pn(me)}</b><div style="font-size:10.5px">${esc(ledLabel(me,true))}</div>`;
 }
 
 /* ══ OFFLINE CACHE + ΟΥΡΑ ══ */
@@ -1303,7 +1296,7 @@ const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile']
 /* Ο απλός βαθμοφόρος: το τμήμα του και το πρόγραμμα. Όχι μητρώο, όχι χρήματα. */
 const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
   'attend','events','cal','groups','synod','staff','enroll',
-  'progAL','progOP','progKA','medical','calls','certs'];
+  'progAL','progOP','progKA','medical','calls','enroll'];
 /* Ο Αρχηγός τμήματος: τα παραπάνω, συν ό,τι υπογράφει ή ζητά. */
 const NAV_HEAD=[...NAV_LEADER,'approvals','training','warrants','intake','desk',
   'handover','mails','year','exports','forms','templates','reports'];
@@ -1341,13 +1334,18 @@ function childrenOf(me){
     .map(c=>D.bh.find(b=>b.id===c.member_id)).filter(Boolean);
   return [...new Set(byLink)];
 }
+/* Η ιδιότητα κουβαλά ΔΥΟ πράγματα: το είδος (k — για εικονίδια και προσγείωση)
+   και τον ΡΟΛΟ (role — τι δικαιούται να δει). Ήταν το ίδιο πεδίο, και έτσι ο
+   Α.Σ. έπαιρνε το μενού του απλού βαθμοφόρου: k:'leader' → navFor('leader').
+   Έχασε 26 οθόνες, μαζί και τα «Αταξινόμητα». */
 function buildPersonas(){
   const out=[], me=(ME.person_id&&D.bh.find(p=>p.id===ME.person_id))||ME.rec||null;
-  if(ME.role==='admin')out.push({id:'admin',t:'Διαχειριστής · πλήρης πρόσβαση',k:'leader',sc:'ΟΛΑ'});
+  if(ME.role==='admin')out.push({id:'admin',t:'Διαχειριστής · πλήρης πρόσβαση',k:'leader',role:'admin',sc:'ΟΛΑ'});
   if(ME.platform_admin||ME.role==='admin')
-    out.push({id:'dev',t:'Τεχνικός · κατάσταση εφαρμογής',k:'dev',sc:'ΟΛΑ'});
+    out.push({id:'dev',t:'Τεχνικός · κατάσταση εφαρμογής',k:'dev',role:'dev',sc:'ΟΛΑ'});
   ((D.ph&&D.ph.length?D.ph:(ME.hats||[]))).filter(h=>h.person_id===ME.person_id&&!h.valid_to).forEach(h=>
-    out.push({id:'hat:'+h.id,t:h.title,k:h.kind||'leader',sc:h.scope_value||'ΟΛΑ',lvl:h.scope_level}));
+    out.push({id:'hat:'+h.id,t:h.title,k:h.kind||'leader',sc:h.scope_value||'ΟΛΑ',lvl:h.scope_level,
+              role:/^Αρχηγ/.test(h.title||'')?(h.scope_level==='ΟΛΑ'?'admin':'head'):'leader'}));
   if(me){
     // Ήταν «δεν είναι Μέλος» — και ο Γονέας δεν είναι Μέλος, άρα περνούσε ως βαθμοφόρος.
     // Διπλό φράγμα: ούτε η καρτέλα να λέει Γονέας, ούτε η πρόσβαση να λέει guardian.
@@ -1355,19 +1353,20 @@ function buildPersonas(){
       const lb=me.appointment&&me.appointment!=='-'?me.appointment:(me.category||'Βαθμοφόρος');
       const sc=me.category==='ΑΣ'?'ΟΛΑ':(me.section||'ΟΛΑ');
       const nice=me.category==='ΑΣ'?'Αρχηγός Συστήματος':('Βαθμοφόρος · '+lb);
-      if(!out.some(o=>o.t===nice))out.push({id:'leader',t:nice,k:'leader',sc});
+      if(!out.some(o=>o.t===nice))out.push({id:'leader',t:nice,k:'leader',sc,
+        role:me.category==='ΑΣ'?'admin':(me.category==='Αρχηγός'?'head':'leader')});
     }
-    if(me.is_commissioner)out.push({id:'com',t:'Έφορος',k:'leader',sc:'ΟΛΑ'});
-    out.push({id:'member',t:'Μέλος · η καρτέλα μου',k:'member',sc:'ΕΓΩ'});
+    if(me.is_commissioner)out.push({id:'com',t:'Έφορος',k:'leader',role:'commissioner',sc:'ΟΛΑ'});
+    out.push({id:'member',t:'Μέλος · η καρτέλα μου',k:'member',role:'member',sc:'ΕΓΩ'});
   }
   const kids=childrenOf(me);
-  if(kids.length)out.push({id:'parent',t:`Γονέας · ${kids.length} ${kids.length===1?'παιδί':'παιδιά'}`,k:'parent',sc:'ΠΑΙΔΙΑ'});
+  if(kids.length)out.push({id:'parent',t:`Γονέας · ${kids.length} ${kids.length===1?'παιδί':'παιδιά'}`,k:'parent',role:'parent',sc:'ΠΑΙΔΙΑ'});
   return out;
 }
 function personaIcon(k){return k==='parent'?'home':k==='member'?'users':k==='dev'?'shield':'award'}
 /* Τι θα δεις πραγματικά — με αριθμό οθονών, όχι με αόριστα λόγια. */
 function personaDesc(p){
-  const al=navFor(p.k==='dev'?'dev':p.k);
+  const al=navFor(p.role||p.k);
   const n=al?al.length+' οθόνες':'όλες τις οθόνες';
   return p.k==='member' ? 'Η καρτέλα, οι παρουσίες και η πορεία μου · '+n
        : p.k==='parent' ? 'Πρόοδος, έντυπα και οφειλές των παιδιών μου · '+n
@@ -1561,7 +1560,7 @@ function vaPick(role){
     const q=nameKey($('vaq').value.trim());
     const hits=(q?pool.filter(b=>nameKey(nm(b)).includes(q)):pool).slice(0,60);
     $('valist').innerHTML=hits.map(b=>`<div class="kv" style="cursor:pointer" data-va="${b.id}">
-        <b style="flex:1">${esc(nm(b))}</b>
+        <b style="flex:1">${pn(b)}</b>
         <span class="dim" style="font-size:11.5px">${esc(sub(b))}</span></div>`).join('')
       ||'<div class="dim" style="font-size:12.5px">Κανένα αποτέλεσμα</div>';
     document.querySelectorAll('[data-va]').forEach(d=>d.onclick=()=>{
@@ -1628,7 +1627,7 @@ const MODES=[
   {k:'reg', t:'Περίοδος εγγραφών', i:'book', d:'Τραπέζι, Α.Μ., εισπράξεις, κωδικοί',
    nav:['desk','intake','reg','fees','enroll','esimport','mails','year','members','templates','accounts']},
   {k:'camp',t:'Δράση ή κατασκήνωση', i:'flag', d:'Ετοιμότητα, φάκελοι, επαφές έκτακτης ανάγκης',
-   nav:['events','medical','certs','calls','members','groups','enroll','cal']},
+   nav:['events','medical','calls','members','groups','enroll','cal']},
   {k:'adm', t:'Διοικητικά', i:'shield', d:'Εντολές, ρόλοι, μεταγραφές, λήξεις',
    nav:['warrants','approvals','training','access','grants','transfers','staff','mysys','issues']}
 ];
@@ -1681,15 +1680,30 @@ function tabView(key, tabs){
    Αντί να τις θυμόμαστε, τις βρίσκει μόνο του: ό,τι ορίζεται ως V.<id> και
    δεν έχει θέση στο NAV, εμφανίζεται εδώ. Ορατό μόνο σε Α.Σ. και Τεχνικό.
    Δεν είναι σκουπιδοτενεκές· είναι το «δεν ξέχασα, το έβαλα κάπου». */
+/* Δύο πηγές γεμίζουν τα Αταξινόμητα:
+   1) όσα ΞΕΧΑΣΤΗΚΑΝ — υπάρχουν ως V.<id> και δεν έχουν θέση στο μενού
+   2) όσα ΠΑΡΚΑΡΑΜΕ επίτηδες — δουλεύουν, αλλά δεν έχουν κριθεί ακόμη πού ανήκουν
+   Η δεύτερη λίστα αδειάζει καθώς αποφασίζουμε. */
+const NAV_PARK=[
+  ['medical','Ιατρικά & έκτακτη ανάγκη'],
+  ['calls','Λίστα κλήσεων'],
+  ['year','Η χρονιά που έρχεται'],
+  ['handover','Παραλαβή φακέλου'],
+  ['transfers','Μεταγραφές'],
+  ['rollover','Μετάβαση χρονιάς']];
 function orphanGroup(){
   const placed=new Set(NAV.flatMap(g=>g.items.map(m=>m.id)));
   const skip=new Set(['dash']);
-  const ids=Object.keys(V).filter(k=>!placed.has(k)&&!skip.has(k)).sort();
-  if(!ids.length)return null;
-  const nice=k=>({orgOld:'Οργανόγραμμα (παλιό)'})[k]||k;
-  ids.forEach(k=>{ if(!MOD[k]) MOD[k]={id:k,t:nice(k),i:'grid',s:'live'}; });
-  return {g:'Αταξινόμητα', d:'Οθόνες που υπάρχουν αλλά δεν έχουν θέση — τίποτα δεν χάνεται',
-          items:ids.map(k=>({id:k,t:nice(k),i:'grid',s:'live'}))};
+  const parked=NAV_PARK.filter(([k])=>V[k]);
+  const ids=Object.keys(V).filter(k=>!placed.has(k)&&!skip.has(k)
+              &&!parked.some(([p])=>p===k)).sort();
+  if(!ids.length&&!parked.length)return null;
+  const nice=k=>Object.fromEntries(NAV_PARK)[k]||({orgOld:'Οργανόγραμμα (παλιό)'})[k]||k;
+  const all=[...parked.map(([k,t])=>({id:k,t,i:'shield',s:'live'})),
+             ...ids.map(k=>({id:k,t:nice(k),i:'grid',s:'live'}))];
+  all.forEach(m=>{ if(!MOD[m.id]) MOD[m.id]=m; });
+  return {g:'Αταξινόμητα', d:'Δουλεύουν — αλλά δεν έχουμε αποφασίσει πού ανήκουν',
+          items:all};
 }
 
 /* ══ NAV ══
@@ -1704,7 +1718,7 @@ function renderNav(){
   /* Ο φακός αλλάζει τον ρόλο ΟΛΟΚΛΗΡΟ — μενού και δεδομένα. Ο Α.Σ. που
      διαλέγει «Βαθμοφόρος Αγέλης» πρέπει να δει ό,τι ακριβώς βλέπει εκείνος. */
   const K=VIEWAS ? (VIEWAS.role==='section_head'?'head':VIEWAS.role)
-                 : (PA?PA.k:'leader');
+                 : (PA?(PA.role||PA.k):'leader');
   const MN=modeNav();
   const AL=navFor(K);                       // null = τα πάντα
   const personalRole=['member','parent','dev'].includes(K);
@@ -1716,10 +1730,11 @@ function renderNav(){
     if(MN && !personalRole && !MN.includes(id)) return false;           // φίλτρο κατάστασης
     return true;
   };
-  const og=(K==='dev'||(!AL&&ME.role==='admin'))?orphanGroup():null;
+  const og=(K==='dev'||K==='admin'||ME.platform_admin)?orphanGroup():null;
   const GROUPS=og?NAV.concat([og]):NAV;
   $('navwrap').innerHTML=GROUPS.map(g=>{
-    const its=g.g==='Αταξινόμητα'?g.items:g.items.filter(m=>allow(m.id)); if(!its.length)return '';
+    const its=g.g==='Αταξινόμητα'?g.items.filter(m=>allow(m.id)||K==='admin'||K==='dev')
+                                 :g.items.filter(m=>allow(m.id)); if(!its.length)return '';
     const shut=NAVSHUT[g.g]&&!its.some(m=>m.id===ROUTE);
     return `<div class="navg${shut?' shut':''}" data-g="${esc(g.g||'')}">${g.g?
       `<span data-tog="${esc(g.g)}" title="${esc(g.d||'')}">${esc(g.g)}<span class="n">${its.length}</span><span class="car">▾</span></span>`:''}${its.map(m=>{
@@ -1868,10 +1883,11 @@ async function openProfile(id){
   const dexp=c.sexoxarto_expiry?Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5):null;
   $('drwp').innerHTML=`
     <div class="dhead">${avatar(p,44,true)}
-      <div style="flex:1;min-width:0">${statusBar(p)}<br><div style="font-size:17px;font-weight:600;letter-spacing:-.01em">${esc(nm(p))}</div>
+      <div style="flex:1;min-width:0">${statusBar(p)}<br><div style="font-size:17px;font-weight:600;letter-spacing:-.01em">${pn(p)}</div>
         <div class="dim" style="font-size:12.5px">${esc(sec||'')}${y.group_name?' · '+esc(y.group_name):''}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
-      <button class="btn gh sm" id="dArch" title="${p.status==='Αρχειοθετημένος'?'Επαναφορά':'Αρχειοθέτηση'}">${p.status==='Αρχειοθετημένος'?'↩':'🗄'}</button>
-      <button class="btn gh sm" id="dEdit" title="Επεξεργασία">✎</button>
+      <button class="btn gh sm" id="dFiles" title="Αρχεία του προσώπου">${ic('book',15)}</button>
+      <button class="btn gh sm" id="dArch" title="${p.status==='Αρχειοθετημένος'?'Επαναφορά στους ενεργούς':'Αρχειοθέτηση'}">${ic('down',15)}</button>
+      <button class="btn sm" id="dEdit" title="Επεξεργασία στοιχείων">${ic('cog',15)} Επεξεργασία</button>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec" id="dEditBox" style="display:none;background:var(--accbg)">
       <h4>Επεξεργασία</h4>
@@ -1923,7 +1939,10 @@ async function openProfile(id){
     i.onchange=()=>{if(i.files[0])photoUpload(p,i.files[0],()=>openProfile(p.id))};i.click()};
   wireCerts(p,()=>openProfile(p.id));
   if(!isMem)wireVeh(p,()=>openProfile(p.id));
-  $('dEdit').onclick=()=>{const b=$('dEditBox');b.style.display=b.style.display==='none'?'block':'none'};
+  $('dEdit').onclick=()=>{const b=$('dEditBox');const on=b.style.display==='none';
+    b.style.display=on?'block':'none'; if(on){b.scrollIntoView({block:'nearest'});const i=$('eP');if(i)i.focus()}};
+  const df=$('dFiles'); if(df)df.onclick=()=>{const l=$('docList');
+    if(l)l.scrollIntoView({behavior:'smooth',block:'center'}); const fi=$('docFile'); if(fi)fi.focus()};
   $('dArch').onclick=async()=>{
     const arch=p.status!=='Αρχειοθετημένος';
     if(!confirm(arch?`Αρχειοθέτηση: ${nm(p)};\n\nΘα φύγει από τις ενεργές λίστες αλλά το ιστορικό μένει ανέπαφο.`:`Επαναφορά ${nm(p)} στους ενεργούς;`))return;
@@ -1986,7 +2005,11 @@ function agey(d){if(!d)return 0;const b=new Date(d),n=new Date();let a=n.getFull
 const isPar=p=>(p.kind||'')==='Γονέας';
 const isLed=p=>!isPar(p)&&(p.kind||'Βαθμοφόρος')!=='Μέλος';
 const isMem=p=>(p.kind||'')==='Μέλος';
-const pnm=p=>`<b class="pn" data-p="${p.id}">${esc(nm(p))}</b>`;
+/* Κάθε όνομα, παντού, ανοίγει την καρτέλα. Ήταν σε 24 σημεία από τα ~90:
+   στα υπόλοιπα το όνομα ήταν απλό κείμενο, οπότε «κάνε κλικ πάνω του» δούλευε
+   άλλοτε ναι κι άλλοτε όχι — που είναι χειρότερο από το να μη δουλεύει καθόλου. */
+const pn=p=>p&&p.id?`<span class="pn" data-p="${p.id}">${esc(nm(p))}</span>`:esc(nm(p||{}));
+const pnm=p=>`<b class="pn" data-p="${p.id}">${pn(p)}</b>`;
 
 
 
@@ -2027,6 +2050,13 @@ function leaderDot(p){
 
 /* ── ενιαία ράβδος κατάστασης ── */
 const SB_EMPTY='var(--line)';
+/* Ο ΙΔΙΟΣ ζωγράφος για την οθόνη και για το υπόμνημα. Το υπόμνημα ζωγράφιζε
+   «διπλή τελεία» ενώ οι λίστες έδειχναν ράβδο τεσσάρων τμημάτων — εξηγούσε
+   σύμβολο που δεν υπήρχε πουθενά. Πλέον αδύνατο: μία συνάρτηση. */
+function sbarDraw(segs,tips,mini,extraTitle){
+  return `<span class="sbar${mini?' mini':''}" title="${esc([extraTitle,...tips].filter(Boolean).join(' · '))}">${
+    segs.map((c,i)=>`<i class="${i===0?'sec':''}" style="background:${c}"></i>`).join('')}</span>`;
+}
 function statusBar(p,mini){
   const isMem=(p.kind||'')==='Μέλος', sec=secOf(p)||p.section;
   const y=myOf(p)||{}, segs=[], tips=[];
@@ -2046,8 +2076,7 @@ function statusBar(p,mini){
     const w=warrantOf(p.id); push(RING[w.k]||SB_EMPTY, 'εντολή: '+RINGTXT[w.k]);
     push(inYear(p)?'#27ae60':SB_EMPTY, inYear(p)?'εγγεγραμμένος '+YEAR:'χωρίς εγγραφή '+YEAR);
   }
-  return `<span class="sbar${mini?' mini':''}" title="${esc(nm(p))} — ${tips.map(esc).join(' · ')}">${
-    segs.map((c,i)=>`<i class="${i===0?'sec':''}" style="background:${c}"></i>`).join('')}</span>`;
+  return sbarDraw(segs,tips,mini,nm(p));
 }
 
 
@@ -2367,11 +2396,20 @@ function wireFiles(ctx,after){
     if(!confirm(`Οριστική διαγραφή του «${d.title}»;`))return;
     try{await docDelete(d);toast('Διαγράφηκε');after&&after()}catch(e){toast('Σφάλμα: '+(e.message||e))}});
   const f=$('docFile'); if(f)f.onchange=async()=>{
-    const file=f.files&&f.files[0]; if(!file)return;
+    let file=f.files&&f.files[0]; if(!file)return;
     if(file.size>25*1024*1024)return toast('Πολύ μεγάλο (μέγιστο 25 MB)');
-    const m=$('docMsg'); m.textContent='Ανέβασμα…';
+    const m=$('docMsg');
+    /* Φωτογραφία εντύπου από κινητό = στραβή, με το τραπέζι μέσα. Ο ίδιος
+       διορθωτής των αποδείξεων ισιώνει και εδώ, πριν φύγει το αρχείο. */
+    if(/^image\//.test(file.type)&&typeof scanToFile==='function'){
+      m.textContent='Σάρωση…';
+      try{ file=await scanToFile(file,($('docKind').value||'έγγραφο')); }catch(e){}
+    }
+    if(!file){ m.textContent=''; f.value=''; return; }
+    m.textContent='Ανέβασμα…';
     try{await docUpload(file,Object.assign({kind:$('docKind').value},ctx));m.textContent='';toast('Ανέβηκε');after&&after()}
-    catch(e){m.textContent='';toast('Σφάλμα: '+(e.message||e))}};
+    catch(e){m.textContent='';toast('Σφάλμα: '+(e.message||e))}
+    finally{ f.value=''; }};
 }
 
 /* ── ταξινόμηση στηλών ── */
@@ -2441,40 +2479,62 @@ function wireVQ(){
 
 /* ── επεξήγηση συμβόλων ── */
 function showLegend(){
-  const half=(a,b,r)=>`<span class="dot" style="background:linear-gradient(90deg,${a} 0 50%,${b} 50% 100%);${r?`box-shadow:0 0 0 2px ${r};`:''}"></span>`;
-  const solid=c=>`<span class="dot" style="background:${c}"></span>`;
-  const rowx=(sym,t,s)=>`<div style="display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)">
-     <span style="flex:0 0 24px;padding-top:3px">${sym}</span><div><div style="font-size:13.5px">${t}</div>${s?`<div class="dim" style="font-size:12px">${s}</div>`:''}</div></div>`;
-  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Υπόμνημα συμβόλων</div>
-      <div class="dim" style="font-size:12.5px">Τι δείχνει κάθε τελεία</div></div>
+  const row=(sym,t,sub)=>`<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+     <span style="flex:0 0 78px">${sym}</span>
+     <div><div style="font-size:13.5px">${t}</div>${sub?`<div class="dim" style="font-size:12px">${sub}</div>`:''}</div></div>`;
+  const bar=(segs,tips)=>sbarDraw(segs,tips||[],false);
+  const SEC=s=>SECCOLOR[s]||'#9aa3ae';
+  const G='#27ae60', E=SB_EMPTY;
+
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+      <div style="font-size:17px;font-weight:600">Υπόμνημα</div>
+      <div class="dim" style="font-size:12.5px">Τι δείχνει η ράβδος δίπλα σε κάθε όνομα</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
 
-    <div class="dsec"><h4>Μέλη — συμπαγής τελεία = κλάδος</h4>
-      ${rowx(solid('var(--ageli)'),'Λυκόπουλο','Αγέλη')}
-      ${rowx(solid('var(--omada)'),'Πρόσκοπος','Ομάδα')}
-      ${rowx(solid('var(--koin)'),'Ανιχνευτής','Κοινότητα')}
-      ${rowx(solid('var(--diktyo)'),'Δίκτυο','')}
+    <div class="dsec">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
+        Η ράβδος έχει <b>σταθερές θέσεις</b>. Το <b>πρώτο</b> τμήμα είναι πάντα ο κλάδος·
+        τα υπόλοιπα αλλάζουν νόημα ανάλογα με το αν κοιτάς <b>μέλος</b> ή <b>βαθμοφόρο</b>.
+        Γκρίζο σημαίνει πάντα <b>δεν υπάρχει ακόμη</b> — όχι λάθος.</div></div>
+
+    <div class="dsec"><h4>Μέλος — τέσσερα τμήματα</h4>
+      <div class="dim" style="font-size:12px;margin-bottom:8px">κλάδος · εγγραφή · ιατρικό · επαφή έκτακτης ανάγκης</div>
+      ${row(bar([SEC('Αγέλη'),G,G,G]),'Όλα εντάξει','εγγεγραμμένο, με ιατρικό και επαφή')}
+      ${row(bar([SEC('Ομάδα'),'#f39c12',G,G]),'Η εγγραφή εκκρεμεί','πορτοκαλί στη 2η θέση')}
+      ${row(bar([SEC('Κοινότητα'),G,E,G]),'Λείπει ιατρικό δελτίο','γκρίζο στην 3η θέση')}
+      ${row(bar([SEC('Αγέλη'),G,G,E]),'Καμία επαφή έκτακτης ανάγκης','γκρίζο στην 4η θέση')}
+      ${row(bar([SEC('Ομάδα'),E,E,E]),'Χωρίς εγγραφή φέτος','μόνο ο κλάδος χρωματιστός')}
     </div>
 
-    <div class="dsec"><h4>Βαθμοφόροι — διπλή τελεία</h4>
-      <div class="dim" style="font-size:12.5px;margin-bottom:8px">Αριστερό μισό: <b>πιστοποιητικό Ν.91(Ι)</b> · Δεξί μισό: <b>εκπαίδευση</b></div>
-      ${rowx(half('#27ae60','#27ae60'),'Όλα εντάξει','Ν.91(Ι) σε ισχύ · Βασική εκπαίδευση')}
-      ${rowx(half('#f39c12','#27ae60'),'Ν.91(Ι) λήγει σύντομα','πορτοκαλί όταν απομένουν ≤ 90 μέρες')}
-      ${rowx(half('#e74c3c','#27ae60'),'Ν.91(Ι) έληξε','')}
-      ${rowx(half('#c7ced6','#27ae60'),'Χωρίς Ν.91(Ι)','δεν έχει καταχωρηθεί')}
-      ${rowx(half('#27ae60','#f4c20d'),'Μόνο Προκαταρκτική','κίτρινο δεξιά')}
-      ${rowx(half('#27ae60','#e74c3c'),'Χωρίς εκπαίδευση','κόκκινο δεξιά')}
+    <div class="dsec"><h4>Βαθμοφόρος — πέντε τμήματα</h4>
+      <div class="dim" style="font-size:12px;margin-bottom:8px">κλάδος · Ν.91(Ι) · εκπαίδευση · εντολή · εγγραφή</div>
+      ${row(bar([SEC('Αγέλη'),CERTC.ok,TRC[2],RING.entoli,G]),'Όλα εντάξει',
+            'Ν.91(Ι) σε ισχύ · Βασική εκπαίδευση · ενεργή Εντολή Διοίκησης')}
+      ${row(bar([SEC('Ομάδα'),CERTC.soon,TRC[2],RING.entoli,G]),'Το Ν.91(Ι) λήγει σύντομα',
+            `πορτοκαλί όταν απομένουν ≤ ${TH.certWarnDays||90} μέρες`)}
+      ${row(bar([SEC('Ομάδα'),CERTC.expired,TRC[2],RING.entoli,G]),'Το Ν.91(Ι) έληξε','')}
+      ${row(bar([SEC('Κοινότητα'),E,TRC[2],RING.entoli,G]),'Χωρίς Ν.91(Ι)','δεν έχει καταχωρηθεί')}
+      ${row(bar([SEC('Αγέλη'),CERTC.ok,TRC[1],RING.entoli,G]),'Μόνο Προκαταρκτική','κίτρινο στην 3η θέση')}
+      ${row(bar([SEC('Αγέλη'),CERTC.ok,E,RING.entoli,G]),'Χωρίς εκπαίδευση','γκρίζο στην 3η θέση')}
     </div>
 
-    <div class="dsec"><h4>Δακτύλιος = κατάσταση εντολής</h4>
-      ${rowx(half('#27ae60','#27ae60','#22c55e'),'Ενεργή Εντολή Διοίκησης','έντονο πράσινο')}
-      ${rowx(half('#27ae60','#27ae60','#eab308'),'Ενεργή Ανάθεση Καθηκόντων','κίτρινο')}
-      ${rowx(half('#27ae60','#27ae60','#ef4444'),'Έληξε','κόκκινο')}
-      ${rowx(half('#27ae60','#27ae60',null),'Δεν έχει αιτηθεί','χωρίς δακτύλιο')}
+    <div class="dsec"><h4>Η 4η θέση — κατάσταση εντολής</h4>
+      ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],RING.entoli,G]),'Ενεργή Εντολή Διοίκησης','πράσινο')}
+      ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],RING.anathesi,G]),'Ενεργή Ανάθεση Καθηκόντων','κίτρινο')}
+      ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],RING.expired,G]),'Έληξε','κόκκινο')}
+      ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],E,G]),'Δεν έχει αιτηθεί','γκρίζο')}
     </div>
-    <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">Πέρνα το ποντίκι πάνω από οποιαδήποτε τελεία για αναλυτική επεξήγηση.</div></div>`;
+
+    <div class="dsec"><h4>Το πρώτο τμήμα — ο κλάδος</h4>
+      ${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(x=>row(bar([SEC(x),E,E,E]),x,'')).join('')}
+    </div>
+
+    <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">
+      Πέρνα το ποντίκι πάνω από οποιαδήποτε ράβδο στην οθόνη — γράφει το όνομα και
+      κάθε τμήμα με λέξεις.</div></div>`;
   drw.classList.add('on');
 }
+
 
 /* ══ VIEWS ══ */
 const V={};
@@ -2654,7 +2714,7 @@ function wireFixAM(){
     if(k.length<2&&!/^\d{3,}$/.test(q)){ $('fxRes').innerHTML=''; TARGET=null; $('fxGo').disabled=true; return }
     const hits=D.bh.filter(b=>(b.registry_no||'').startsWith(q)||nameKey(nm(b)).includes(k)).slice(0,8);
     $('fxRes').innerHTML=hits.map(b=>`<div class="kv" style="cursor:pointer${TARGET&&TARGET.id===b.id?';background:var(--accbg)':''}" data-fx="${b.id}">
-        <b style="flex:1">${esc(nm(b))}</b>
+        <b style="flex:1">${pn(b)}</b>
         <span class="dim" style="font-size:12px">${esc(b.kind||'')} · Α.Μ. <b>${esc(b.registry_no||'—')}</b></span></div>`).join('')
       ||'<div class="dim" style="font-size:12.5px">Κανένα αποτέλεσμα</div>';
     document.querySelectorAll('[data-fx]').forEach(d=>d.onclick=()=>{
@@ -2759,7 +2819,7 @@ V.handover=()=>{
     const fl=(D.mf||[]).filter(f=>f.person_id===p.id&&['Ιατρικό','Διατροφή'].includes(f.kind));
     return `<div class="ccard${fl.some(f=>f.urgent)?' warn':''}">
       <div class="chead">${sdot(x.to_section)}<div style="flex:1;min-width:0">
-        <div class="ctitle">${esc(nm(p))}</div>
+        <div class="ctitle">${pn(p)}</div>
         <div class="dim" style="font-size:12px">${esc(x.from_section||'—')} → <b>${esc(x.to_section||'—')}</b> · ${esc(x.scout_year||'')}</div></div>
         ${x.received_at?`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">παραλήφθηκε</span>`:''}</div>
       ${fl.map(f=>`<div class="cflag${f.urgent?' urg':''}">${f.urgent?'⚠ ':''}<b>${esc(f.kind)}:</b> ${esc(f.detail)}</div>`).join('')||'<div class="dim" style="font-size:12px;padding:2px 0">Καμία σήμανση</div>'}
@@ -2792,7 +2852,7 @@ function voidReg(personId){
       ${r.voided_at?`<span class="dim" style="font-size:11px">${esc(r.voided_reason||'')}</span>`
         :`<button class="btn gh sm" data-void="${r.id}">Ακύρωση</button>`}</div>`;
   $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1">
-      <div style="font-size:17px;font-weight:600">${esc(nm(p))}</div>
+      <div style="font-size:17px;font-weight:600">${pn(p)}</div>
       <div class="dim" style="font-size:12.5px">Εγγραφές ανά χρονιά</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec">${rows.map(line).join('')||'<div class="dim" style="font-size:13px">Καμία εγγραφή</div>'}</div>
@@ -3011,7 +3071,7 @@ async function openSynod(id){
       <div style="display:grid;gap:4px;max-height:230px;overflow:auto">
         ${[...mem,...led].map(p=>`<label class="kv" style="cursor:pointer">
           <input type="checkbox" class="prx" value="${p.id}"${present.has(p.id)?' checked':''} style="width:auto;margin-right:8px">
-          <span style="flex:1">${esc(nm(p))}</span>
+          <span style="flex:1">${pn(p)}</span>
           <span class="dim" style="font-size:11.5px">${isMem(p)?'Ανιχνευτής':'Βαθμοφόρος'}</span></label>`).join('')}
       </div>
     </div>
@@ -3039,7 +3099,7 @@ async function openSynod(id){
       ${waiting.length?waiting.map(g=>{
         const p=D.bh.find(b=>b.id===g.person_id)||{}, r=(D.rc2||[]).find(x=>x.id===g.requirement_id)||{};
         return `<div class="kv" style="align-items:flex-start;border-top:1px solid var(--line);padding-top:8px">
-          <span style="flex:1"><b>${esc(nm(p))}</b>
+          <span style="flex:1"><b>${pn(p)}</b>
             <div class="dim" style="font-size:12px">${esc(r.code||'')} · ${esc(r.label||'')}</div>
             ${g.topic?`<div class="dim" style="font-size:11.5px">«${esc(g.topic)}»</div>`:''}</span>
           <button class="btn sm p" data-appr="${g.id}">Εγκρίθηκε</button></div>`}).join('')
@@ -3150,7 +3210,7 @@ function hkadeBody(){
     <div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         ${avatar(who,38)}
-        <div style="flex:1;min-width:0"><b style="font-size:15px">${esc(nm(who))}</b>
+        <div style="flex:1;min-width:0"><b style="font-size:15px">${pn(who)}</b>
           ${who.scout_name?` <i class="osn">${esc(who.scout_name)}</i>`:''}
           <div class="dim" style="font-size:12px">Η.Κ.Α.Δ.Ε. · ${esc(YEAR)}${
             entry&&entry.start_date?' · Εισδοχή '+fdate(entry.start_date):''}</div></div>
@@ -3233,7 +3293,7 @@ async function openDeda(who, reqId){
       <div style="display:grid;gap:3px;max-height:150px;overflow:auto">
         ${anix.map(p=>`<label class="kv" style="cursor:pointer;font-size:12.5px">
           <input type="checkbox" class="oex" value="${p.id}"${(g.team||[]).includes(p.id)?' checked':''} style="width:auto;margin-right:7px">
-          ${esc(nm(p))}</label>`).join('')}</div>
+          ${pn(p)}</label>`).join('')}</div>
       <input id="dP" placeholder="Ειδικός συνεργάτης (προαιρετικό)" value="${esc(g.partner||'')}" style="margin-top:7px">`)}
 
     ${stepBox(4,`<select id="dE"><option value="">— χωρίς δράση —</option>
@@ -3477,7 +3537,7 @@ V.kidfile=()=>{
 
   $('view').innerHTML=`${kidTabs()}
     <div class="card pad" style="margin-bottom:14px">
-      <b>${esc(nm(kid))}</b>${kid.scout_name?` <i class="osn">${esc(kid.scout_name)}</i>`:''}
+      <b>${pn(kid)}</b>${kid.scout_name?` <i class="osn">${esc(kid.scout_name)}</i>`:''}
       <div class="muted" style="margin-top:5px;font-size:13.5px">Η πορεία του στο Σύστημα, χρονιά με χρονιά.</div>
     </div>
 
@@ -3666,7 +3726,7 @@ V.myfees=()=>{
     <div class="card" style="overflow:auto"><table>
       <thead><tr><th>Παιδί</th><th>Χρέωση</th><th>Πληρώθηκε</th><th>Υπόλοιπο</th><th class="hide-s">Τρόπος</th></tr></thead>
       <tbody>${rows.map(r=>`<tr>
-        <td><b>${esc(nm(r.k))}</b><div class="dim" style="font-size:11.5px">${esc(secOf(r.k)||'')}</div></td>
+        <td><b>${pn(r.k)}</b><div class="dim" style="font-size:11.5px">${esc(secOf(r.k)||'')}</div></td>
         <td>${r.due?'€'+r.due.toFixed(2):'<span class="dim">—</span>'}</td>
         <td>${r.paid?'€'+r.paid.toFixed(2):'<span class="dim">—</span>'}</td>
         <td>${r.rest?`<b style="color:var(--bad)">€${r.rest.toFixed(2)}</b>`:'<span style="color:var(--ok)">✓</span>'}</td>
@@ -3695,7 +3755,7 @@ V.myprofile=()=>{
         Το τηλέφωνο είναι αυτό που θα καλέσουμε αν χρειαστεί κάτι με το παιδί σου — κράτησέ το σωστό.</div></div>
 
     <div class="card pad">
-      <div class="kv"><span style="flex:1">Όνομα</span><b>${esc(nm(me))}</b></div>
+      <div class="kv"><span style="flex:1">Όνομα</span><b>${pn(me)}</b></div>
       ${f('phone','Κινητό','tel')}
       ${f('home_phone','Σταθερό','tel')}
       ${f('email','Email','email')}
@@ -3708,7 +3768,7 @@ V.myprofile=()=>{
       <b>Ο άλλος κηδεμόνας</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Μόνο για να ξέρεις ποιον έχουμε καταχωρημένο.
         Τα στοιχεία του τα αλλάζει <b>ο ίδιος</b>.</div>
-      ${others.map(o=>`<div class="kv" style="margin-top:9px"><b style="flex:1">${esc(nm(o))}</b>
+      ${others.map(o=>`<div class="kv" style="margin-top:9px"><b style="flex:1">${pn(o)}</b>
         <span class="dim" style="font-size:12.5px">${esc(o.phone||o.home_phone||'—')}</span></div>`).join('')}
     </div>`:''}
 
@@ -3963,7 +4023,7 @@ function parentUpload(pid){
   const p=D.bh.find(x=>x.id===pid);
   const reqs=(D.dr||[]).filter(r=>r.active!==false&&!edHas(p,r));
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Ανέβασμα</div>
-      <div class="dim" style="font-size:12.5px">${esc(nm(p))}</div></div>
+      <div class="dim" style="font-size:12.5px">${pn(p)}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec">
       <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Τι ανεβάζεις
@@ -3998,7 +4058,7 @@ function parentEdit(pid){
   const p=D.bh.find(x=>x.id===pid), g=gOf(p.registry_no)||{};
   const f=(k,l,v,ph)=>`<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">${l}<input id="pe_${k}" value="${esc(v||'')}" placeholder="${esc(ph||'')}"></label>`;
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Τα στοιχεία μας</div>
-      <div class="dim" style="font-size:12.5px">${esc(nm(p))}</div></div>
+      <div class="dim" style="font-size:12.5px">${pn(p)}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec">
       ${f('addr','Διεύθυνση σπιτιού',p.home_address)}
@@ -4027,13 +4087,13 @@ function careDrawer(memberId){
     .sort((a,b)=>(a.l.call_order||99)-(b.l.call_order||99));
   const flag=(l,k,t)=>`<label class="cfl"><input type="checkbox" data-f="${l.id}|${k}"${l[k]?' checked':''}>${t}</label>`;
   $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1">
-      <div style="font-size:17px;font-weight:600">${esc(nm(p))}</div>
+      <div style="font-size:17px;font-weight:600">${pn(p)}</div>
       <div class="dim" style="font-size:12.5px">Ποιος φροντίζει, ποιος καλείται, ποιος αποφασίζει</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     ${ls.map(({l,c})=>`<div class="dsec${l.restricted?' restr':''}">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         ${avatar(c,30)}<div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:14px"><span class="pn" data-p="${c.id}">${esc(nm(c))}</span></div>
+          <div style="font-weight:600;font-size:14px"><span class="pn" data-p="${c.id}">${pn(c)}</span></div>
           <div class="dim" style="font-size:12px">${esc(c.phone?fphone(c.phone):'')}${c.email?' · '+esc(c.email):''}</div></div>
         ${l.restricted?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">απαγορευμένος</span>':''}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -4074,7 +4134,7 @@ function careDrawer(memberId){
     const have=new Set(linksOf(memberId).map(x=>x.carer_id));
     const hits=D.bh.filter(b=>!have.has(b.id)&&b.id!==memberId&&nameKey(nm(b)).includes(q)).slice(0,12);
     $('caRes').innerHTML=hits.map(b=>`<div class="kv" style="cursor:pointer" data-add="${b.id}">
-      <b style="flex:1">${esc(nm(b))}</b><span class="dim" style="font-size:11.5px">${esc(b.kind||'')}${b.phone?' · '+fphone(b.phone):''}</span></div>`).join('')
+      <b style="flex:1">${pn(b)}</b><span class="dim" style="font-size:11.5px">${esc(b.kind||'')}${b.phone?' · '+fphone(b.phone):''}</span></div>`).join('')
       ||'<div class="dim" style="font-size:12.5px">Κανένα αποτέλεσμα</div>';
     document.querySelectorAll('[data-add]').forEach(d=>d.onclick=async()=>{
       const {data,error}=await sb.from('care_links').insert({member_id:memberId,carer_id:d.dataset.add,relation:'Κηδεμόνας'}).select().single();
@@ -4123,7 +4183,7 @@ V.access=()=>{
           return `<tr><td><a href="mailto:${esc(m.address)}" class="lnk">${esc(m.address)}</a></td>
             <td><span class="pill">${esc(m.label||'—')}</span></td>
             <td>${esc(anikei)} <span class="dim" style="font-size:11px">${esc(m.owner_kind)}</span></td>
-            <td class="hide-s">${who.length?who.map(x=>`<span class="pn" data-p="${x.id}">${esc(nm(x))}</span>`).join(', '):'<span class="dim">—</span>'}</td></tr>`}).join('')}
+            <td class="hide-s">${who.length?who.map(x=>`<span class="pn" data-p="${x.id}">${pn(x)}</span>`).join(', '):'<span class="dim">—</span>'}</td></tr>`}).join('')}
         </tbody></table></div>`:'<div class="dim">— καμία καταχωρημένη —</div>'}
       <div class="dim" style="font-size:12px;margin-top:8px">Στην παράδοση καθηκόντων αλλάζει <b>ο κάτοχος του ρόλου</b>,
         όχι η διεύθυνση. Έτσι κανένα αρχείο αλληλογραφίας δεν χάνεται και καμία λίστα δεν χρειάζεται ενημέρωση.</div>
@@ -4145,7 +4205,7 @@ V.access=()=>{
             <span class="pill"${stel?' style="background:var(--warnbg);color:var(--warn);border-color:transparent"':''}>
               ${r.section?sdot(r.section):''}<b>${esc(r.title)}</b>${r.short?' <span class="dim">'+esc(r.short)+'</span>':''}</span>
             ${stel?'<span class="dim" style="font-size:11.5px;margin-left:6px">στέλεχος · μέλος</span>':''}
-            ${who.length?' '+who.map(p=>`<span class="pn" data-p="${p.id}" style="font-size:13px">${esc(nm(p))}</span>`).join(', ')
+            ${who.length?' '+who.map(p=>`<span class="pn" data-p="${p.id}" style="font-size:13px">${pn(p)}</span>`).join(', ')
                         :' <span class="dim" style="font-size:12px">— κενό —</span>'}
             <span class="dim" style="font-size:11px;margin-left:8px">${(r.caps||[]).map(c=>capT(c)).join(' · ')}</span>
           </div>`+draw(r.code,d+1)}).join('');
@@ -5132,7 +5192,7 @@ function expiryBody(){
     ${none.length?`<div class="sec"><h3>Δεν έχουν καταχωρηθεί ποτέ</h3><span class="n">${none.length}</span></div>
       <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">
         Δεν ξέρουμε αν υπάρχουν ή όχι. Το δεύτερο είναι σοβαρό.</div>
-        ${none.map(x=>`<span class="pill" style="margin:3px 3px 0 0">${x.who?`<span class="pn" data-p="${x.who.id}">${esc(nm(x.who))}</span>`:'—'}
+        ${none.map(x=>`<span class="pill" style="margin:3px 3px 0 0">${x.who?`<span class="pn" data-p="${x.who.id}">${pn(x.who)}</span>`:'—'}
           <span class="dim">${esc(x.kind)}</span></span>`).join('')}</div>`:''}
     ${block('Μέσα στον χρόνο',b365,'')}`;
 
@@ -5416,19 +5476,25 @@ function progressBody(){
   if(!stages.length)return $('view').innerHTML='<div class="uc"><h3>Δεν φορτώθηκε ο κατάλογος</h3><p>Δοκίμασε ανανέωση.</p></div>';
   if(!PGST||!stages.some(s=>s.id===PGST))PGST=stages[0].id;   // αλλαγή κλάδου = νέο στάδιο
   const st=stages.find(s=>s.id===PGST), reqs=opReqs(st);
+  if(PGTAB==='dafnes'&&PSEC!=='Ομάδα')PGTAB='pinakas';   // Δάφνες μόνο στην Ομάδα
   const write=ME.role==='admin'||ME.role==='leader'||PA&&PA.k==='leader';
 
   const head=`<div class="card pad" style="margin-bottom:14px">
     <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
       <b style="font-size:15px">Πίνακας Προόδου ${esc(SECWORD[PSEC]||PSEC)}</b><span class="pill">${sdot(PSEC)}${esc(PSEC)}</span>
       <span class="sp"></span>
-      <button class="btn sm${PGTAB==='pinakas'?' p':''}" data-tab="pinakas">Στόχοι Ανέλιξης</button>
-      <button class="btn sm${PGTAB==='dafnes'?' p':''}" data-tab="dafnes">Δάφνες & Εξειδίκευση</button>
+      <button class="btn sm${PGTAB==='pinakas'?' p':''}" data-tab="pinakas">${
+        PSEC==='Αγέλη'?'Υπόσχεση · Αστέρια · Πτυχίο Προόδου'
+        :PSEC==='Ομάδα'?'Υπόσχεση & Τρίφυλλα':'Στάδια'}</button>
+      ${PSEC==='Ομάδα'?`<button class="btn sm${PGTAB==='dafnes'?' p':''}" data-tab="dafnes">Δάφνες & Εξειδίκευση</button>`:''}
     </div>
     <div class="muted" style="margin-top:8px;font-size:12.5px;line-height:1.65">
-      Δύο <b>παράλληλες</b> κατευθύνσεις: ο Βασικός Κορμός (τα Τρίφυλλα) και η Ερασιτεχνική
-      Ενασχόληση (τα Πτυχία). Οι <b>Δάφνες δεν είναι στάδια</b> — συντίθενται από πτυχία.
-      <br>Πηγή: Εσωτ. Κανονισμός Κλάδου Προσκόπων Σ.Π.Κ. · πτυχία κατά Β.Ε. 2026/100.
+      ${PSEC==='Αγέλη'
+        ? 'Υπόσχεση, Α΄ και Β΄ Αστέρι, Πτυχίο Προόδου — και <b>36 ειδικότητες</b> παράλληλα. Η Αγέλη <b>δεν έχει Δάφνες</b>.'
+        : PSEC==='Ομάδα'
+        ? 'Δύο <b>παράλληλες</b> κατευθύνσεις: ο Βασικός Κορμός (τα Τρίφυλλα) και η Ερασιτεχνική Ενασχόληση (τα Πτυχία). Οι <b>Δάφνες δεν είναι στάδια</b> — συντίθενται από πτυχία.'
+        : 'Η Κοινότητα <b>δεν έχει πτυχία ούτε Δάφνες</b>: η πορεία γράφεται στο Η.Κ.Α.Δ.Ε. και επικυρώνεται από τη Σύνοδο.'}
+      <br>Πηγή: Εσωτ. Κανονισμοί Σ.Π.Κ. · πτυχία Ομάδας κατά Β.Ε. 2026/100.
     </div></div>`;
 
   if(PGTAB==='dafnes'){
@@ -5443,7 +5509,7 @@ function progressBody(){
           <span class="dot" style="background:${sl.by?'var(--ok)':'var(--line2)'}"></span>
           <span style="flex:1;min-width:0;${sl.by?'':'color:var(--ink3)'}">${esc(sl.slot.replace('Πτυχίο ',''))}</span>
           <span class="dim">${sl.by?esc(sl.by):'—'}</span></div>`).join('')}</div>`;
-      return `<div class="sec"><h3>${esc(nm(k))}</h3><span class="n">${n} πτυχία</span></div>
+      return `<div class="sec"><h3>${pn(k)}</h3><span class="n">${n} πτυχία</span></div>
         <div class="card pad" style="display:flex;gap:22px;flex-wrap:wrap">
           ${box('Αργυρή Δάφνη')}${box('Χρυσή Δάφνη')}${box('Πτυχίο Εξειδίκευσης')}</div>`;
     }).join('')||'<div class="uc"><h3>Κανένα καταγεγραμμένο πτυχίο</h3><p>Καταχώρησέ τα στην καρτέλα του κάθε Προσκόπου.</p></div>';
@@ -5486,7 +5552,7 @@ function progressBody(){
         <tbody>${kids.map(k=>{
           const n=reqs.filter(r=>hasReq(k.id,r.id)).length;
           return `<tr><td style="position:sticky;left:0;background:var(--card);padding:3px 10px;white-space:nowrap">
-              <span class="pn" data-p="${k.id}">${esc(nm(k))}</span></td>
+              <span class="pn" data-p="${k.id}">${pn(k)}</span></td>
             ${reqs.map(r=>cell(k,r)).join('')}
             <td style="padding:3px 10px;text-align:right;font-variant-numeric:tabular-nums;
               color:${n===reqs.length?'var(--ok)':'var(--ink2)'}">${n}/${reqs.length}</td></tr>`;
@@ -5572,7 +5638,7 @@ function passBody(){
         return `<label class="kv" style="border-top:1px solid var(--line);padding:9px 12px;cursor:pointer">
           <input type="checkbox" class="psq" value="${x.id}">
           <span style="flex:1;min-width:0">
-            <b style="font-size:13.5px">${esc(nm(p))}</b>
+            <b style="font-size:13.5px">${pn(p)}</b>
             <span class="dim" style="font-size:11.5px"> · ${esc(secOf(p)||'')}</span>
             <div style="font-size:12.5px;margin-top:2px">
               ${r.code?`<span style="color:var(--ink3);font-weight:700">${esc(r.code)}</span> `:''}
@@ -5784,7 +5850,7 @@ V.myforms=()=>{
     <div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         ${avatar(p,38)}<div style="flex:1;min-width:0">
-          <b style="font-size:15px">${esc(nm(p))}</b>
+          <b style="font-size:15px">${pn(p)}</b>
           <div class="dim" style="font-size:12px">Ανοιχτές φόρμες</div></div>
         ${led&&led.length?`<select id="fwPick" style="max-width:220px">
           ${led.map(b=>`<option value="${b.id}"${b.id===who?' selected':''}>${esc(nm(b))}</option>`).join('')}</select>`:''}
@@ -5822,15 +5888,19 @@ V.myforms=()=>{
   });
 };
 
-function badgesBody(){
+function honoursBody(){
   const hs=(D.ho||[]).map(h=>({h,p:D.bh.find(b=>b.id===h.person_id)})).filter(x=>x.p)
     .sort((a,b)=>(b.h.award_date||'').localeCompare(a.h.award_date||''));
   const byT={}; hs.forEach(x=>{const t=x.h.title||'—';(byT[t]=byT[t]||[]).push(x)});
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
-      <b>Πτυχία & Δάφνες</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px">Απονομές και διακρίσεις — ό,τι έχει καταγραφεί.</div>
+      <b>Τιμητικές διακρίσεις</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px;line-height:1.6">
+        Εύφημες μνείες, μετάλλια, διακρίσεις μακράς υπηρεσίας — απονέμονται από τη
+        Γενική ή την Επαρχιακή Εφορεία και αφορούν σχεδόν αποκλειστικά
+        <b>βαθμοφόρους</b>. Δεν είναι προσκοπική πρόοδος: τα αστέρια της Αγέλης και
+        τα τρίφυλλα της Ομάδας ζουν στην <b>Πρόοδο</b>, ανά κλάδο.</div>
       <div style="margin-top:11px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
-        <input id="hT" placeholder="Τίτλος (π.χ. Δάφνη)" style="max-width:180px">
+        <input id="hT" placeholder="Τίτλος (π.χ. Εύφημη Μνεία)" style="max-width:200px">
         <input id="hP" placeholder="Ποιος…" style="max-width:160px">
         <input id="hD" type="date" style="max-width:150px">
         <button class="btn p sm" id="hAdd">+ Απονομή</button>
@@ -5839,13 +5909,13 @@ function badgesBody(){
     ${Object.entries(byT).sort((a,b)=>b[1].length-a[1].length).map(([t,l])=>`
       <div class="sec"><h3>${esc(t)}</h3><span class="n">${l.length}</span></div>
       <div class="card pad" style="display:flex;flex-wrap:wrap;gap:6px">
-        ${l.map(x=>`<span class="pill">${sdot(secOf(x.p))}<span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span>
+        ${l.map(x=>`<span class="pill">${sdot(secOf(x.p))}<span class="pn" data-p="${x.p.id}">${pn(x.p)}</span>
           <span class="dim">${x.h.award_date?fshort(x.h.award_date):''}</span></span>`).join('')}</div>`).join('')
       ||'<div class="uc"><h3>Καμία απονομή ακόμη</h3><p>Πρόσθεσε την πρώτη από πάνω.</p></div>'}`;
   let pick=null;
   $('hP').oninput=()=>{const q=nameKey($('hP').value); if(q.length<2)return $('hSug').textContent='';
     const hits=D.bh.filter(b=>!isPar(b)&&nameKey(nm(b)).includes(q)).slice(0,6);
-    $('hSug').innerHTML=hits.map(b=>`<button class="btn gh sm" data-hp="${b.id}" style="margin:2px 3px 0 0">${esc(nm(b))}</button>`).join('');
+    $('hSug').innerHTML=hits.map(b=>`<button class="btn gh sm" data-hp="${b.id}" style="margin:2px 3px 0 0">${pn(b)}</button>`).join('');
     document.querySelectorAll('[data-hp]').forEach(b=>b.onclick=()=>{pick=b.dataset.hp;$('hP').value=b.textContent;$('hSug').textContent='✓ '+b.textContent})};
   $('hAdd').onclick=async()=>{
     if(!pick)return toast('Διάλεξε πρόσωπο από τις προτάσεις');
@@ -5920,7 +5990,7 @@ V.groups=()=>{
         return `<div class="kv" style="font-size:12.5px"><b>Υπεύθυνος βαθμοφόρος</b><span>${
           st?esc(nm(st)):'<span class="dim">—</span>'}</span></div>`})()}
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
-        ${list.map(p=>`<span class="pill" style="font-size:11.5px"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span></span>`).join('')
+        ${list.map(p=>`<span class="pill" style="font-size:11.5px"><span class="pn" data-p="${p.id}">${pn(p)}</span></span>`).join('')
           ||'<span class="dim" style="font-size:12px">— κενή —</span>'}</div>
       <div style="margin-top:9px;display:flex;gap:6px"><button class="btn sm gh" data-sgl="${g.id}">Θέσεις</button></div></div>`};
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
@@ -5934,7 +6004,7 @@ V.groups=()=>{
         <button class="btn sm" id="sgExp">${ic('down',14)} Εξαγωγή</button></div></div>
     <div class="cgrid">${sgs.map(card).join('')||'<div class="card pad dim">Καμία υποομάδα ακόμη</div>'}</div>
     ${none.length?`<div class="sec"><h3>Χωρίς υποομάδα</h3><span class="n">${none.length}</span></div>
-      <div class="card pad" style="display:flex;flex-wrap:wrap;gap:5px">${none.map(p=>`<span class="pill"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span></span>`).join('')}</div>`:''}`;
+      <div class="card pad" style="display:flex;flex-wrap:wrap;gap:5px">${none.map(p=>`<span class="pill"><span class="pn" data-p="${p.id}">${pn(p)}</span></span>`).join('')}</div>`:''}`;
   document.querySelectorAll('[data-sg]').forEach(b=>b.onclick=()=>{SGSEC=b.dataset.sg;V.groups()});
   $('sgAdd').onclick=async()=>{const n=$('sgNew').value.trim(); if(!n)return;
     const {data,error}=await sb.from('subgroups').insert({scout_year:YEAR,section:SGSEC,name:n,kind:kindOf}).select().single();
@@ -6023,7 +6093,7 @@ V.year=()=>{
   const tile=(cls,k,v,s,go)=>`<${go?'button':'div'} class="tile ${cls}"${go?` data-go="${go}"`:' style="cursor:default"'}>
     <div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></${go?'button':'div'}>`;
   const chips=list=>list.slice(0,60).map(x=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(x.curSec||secOf(x.p))}
-      <span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span><span class="dim">${x.ns?esc(x.ns):'αποφοίτηση'}</span></span>`).join('')
+      <span class="pn" data-p="${x.p.id}">${pn(x.p)}</span><span class="dim">${x.ns?esc(x.ns):'αποφοίτηση'}</span></span>`).join('')
     +(list.length>60?`<div class="dim" style="font-size:12px;margin-top:6px">+ ${list.length-60} ακόμη</div>`:'');
 
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
@@ -6070,7 +6140,7 @@ V.year=()=>{
            <div style="font-weight:600;font-size:13.5px;margin-bottom:8px">${sdot(a)} ${a} → ${sdot(b)} ${b}
              <span class="pill" style="margin-left:6px">${l.length}</span></div>
            ${l.length?l.map(x=>`<span class="pill" style="margin:3px 3px 0 0">
-             <span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span>
+             <span class="pn" data-p="${x.p.id}">${pn(x.p)}</span>
              <span class="dim">${esc(x.cur||'')}→${esc(x.ng||'')}</span></span>`).join('')
             :'<div class="dim" style="font-size:12.5px">— κανένας —</div>'}</div>`}).join('')}
       </div>
@@ -6082,10 +6152,10 @@ V.year=()=>{
       <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Δίκτυο, βαθμοφόροι ή αποχώρηση — δική σου απόφαση, ένας-ένας.</div>${chips(grads)}</div>`:''}
     ${teen18.length?`<div class="sec"><h3>Ενηλικιώνονται μέσα στη χρονιά</h3><span class="n">${teen18.length}</span></div>
       <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Υπογράφουν μόνοι τους και <b>ο γονέας παύει να τους βλέπει</b> αυτόματα.</div>
-      ${teen18.map(p=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(secOf(p))}<span class="pn" data-p="${p.id}">${esc(nm(p))}</span></span>`).join('')}</div>`:''}
+      ${teen18.map(p=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(secOf(p))}<span class="pn" data-p="${p.id}">${pn(p)}</span></span>`).join('')}</div>`:''}
     ${unknown.length?`<div class="sec"><h3>Χωρίς τάξη</h3><span class="n">${unknown.length}</span></div>
       <div class="card pad"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Δεν μπορούν να ανελιχθούν αυτόματα — θέλουν τάξη.</div>
-      ${unknown.map(x=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(x.curSec)}<span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span></span>`).join('')}</div>`:''}
+      ${unknown.map(x=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(x.curSec)}<span class="pn" data-p="${x.p.id}">${pn(x.p)}</span></span>`).join('')}</div>`:''}
 
     <div class="sec"><h3>Λήγουν μέχρι το τέλος της νέας χρονιάς</h3></div>
     <div class="tiles">
@@ -6232,7 +6302,7 @@ V.fees=()=>{
 
   const tile=(cls,k,v,s)=>`<div class="tile ${cls}" style="cursor:default"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
   const line=x=>`<span class="pill" style="margin:3px 3px 0 0">${sdot(x.r.section||secOf(x.p))}
-     <span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span>
+     <span class="pn" data-p="${x.p.id}">${pn(x.p)}</span>
      <span class="dim">${TIERLBL[x.r.fee_tier]||'—'} · ${eur(x.r.fee_due)}${(x.r.fee_paid!=null&&Number(x.r.fee_paid)!==Number(x.r.fee_due))?` · <b style="color:var(--warn)">πλήρωσε ${eur(x.r.fee_paid)}</b>`:''}</span></span>`;
   const famRow=f=>`<tr><td>${f.a.map(line).join(' ')}</td>
      <td style="white-space:nowrap;text-align:right"><b style="color:${f.d>0?'var(--warn)':'var(--ink2)'}">${f.d>0?'+':''}${eur(f.d)}</b></td></tr>`;
@@ -6259,7 +6329,7 @@ V.fees=()=>{
       ${lp.sort((a,b)=>(edOK(a.l.id)?1:0)-(edOK(b.l.id)?1:0)).map(x=>`<tr>
         <td>${pnm(x.l)}</td><td class="hide-s dim">${esc(x.l.registry_no||'—')}</td>
         <td><span class="pill" style="border-color:transparent;background:${edOK(x.l.id)?'var(--okbg);color:var(--ok)':'var(--badbg);color:var(--bad)'}">${edOK(x.l.id)?'ναι':'ΟΧΙ'}</span></td>
-        <td>${x.kids.map(k=>`<span class="pn" data-p="${k.id}">${esc(nm(k))}</span>`).join(', ')}</td></tr>`).join('')}
+        <td>${x.kids.map(k=>`<span class="pn" data-p="${k.id}">${pn(k)}</span>`).join(', ')}</td></tr>`).join('')}
       </tbody></table></div>
       ${lpNo.length?`<div class="dim" style="font-size:12.5px;margin-top:10px">
       <b style="color:var(--bad)">${lpNo.length} χωρίς Ε.Δ. για το ${esc(YEAR)}.</b>
@@ -6394,7 +6464,7 @@ function staffScreen(){
     return `<div class="orow${hit(p)?'':' dimmed'}">
       ${avatar(p,28)}
       <div style="flex:1;min-width:0">
-        <div class="on"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span>${p.scout_name?`<i class="osn">${esc(p.scout_name)}</i>`:''}</div>
+        <div class="on"><span class="pn" data-p="${p.id}">${pn(p)}</span>${p.scout_name?`<i class="osn">${esc(p.scout_name)}</i>`:''}</div>
         <div class="or">${esc(r)}</div>
       </div>
       <div class="oc2 hide-s">${tel?`<a href="tel:${esc(tel)}">${fphone(tel)}</a>`:'<span class="dim">—</span>'}</div>
@@ -6653,7 +6723,7 @@ function staffBoard(years){
         <span class="num">${n}</span>
         <div style="flex:1;min-width:0">
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            ${dot(p)}<span class="pn" data-p="${p.id}" style="font-size:13.5px;cursor:pointer">${esc(nm(p))}</span>
+            ${dot(p)}<span class="pn" data-p="${p.id}" style="font-size:13.5px;cursor:pointer">${pn(p)}</span>
             ${p.scout_name?`<span class="dim" style="font-size:11.5px">«${esc(p.scout_name)}»</span>`:''}
             ${fa(p)}${chips(p,s.section)}</div>
           <div class="dim" style="font-size:11.5px">${contact(p)}</div></div>
@@ -6667,7 +6737,7 @@ function staffBoard(years){
             <span class="num"></span><div style="flex:1;min-width:0">
               <div style="font-size:10.5px;color:var(--ink3);letter-spacing:.05em;text-transform:uppercase">${esc(roleOfYear(head,SY))}</div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                ${dot(head)}<span class="pn" data-p="${head.id}" style="font-weight:600;font-size:14.5px;cursor:pointer">${esc(nm(head))}</span>
+                ${dot(head)}<span class="pn" data-p="${head.id}" style="font-weight:600;font-size:14.5px;cursor:pointer">${pn(head)}</span>
                 ${fa(head)}${chips(head,s.section)}
                 <span class="pencil" data-pe="${head.id}" title="Ρόλος, τμήμα, προβολή">✎</span></div>
               <div class="dim" style="font-size:12px">${contact(head)}</div>
@@ -6681,7 +6751,7 @@ function staffBoard(years){
       <div style="font-size:22px;font-weight:600;letter-spacing:-.01em">${esc(SY)}</div>
       ${as?`<div style="margin-top:8px">
         <span class="dim" style="font-size:11.5px;letter-spacing:.05em">ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</span>
-        <div class="pn" data-p="${as.id}" style="font-weight:600;font-size:15px;cursor:pointer">${esc(nm(as))}</div>
+        <div class="pn" data-p="${as.id}" style="font-weight:600;font-size:15px;cursor:pointer">${pn(as)}</div>
         <div class="dim" style="font-size:12.5px">${contact(as)}</div></div>`:''}
     </div>
 
@@ -6702,7 +6772,7 @@ function staffBoard(years){
         <div class="dim" style="font-size:12.5px;margin-bottom:8px">Βαθμοφόροι που δεν υπηρετούν φέτος — εξωτερικό, παύση ή αποχώρηση.
           Επικοινωνία μέσω Α.Σ.</div>
         ${arch.sort(sortByName).map(p=>`<span class="pill" style="margin:3px 3px 0 0;${hit(p)?'':'opacity:.3'}">
-          <span class="pn" data-p="${p.id}">${esc(nm(p))}</span>
+          <span class="pn" data-p="${p.id}">${pn(p)}</span>
           ${p.location?`<span class="dim">${esc(p.location)}</span>`:''}</span>`).join('')}
       </div>`:''}`;
 
@@ -6762,7 +6832,7 @@ function staffDraft(years){
     return `<div class="pcard${mv?' moved':''}"${isFuture?' draggable="true"':''} data-id="${p.id}">
       ${avatar(p,24)}
       <span style="flex:1;min-width:0">
-        <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm(p))}</span>
+        <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pn(p)}</span>
         ${withRole&&!isFuture?`<span class="dim" style="font-size:11px">${esc(real[p.id]?real[p.id].role:'')}</span>`:''}
       </span>
       ${statusBar(p,true)}
@@ -6832,7 +6902,7 @@ V.me=()=>{
   const pct=mine.length?Math.round(100*mine.filter(x=>x.status==='Παρών').length/mine.length):null;
   const row=(k,v)=>v?`<div class="kv"><b>${esc(k)}</b><span>${v}</span></div>`:'';
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      ${avatar(p,46)}${sdot(sec)}<div><div style="font-size:19px;font-weight:600;letter-spacing:-.01em">${esc(nm(p))}</div>
+      ${avatar(p,46)}${sdot(sec)}<div><div style="font-size:19px;font-weight:600;letter-spacing:-.01em">${pn(p)}</div>
       <div class="dim" style="font-size:13px">${esc(ledLabel(p,true))}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
       <span class="sp"></span><button class="btn sm" data-p="${p.id}">Πλήρης καρτέλα</button></div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
@@ -7494,9 +7564,9 @@ function issuesBody(){
             <span class="pill" style="color:${col};border-color:${col}">${n}</span><span class="dim">▾</span></button>
           <div id="${id}_b" style="display:none;padding:0 16px 13px">
             ${it.pairs?it.pairs.slice(0,30).map(pr=>`<div style="padding:6px 0;border-top:1px solid var(--line);font-size:13.5px">
-                <span class="pn" data-p="${pr.a.id}">${esc(nm(pr.a))}</span> <span class="dim">↔</span> <span class="pn" data-p="${pr.b.id}">${esc(nm(pr.b))}</span>
+                <span class="pn" data-p="${pr.a.id}">${pn(pr.a)}</span> <span class="dim">↔</span> <span class="pn" data-p="${pr.b.id}">${pn(pr.b)}</span>
                 <span class="dim" style="font-size:11.5px"> · ${pr.sig.map(esc).join(' · ')}</span></div>`).join('')
-              :it.l.slice(0,60).map(x=>`<span class="pill" style="margin:3px 3px 0 0"><span class="pn" data-p="${x.id}">${esc(nm(x))}</span>${x.section?`<span class="dim">${esc(x.section)}</span>`:''}</span>`).join('')}
+              :it.l.slice(0,60).map(x=>`<span class="pill" style="margin:3px 3px 0 0"><span class="pn" data-p="${x.id}">${pn(x)}</span>${x.section?`<span class="dim">${esc(x.section)}</span>`:''}</span>`).join('')}
             ${n>60?`<div class="dim" style="font-size:12px;margin-top:7px">+ ${n-60} ακόμη</div>`:''}
             ${it.pairs?'<div style="margin-top:10px"><button class="btn sm" data-goto="dedupe">Άνοιγμα Ταυτοποίησης →</button></div>':''}
           </div></div>`}).join('')}`).join('')}
@@ -7538,7 +7608,7 @@ V.dedupe=()=>{
   const pairs=dupPairs();
   const dec=JSON.parse(localStorage.getItem('e76:dedupe')||'{}');
   const open=pairs.filter(p=>!dec[p.a.id+p.b.id]);
-  const info=p=>`<div style="font-size:13.5px"><b class="pn" data-p="${p.id}">${esc(nm(p))}</b></div>
+  const info=p=>`<div style="font-size:13.5px"><b class="pn" data-p="${p.id}">${pn(p)}</b></div>
     <div class="dim" style="font-size:12px">Α.Μ. ${esc(p.registry_no||'—')} · ${esc(p.section||'—')} · ${esc((p.kind||'Βαθμοφόρος'))} · ${esc(p.status||'')}</div>`;
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Πιθανές διπλοεγγραφές</b>
@@ -7618,7 +7688,7 @@ V.calls=()=>{
         ${tel||alt?`<button class="btn sm gh" data-na="${esc(k)}" title="Δεν απάντησε">${lg&&!lg.ok?'✕':'—'}</button>`:''}
       </div>`}).join('')||'<div class="dim" style="font-size:13px;padding:6px 0">Καμία καταγεγραμμένη επαφή</div>';
     return `<div class="ccard${r.reach<2?' warn':''}">
-      <div class="chead">${sdot(secOf(p))}<div style="flex:1;min-width:0"><div class="ctitle">${esc(nm(p))}</div>
+      <div class="chead">${sdot(secOf(p))}<div style="flex:1;min-width:0"><div class="ctitle">${pn(p)}</div>
         <div class="dim" style="font-size:12px">${esc(secOf(p)||'')}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
         ${r.reach<2?'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">1 επαφή</span>':''}</div>
       ${flagHtml}${cl}</div>`;
@@ -7685,7 +7755,7 @@ function tetLine(m){
 function medForm(id){
   const p=D.bh.find(x=>x.id===id); const m=(D.med||[]).find(x=>x.person_id===id)||{}; const cs=(D.ecs||[]).filter(x=>x.person_id===id);
   const f=(k,l,v,ph='')=>`<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">${l}<input id="m_${k}" value="${esc(v||'')}" placeholder="${esc(ph)}"></label>`;
-  $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1"><div style="font-size:17px;font-weight:600">${esc(nm(p))}</div><div class="dim" style="font-size:12.5px">Ιατρικό δελτίο</div></div>
+  $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1"><div style="font-size:17px;font-weight:600">${pn(p)}</div><div class="dim" style="font-size:12.5px">Ιατρικό δελτίο</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec">
       ${f('blood','Ομάδα αίματος',m.blood_type,'π.χ. Ο+')}
@@ -7761,7 +7831,7 @@ function form(kind){
     const rows=D.bh.filter(p=>inYear(p)&&p.status==='Ενεργός').sort((a,b)=>{const s=(secOf(a)||'').localeCompare(secOf(b)||'','el');return s||sortByName(a,b)});
     body=head('ΚΑΤΑΛΟΓΟΣ ΕΓΓΡΑΦΩΝ ΚΛΙΜΑΚΙΟΥ')+`<table style="font-size:12px"><thead><tr><th>Α/Α</th><th>Αρ. Μητρώου</th><th>Ονοματεπώνυμο</th><th>Τμήμα</th><th>Τάξη</th><th>Όν. Πατέρα</th><th>Όν. Μητέρας</th><th>Τηλέφωνο</th></tr></thead><tbody>${
       rows.map((p,i)=>{const g=gOf(p.registry_no)||{},y=myOf(p)||{};
-      return `<tr><td>${i+1}</td><td>${esc(p.registry_no||'')}</td><td>${esc(nm(p))}</td><td>${esc(secOf(p)||'')}</td><td>${esc(gradeOf(p))}</td>
+      return `<tr><td>${i+1}</td><td>${esc(p.registry_no||'')}</td><td>${pn(p)}</td><td>${esc(secOf(p)||'')}</td><td>${esc(gradeOf(p))}</td>
         <td>${esc(g.father_name||p.father_name||'')}</td><td>${esc(g.mother_name||p.mother_name||'')}</td><td>${esc(fphone(g.father_mobile||g.mother_mobile||p.phone||''))}</td></tr>`}).join('')}</tbody></table>
       <div style="margin-top:12px;font-size:13px">Σύνολο εγγεγραμμένων: <b>${rows.length}</b></div>`+sign;
   }
@@ -7779,7 +7849,7 @@ function form(kind){
     const sec=prompt('Τμήμα (Αγέλη / Ομάδα / Κοινότητα):','Αγέλη')||'Αγέλη';
     const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec).sort(sortByName);
     body=head('ΠΑΡΟΥΣΙΟΛΟΓΙΟ — '+sec.toUpperCase())+`<table style="font-size:12px"><thead><tr><th>Ονοματεπώνυμο</th><th>Υποομάδα</th>${Array.from({length:8},(_,i)=>`<th style="width:34px">&nbsp;</th>`).join('')}</tr></thead><tbody>${
-      kids.map(p=>`<tr><td>${esc(nm(p))}</td><td class="dim">${esc((myOf(p)||{}).group_name||'')}</td>${Array.from({length:8},()=>'<td style="height:26px"></td>').join('')}</tr>`).join('')}</tbody></table>`;
+      kids.map(p=>`<tr><td>${pn(p)}</td><td class="dim">${esc((myOf(p)||{}).group_name||'')}</td>${Array.from({length:8},()=>'<td style="height:26px"></td>').join('')}</tr>`).join('')}</tbody></table>`;
   }
   $('fout').innerHTML=`<div class="card pad prt" style="display:block">${body}</div>
     <div class="noprint" style="margin-top:12px"><button class="btn p" onclick="window.print()">Εκτύπωση</button></div>`;
@@ -7958,7 +8028,7 @@ function edHas(p,req){
   const yr=req.cadence==='ετήσιο'?YEAR:null;
   return (D.ed||[]).find(x=>x.person_id===p.id&&x.req_code===req.code&&(req.cadence==='ετήσιο'?x.scout_year===YEAR:true));
 }
-V.enroll=()=>{
+function enrollBody(){
   const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
   let kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός');
   if(ENSEC!=='all')kids=kids.filter(p=>secOf(p)===ENSEC);
@@ -8035,7 +8105,7 @@ function deskSheet(kids){
     <tbody>${list.map((p,i)=>{const g=gOf(p.registry_no)||{};
       const hasMail=/@/.test(g.father_email||'')||/@/.test(g.mother_email||'');
       const has=c=>(D.ed||[]).some(x=>x.person_id===p.id&&x.req_code===c&&(x.scout_year===null||x.scout_year===YEAR));
-      return `<tr><td>${i+1}</td><td><b>${esc(nm(p))}</b></td>
+      return `<tr><td>${i+1}</td><td><b>${pn(p)}</b></td>
         <td></td><td></td><td class="${has('YGEIA')?'ok':''}">${has('YGEIA')?'✓':''}</td>
         <td class="${hasMail?'ok':'need'}">${hasMail?'✓':''}</td><td></td><td></td><td></td></tr>`}).join('')}</tbody></table>
     <div class="dft">✱ Αν λείπει ✓ στο email, ζήτησέ το — χωρίς αυτό δεν γίνεται λογαριασμός.
@@ -8282,7 +8352,7 @@ function enrollForms(kids){
       <div class="fdec">${esc(((t&&t.body)||'').replace('{ΧΡΟΝΙΑ}',YEAR))} Δηλώνω επίσης ότι έχω ενημερώσει γραπτώς το Σύστημα για οποιοδήποτε ιατρικό θέμα αντιμετωπίζει ${adult?'ο/η ίδιος/α':'το παιδί μου'}.</div>
       <div class="frow" style="margin-top:11px">${LN(adult?'Ονοματεπώνυμο μέλους':'Ονοματεπώνυμο 1',' ',2)}${LN('Υπογραφή',' ',1.6)}${LN('Ημερομηνία',' ',1)}</div>
       ${adult?'':`<div class="frow">${LN('Ονοματεπώνυμο 2',' ',2)}${LN('Υπογραφή',' ',1.6)}${LN('Ημερομηνία',' ',1)}</div>`}
-      <div class="ffoot"><span>Παραλήφθηκε από: ______________________ &nbsp; Ημ.: ____/____/________</span><span>${esc(nm(p))}</span></div>
+      <div class="ffoot"><span>Παραλήφθηκε από: ______________________ &nbsp; Ημ.: ____/____/________</span><span>${pn(p)}</span></div>
     </div>`};
   openPrint('Αιτήσεις εγγραφής '+YEAR, kids.map(page).join(''));
 }
@@ -8317,7 +8387,7 @@ function consentForms(kids){
         ${list.map((p,i)=>`<tr>
           <td style="padding:9px 0 2px;font-weight:600">${i+1}.</td>
           <td style="border-bottom:1px solid #999;padding:9px 4px 2px">${esc(p.registry_no||'')}</td>
-          <td style="border-bottom:1px solid #999;padding:9px 6px 2px;font-weight:500">${esc(nm(p))}</td>
+          <td style="border-bottom:1px solid #999;padding:9px 6px 2px;font-weight:500">${pn(p)}</td>
           <td style="border-bottom:1px solid #999;padding:9px 6px 2px">&nbsp;</td>
           <td style="border-bottom:1px solid #999;padding:9px 6px 2px">&nbsp;</td></tr>`).join('')}
       </table>
@@ -8436,7 +8506,7 @@ function seImport(eid,pool,after){
         <span class="pill">${withMed} με ιατρικά</span><span class="pill">${withCt} επαφές</span>${paid?`<span class="pill">${paid} πληρωμένες</span>`:''}</div>
       <div style="max-height:240px;overflow:auto;margin-bottom:10px">
       ${ok.map(r=>`<label class="kv" style="cursor:pointer"><input type="checkbox" class="sec2" data-i="${res.indexOf(r)}" checked style="width:auto;margin-right:7px">
-        <b style="flex:1">${esc(nm(r.m.p))}</b>
+        <b style="flex:1">${pn(r.m.p)}</b>
         <span class="dim" style="font-size:11px">${[r.med.allergies?'αλλ.':'',r.med.medication?'φαρμ.':'',r.contacts.length?r.contacts.length+' επαφ.':'',r.amount?r.amount+'€':''].filter(Boolean).join(' · ')||'—'}</span></label>`).join('')}
       ${no.length?`<div style="margin-top:9px;font-size:12px;color:var(--warn)">Δεν βρέθηκαν στο μητρώο</div>
         ${no.map(r=>`<div class="dim" style="font-size:12.5px;padding:2px 0">${esc(r.name)}</div>`).join('')}`:''}</div>
@@ -8499,7 +8569,7 @@ function pasteParts(eid,pool,after){
         ${no.length?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">${no.length} δεν βρέθηκαν</span>`:''}
         ${dup.length?`<span class="pill">${dup.length} διπλά</span>`:''}</div>
       ${ok.map(r=>`<label class="kv" style="cursor:pointer"><input type="checkbox" class="ppc" value="${r.m.p.id}" checked style="width:auto;margin-right:7px">
-        <b style="flex:1">${esc(nm(r.m.p))}</b><span class="dim" style="font-size:11.5px">${esc(r.l)}${r.m.score<100?' · ~':''}</span></label>`).join('')}
+        <b style="flex:1">${pn(r.m.p)}</b><span class="dim" style="font-size:11.5px">${esc(r.l)}${r.m.score<100?' · ~':''}</span></label>`).join('')}
       ${no.length?`<div style="margin-top:11px"><div style="font-size:12px;color:var(--warn);margin-bottom:5px">Δεν αντιστοιχήθηκαν — γράψ' τα με το χέρι</div>
         ${no.map(r=>`<div class="dim" style="font-size:12.5px;padding:3px 0">${esc(r.l)}</div>`).join('')}</div>`:''}
       ${ok.length?`<button class="btn p" id="ppApply" style="width:100%;justify-content:center;margin-top:13px">Προσθήκη στη δράση</button>`:''}`;
@@ -8598,18 +8668,18 @@ function evParts(eid){
       </div>
       ${bad.length?`<div class="card pad" style="margin-top:12px;border-color:var(--bad);background:var(--badbg)">
         <b style="color:var(--bad)">Δεν επιτρέπεται να συμμετέχουν</b>
-        <div style="margin-top:6px">${bad.map(p=>`<span class="pill" style="margin:3px 3px 0 0">${esc(nm(p))}<span class="dim">${certAt(p.id)==='none'?'χωρίς Ν.91(Ι)':'έληξε πριν τη δράση'}</span></span>`).join('')}</div></div>`:''}
+        <div style="margin-top:6px">${bad.map(p=>`<span class="pill" style="margin:3px 3px 0 0">${pn(p)}<span class="dim">${certAt(p.id)==='none'?'χωρίς Ν.91(Ι)':'έληξε πριν τη δράση'}</span></span>`).join('')}</div></div>`:''}
 
       <div class="sec"><h3>Βαθμοφόροι</h3><span class="n">${leaders.length}</span></div>
       <div class="mkgrid">${leaders.map(p=>{const on=!!st[p.id],cs=certAt(p.id);
         return `<button class="mk${on?(cs==='ok'?' p':' a'):''}" data-e="${p.id}" title="${cs==='ok'?'Ν.91(Ι) σε ισχύ τη μέρα της δράσης':cs==='none'?'χωρίς Ν.91(Ι)':'Ν.91(Ι) λήγει πριν τη δράση'}">
-          ${statusBar(p,true)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm(p))}</span>
+          ${statusBar(p,true)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pn(p)}</span>
           ${on?`<select data-erole="${p.id}" style="max-width:104px">${EROLES.map(r=>`<option${r===st[p.id].role?' selected':''}>${esc(r)}</option>`).join('')}</select>`:''}
         </button>`}).join('')}</div>
 
       ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span></div>
         <div class="mkgrid">${gs[g].map(p=>`<button class="mk${st[p.id]?' p':''}" data-e="${p.id}">
-          ${statusBar(p,true)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(nm(p))}</span></button>`).join('')}</div>`).join('')}
+          ${statusBar(p,true)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pn(p)}</span></button>`).join('')}</div>`).join('')}
       <div style="height:16px"></div>`;
 
     $('evCnt').textContent=`${selL.length+selK.length} συμμετοχές`;
@@ -8701,7 +8771,7 @@ function markBody(){
         <button class="btn sm" id="mAllP">Όλοι παρόντες</button><button class="btn sm" id="mClr">Καθαρισμός</button>
         <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση</button><button class="btn p" id="mSave">Αποθήκευση</button></div>
       ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span></div>
-        <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}"><span class="s"></span><span style="flex:1;min-width:0">${esc(nm(p))}</span></button>`).join('')}</div>`).join('')}
+        <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}</span></button>`).join('')}</div>`).join('')}
       <div style="height:14px"></div>`;
     paint();
     document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const id=b.dataset.m;STATE[id]=STATE[id]==='p'?'a':(STATE[id]==='a'?null:'p');paint()});
@@ -8825,7 +8895,7 @@ function bdayHTML(){
   return `<div class="sec"><h3>Γενέθλια ${MON[m]}</h3><span class="n">${list.length}</span></div>
     <div class="card pad" style="display:flex;flex-wrap:wrap;gap:8px">${list.map(b=>
       `<span class="pill" style="${b.day===today?'background:var(--accbg);border-color:var(--accln);color:var(--acc)':''}" >
-        ${sdot(secOf(b.p))}<span class="pn" data-p="${b.p.id}">${esc(nm(b.p))}</span>
+        ${sdot(secOf(b.p))}<span class="pn" data-p="${b.p.id}">${pn(b.p)}</span>
         <span class="dim">${String(b.day).padStart(2,'0')}/${String(m+1).padStart(2,'0')}${b.age?' · '+b.age+' χρ.':''}${b.day===today?' · σήμερα':''}</span></span>`).join('')}</div>`;
 }
 function avgAtt(){const ids=new Set(D.ss.filter(s=>s.scout_year===YEAR).map(s=>s.id));const a=D.att.filter(x=>ids.has(x.session_id));return a.length?Math.round(100*a.filter(x=>x.status==='Παρών').length/a.length):0}
@@ -9085,7 +9155,7 @@ function attendBody(){
 
 function sessionsBody(){ attendBody(); setTimeout(()=>$('tabAll')?.click(),0); }
 
-V.certs=()=>{
+function certsBody(){
   const list=certList();
   const bad=list.filter(c=>c.days!==null&&c.days<0), soon=list.filter(c=>c.days!==null&&c.days>=0&&c.days<=90), none=list.filter(c=>c.none), ok=list.filter(c=>c.days!==null&&c.days>90);
   const row=c=>{const d=c.days;
@@ -9133,7 +9203,7 @@ V.orgOld=()=>{
       if(!led.length&&!mem)return '';
       return `<div class="card"><div class="pad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
         ${sdot(s)}<b>${esc(s)}</b><span class="sp"></span><span class="dim" style="font-size:12px">${led.length} βαθμ.${mem?' · '+mem+' μέλη':''}</span></div>
-        <div style="padding:6px 0">${led.map(p=>`<div style="padding:7px 18px;display:flex;gap:8px;align-items:baseline">${leaderDot(p)}<span class="pn" data-p="${p.id}">${esc(nm(p))}</span><span class="dim" style="font-size:12px;margin-left:auto"><b>${esc(ledCode(p))}</b></span></div>`).join('')||'<div class="dim" style="padding:10px 18px">—</div>'}</div></div>`}).join('')}</div>`+extHTML;
+        <div style="padding:6px 0">${led.map(p=>`<div style="padding:7px 18px;display:flex;gap:8px;align-items:baseline">${leaderDot(p)}<span class="pn" data-p="${p.id}">${pn(p)}</span><span class="dim" style="font-size:12px;margin-left:auto"><b>${esc(ledCode(p))}</b></span></div>`).join('')||'<div class="dim" style="padding:10px 18px">—</div>'}</div></div>`}).join('')}</div>`+extHTML;
 };
 
 
@@ -9225,9 +9295,15 @@ function progScreen(sec, extra){
   return tabView('prog_'+sec, [
     {k:'lvl', t:'Στάδια ανέλιξης',    i:'trend', fn:progressBody, d:'πού βρίσκεται καθένας'},
     {k:'req', t:'Πέρασμα απαιτήσεων', i:'check', fn:passBody,     d:'καταχώρηση'},
-    ...(extra||[]),
-    {k:'bdg', t:'Πτυχία & Δάφνες',    i:'award', fn:badgesBody,   d:'ερασιτεχνική ενασχόληση'}]);
+    ...(extra||[])]);
 }
+V.honours=()=>honoursBody();
+/* Δύο οθόνες με τη λέξη «πιστοποιητικό» σε αναγκάζουν να θυμάσαι ποια είναι
+   ποια. Μία θέση, δύο καρτέλες: τι τυπώνω για το παιδί, τι κρατώ για τον
+   βαθμοφόρο. */
+V.enroll=()=>tabView('enroll',[
+  {k:'reg', t:'Βεβαιώσεις μελών',  i:'book',   fn:enrollBody, d:'προς εκτύπωση'},
+  {k:'led', t:'Ν.91(Ι) βαθμοφόρων',i:'shield', fn:certsBody,  d:'λευκά ποινικά και λήξεις'}]);
 V.progAL=()=>progScreen('Αγέλη');
 V.progOP=()=>progScreen('Ομάδα');
 V.progKA=()=>progScreen('Κοινότητα',
