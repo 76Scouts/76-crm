@@ -669,6 +669,7 @@ const NAV=[
    {id:'mysys',t:'Ρυθμίσεις',i:'cog',s:'live'},
    {id:'accounts',t:'Λογαριασμοί & κωδικοί',i:'users',s:'live'},
    {id:'access',t:'Ρόλοι & πρόσβαση',i:'shield',s:'live'},
+   {id:'viewas',t:'Προβολή ως',i:'users',s:'live'},
    {id:'audit',t:'Ιστορικό αλλαγών',i:'book',s:'live'}]}
 ];
 /* ══ ΥΠΟΤΙΤΛΟΙ ΟΘΟΝΩΝ ══════════════════════════════════════════════════════
@@ -746,6 +747,7 @@ const SUBS={
  mysys:'Το Σύστημα, η εφαρμογή και η κατάστασή της',
  accounts:'Ποιος έχει λογαριασμό, ποιος πήρε κωδικό, ποιος λείπει',
  access:'Ρόλοι και παραχωρήσεις — τι βλέπει ο καθένας',
+ viewas:'Δες την εφαρμογή με τα μάτια ενός συγκεκριμένου ανθρώπου',
 
 
 
@@ -755,7 +757,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-25 19:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-25 19:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1303,7 +1305,7 @@ const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
   'attend','events','cal','groups','synod','staff','enroll',
   'progAL','progOP','progKA','medical','calls','enroll'];
 /* Ο Αρχηγός τμήματος: τα παραπάνω, συν ό,τι υπογράφει ή ζητά. */
-const NAV_HEAD=[...NAV_LEADER,'approvals','training','warrants','intake','desk',
+const NAV_HEAD=[...NAV_LEADER,'viewas','approvals','training','warrants','intake','desk',
   'handover','mails','year','exports','forms','templates','reports'];
 /* Το «πέρασμα ιστορικού» είναι καρτέλα μέσα στην Πρόοδο — δεν χρειάζεται
    δική της θέση, αλλά ούτε και να λείπει από κανέναν που περνά απαιτήσεις. */
@@ -1345,18 +1347,27 @@ function childrenOf(me){
    και τον ΡΟΛΟ (role — τι δικαιούται να δει). Ήταν το ίδιο πεδίο, και έτσι ο
    Α.Σ. έπαιρνε το μενού του απλού βαθμοφόρου: k:'leader' → navFor('leader').
    Έχασε 26 οθόνες, μαζί και τα «Αταξινόμητα». */
-function buildPersonas(){
-  const out=[], me=(ME.person_id&&D.bh.find(p=>p.id===ME.person_id))||ME.rec||null;
-  if(ME.role==='admin')out.push({id:'admin',t:'Διαχειριστής · πλήρης πρόσβαση',k:'leader',role:'admin',sc:'ΟΛΑ'});
-  if(ME.platform_admin||ME.role==='admin')
+/* Δέχεται πρόσωπο. Χωρίς όρισμα = εγώ· με όρισμα = «τι ιδιότητες έχει
+   ο Ανδρέας Παναγιώτου». Ίδιος κώδικας — αλλιώς η Προβολή ως θα ήταν δεύτερος
+   μηχανισμός που λέει άλλα πράγματα από τον πρώτο. */
+function buildPersonas(subject){
+  const forMe=!subject;
+  const out=[], me=subject||((ME.person_id&&D.bh.find(p=>p.id===ME.person_id))||ME.rec||null);
+  const pid=me?me.id:null;
+  const acc=forMe?ME:(function(){
+    const pr=(D.pr||[]).find(x=>x.person_id===pid)||{};
+    return {role:pr.access_role||pr.role||null, platform_admin:!!pr.platform_admin, person_id:pid};
+  })();
+  if(acc.role==='admin')out.push({id:'admin',t:'Διαχειριστής · πλήρης πρόσβαση',k:'leader',role:'admin',sc:'ΟΛΑ'});
+  if(acc.platform_admin||acc.role==='admin')
     out.push({id:'dev',t:'Τεχνικός · κατάσταση εφαρμογής',k:'dev',role:'dev',sc:'ΟΛΑ'});
-  ((D.ph&&D.ph.length?D.ph:(ME.hats||[]))).filter(h=>h.person_id===ME.person_id&&!h.valid_to).forEach(h=>
+  ((D.ph&&D.ph.length?D.ph:(ME.hats||[]))).filter(h=>h.person_id===pid&&!h.valid_to).forEach(h=>
     out.push({id:'hat:'+h.id,t:h.title,k:h.kind||'leader',sc:h.scope_value||'ΟΛΑ',lvl:h.scope_level,
               role:/^Αρχηγ/.test(h.title||'')?(h.scope_level==='ΟΛΑ'?'admin':'head'):'leader'}));
   if(me){
     // Ήταν «δεν είναι Μέλος» — και ο Γονέας δεν είναι Μέλος, άρα περνούσε ως βαθμοφόρος.
     // Διπλό φράγμα: ούτε η καρτέλα να λέει Γονέας, ούτε η πρόσβαση να λέει guardian.
-    if(isLed(me) && ME.role!=='guardian'){
+    if(isLed(me) && acc.role!=='guardian'){
       const lb=me.appointment&&me.appointment!=='-'?me.appointment:(me.category||'Βαθμοφόρος');
       const sc=me.category==='ΑΣ'?'ΟΛΑ':(me.section||'ΟΛΑ');
       const nice=me.category==='ΑΣ'?'Αρχηγός Συστήματος':('Βαθμοφόρος · '+lb);
@@ -1540,7 +1551,8 @@ const VA_OPTS=()=>{
   o.push({k:'pick:parent',t:'Γονέας…  (διάλεξε ποιον)',role:'parent'});
   o.push({k:'dev',t:'Τεχνικός',role:'dev'});
   /* Ό,τι είναι ήδη επιλεγμένο μένει ορατό, αλλιώς το select δείχνει λάθος. */
-  if(VIEWAS&&VIEWAS.pid&&!o.some(x=>x.k===VIEWAS.k))o.push(VIEWAS);
+  o.push({k:'screen',t:'Προβολή ως… (οθόνη)'});
+  if(VIEWAS&&!o.some(x=>x.k===VIEWAS.k))o.push(VIEWAS);
   return o};
 
 /* Αναζήτηση προσώπου για τον φακό — μια οθόνη, όχι ένα ατέλειωτο μενού. */
@@ -1584,6 +1596,7 @@ function vaPick(role){
 function setViewAs(k){
   if(k==='pick:member') return vaPick('member');
   if(k==='pick:parent') return vaPick('parent');
+  if(k==='screen')      return route('viewas');
   VIEWAS=k?VA_OPTS().find(o=>o.k===k)||null:null;
   if(VIEWAS)sessionStorage.setItem('e76:viewas',JSON.stringify(VIEWAS));
   else sessionStorage.removeItem('e76:viewas');
@@ -9414,6 +9427,80 @@ function histPassBody(){
     route(ROUTE);
   };
 }
+
+/* ══ ΠΡΟΒΟΛΗ ΩΣ ═══════════════════════════════════════════════════════════
+   Ο φακός στην κεφαλίδα διαλέγει ΡΟΛΟ. Εδώ διαλέγεις ΑΝΘΡΩΠΟ — γιατί ο
+   Ανδρέας Παναγιώτου δεν είναι «ένας ρόλος»: είναι Υ.Ο.Π. ΚΑΙ Μέλος ΚΑΙ
+   γονέας, και βλέπει τρία διαφορετικά πράγματα ανάλογα με το πώς μπαίνει.
+   Δείχνει και τι ΔΕΝ βλέπει — ο φακός που δείχνει μόνο το επιτρεπτό
+   διδάσκει τη μισή αλήθεια.                                              */
+let VAQ='';
+V.viewas=()=>{
+  const canAll = ME.role==='admin'||ME.platform_admin;
+  const mysec  = scopeSec();
+  /* Ποιους δικαιούμαι να φορέσω: ο Α.Σ. οποιονδήποτε· ο Αρχηγός τμήματος
+     μόνο δικούς του. Ο φακός δεν δίνει ΠΟΤΕ πρόσβαση που δεν έχεις. */
+  const pool = D.bh.filter(p=>p.status==='Ενεργός'
+      && (canAll || (mysec ? secOf(p)===mysec : inScope(p))))
+    .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
+  const q=nameKey(VAQ);
+  const hits=(q.length>=2?pool.filter(p=>nameKey(nm(p)).includes(q)):pool).slice(0,80);
+  const tot=NAV.reduce((n,g)=>n+g.items.length,0);
+
+  const kindLbl=p=>isPar(p)?'Γονέας':isLed(p)?(ledCode(p)||'Βαθμοφόρος'):'Μέλος';
+
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Προβολή ως</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px;line-height:1.6">
+        Διάλεξε άνθρωπο και δες την εφαρμογή <b>με τα δικά του μάτια</b>. Αν έχει
+        πολλές ιδιότητες — βαθμοφόρος <b>και</b> γονέας — διαλέγεις ποια φοράει.
+        <b>Τα δικαιώματά σου δεν αλλάζουν</b>: βλέπεις τι θα έβλεπε <i>εκείνος</i>,
+        με τα δεδομένα που δικαιούσαι <i>εσύ</i>.</div>
+      <div class="grow" style="margin-top:11px">
+        <label style="flex:1">Ποιον<input id="vaq" value="${esc(VAQ)}" placeholder="Γράψε όνομα…" autofocus></label>
+        ${VIEWAS?`<label style="max-width:190px">&nbsp;<button class="btn p sm" id="vaStop">Τέλος προβολής</button></label>`:''}
+      </div>
+      ${VIEWAS?`<div class="pill" style="margin-top:9px;background:var(--accbg);color:var(--acc);border-color:transparent">
+        Τώρα βλέπεις ως <b>${esc(VIEWAS.t)}</b></div>`:''}
+    </div>
+
+    <div class="cgrid">${hits.map(p=>{
+      const ps=buildPersonas(p);
+      const sub=[secOf(p),(myOf(p)||{}).group_name].filter(Boolean).join(' · ');
+      return `<div class="ccard">
+        <div class="chead">${statusBar(p,true)}
+          <div style="flex:1;min-width:0">
+            <div class="ctitle">${pn(p)}</div>
+            <div class="dim" style="font-size:12px">${esc(kindLbl(p))}${sub?' · '+esc(sub):''}</div></div></div>
+        ${ps.length?ps.map(x=>{
+          const al=navFor(x.role||x.k), n=al?al.length:tot;
+          return `<button class="btn sm" style="width:100%;justify-content:space-between;margin-top:5px"
+            data-vaperson="${p.id}" data-varole="${esc(x.role||x.k)}" data-vatitle="${esc(nm(p)+' · '+x.t)}">
+            <span>${ic(personaIcon(x.k),14)} ${esc(x.t)}</span>
+            <span class="dim">${n} / ${tot}</span></button>`}).join('')
+          :`<div class="dim" style="font-size:12.5px;margin-top:6px">Καμία ιδιότητα με πρόσβαση —
+             δεν έχει λογαριασμό ή δεν του έχει δοθεί ρόλος.</div>`}
+      </div>`}).join('')||'<div class="card pad dim">Κανένα αποτέλεσμα</div>'}</div>
+
+    <div class="card pad" style="margin-top:12px">
+      <div class="dim" style="font-size:12px;line-height:1.6">
+        Ο αριθμός δίπλα σε κάθε ιδιότητα είναι <b>πόσες οθόνες βλέπει</b> από τις ${tot}.
+        Μόλις φορέσεις κάποιον, μια κόκκινη μπάρα μένει στην κορυφή μέχρι να βγεις —
+        για να μην ξεχάσεις ποιος είσαι.</div></div>`;
+
+  const i=$('vaq'); if(i){i.oninput=e=>{VAQ=e.target.value; V.viewas();
+    const n=$('vaq'); if(n){n.focus(); n.setSelectionRange(n.value.length,n.value.length)}};}
+  const stop=$('vaStop'); if(stop)stop.onclick=()=>setViewAs('');
+  document.querySelectorAll('[data-vaperson]').forEach(b=>b.onclick=()=>{
+    const pid=b.dataset.vaperson, role=b.dataset.varole, p=D.bh.find(x=>x.id===pid);
+    VIEWAS={k:'person:'+pid+':'+role, t:b.dataset.vatitle, role, pid,
+            sec:(role==='leader'||role==='head')?secOf(p):null};
+    sessionStorage.setItem('e76:viewas',JSON.stringify(VIEWAS));
+    renderPersona(); renderNav();
+    route(role==='parent'?'mykids':role==='member'?'me':role==='dev'?'mysys':'dash');
+  });
+};
 
 /* ── Οι τέσσερις τυλιγμένες οθόνες ─────────────────────────────────────── */
 V.issues=()=>tabView('issues',[
