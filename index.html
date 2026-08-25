@@ -622,11 +622,8 @@ const NAV=[
    {id:'members',t:'Μέλη',i:'users',s:'live'},
    {id:'leaders',t:'Βαθμοφόροι',i:'award',s:'live'},
    {id:'guardians',t:'Γονείς',i:'home',s:'live'},
-   {id:'org',t:'Οργανόγραμμα',i:'tree',s:'live'},
-   {id:'staff',t:'Επιτελεία τμημάτων',i:'users',s:'live'},
+   {id:'staff',t:'Επιτελεία & οργανόγραμμα',i:'tree',s:'live'},
    {id:'groups',t:'Εξάδες/Ενωμοτίες/Όμιλοι',i:'flag',s:'live'},
-   {id:'synod',t:'Σύνοδος Κοινότητας',i:'users',s:'live'},
-   {id:'hkade',t:'Η.Κ.Α.Δ.Ε.',i:'book',s:'live'},
    {id:'dedupe',t:'Ταυτοποίηση διπλών',i:'users',s:'live'}]},
 
  {g:'Πρόγραμμα', d:'Τι κάνουμε και ποιος ήρθε', items:[
@@ -634,8 +631,11 @@ const NAV=[
    {id:'attend',t:'Παρουσίες',i:'check',s:'live'},
    {id:'events',t:'Δράσεις',i:'flag',s:'live'}]},
 
- {g:'Πρόοδος', d:'Πώς προχωρούν τα παιδιά, ανά τμήμα', items:[
-   {id:'progress',t:'Πρόοδος',i:'trend',s:'live'}]},
+ {g:'Πρόοδος', d:'Πώς προχωρούν τα παιδιά — ένα τμήμα, ένα λεξιλόγιο', items:[
+   {id:'progAL',t:'Πρόοδος Αγέλης',i:'award',s:'live'},
+   {id:'progOP',t:'Πρόοδος Ομάδας (Κ.Α.Ν.Ε.)',i:'award',s:'live'},
+   {id:'progKA',t:'Πρόοδος Κοινότητας (Η.Κ.Α.Δ.Ε.)',i:'award',s:'live'},
+   {id:'synod',t:'Σύνοδος Κοινότητας',i:'users',s:'live'}]},
 
  {g:'Ετοιμότητα', d:'Τι χρειάζεται πριν βγούμε έξω', items:[
    {id:'medical',t:'Ιατρικά & έκτακτη ανάγκη',i:'shield',s:'live'},
@@ -700,11 +700,14 @@ const SUBS={
  guardians:'Γονείς και κηδεμόνες ανά παιδί, με επαφές',
  dedupe:'Πρόσωπα που μοιάζουν διπλά — κρίνονται μία φορά και μένουν κριμένα',
 
- org:'Ολόκληρο το Σύστημα σε ένα δέντρο',
- staff:'Ποιος βαθμοφόρος σε ποιο τμήμα και με τι ρόλο',
+
+ staff:'Ποιος βαθμοφόρος πού — και το οργανόγραμμα του Συστήματος',
+ progAL:'Στάδια, ειδικότητες και απαιτήσεις της Αγέλης',
+ progOP:'Το Κ.Α.Ν.Ε. της Ομάδας — στάδια, πτυχία, Δάφνες',
+ progKA:'Η.Κ.Α.Δ.Ε. και πορεία των Ανιχνευτών',
  groups:'Εξάδες, ενωμοτίες και όμιλοι — και ποιος μετακινήθηκε',
  synod:'Συνεδρίες, παρόντες και αποφάσεις της Κοινότητας',
- hkade:'Ημερολόγιο Κοινότητας Ανιχνευτών Δράσεων & Εργασιών',
+
 
 
 
@@ -713,7 +716,7 @@ const SUBS={
  cal:'Το πρόγραμμα της χρονιάς — συγκεντρώσεις και δράσεις',
 
 
- progress:'Στάδια, απαιτήσεις, πτυχία και Δάφνες — ανά τμήμα',
+
 
 
  medical:'Ιατρικά δελτία και επαφές έκτακτης ανάγκης — ποιανού λείπει',
@@ -754,7 +757,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-25 18:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-25 18:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1228,9 +1231,10 @@ async function loadAll(){
     sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared').limit(20000),
     sb.from('progress_request').select('*').order('created_at',{ascending:false}).limit(2000),
     sb.from('progress_policy').select('*'),
-    sb.from('ka_step').select('*').limit(5000)
+    sb.from('ka_step').select('*').limit(5000),
+    sb.from('subgroup_roles').select('*')          // ΠΑΝΤΑ τελευταίο: η θέση είναι η ταυτότητα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1268,7 +1272,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[];
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   const _ow=$('owner');
   if(_ow&&(D.am||[]).length)_ow.innerHTML=`e76 · λογισμικό <b>${esc(OWNER())}</b><br>Τα δεδομένα ανήκουν στο κλιμάκιο`;
@@ -1294,12 +1298,12 @@ let PERSONAS=[], PA=null;
    από εδώ — αλλιώς ο φακός λέει ψέματα: σου δείχνει τις δικές σου οθόνες με
    λιγότερα κουμπιά, αντί για τις οθόνες του άλλου. */
 const NAV_SELF=['me','myatt','myforms'];          // ο καθένας, για τον εαυτό του
-const NAV_MEMBER=[...NAV_SELF,'progress','synod','hkade'];
+const NAV_MEMBER=[...NAV_SELF,'progKA','synod'];
 const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile'];
 /* Ο απλός βαθμοφόρος: το τμήμα του και το πρόγραμμα. Όχι μητρώο, όχι χρήματα. */
 const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
-  'attend','events','cal','progress','groups',
-  'medical','calls','certs','synod','hkade','org','staff','enroll'];
+  'attend','events','cal','groups','synod','staff','enroll',
+  'progAL','progOP','progKA','medical','calls','certs'];
 /* Ο Αρχηγός τμήματος: τα παραπάνω, συν ό,τι υπογράφει ή ζητά. */
 const NAV_HEAD=[...NAV_LEADER,'approvals','training','warrants','intake','desk',
   'handover','mails','year','exports','forms','templates','reports'];
@@ -1620,13 +1624,13 @@ function inScope(p){ if(vaHidesPerson(p))return false;
 const MODES=[
   {k:'', t:'Όλα τα μενού', i:'grid', d:'Τίποτα κρυμμένο'},
   {k:'sat', t:'Συγκέντρωση', i:'check', d:'Σάββατο απόγευμα — παρουσίες, πρόγραμμα, ιατρικά',
-   nav:['attend','cal','members','medical','calls','progress','groups']},
+   nav:['attend','cal','members','medical','calls','progAL','progOP','progKA','groups']},
   {k:'reg', t:'Περίοδος εγγραφών', i:'book', d:'Τραπέζι, Α.Μ., εισπράξεις, κωδικοί',
    nav:['desk','intake','reg','fees','enroll','esimport','mails','year','members','templates','accounts']},
   {k:'camp',t:'Δράση ή κατασκήνωση', i:'flag', d:'Ετοιμότητα, φάκελοι, επαφές έκτακτης ανάγκης',
    nav:['events','medical','certs','calls','members','groups','enroll','cal']},
   {k:'adm', t:'Διοικητικά', i:'shield', d:'Εντολές, ρόλοι, μεταγραφές, λήξεις',
-   nav:['warrants','approvals','training','access','grants','transfers','staff','org','mysys','issues']}
+   nav:['warrants','approvals','training','access','grants','transfers','staff','mysys','issues']}
 ];
 let MODE='';
 try{MODE=localStorage.getItem('e76:mode')||''}catch(e){MODE=''}
@@ -3091,7 +3095,7 @@ const kaStages=()=>[...new Map((D.rc2||[])
   .map(r=>[r.stage_label,{label:r.stage_label,ord:r.stage_ordinal}])).values()]
   .sort((a,b)=>(a.ord||0)-(b.ord||0));
 
-V.hkade=()=>{
+function hkadeBody(){
   const anix=D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα'&&p.status==='Ενεργός')
                  .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
   const who=kaWho();
@@ -5365,13 +5369,18 @@ const LEV={'1':{t:'Ο ίδιος ο Πρόσκοπος',c:'var(--ink3)'},
            '3':{t:'Ο Αρχηγός Ομάδας',c:'var(--warn)'},
            '2,3':{t:'Ενωμοτία και Αρχηγός',c:'var(--warn)'},
            '4':{t:'Γενική Εφορεία',c:'var(--bad)'}};
-const PCAT=()=>(D.pcat||[]).filter(x=>x.section==='Ομάδα');
+/* Ο ίδιος πίνακας δουλεύει για κάθε κλάδο — αλλάζει μόνο ο κλάδος. Ήταν
+   καρφωμένο σε «Ομάδα», γι' αυτό η Αγέλη δεν είχε πουθενά να φανεί, παρότι
+   ο κατάλογος έχει 5 στάδια και 36 ειδικότητες για εκείνη. */
+let PSEC='Ομάδα';
+const PCAT=()=>(D.pcat||[]).filter(x=>x.section===PSEC);
 const opStages=()=>PCAT().filter(x=>x.item_kind==='στάδιο'&&x.ordinal<50).sort((a,b)=>a.ordinal-b.ordinal);
-const opReqs=st=>(D.rc2||[]).filter(r=>r.section==='Ομάδα'&&r.stage_catalog_id===st.id
+const opReqs=st=>(D.rc2||[]).filter(r=>r.section===PSEC&&r.stage_catalog_id===st.id
                     &&r.item_kind!=='απαίτηση πτυχίου'&&r.active!==false)
                  .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
-const opKids=()=>D.bh.filter(p=>isMem(p)&&secOf(p)==='Ομάδα'&&p.status==='Ενεργός')
+const opKids=()=>D.bh.filter(p=>isMem(p)&&secOf(p)===PSEC&&p.status==='Ενεργός'&&inScope(p))
                      .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
+const SECWORD={'Αγέλη':'Αγέλης','Ομάδα':'Ομάδας','Κοινότητα':'Κοινότητας'};
 const hasReq=(pid,rid)=>(D.mreq||[]).some(x=>x.person_id===pid&&x.requirement_id===rid);
 const badgesOf=pid=>(D.mprog||[]).filter(x=>x.person_id===pid&&x.item_kind==='ειδικότητα')
   .map(x=>({label:x.label,cat:(PCAT().find(c=>c.item_kind==='ειδικότητα'&&c.label===x.label)||{}).category}))
@@ -5405,13 +5414,13 @@ let PGST=null, PGWHO=null, PGTAB='pinakas';
 function progressBody(){
   const kids=opKids(), stages=opStages();
   if(!stages.length)return $('view').innerHTML='<div class="uc"><h3>Δεν φορτώθηκε ο κατάλογος</h3><p>Δοκίμασε ανανέωση.</p></div>';
-  if(!PGST||!stages.some(s=>s.id===PGST))PGST=stages[0].id;
+  if(!PGST||!stages.some(s=>s.id===PGST))PGST=stages[0].id;   // αλλαγή κλάδου = νέο στάδιο
   const st=stages.find(s=>s.id===PGST), reqs=opReqs(st);
   const write=ME.role==='admin'||ME.role==='leader'||PA&&PA.k==='leader';
 
   const head=`<div class="card pad" style="margin-bottom:14px">
     <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
-      <b style="font-size:15px">Πίνακας Προόδου</b><span class="pill">Ομάδα</span>
+      <b style="font-size:15px">Πίνακας Προόδου ${esc(SECWORD[PSEC]||PSEC)}</b><span class="pill">${sdot(PSEC)}${esc(PSEC)}</span>
       <span class="sp"></span>
       <button class="btn sm${PGTAB==='pinakas'?' p':''}" data-tab="pinakas">Στόχοι Ανέλιξης</button>
       <button class="btn sm${PGTAB==='dafnes'?' p':''}" data-tab="dafnes">Δάφνες & Εξειδίκευση</button>
@@ -5899,20 +5908,24 @@ V.groups=()=>{
   const none=kids.filter(p=>!(myOf(p)||{}).group_name).sort(sortByName);
   const chip=s=>`<button class="btn sm${SGSEC===s?' p':' gh'}" data-sg="${s}">${s}</button>`;
   const kindOf=SGSEC==='Αγέλη'?'Εξάδα':SGSEC==='Ομάδα'?'Ενωμοτία':'Όμιλος';
-  const card=g=>{const list=inG(g.name), ld=D.bh.find(x=>x.id===g.leader_id), sd=D.bh.find(x=>x.id===g.second_id);
+  const card=g=>{const list=inG(g.name);
     return `<div class="ccard">
       <div class="chead"><span class="dot" style="background:${g.colour||SC[SGSEC]}"></span>
         <div style="flex:1;min-width:0"><div class="ctitle">${esc(g.name)}</div>
           <div class="dim" style="font-size:12px">${esc(g.kind||kindOf)} · ${list.length} ${list.length===1?'μέλος':'μέλη'}</div></div></div>
-      <div class="kv" style="font-size:12.5px"><b>Αρχηγός</b><span>${ld?esc(nm(ld)):'<span class="dim">—</span>'}</span></div>
-      <div class="kv" style="font-size:12.5px"><b>Υπαρχηγός</b><span>${sd?esc(nm(sd)):'<span class="dim">—</span>'}</span></div>
+      ${sgRoles(SGSEC).map(([slot,title])=>{const who=D.bh.find(x=>x.id===g[SG_SLOTCOL[slot]]);
+        return `<div class="kv" style="font-size:12.5px"><b>${esc(title)}</b><span>${
+          who?esc(nm(who)):'<span class="dim">—</span>'}</span></div>`}).join('')}
+      ${(()=>{const st=D.bh.find(x=>x.id===g.staff_id);
+        return `<div class="kv" style="font-size:12.5px"><b>Υπεύθυνος βαθμοφόρος</b><span>${
+          st?esc(nm(st)):'<span class="dim">—</span>'}</span></div>`})()}
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
         ${list.map(p=>`<span class="pill" style="font-size:11.5px"><span class="pn" data-p="${p.id}">${esc(nm(p))}</span></span>`).join('')
           ||'<span class="dim" style="font-size:12px">— κενή —</span>'}</div>
-      <div style="margin-top:9px;display:flex;gap:6px"><button class="btn sm gh" data-sgl="${g.id}">Αρχηγοί</button></div></div>`};
+      <div style="margin-top:9px;display:flex;gap:6px"><button class="btn sm gh" data-sgl="${g.id}">Θέσεις</button></div></div>`};
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Υποομάδες</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px">Εξάδες, ενωμοτίες και όμιλοι — ανά χρονιά, με αρχηγό και υπαρχηγό.</div>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Εξάδες, ενωμοτίες και όμιλοι — ανά χρονιά. Κάθε κλάδος έχει τις δικές του θέσεις, και κάθε υποομάδα έναν βαθμοφόρο που την έχει χρεωθεί.</div>
       <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
         ${secs.map(chip).join('')}
         <span class="sp"></span>
@@ -5928,30 +5941,54 @@ V.groups=()=>{
     if(error)return toast('Σφάλμα: '+error.message);
     (D.sg=D.sg||[]).push(data); saveCache(); $('sgNew').value=''; V.groups()};
   $('sgExp').onclick=()=>{
-    const rows=[['Τμήμα',kindOf,'Αρχηγός','Υπαρχηγός','Μέλος','Α.Μ.','Τάξη']];
-    sgs.forEach(g=>{const ld=D.bh.find(x=>x.id===g.leader_id),sd=D.bh.find(x=>x.id===g.second_id);
+    const R=sgRoles(SGSEC);
+    const rows=[['Τμήμα',kindOf,...R.map(([,t])=>t),'Υπεύθυνος βαθμοφόρος','Μέλος','Α.Μ.','Τάξη']];
+    sgs.forEach(g=>{
+      const who=R.map(([slot])=>{const x=D.bh.find(b=>b.id===g[SG_SLOTCOL[slot]]);return x?nm(x):''});
+      const st=D.bh.find(b=>b.id===g.staff_id); const stn=st?nm(st):'';
       const list=inG(g.name);
-      if(!list.length)rows.push([SGSEC,g.name,ld?nm(ld):'',sd?nm(sd):'','','','']);
-      list.forEach(p=>rows.push([SGSEC,g.name,ld?nm(ld):'',sd?nm(sd):'',nm(p),p.registry_no||'',(myOf(p)||{}).grade||'']))});
+      if(!list.length)rows.push([SGSEC,g.name,...who,stn,'','','']);
+      list.forEach(p=>rows.push([SGSEC,g.name,...who,stn,nm(p),p.registry_no||'',(myOf(p)||{}).grade||'']))});
     exportRows(rows,`76-ypoomades-${SGSEC}-${YEAR}`,`Υποομάδες ${SGSEC} ${YEAR}`)};
   document.querySelectorAll('[data-sgl]').forEach(b=>b.onclick=()=>sgLeaders(b.dataset.sgl));
 };
+/* Τα ονόματα των θέσεων δεν είναι ίδια παντού: Εξάρχης, Ενωμοτάρχης,
+   Ομιλάρχης — και η Ομάδα έχει ΔΥΟ υπενωμοτάρχες. Έρχονται από τη βάση
+   (subgroup_roles), ώστε να αλλάζουν χωρίς προγραμματιστή. */
+const SGR_FALLBACK={
+  'Αγέλη':    [[1,'Εξάρχης'],[2,'Υποεξάρχης']],
+  'Ομάδα':    [[1,'Ενωμοτάρχης'],[2,'Υπενωμοτάρχης'],[3,'Υπενωμοτάρχης Β']],
+  'Κοινότητα':[[1,'Ομιλάρχης'],[2,'Υπομιλάρχης']]};
+const SG_SLOTCOL={1:'leader_id',2:'second_id',3:'third_id'};
+function sgRoles(sec){
+  const db=(D.sgr||[]).filter(r=>r.section===sec).sort((a,b)=>a.slot-b.slot);
+  return db.length?db.map(r=>[r.slot,r.title]):(SGR_FALLBACK[sec]||[[1,'Αρχηγός'],[2,'Υπαρχηγός']]);
+}
 function sgLeaders(id){
   const g=(D.sg||[]).find(x=>x.id===id); if(!g)return;
   const pool=D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===g.section).sort(sortByName);
   const opt=(sel)=>`<option value="">—</option>`+pool.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${esc(nm(p))}</option>`).join('');
+  const ledPool=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός'&&(secOf(p)===g.section||p.section==='Σύστημα')).sort(sortByName);
+  const optLed=(sel)=>`<option value="">—</option>`+ledPool.map(p=>`<option value="${p.id}"${p.id===sel?' selected':''}>${esc(nm(p))}${ledCode(p)?' · '+ledCode(p):''}</option>`).join('');
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">${esc(g.name)}</div>
       <div class="dim" style="font-size:12.5px">${esc(g.kind||'')} · ${esc(g.section)}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec">
-      <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Αρχηγός<select id="sgL">${opt(g.leader_id)}</select></label>
-      <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Υπαρχηγός<select id="sgS">${opt(g.second_id)}</select></label>
+      ${sgRoles(g.section).map(([slot,title])=>
+        `<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">${esc(title)}
+          <select id="sgS${slot}">${opt(g[SG_SLOTCOL[slot]])}</select></label>`).join('')}
+      <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Υπεύθυνος βαθμοφόρος
+        <select id="sgStaff">${optLed(g.staff_id)}</select></label>
+      <div class="muted" style="font-size:11.5px;margin:-3px 0 9px">Δεν είναι αρχηγός της υποομάδας —
+        είναι ο βαθμοφόρος που την έχει χρεωθεί.</div>
       <label style="font-size:12px;color:var(--ink3);display:block">Χρώμα<input id="sgC" type="color" value="${g.colour||'#888888'}" style="height:36px"></label>
     </div>
     <div class="dsec" style="border:0"><button class="btn p" id="sgSave" style="width:100%;justify-content:center">Αποθήκευση</button></div>`;
   drw.classList.add('on');
   $('sgSave').onclick=async()=>{
-    const v={leader_id:$('sgL').value||null,second_id:$('sgS').value||null,colour:$('sgC').value};
+    const v={colour:$('sgC').value, staff_id:$('sgStaff').value||null,
+             leader_id:null, second_id:null, third_id:null};
+    sgRoles(g.section).forEach(([slot])=>{const el=$('sgS'+slot); if(el)v[SG_SLOTCOL[slot]]=el.value||null});
     const {error}=await sb.from('subgroups').update(v).eq('id',id);
     if(error)return toast('Σφάλμα: '+error.message);
     Object.assign(g,v); saveCache(); drw.classList.remove('on'); V.groups();};
@@ -6331,8 +6368,9 @@ function secOfYear(p,yr){
   if(isPar(p))return 'Γονείς';        // ποτέ «Σύστημα»
   return (sh&&sh.section)||p.section||'Σύστημα';
 }
-V.staff=()=>{
-  if(ROUTE==='staff')STMODE=(STMODE==='draft')?'draft':'board';
+function staffScreen(){
+  /* Ο τρόπος θέασης έρχεται από την καρτέλα — αλλιώς δύο πηγές αλήθειας. */
+  if(ROUTE==='staff'&&STMODE!=='draft'&&STMODE!=='tree')STMODE='board';
   const years=[...new Set([...(D.sh||[]).map(x=>x.scout_year),...D.my.map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
   const nx=nextY(years[0]||YEAR); if(nx&&!years.includes(nx))years.unshift(nx);
   if(!SY||!years.includes(SY))SY=years.find(y=>(D.sh||[]).some(x=>x.scout_year===y))||YEAR;
@@ -9064,7 +9102,10 @@ V.certs=()=>{
 
 /* Το Οργανόγραμμα δείχνει ΙΕΡΑΡΧΙΑ — το δέντρο Σ.Π.Κ. → 76ο → τμήμα → βαθμοφόρος.
    Η Διάρθρωση δείχνει ΣΥΝΘΕΣΗ — ποιοι είναι σε κάθε τμήμα, όπως το τυπωμένο επιτελείο. */
-V.org=()=>{ STMODE='tree'; return V.staff(); };
+function staffBody(mode){ STMODE=mode; return staffScreen(); }
+V.staff=()=>tabView('staff',[
+  {k:'board',t:'Επιτελεία',    i:'users', fn:()=>staffBody('board'), d:'ανά τμήμα'},
+  {k:'tree', t:'Οργανόγραμμα', i:'tree',  fn:()=>staffBody('tree'),  d:'όλο το Σύστημα σε δέντρο'}]);
 V.orgOld=()=>{
   const secs=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
   const ext=(D.or||[]).slice().sort((a,b)=>a.seq-b.seq);
@@ -9177,10 +9218,21 @@ V.attend=()=>tabView('attend',[
   {k:'see',  t:'Παρουσίες',         i:'trend', fn:attendBody,  d:'ποιος λείπει'},
   {k:'put',  t:'Καταχώρηση',        i:'check', fn:markBody,    d:'σήμανση παρόντων'}]);
 
-V.progress=()=>tabView('progress',[
-  {k:'lvl',  t:'Στάδια ανέλιξης',   i:'trend', fn:progressBody,d:'πού βρίσκεται καθένας'},
-  {k:'req',  t:'Πέρασμα απαιτήσεων',i:'check', fn:passBody,    d:'καταχώρηση'},
-  {k:'bdg',  t:'Πτυχία & Δάφνες',   i:'award', fn:badgesBody,  d:'ερασιτεχνική ενασχόληση'}]);
+/* Μία οθόνη ανά κλάδο. Ο Αρχηγός Αγέλης δεν έχει λόγο να βλέπει καρτέλα
+   «Ομάδα» δίπλα στη δική του — και το λεξιλόγιο κάθε κλάδου είναι δικό του. */
+function progScreen(sec, extra){
+  PSEC=sec;
+  return tabView('prog_'+sec, [
+    {k:'lvl', t:'Στάδια ανέλιξης',    i:'trend', fn:progressBody, d:'πού βρίσκεται καθένας'},
+    {k:'req', t:'Πέρασμα απαιτήσεων', i:'check', fn:passBody,     d:'καταχώρηση'},
+    ...(extra||[]),
+    {k:'bdg', t:'Πτυχία & Δάφνες',    i:'award', fn:badgesBody,   d:'ερασιτεχνική ενασχόληση'}]);
+}
+V.progAL=()=>progScreen('Αγέλη');
+V.progOP=()=>progScreen('Ομάδα');
+V.progKA=()=>progScreen('Κοινότητα',
+  [{k:'hk', t:'Η.Κ.Α.Δ.Ε.', i:'book', fn:hkadeBody, d:'το ημερολόγιο του Ανιχνευτή'}]);
+V.progress=()=>V.progOP();          // παλιοί σύνδεσμοι δεν σπάνε
 
 $('gver').textContent='build '+BUILD;
 boot();
