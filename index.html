@@ -56,6 +56,9 @@ button{font:inherit;color:inherit}
 .navg.shut .nav{display:none}
 /* Διπλωμένη ομάδα που κρύβει την τρέχουσα οθόνη θα ήταν παγίδα — δεν διπλώνει. */
 .navg.shut .nav.on{display:flex}
+/* Ομάδα που περιμένει απόφαση — φαίνεται ότι δεν είναι κανονική κατηγορία. */
+.navg.navpark{border-left:2px solid var(--warn);margin-left:8px;padding-left:6px}
+.navg.navpark>span{color:var(--warn)}
 .navg>span .n{margin-left:auto;font-size:9.5px;opacity:.5;font-weight:500;letter-spacing:0}
 .nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--rs);color:var(--sidein);cursor:pointer;font-size:14px;border:0;background:none;width:100%;text-align:left;line-height:1.3}
 .nav:hover{background:var(--sidehov)}
@@ -520,7 +523,9 @@ th.srt.desc:after{content:"↓";opacity:.9}
       <span class="sp"></span>
       <select id="persona" class="btn sm" style="width:auto;padding:5px 8px;max-width:230px" title="ΠΟΙΟΣ ΕΙΜΑΙ — με ποια ιδιότητα δουλεύω τώρα"></select>
       <select id="mode" class="btn sm" style="width:auto;padding:5px 8px;max-width:180px" title="ΤΙ ΚΑΝΩ ΤΩΡΑ — κρύβει οθόνες που δεν χρειάζομαι αυτή τη στιγμή· δεν αφαιρεί δικαιώματα"></select>
-      <select id="viewas" class="btn sm" style="width:auto;padding:5px 8px;max-width:190px" title="ΔΕΣ ΩΣ — φακός: δείχνει ΑΚΡΙΒΩΣ τις οθόνες που βλέπει κάποιος άλλος ρόλος"></select>
+      <!-- Ο φακός έφυγε από εδώ: υπάρχει ολόκληρη οθόνη «Προβολή ως» στις
+           Ρυθμίσεις, που διαλέγει ΑΝΘΡΩΠΟ και ιδιότητα. Τρεις επιλογείς στην
+           κεφαλίδα για συγγενή πράγματα ήταν ένας παραπάνω. -->
       <button class="btn gh sm" id="legbtn" title="Υπόμνημα — τι σημαίνει κάθε χρώμα και σήμα"></button><button class="btn gh sm" id="palbtn" title="Αναζήτηση (⌘K)"></button>
       <select id="yr" class="btn sm" style="width:auto;padding:5px 8px"></select>
     </header>
@@ -757,7 +762,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-25 19:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-25 19:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1601,9 +1606,30 @@ function setViewAs(k){
   if(VIEWAS)sessionStorage.setItem('e76:viewas',JSON.stringify(VIEWAS));
   else sessionStorage.removeItem('e76:viewas');
   renderNav();
-  const land = VIEWAS&&VIEWAS.role==='parent' ? 'mykids'
-             : VIEWAS&&VIEWAS.role==='member' ? 'me' : ROUTE;
-  route(vaHidesRoute(ROUTE)?land:ROUTE);
+  /* Μένεις όπου είσαι. Αν ο ρόλος δεν βλέπει αυτή την οθόνη, το ΛΕΜΕ — δεν σε
+     πετάμε αλλού. Η σιωπηλή μεταφορά σε κάνει να νομίζεις ότι κάτι έσπασε. */
+  route(ROUTE);
+}
+/* Η οθόνη «δεν το βλέπει αυτός» — με το ΓΙΑΤΙ και δύο εξόδους. */
+function vaBlocked(m){
+  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role)||[];
+  const land=VIEWAS.role==='parent'?'mykids':VIEWAS.role==='member'?'me'
+            :VIEWAS.role==='dev'?'mysys':'dash';
+  const tot=NAV.reduce((n,g)=>n+g.items.length,0);
+  $('view').innerHTML=viewAsBar()+`
+    <div class="card pad" style="border-color:var(--warn)">
+      <b>Δεν υπάρχει δικαίωμα προβολής</b>
+      <div class="muted" style="margin-top:6px;font-size:13.5px;line-height:1.65">
+        Ο ρόλος <b>${esc(VIEWAS.t)}</b> δεν βλέπει την οθόνη «${esc(m.t)}».
+        Βλέπει <b>${al.length}</b> από τις ${tot} — και αυτή δεν είναι μία από αυτές.
+        <br>Δεν σε μετέφερα αλλού: μένεις εδώ, ώστε να ξέρεις τι ακριβώς λείπει.</div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn p sm" id="vbHome">Πήγαινε όπου ξεκινά αυτός</button>
+        <button class="btn sm" id="vbOff">Τέλος προβολής — γύρνα στα δικά μου</button></div>
+    </div>`;
+  const a=$('vbHome'); if(a)a.onclick=()=>route(land);
+  const b=$('vbOff'); if(b)b.onclick=()=>setViewAs('');
+  const off=$('vaOff'); if(off)off.onclick=()=>setViewAs('');
 }
 function viewAsBar(){
   if(!VIEWAS)return '';
@@ -1754,12 +1780,17 @@ function renderNav(){
     return true;
   };
   const og=(K==='dev'||K==='admin'||ME.platform_admin)?orphanGroup():null;
-  const GROUPS=og?NAV.concat([og]):NAV;
+  /* ΠΡΙΝ τις Ρυθμίσεις, όχι στο τέλος: μια ομάδα που ζητά απόφαση δεν πρέπει
+     να κρύβεται κάτω από τριάντα άλλες. */
+  const GROUPS=(()=>{ if(!og)return NAV;
+    const i=NAV.findIndex(g=>g.g==='Ρυθμίσεις');
+    return i<0?NAV.concat([og]):[...NAV.slice(0,i),og,...NAV.slice(i)]; })();
   $('navwrap').innerHTML=GROUPS.map(g=>{
     const its=g.g==='Αταξινόμητα'?g.items.filter(m=>allow(m.id)||K==='admin'||K==='dev')
                                  :g.items.filter(m=>allow(m.id)); if(!its.length)return '';
     const shut=NAVSHUT[g.g]&&!its.some(m=>m.id===ROUTE);
-    return `<div class="navg${shut?' shut':''}" data-g="${esc(g.g||'')}">${g.g?
+    const flag=g.g==='Αταξινόμητα';
+    return `<div class="navg${shut?' shut':''}${flag?' navpark':''}" data-g="${esc(g.g||'')}">${g.g?
       `<span data-tog="${esc(g.g)}" title="${esc(g.d||'')}">${esc(g.g)}<span class="n">${its.length}</span><span class="car">▾</span></span>`:''}${its.map(m=>{
     const tag=m.s==='soon'?'<span class="tag">Σύντομα</span>':m.s==='review'?'<span class="tag">Review</span>':(cnt[m.id]?`<span class="cnt">${cnt[m.id]}</span>`:'');
     return `<button class="nav${ROUTE===m.id?' on':''}" data-r="${m.id}" title="${esc(SUBS[m.id]||m.t)}">${ic(m.i)}<span>${esc(m.t)}</span>${tag}</button>`;}).join('')}</div>`}).join('');
@@ -1784,6 +1815,7 @@ function route(r){
   renderNav(); window.scrollTo(0,0);
   if(m.s==='live'){
     // Αν μια οθόνη σκάσει, ΔΕΝ αφήνουμε την προηγούμενη στη θέση της — φαίνεται σαν παλιό αρχείο.
+    if(VIEWAS&&vaHidesRoute(ROUTE)){ vaBlocked(m); return; }
     try{ (V[ROUTE]||V.dash)(); const lg=legendHTML(ROUTE); if(lg)$('view').insertAdjacentHTML('beforeend',lg);
          const vb=viewAsBar(); if(vb){$('view').insertAdjacentHTML('afterbegin',vb);
            const off=$('vaOff'); if(off)off.onclick=()=>setViewAs('')}
@@ -2298,6 +2330,21 @@ function wireVeh(p,after){
 
 /* ── Πιστοποιητικά ανά άτομο ── */
 const ctype=c=>(D.ct||[]).find(t=>t.code===c)||{name:c};
+/* Ποια πιστοποιητικά ταιριάζουν σε ΑΥΤΟΝ τον άνθρωπο. Το Ν.91(Ι) αφορά
+   ενήλικες που δουλεύουν με ανηλίκους — δεν δίνεται σε Λυκόπουλο. Ο Ανιχνευτής
+   όμως όντως βγάζει Πρώτες Βοήθειες και Ναυαγοσωστική. Ο κανόνας ζει στη βάση
+   (certificate_types.holder_kinds/holder_sections)· εδώ απλώς δεν προσφέρουμε
+   ό,τι θα απορριφθεί. */
+function certTypesFor(p){
+  const sec=secOf(p)||p.section;
+  return (D.ct||[]).slice().sort((a,b)=>(a.seq||99)-(b.seq||99)).filter(t=>{
+    const kinds=t.holder_kinds||['Βαθμοφόρος'];
+    if(!kinds.includes(p.kind||''))return false;
+    if(t.holder_sections&&(p.kind||'')!=='Βαθμοφόρος'
+       &&!t.holder_sections.includes(sec))return false;
+    return true;
+  });
+}
 function certRows(id){return (D.pc||[]).filter(x=>x.person_id===id)
   .sort((a,b)=>((ctype(a.type_code).seq||99)-(ctype(b.type_code).seq||99))||((a.expires_on||'')<(b.expires_on||'')?1:-1));}
 function certChip(c){
@@ -2333,7 +2380,8 @@ function certsHTML(p){
       </div>`}).join(''):'<div class="dim" style="font-size:13px">Κανένα καταχωρημένο</div>'}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Νέο πιστοποιητικό</summary>
       <div style="display:grid;gap:7px;margin-top:9px">
-        <select id="pcType">${(D.ct||[]).slice().sort((a,b)=>(a.seq||99)-(b.seq||99)).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')}</select>
+        <select id="pcType">${certTypesFor(p).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')
+          ||'<option value="">— κανένα διαθέσιμο —</option>'}</select>
         <input id="pcLabel" placeholder="Πινακίδα / κατηγορία / περιγραφή">
         <div style="display:flex;gap:7px"><input id="pcIss" type="date" title="Ημ. έκδοσης"><input id="pcExp" type="date" title="Ημ. λήξης"></div>
         <label class="btn sm" style="cursor:pointer;justify-content:center">📎 Επισύναψη αρχείου<input type="file" id="pcFile" style="display:none" accept=".pdf,.png,.jpg,.jpeg,.heic"></label>
@@ -2491,9 +2539,13 @@ const listBar=(extra,hint)=>`<div class="card pad" style="display:flex;gap:9px;a
   ${hint?`<button class="btn gh sm" id="vinfo" title="Υπόμνημα — τι σημαίνει κάθε χρώμα και σήμα">${ic('info',15)}</button>`:''}</div>`;
 function wireVQ(){
   const i=$('vq'); if(!i)return;
-  const upd=()=>{const q=nameKey(i.value); let n=0;
+  /* Ψάχνει το ΚΕΙΜΕΝΟ της γραμμής — άρα πιάνει ό,τι φαίνεται. Για Α.Μ. και
+     τηλέφωνα που ΔΕΝ φαίνονται στη γραμμή, συγκρίνει και σκέτα ψηφία. */
+  const upd=()=>{const raw=i.value.trim(), q=nameKey(raw), d=digits(raw); let n=0;
     document.querySelectorAll('#view tbody tr').forEach(r=>{
-      const ok=!q||nameKey(r.textContent).includes(q); r.style.display=ok?'':'none'; if(ok)n++;});
+      const txt=r.textContent;
+      const ok=!raw||nameKey(txt).includes(q)||(d.length>=3&&digits(txt).includes(d));
+      r.style.display=ok?'':'none'; if(ok)n++;});
     const c=$('vcnt'); if(c)c.textContent=n+(n===1?' εγγραφή':' εγγραφές');};
   i.addEventListener('input',upd); upd();
   const b=$('vinfo'); if(b)b.onclick=showLegend;
@@ -9428,6 +9480,52 @@ function histPassBody(){
   };
 }
 
+/* ══ ΑΝΑΖΗΤΗΣΗ ΠΡΟΣΩΠΟΥ ═══════════════════════════════════════════════════
+   Το όνομα δεν είναι πάντα ο γρηγορότερος δρόμος. Στο τηλέφωνο έχεις αριθμό·
+   στο έντυπο έχεις Α.Μ.· στο email έχεις email. Ένα πεδίο, όλα τα κλειδιά.
+   Το Α.Δ.Τ. ψάχνεται ΜΟΝΟ από όποιον ούτως ή άλλως το βλέπει — αλλιώς η
+   αναζήτηση θα ήταν πλάγιος δρόμος προς ευαίσθητο δεδομένο. */
+const digits=t=>String(t||'').replace(/\D/g,'');
+function personMatch(p,q){
+  if(!q)return true;
+  const k=nameKey(q), d=digits(q);
+  if(nameKey(nm(p)).includes(k))return true;
+  if(p.scout_name&&nameKey(p.scout_name).includes(k))return true;
+  if(p.nickname&&nameKey(p.nickname).includes(k))return true;
+  if(d.length>=3){
+    if(digits(p.registry_no).includes(d))return true;
+    if(digits(p.phone).includes(d))return true;
+    if(digits(p.home_phone).includes(d))return true;
+    /* και τα τηλέφωνα των γονέων — τους παίρνεις εσύ, σε παίρνουν εκείνοι */
+    const gu=gOf(p.registry_no)||{};
+    if(digits(gu.father_mobile).includes(d)||digits(gu.mother_mobile).includes(d))return true;
+    if((D.ecs||[]).some(e=>e.person_id===p.id&&digits(e.phone).includes(d)))return true;
+  }
+  if(q.includes('@')||k.length>=3){
+    const em=String(q).toLowerCase();
+    if((p.email||'').toLowerCase().includes(em))return true;
+    if((D.pe||[]).some(e=>e.person_id===p.id&&(e.address||'').toLowerCase().includes(em)))return true;
+    const gu=gOf(p.registry_no)||{};
+    if((gu.father_email||'').toLowerCase().includes(em)||(gu.mother_email||'').toLowerCase().includes(em))return true;
+  }
+  if(d.length>=5&&canSeeSensitive()){
+    const sn=(D.sen||[]).find(x=>x.person_id===p.id);
+    if(sn&&digits(sn.adt).includes(d))return true;
+  }
+  return false;
+}
+const canSeeSensitive=()=>ME.role==='admin'||ME.platform_admin;
+/* Τι ταίριαξε — για να μη μαντεύει ο χρήστης γιατί εμφανίστηκε κάποιος. */
+function matchWhy(p,q){
+  const d=digits(q), k=nameKey(q);
+  if(nameKey(nm(p)).includes(k))return '';
+  if(d.length>=3&&digits(p.registry_no).includes(d))return 'Α.Μ. '+esc(p.registry_no);
+  if(d.length>=3&&(digits(p.phone).includes(d)||digits(p.home_phone).includes(d)))return 'τηλέφωνο';
+  if(q.includes('@'))return 'email';
+  if(d.length>=3)return 'τηλέφωνο επαφής';
+  return 'ψευδώνυμο';
+}
+
 /* ══ ΠΡΟΒΟΛΗ ΩΣ ═══════════════════════════════════════════════════════════
    Ο φακός στην κεφαλίδα διαλέγει ΡΟΛΟ. Εδώ διαλέγεις ΑΝΘΡΩΠΟ — γιατί ο
    Ανδρέας Παναγιώτου δεν είναι «ένας ρόλος»: είναι Υ.Ο.Π. ΚΑΙ Μέλος ΚΑΙ
@@ -9443,8 +9541,8 @@ V.viewas=()=>{
   const pool = D.bh.filter(p=>p.status==='Ενεργός'
       && (canAll || (mysec ? secOf(p)===mysec : inScope(p))))
     .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
-  const q=nameKey(VAQ);
-  const hits=(q.length>=2?pool.filter(p=>nameKey(nm(p)).includes(q)):pool).slice(0,80);
+  const q=(VAQ||'').trim();
+  const hits=(q.length>=2?pool.filter(p=>personMatch(p,q)):pool).slice(0,80);
   const tot=NAV.reduce((n,g)=>n+g.items.length,0);
 
   const kindLbl=p=>isPar(p)?'Γονέας':isLed(p)?(ledCode(p)||'Βαθμοφόρος'):'Μέλος';
@@ -9458,7 +9556,8 @@ V.viewas=()=>{
         <b>Τα δικαιώματά σου δεν αλλάζουν</b>: βλέπεις τι θα έβλεπε <i>εκείνος</i>,
         με τα δεδομένα που δικαιούσαι <i>εσύ</i>.</div>
       <div class="grow" style="margin-top:11px">
-        <label style="flex:1">Ποιον<input id="vaq" value="${esc(VAQ)}" placeholder="Γράψε όνομα…" autofocus></label>
+        <label style="flex:1">Ποιον<input id="vaq" value="${esc(VAQ)}"
+          placeholder="όνομα, Α.Μ., τηλέφωνο, email${canSeeSensitive()?', Α.Δ.Τ.':''}…" autofocus></label>
         ${VIEWAS?`<label style="max-width:190px">&nbsp;<button class="btn p sm" id="vaStop">Τέλος προβολής</button></label>`:''}
       </div>
       ${VIEWAS?`<div class="pill" style="margin-top:9px;background:var(--accbg);color:var(--acc);border-color:transparent">
@@ -9472,7 +9571,8 @@ V.viewas=()=>{
         <div class="chead">${statusBar(p,true)}
           <div style="flex:1;min-width:0">
             <div class="ctitle">${pn(p)}</div>
-            <div class="dim" style="font-size:12px">${esc(kindLbl(p))}${sub?' · '+esc(sub):''}</div></div></div>
+            <div class="dim" style="font-size:12px">${esc(kindLbl(p))}${sub?' · '+esc(sub):''}${
+              (()=>{const w=q.length>=2?matchWhy(p,q):''; return w?` · <b style="color:var(--acc)">${w}</b>`:''})()}</div></div></div>
         ${ps.length?ps.map(x=>{
           const al=navFor(x.role||x.k), n=al?al.length:tot;
           return `<button class="btn sm" style="width:100%;justify-content:space-between;margin-top:5px"
