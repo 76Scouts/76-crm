@@ -650,6 +650,7 @@ const NAV=[
    {id:'fees',t:'Χρέωση εγγραφών',i:'book',s:'live'},
    {id:'enroll',t:'Πιστοποιητικά εγγραφής',i:'book',s:'live'},
    {id:'mails',t:'Λείπουν email',i:'mail',s:'live'},
+   {id:'medical',t:'Ιατρικά — τι λείπει',i:'shield',s:'live'},
    {id:'esimport',t:'Εισαγωγή από e-Scouts',i:'down',s:'live'},
    {id:'fimport',t:'Εισαγωγή ιστορικού φορμών',i:'down',s:'live'}]},
 
@@ -700,7 +701,7 @@ const SUBS={
 
  members:'Όλα τα παιδιά — φίλτρα ανά τμήμα, τάξη, κατάσταση',
  leaders:'Οι βαθμοφόροι, τα καθήκοντα και οι εκπαιδεύσεις τους',
- guardians:'Γονείς και κηδεμόνες ανά παιδί, με επαφές',
+ guardians:'Γονείς και κηδεμόνες — επαφές, σημάνσεις, ποιον καλείς',
  dedupe:'Πρόσωπα που μοιάζουν διπλά — κρίνονται μία φορά και μένουν κριμένα',
 
 
@@ -722,10 +723,10 @@ const SUBS={
 
 
 
- medical:'Ιατρικά δελτία και επαφές έκτακτης ανάγκης — ποιανού λείπει',
+ medical:'Ποιανού λείπει ιατρικό δελτίο ή επαφή έκτακτης ανάγκης',
 
  enroll:'Βεβαιώσεις μελών και Ν.91(Ι) βαθμοφόρων',
- calls:'Λίστα τηλεφωνημάτων με σειρά προτεραιότητας',
+
  mails:'Οικογένειες χωρίς email — δεν τις φτάνει τίποτα',
 
  desk:'Ο γονέας μπροστά σου: νέα οικογένεια και κωδικός πρόσβασης',
@@ -762,7 +763,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-25 19:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-25 19:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1308,7 +1309,7 @@ const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile']
 /* Ο απλός βαθμοφόρος: το τμήμα του και το πρόγραμμα. Όχι μητρώο, όχι χρήματα. */
 const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
   'attend','events','cal','groups','synod','staff','enroll',
-  'progAL','progOP','progKA','medical','calls','enroll'];
+  'progAL','progOP','progKA','medical','enroll'];
 /* Ο Αρχηγός τμήματος: τα παραπάνω, συν ό,τι υπογράφει ή ζητά. */
 const NAV_HEAD=[...NAV_LEADER,'viewas','approvals','training','warrants','intake','desk',
   'handover','mails','year','exports','forms','templates','reports'];
@@ -1669,11 +1670,11 @@ function inScope(p){ if(vaHidesPerson(p))return false;
 const MODES=[
   {k:'', t:'Όλα τα μενού', i:'grid', d:'Τίποτα κρυμμένο'},
   {k:'sat', t:'Συγκέντρωση', i:'check', d:'Σάββατο απόγευμα — παρουσίες, πρόγραμμα, ιατρικά',
-   nav:['attend','cal','members','medical','calls','progAL','progOP','progKA','groups']},
+   nav:['attend','cal','members','medical','guardians','progAL','progOP','progKA','groups']},
   {k:'reg', t:'Περίοδος εγγραφών', i:'book', d:'Τραπέζι, Α.Μ., εισπράξεις, κωδικοί',
    nav:['desk','intake','reg','fees','enroll','esimport','mails','year','members','templates','accounts']},
   {k:'camp',t:'Δράση ή κατασκήνωση', i:'flag', d:'Ετοιμότητα, φάκελοι, επαφές έκτακτης ανάγκης',
-   nav:['events','medical','calls','members','groups','enroll','cal']},
+   nav:['events','medical','guardians','members','groups','enroll','cal']},
   {k:'adm', t:'Διοικητικά', i:'shield', d:'Εντολές, ρόλοι, μεταγραφές, λήξεις',
    nav:['warrants','approvals','training','access','transfers','staff','mysys','issues']}
 ];
@@ -1733,9 +1734,9 @@ function tabView(key, tabs){
    2) όσα ΠΑΡΚΑΡΑΜΕ επίτηδες — δουλεύουν, αλλά δεν έχουν κριθεί ακόμη πού ανήκουν
    Η δεύτερη λίστα αδειάζει καθώς αποφασίζουμε. */
 const NAV_PARK=[
-  ['medical','Ιατρικά & έκτακτη ανάγκη'],
-  ['calls','Λίστα κλήσεων'],
-  ];
+  /* Άδειο — και έτσι πρέπει να μένει. Ό,τι μπαίνει εδώ, βγαίνει μόλις
+     αποφασίσουμε πού ανήκει. Στις 25/08 έφυγαν και τα έξι τελευταία. */
+];
 function orphanGroup(){
   const placed=new Set(NAV.flatMap(g=>g.items.map(m=>m.id)));
   const skip=new Set(['dash']);
@@ -2542,7 +2543,10 @@ function wireVQ(){
   /* Ψάχνει το ΚΕΙΜΕΝΟ της γραμμής — άρα πιάνει ό,τι φαίνεται. Για Α.Μ. και
      τηλέφωνα που ΔΕΝ φαίνονται στη γραμμή, συγκρίνει και σκέτα ψηφία. */
   const upd=()=>{const raw=i.value.trim(), q=nameKey(raw), d=digits(raw); let n=0;
-    document.querySelectorAll('#view tbody tr').forEach(r=>{
+    /* Και γραμμές πίνακα ΚΑΙ κάρτες: μισές οθόνες είναι κάρτες, και η
+       αναζήτηση σιωπούσε σε αυτές — χειρότερο από το να λείπει. */
+    const items=document.querySelectorAll('#view tbody tr, #view .cgrid > .ccard');
+    items.forEach(r=>{
       const txt=r.textContent;
       const ok=!raw||nameKey(txt).includes(q)||(d.length>=3&&digits(txt).includes(d));
       r.style.display=ok?'':'none'; if(ok)n++;});
@@ -2830,6 +2834,7 @@ V.intake=()=>{
         <button class="btn p sm" id="inAdd">+ Στη λίστα αναμονής</button>
         <button class="btn sm" id="inImp">Εισαγωγή λίστας…</button></div></div>
 
+    ${listBar('',false)}
     <div class="sec"><h3>Λίστα αναμονής</h3><span class="n">${wait.length}</span></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th>Παιδί</th><th class="hide-s">Τμήμα</th><th class="hide-s">Τάξη</th><th>Γονείς</th><th></th></tr></thead>
       <tbody>${wait.map(p=>row(p,x=>`<button class="btn sm p" data-act="${x.id}">Ενεργοποίηση</button>`)).join('')
@@ -2856,6 +2861,7 @@ V.intake=()=>{
         <label style="max-width:150px">Νέο Α.Μ.<input id="fxV" placeholder="π.χ. 35240"></label>
         <label>&nbsp;<button class="btn" id="fxGo" disabled>Αλλαγή</button></label></div>
       <div id="fxRes" style="margin-top:8px"></div></div>`:''}`;
+  wireVQ();
   $('inSec').onchange=e=>INSEC=e.target.value;
   if(canFixAM()) wireFixAM();
   const imp=$('inImp'); if(imp)imp.onclick=wlImportUI;
@@ -4495,8 +4501,12 @@ function famDrawer(){
   };
 }
 
+let DESKSEC='';
 V.desk=()=>{
-  const kids=D.bh.filter(p=>isMem(p)&&['Ενεργός','Αναμονή'].includes(p.status)).sort(sortByName);
+  /* Με έναν γονέα μπροστά σου και 183 παιδιά στη λίστα, το scroll δεν είναι
+     επιλογή. Αναζήτηση με όνομα, Α.Μ. ή τηλέφωνο — και φίλτρο τμήματος. */
+  const kids=D.bh.filter(p=>isMem(p)&&['Ενεργός','Αναμονή'].includes(p.status)
+      &&(!DESKSEC||secOf(p)===DESKSEC)).sort(sortByName);
   const carersOf=p=>(D.cl||[]).filter(c=>c.member_id===p.id)
       .map(c=>D.bh.find(b=>b.id===c.carer_id)).filter(Boolean);
   const inv=p=>(D.inv||[]).find(i=>i.person_id===p.id&&!i.used_on&&!i.revoked_on);
@@ -4521,7 +4531,10 @@ V.desk=()=>{
     <div class="card pad" style="margin-bottom:14px">
       <b>Τραπέζι εγγραφών</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Ο γονέας έρχεται, υπογράφει, δίνει email και παίρνει
-        <b>τυπωμένο κωδικό</b> μαζί με την κόλλα του. Ο κωδικός <b>δεν στέλνεται με email</b> — αλλιώς η ασφάλεια θα κρεμόταν
+        <b>τυπωμένο κωδικό</b> μαζί με την κόλλα του. <b>Ένας κωδικός ανά γονέα</b> —
+        όχι ανά παιδί και όχι ανά οικογένεια: ο κωδικός δένεται στο <i>email</i> του,
+        και μόλις μπει βλέπει <b>όλα</b> τα παιδιά του. Δύο γονείς = δύο κωδικοί,
+        γιατί δύο λογαριασμοί. Τα παιδιά <b>δεν</b> παίρνουν κωδικό από εδώ. Ο κωδικός <b>δεν στέλνεται με email</b> — αλλιώς η ασφάλεια θα κρεμόταν
         από το ίδιο το email που θέλουμε να επιβεβαιώσουμε. Εδώ τον αναγνωρίζεις· είναι ισχυρότερο.</div>
       <div style="margin-top:11px"><button class="btn p sm" id="newFam">+ Νέα οικογένεια</button>
         <span class="muted" style="font-size:12.5px;margin-left:8px">παιδί και γονείς μαζί, σε μία κίνηση</span></div>
@@ -4534,14 +4547,18 @@ V.desk=()=>{
           <div class="v">${(D.inv||[]).filter(i=>!i.used_on&&!i.revoked_on).length}</div><div class="s">δόθηκαν, δεν χρησιμοποιήθηκαν</div></div>
       </div></div>
 
+    ${listBar(`<select id="dkSec" style="max-width:150px">
+        <option value="">Όλα τα τμήματα</option>${MEMSECS().map(x=>
+        `<option${x===DESKSEC?' selected':''}>${esc(x)}</option>`).join('')}</select>`,false)}
+
     ${gaps.length?`<div class="sec"><h3>Θέλουν κάτι πριν φύγουν</h3><span class="n">${gaps.length}</span></div>
       <div class="card" style="overflow:auto"><table>
-        <thead><tr><th>Παιδί</th><th>Γονείς</th><th>Λογαριασμός</th></tr></thead>
+        <thead><tr><th>Παιδί</th><th>Γονείς & κηδεμόνες</th><th>Κωδικός — ένας ανά γονέα</th></tr></thead>
         <tbody>${gaps.map(line).join('')}</tbody></table></div>`:''}
 
     <div class="sec"><h3>Έτοιμοι</h3><span class="n">${done.length}</span></div>
     <div class="card" style="overflow:auto"><table>
-      <thead><tr><th>Παιδί</th><th>Γονείς</th><th>Λογαριασμός</th></tr></thead>
+      <thead><tr><th>Παιδί</th><th>Γονείς & κηδεμόνες</th><th>Κωδικός — ένας ανά γονέα</th></tr></thead>
       <tbody>${done.map(line).join('')}</tbody></table></div>
 
     <div class="card pad"><div class="dim" style="font-size:12px">
@@ -4549,6 +4566,8 @@ V.desk=()=>{
       παίρνει κωδικό → εγγραφή στο e-Scouts → έρχεται ο Α.Μ. → ενεργοποίηση.
       Ο κωδικός λήγει σε 30 μέρες.</div></div>`;
 
+  wireVQ();
+  const ds=$('dkSec'); if(ds)ds.onchange=e=>{DESKSEC=e.target.value; V.desk()};
   const nf=$('newFam'); if(nf) nf.onclick=famDrawer;
   document.querySelectorAll('[data-inv]').forEach(b=>b.onclick=async()=>{
     b.disabled=true;
@@ -6042,6 +6061,7 @@ function honoursBody(){
         <button class="btn p sm" id="hAdd">+ Απονομή</button>
         <span class="sp"></span><button class="btn sm" id="hExp">${ic('down',14)} Εξαγωγή</button></div>
       <div id="hSug" class="dim" style="font-size:12.5px;margin-top:7px"></div></div>
+    ${listBar('',false)}
     ${Object.entries(byT).sort((a,b)=>b[1].length-a[1].length).map(([t,l])=>`
       <div class="sec"><h3>${esc(t)}</h3><span class="n">${l.length}</span></div>
       <div class="card pad" style="display:flex;flex-wrap:wrap;gap:6px">
@@ -6053,6 +6073,7 @@ function honoursBody(){
     const hits=D.bh.filter(b=>!isPar(b)&&nameKey(nm(b)).includes(q)).slice(0,6);
     $('hSug').innerHTML=hits.map(b=>`<button class="btn gh sm" data-hp="${b.id}" style="margin:2px 3px 0 0">${pn(b)}</button>`).join('');
     document.querySelectorAll('[data-hp]').forEach(b=>b.onclick=()=>{pick=b.dataset.hp;$('hP').value=b.textContent;$('hSug').textContent='✓ '+b.textContent})};
+  wireVQ();
   $('hAdd').onclick=async()=>{
     if(!pick)return toast('Διάλεξε πρόσωπο από τις προτάσεις');
     const t=$('hT').value.trim(); if(!t)return toast('Θέλει τίτλο');
@@ -6138,9 +6159,10 @@ V.groups=()=>{
         <input id="sgNew" placeholder="Νέα ${kindOf.toLowerCase()}…" style="max-width:160px;font-size:13px">
         <button class="btn sm" id="sgAdd">+</button>
         <button class="btn sm" id="sgExp">${ic('down',14)} Εξαγωγή</button></div></div>
-    <div class="cgrid">${sgs.map(card).join('')||'<div class="card pad dim">Καμία υποομάδα ακόμη</div>'}</div>
+    ${listBar('',false)}<div class="cgrid">${sgs.map(card).join('')||'<div class="card pad dim">Καμία υποομάδα ακόμη</div>'}</div>
     ${none.length?`<div class="sec"><h3>Χωρίς υποομάδα</h3><span class="n">${none.length}</span></div>
       <div class="card pad" style="display:flex;flex-wrap:wrap;gap:5px">${none.map(p=>`<span class="pill"><span class="pn" data-p="${p.id}">${pn(p)}</span></span>`).join('')}</div>`:''}`;
+  wireVQ();
   document.querySelectorAll('[data-sg]').forEach(b=>b.onclick=()=>{SGSEC=b.dataset.sg;V.groups()});
   $('sgAdd').onclick=async()=>{const n=$('sgNew').value.trim(); if(!n)return;
     const {data,error}=await sb.from('subgroups').insert({scout_year:YEAR,section:SGSEC,name:n,kind:kindOf}).select().single();
@@ -7783,7 +7805,7 @@ function contactsOf(p){
   out.forEach(c=>c.reach=!bad(c.tel)||!bad(c.alt));
   return out.sort((a,b)=>(b.pri?1:0)-(a.pri?1:0)||(b.reach?1:0)-(a.reach?1:0));
 }
-V.calls=()=>{
+function callsBody(){
   const admin=ME.role==='admin';
   let people=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός');
   if(CALLSEC!=='all')people=people.filter(p=>secOf(p)===CALLSEC);
@@ -9214,7 +9236,7 @@ function contactExport(){
   drw.classList.add('on');
 }
 
-V.guardians=()=>{
+function guardiansBody(){
   const secs=['Αγέλη','Ομάδα','Κοινότητα'];
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
@@ -9226,7 +9248,8 @@ V.guardians=()=>{
         <button class="btn p sm" id="doMail">${ic('msg',14)} Άνοιγμα email</button>
         <button class="btn sm" id="xExp">${ic('down',14)} Εξαγωγή επαφών</button>
       </div><div class="dim" style="font-size:12.5px;margin-top:9px" id="ginfo"></div></div>
-    <div class="card" style="overflow:auto"><table><thead><tr><th>Παιδί</th><th class="hide-s">Υποομάδα</th><th>Πατέρας</th><th>Μητέρα</th><th></th></tr></thead><tbody id="gtb"></tbody></table></div>`;
+    ${listBar('',false)}<div class="card" style="overflow:auto"><table><thead><tr><th>Παιδί</th><th class="hide-s">Υποομάδα</th><th>Πατέρας</th><th>Μητέρα</th><th></th></tr></thead><tbody id="gtb"></tbody></table></div>`;
+  wireVQ();
   const draw=()=>{
     const s=$('gsec').value,g=$('ggrp').value;
     const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===s&&(!g||(myOf(p)||{}).group_name===g)).sort(sortByName);
@@ -9626,6 +9649,13 @@ function progScreen(sec, extra){
     ...(extra||[])]);
 }
 V.honours=()=>honoursBody();
+/* «Γονείς» και «Λίστα κλήσεων» ήταν το ίδιο θέμα από δύο γωνίες: ο πρώτος
+   είναι κατάλογος επαφών, ο δεύτερος «ποιον παίρνω και τι πρέπει να ξέρω
+   πριν σηκώσω» — σημάνσεις, κανόνες επικοινωνίας, οικογένειες με λιγότερες
+   από δύο προσβάσιμες επαφές. Μία θέση, δύο καρτέλες. */
+V.guardians=()=>tabView('guardians',[
+  {k:'list', t:'Κατάλογος',      i:'home', fn:guardiansBody, d:'επαφές ανά παιδί'},
+  {k:'call', t:'Ποιον καλώ',     i:'msg',  fn:callsBody,     d:'σημάνσεις και κανόνες πριν σηκώσεις'}]);
 /* Ο ρόλος λέει τι δικαιούσαι μόνιμα· η παραχώρηση τι σου δόθηκε προσωρινά.
    Δύο οθόνες για την ίδια ερώτηση — «τι βλέπει αυτός;» — σε έβαζαν να ψάχνεις. */
 /* Τρεις οθόνες απαντούσαν στο ίδιο «πού το ρυθμίζω αυτό;» — Σύστημα,
