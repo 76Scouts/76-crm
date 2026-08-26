@@ -261,6 +261,12 @@ th.srt.desc:after{content:"↓";opacity:.9}
 .pcard{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:7px 9px;cursor:grab;font-size:13px;display:flex;gap:8px;align-items:center}
 .pcard:hover{border-color:var(--ink3)}
 .pcard.drag{opacity:.35}
+/* Το δέντρο σέρνει κι αυτό — ίδια γλώσσα σημάτων με τις στήλες. */
+.orow[draggable="true"]{cursor:grab}
+.orow.drag{opacity:.35}
+.orow.moved{box-shadow:inset 3px 0 0 var(--acc)}
+.okids.dropz{min-height:34px;border-radius:8px}
+.okids.dropz.over{background:var(--accbg);box-shadow:inset 0 0 0 2px var(--acc)}
 .pcard.moved{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
 .pcard .av{width:24px;height:24px;flex:0 0 24px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:600;background:var(--bg);color:var(--ink2);border:1px solid var(--line2)}
 .pcard select{font-size:11px;padding:2px 3px;width:auto;max-width:92px;border:0;background:transparent;color:var(--ink3);cursor:pointer}
@@ -773,7 +779,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-26 17:24'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-26 18:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6691,7 +6697,14 @@ V.fees=()=>{
 
 /* ══ ΔΙΑΡΘΡΩΣΗ — πλήρες οργανόγραμμα, Σ.Π.Κ. → τελευταίος βαθμοφόρος ══ */
 let STMODE='org', OPEN={}, STQ='';
-try{OPEN=JSON.parse(localStorage.getItem('e76:orgopen')||'{"ΣΠΚ":1,"76":1,"Αγέλη":1,"Ομάδα":1,"Κοινότητα":1}')}catch(e){OPEN={}}
+/* Οι κόμβοι του δέντρου σε ΕΝΑ σημείο. Ήταν γραμμένοι τρεις φορές μέσα στη
+   staffScreen και ξεχνιόνταν — π.χ. η «Μικρή Αγέλη» δεν άνοιγε ποτέ με το
+   «Ανάπτυξη όλων», οπότε δεν είχες πού να αφήσεις κάποιον. */
+const ORG_NODES=['ΣΠΚ','ΓΕ','ΕΕ','76',...SECS_B];
+const ORG_ALL=()=>Object.fromEntries(ORG_NODES.map(k=>[k,1]));
+/* Προεπιλογή = ΟΛΑ ανοιχτά. Το κλειστό δέντρο σε αναγκάζει να κλικάρεις
+   πέντε φορές πριν δεις τον πρώτο άνθρωπο. */
+try{const raw=localStorage.getItem('e76:orgopen'); OPEN=raw?JSON.parse(raw):ORG_ALL()}catch(e){OPEN=ORG_ALL()}
 const saveOpen=()=>localStorage.setItem('e76:orgopen',JSON.stringify(OPEN));
 const ROLERANK=r=>{const s=String(r||'');
   if(/^Αρχηγός Συστ/i.test(s))return 0;
@@ -6741,7 +6754,10 @@ function staffScreen(){
   const led=D.bh.filter(p=>isLed(p)&&p.status!=='Αρχειοθετημένος');
   const q=nameKey(STQ);
   const hit=p=>!q||nameKey(nm(p)+' '+roleOfYear(p,SY)+' '+(p.scout_name||'')+' '+(p.email||'')).includes(q);
-  const bySec={}; led.forEach(p=>{const s=secOfYear(p,SY);(bySec[s]=bySec[s]||[]).push(p)});
+  /* Το πρόχειρο υπερισχύει της βάσης ΟΠΤΙΚΑ. Αν σύρεις κάποιον και μείνει
+     στη θέση του μέχρι την οριστικοποίηση, νομίζεις ότι δεν δούλεψε. */
+  const secDraft=p=>(DRAFT&&DRAFT[p.id]&&DRAFT[p.id].section)||secOfYear(p,SY);
+  const bySec={}; led.forEach(p=>{const s=secDraft(p);(bySec[s]=bySec[s]||[]).push(p)});
   Object.values(bySec).forEach(l=>l.sort((a,b)=>ROLERANK(roleOfYear(a,SY))-ROLERANK(roleOfYear(b,SY))||sortByName(a,b)));
   const memCount=s=>D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)&&secOf(x)===s).length;
 
@@ -6752,7 +6768,8 @@ function staffScreen(){
   const prow=p=>{
     const r=roleOfYear(p,SY), cs=certState(p.id), w=warrantOf(p.id);
     const mail=p.email||'', tel=p.phone||'';
-    return `<div class="orow${hit(p)?'':' dimmed'}">
+    const mv=!!(DRAFT&&DRAFT[p.id]);
+    return `<div class="orow${hit(p)?'':' dimmed'}${mv?' moved':''}"${canMove?` draggable="true" data-mv="${p.id}"`:''}>
       ${avatar(p,28)}
       <div style="flex:1;min-width:0">
         <div class="on"><span class="pn" data-p="${p.id}">${pn(p)}</span>${p.scout_name?`<i class="osn">${esc(p.scout_name)}</i>`:''}</div>
@@ -6774,12 +6791,24 @@ function staffScreen(){
   const ge=(D.or||[]).filter(o=>o.level==='Γενική Εφορεία').sort((a,b)=>(a.seq||0)-(b.seq||0));
   const ep=(D.or||[]).filter(o=>o.level&&o.level.startsWith('Επαρχιακή')).sort((a,b)=>(a.seq||0)-(b.seq||0));
 
-  const secBlock=s=>{const list=bySec[s]||[]; if(!list.length&&s!=='Σύστημα')return '';
+  /* Η μετακίνηση είναι ΚΛΕΙΔΩΜΕΝΗ από προεπιλογή: χωρίς αυτό, ένα άστοχο
+     σύρσιμο πάνω σε φορτωμένη οθόνη αλλάζει τμήμα σε κάποιον χωρίς να το
+     καταλάβεις. Και δεν αγγίζεις ΠΟΤΕ περασμένη χρονιά. */
+  const canMove = DRAGON && SY>=YEAR;
+
+  /* Το άδειο τμήμα κρυβόταν. Αλλά όταν στήνεις χρονιά, το άδειο τμήμα είναι
+     ΑΚΡΙΒΩΣ αυτό που ψάχνεις — εκεί θέλεις να αφήσεις κόσμο. Κρύβεται μόνο
+     όταν απλώς κοιτάς περασμένη χρονιά. */
+  const secBlock=s=>{const list=bySec[s]||[]; if(!list.length&&s!=='Σύστημα'&&!canMove)return '';
     const m=memCount(s);
     return `<div class="obranch">${tog(s,esc(SECFULL[s]||s),`${list.length} βαθμοφόροι${m?` · ${m} μέλη`:''}`,SC[s])}
-      ${OPEN[s]?`<div class="okids">${list.map(prow).join('')||'<div class="dim" style="padding:6px 10px;font-size:12.5px">— κενό —</div>'}</div>`:''}</div>`};
+      ${OPEN[s]?`<div class="okids${canMove?' dropz':''}" data-drop="${esc(s)}">${list.map(prow).join('')||'<div class="dim" style="padding:6px 10px;font-size:12.5px">— κενό —</div>'}</div>`:''}</div>`};
 
   const tot=led.length, mem=D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)).length;
+  /* «Ανάπτυξη ή Σύμπτυξη;» — έλεγε «Σύμπτυξη» ακόμη κι όταν ήταν ανοιχτός
+     ΕΝΑΣ κόμβος από τους δέκα. Τώρα ρωτά αν είναι όλοι ανοιχτοί. */
+  const allOpen=ORG_NODES.every(k=>OPEN[k]);
+  loadDraft(); const draftN=Object.keys(DRAFT||{}).length;
   $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:13px">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <b>Διάρθρωση</b>
@@ -6789,12 +6818,16 @@ function staffScreen(){
         <button class="btn sm gh" id="stDraft">Πρόχειρο επιτελείων</button>
         <span class="sp"></span>
         <input id="stq" placeholder="Αναζήτηση…" value="${esc(STQ)}" style="max-width:170px;font-size:13px">
-        <button class="btn sm gh" id="stAll">${Object.keys(OPEN).length?'Σύμπτυξη':'Ανάπτυξη'} όλων</button>
+        <button class="btn sm gh" id="stAll">${allOpen?'Σύμπτυξη':'Ανάπτυξη'} όλων</button>
+        ${SY>=YEAR?`<button class="btn sm${DRAGON?' p':''}" id="stDrag"
+          title="Όσο είναι κλειστό, κανένα σύρσιμο δεν μετακινεί κατά λάθος. Ανοιχτό: σύρε βαθμοφόρο σε άλλο τμήμα.">↕ Μετακίνηση${DRAGON?' — ανοιχτή':''}</button>
+        <button class="btn sm gh" id="stImp" title="Επικόλλησε λίστα ή CSV και αντιστοίχισε ονόματα">${ic('down',14)} Εισαγωγή</button>`:''}
         <button class="btn sm" id="stCsv">${ic('down',14)} CSV</button>
         <button class="btn sm p" id="stDia" title="Μία στήλη ανά κλάδο, αριθμημένη — η μορφή που τυπώνεται και στέλνεται">${ic('down',14)} Διάρθρωση</button>
         <button class="btn sm" id="stPrint">Εκτύπωση</button>
       </div>
-      <div class="dim" style="font-size:12.5px;margin-top:6px">Από την κορυφή του Σ.Π.Κ. μέχρι τον τελευταίο βαθμοφόρο. ${tot} βαθμοφόροι · ${mem} μέλη στο 76ο.</div></div>
+      <div class="dim" style="font-size:12.5px;margin-top:6px">Από την κορυφή του Σ.Π.Κ. μέχρι τον τελευταίο βαθμοφόρο. ${tot} βαθμοφόροι · ${mem} μέλη στο 76ο.${
+        draftN?` <b style="color:var(--acc)">${draftN} πρόχειρες αλλαγές</b> — η οριστικοποίηση γίνεται στο «Πρόχειρο επιτελείων».`:''}</div></div>
     <div class="card pad otree">
       ${tog('ΣΠΚ','ΣΩΜΑ ΠΡΟΣΚΟΠΩΝ ΚΥΠΡΟΥ','','var(--brand)')}
       ${OPEN['ΣΠΚ']?`<div class="okids">
@@ -6811,13 +6844,43 @@ function staffScreen(){
   $('stq').oninput=e=>{STQ=e.target.value;
     document.querySelectorAll('.orow').forEach(r=>{
       const t=nameKey(r.textContent); r.classList.toggle('dimmed', !!nameKey(STQ)&&!t.includes(nameKey(STQ)))})};
-  $('stAll').onclick=()=>{const any=Object.keys(OPEN).length;
-    OPEN=any?{}:{'ΣΠΚ':1,'ΓΕ':1,'ΕΕ':1,'76':1,'Σύστημα':1,'Αγέλη':1,'Ομάδα':1,'Κοινότητα':1,'Δίκτυο':1};
-    saveOpen();V.staff()};
+  $('stAll').onclick=()=>{ OPEN=allOpen?{}:ORG_ALL(); saveOpen();V.staff()};
+  const dg=$('stDrag'); if(dg)dg.onclick=()=>{DRAGON=!DRAGON;
+    try{localStorage.setItem('e76:dragon',DRAGON?'1':'')}catch(x){}
+    if(DRAGON)OPEN=ORG_ALL();          // δεν σέρνεις σε κλειστό συρτάρι
+    saveOpen(); V.staff()};
+  const imp=$('stImp'); if(imp)imp.onclick=staffImport;
+
+  /* ── Σύρσιμο μέσα στο δέντρο ────────────────────────────────────────
+     Γράφει στο ΙΔΙΟ πρόχειρο (DRAFT) με το «Στήσιμο». Δύο οθόνες, μία
+     αλήθεια — αλλιώς σέρνεις εδώ και δεν το βλέπεις εκεί. */
+  if(canMove){
+    loadDraft();
+    let dragId=null;
+    document.querySelectorAll('[data-mv]').forEach(r=>{
+      r.ondragstart=e=>{dragId=r.dataset.mv;r.classList.add('drag');
+        e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragId)};
+      r.ondragend=()=>r.classList.remove('drag')});
+    document.querySelectorAll('.dropz').forEach(z=>{
+      z.ondragover=e=>{e.preventDefault();z.classList.add('over')};
+      z.ondragleave=()=>z.classList.remove('over');
+      z.ondrop=e=>{e.preventDefault();z.classList.remove('over');
+        const id=dragId||e.dataTransfer.getData('text/plain'), sec=z.dataset.drop;
+        if(!id||!sec)return;
+        const p=led.find(x=>x.id===id); if(!p)return;
+        if(secOfYear(p,SY)===sec&&!DRAFT[id]){toast('Ήδη στην '+sec);return}
+        const cur=(D.sh||[]).find(x=>x.person_id===id&&x.scout_year===SY);
+        DRAFT[id]=Object.assign({role:'Βοηθός',category:p.category||'Βαθμοφόρος'},
+          DRAFT[id]||{}, {section:sec});
+        if(cur&&(cur.appointment||cur.role)&&!(DRAFT[id].roleSet)){
+          const m=ROLES_B.find(k=>new RegExp('^'+k).test(cur.appointment||cur.role||''));
+          if(m)DRAFT[id].role=m; }
+        saveDraft(); toast(nm(p)+' → '+sec+' (πρόχειρο)'); V.staff()};});
+  }
   document.querySelectorAll('[data-tog]').forEach(b=>b.onclick=()=>{
     const k=b.dataset.tog; OPEN[k]?delete OPEN[k]:OPEN[k]=1; saveOpen(); V.staff()});
   const sd=$('stDia'); if(sd)sd.onclick=staffDiarthrosi;
-  $('stPrint').onclick=()=>{OPEN={'ΣΠΚ':1,'ΓΕ':1,'ΕΕ':1,'76':1,'Σύστημα':1,'Αγέλη':1,'Ομάδα':1,'Κοινότητα':1,'Δίκτυο':1};saveOpen();V.staff();setTimeout(()=>window.print(),120)};
+  $('stPrint').onclick=()=>{OPEN=ORG_ALL();saveOpen();V.staff();setTimeout(()=>window.print(),120)};
   $('stCsv').onclick=()=>{
     const rows=[['Επίπεδο','Τμήμα','Ρόλος','Επώνυμο','Όνομα','Προσκοπικό','Α.Μ.','Τηλέφωνο','Email','Ν.91(Ι) λήξη','Εντολή']];
     ge.forEach(o=>rows.push(['Γενική Εφορεία','',o.title,o.person_name||'','','','','',o.email||'','','']));
