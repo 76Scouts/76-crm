@@ -773,7 +773,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-26 17:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-26 17:24'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -7062,11 +7062,12 @@ function staffBoard(years){
     (p.extra_sections||[]).filter(x=>x&&x!==sec).forEach(x=>
       h+=`<span class="chip" title="Υπηρετεί και αλλού">κοινό ↤ ${esc(x)}</span>`);
     return h};
-  /* Ο ίδιος κύκλος με τη Διάρθρωση — αλλά με τον κλάδο ΠΡΟΟΡΙΣΜΟΥ: αν τον
-     σύρεις στην Ομάδα, το δεξί μισό ρωτά «έχει Βασική Ομάδας;», όχι Αγέλης. */
-  const dot=p=>p.is_commissioner
+  /* Ο κύκλος παίρνει τον κλάδο ΤΗΣ ΣΤΗΛΗΣ όπου εμφανίζεται — όχι τον δικό του.
+     Έτσι, για κάποιον που «δανείζεται» σε άλλο τμήμα, το δεξί μισό ρωτά
+     «έχει Βασική ΓΙ' ΑΥΤΟ το τμήμα;». */
+  const dot=(p,sec)=>p.is_commissioner
     ? '<i class="edot" style="background:#8e44ad" title="Έφορος"></i>'
-    : leaderDot(p, place(p), SY);
+    : leaderDot(p, sec||secOf(p)||p.section, SY);
   const fa=p=>{const c=(D.pc||[]).find(x=>x.person_id===p.id&&/ΠΡΩΤΕΣ|ΒΟΗΘ/i.test(x.type_code||'')
       &&(!x.expires_on||x.expires_on>=new Date().toISOString().slice(0,10)));
     return c?'<span class="facross" title="Ενεργές Α΄ Βοήθειες">✚</span>':''};
@@ -7095,7 +7096,7 @@ function staffBoard(years){
         <span class="num">${n}</span>
         <div style="flex:1;min-width:0">
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-            ${dot(p)}<span class="pn" data-p="${p.id}" style="font-size:13.5px;cursor:pointer">${pn(p)}</span>
+            ${dot(p,s.section)}<span class="pn" data-p="${p.id}" style="font-size:13.5px;cursor:pointer">${pn(p)}</span>
             ${p.scout_name?`<span class="dim" style="font-size:11.5px">«${esc(p.scout_name)}»</span>`:''}
             ${fa(p)}${chips(p,s.section)}</div>
           <div class="dim" style="font-size:11.5px">${contact(p)}</div></div>
@@ -7109,7 +7110,7 @@ function staffBoard(years){
             <span class="num"></span><div style="flex:1;min-width:0">
               <div style="font-size:10.5px;color:var(--ink3);letter-spacing:.05em;text-transform:uppercase">${esc(roleOfYear(head,SY))}</div>
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                ${dot(head)}<span class="pn" data-p="${head.id}" style="font-weight:600;font-size:14.5px;cursor:pointer">${pn(head)}</span>
+                ${dot(head,s.section)}<span class="pn" data-p="${head.id}" style="font-weight:600;font-size:14.5px;cursor:pointer">${pn(head)}</span>
                 ${fa(head)}${chips(head,s.section)}
                 <span class="pencil" data-pe="${head.id}" title="Ρόλος, τμήμα, προβολή">✎</span></div>
               <div class="dim" style="font-size:12px">${contact(head)}</div>
@@ -10202,7 +10203,9 @@ V.forms=()=>tabView('forms',[
   {k:'blank',t:'Κενά πρότυπα',       i:'book', fn:templatesBody, d:'τυπώνεις και συμπληρώνει άνθρωπος'},
   {k:'filled',t:'Συμπληρωμένα',      i:'book', fn:formsBody,     d:'με τα δικά μας δεδομένα, έτοιμα για υπογραφή'},
   {k:'spk',  t:'Προς e-Scouts / Σ.Π.Κ.', i:'down', fn:spkExportBody, d:'στη μορφή που τα ζητούν'}]);
-V.templates=()=>V.forms();
+/* ΨΕΥΔΩΝΥΜΟ, όχι οθόνη: παλιά κουμπιά έλεγαν data-go2="templates". Δεν
+   μπαίνει στο μενού — γι' αυτό ο έλεγχος το έβγαζε «αταξινόμητο». */
+V.templates=()=>{ SUBTAB.forms='blank'; V.forms(); };  /*@alias*/
 V.exports=()=>exportsBody();
 
 /* Οι εξαγωγές που ταξιδεύουν προς τα έξω έχουν ΞΕΝΕΣ προδιαγραφές — στήλες,
