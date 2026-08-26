@@ -772,7 +772,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-26 16:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-26 16:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2736,6 +2736,9 @@ const CATS_B=['ΑΣ','Αρχηγός','Βαθμοφόρος','P/T','Δίκτυο
 const SECFULL={'Αγέλη':'Αγέλης Λυκοπούλων','Ομάδα':'Ομάδας Προσκόπων','Κοινότητα':'Κοινότητας Ανιχνευτών','Δίκτυο':'Δικτύου','Σύστημα':'Συστήματος'};
 const nextY=y=>{const m=/^(\d{4})-(\d{2})$/.exec(y||'');if(!m)return null;const a=+m[1]+1;return a+'-'+String(a+1).slice(2)};
 let SY=null, DRAFT={};
+/* Η μετακίνηση με σύρσιμο είναι ΚΛΕΙΣΤΗ εξ ορισμού. Σε πίνακα με εκατό κάρτες,
+   ένα άστοχο σύρσιμο αλλάζει τμήμα σε άνθρωπο και δεν το προσέχεις. */
+let DRAGON=false; try{DRAGON=!!localStorage.getItem('e76:dragon')}catch(e){}
 function draftKey(){return 'e76:staff:'+SY}
 function loadDraft(){try{DRAFT=JSON.parse(localStorage.getItem(draftKey())||'{}')}catch(e){DRAFT={}}}
 function saveDraft(){localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}
@@ -6665,7 +6668,11 @@ function staffScreen(){
   if(ROUTE==='staff'&&STMODE!=='draft'&&STMODE!=='tree')STMODE='board';
   const years=[...new Set([...(D.sh||[]).map(x=>x.scout_year),...D.my.map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
   const nx=nextY(years[0]||YEAR); if(nx&&!years.includes(nx))years.unshift(nx);
-  if(!SY||!years.includes(SY))SY=years.find(y=>(D.sh||[]).some(x=>x.scout_year===y))||YEAR;
+  /* Έπιανε την πιο πρόσφατη χρονιά ΜΕ ΔΕΔΟΜΕΝΑ — δηλαδή την περσινή, επειδή
+     η φετινή είναι ακόμη άδεια. Αλλά τα επιτελεία τα φτιάχνεις για τη χρονιά
+     που ΕΡΧΕΤΑΙ. Θυμάται και την επιλογή σου, ώστε να μη γυρίζει πίσω. */
+  if(!SY){ try{SY=localStorage.getItem('e76:sy')||null}catch(e){} }
+  if(!SY||!years.includes(SY)) SY = years.includes(YEAR)?YEAR:(years[0]||YEAR);
   if(STMODE==='draft')return staffDraft(years);
   if(STMODE!=='tree')return staffBoard(years);
 
@@ -6716,6 +6723,8 @@ function staffScreen(){
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <b>Διάρθρωση</b>
         <select id="syr" style="width:auto;max-width:120px">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select>
+        ${SY<YEAR?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent"
+          title="Βλέπεις περασμένη χρονιά. Ό,τι αλλάξεις εδώ αλλάζει το ΠΑΡΕΛΘΟΝ.">περασμένη χρονιά</span>`:''}
         <button class="btn sm gh" id="stDraft">Πρόχειρο επιτελείων</button>
         <span class="sp"></span>
         <input id="stq" placeholder="Αναζήτηση…" value="${esc(STQ)}" style="max-width:170px;font-size:13px">
@@ -6736,7 +6745,7 @@ function staffScreen(){
           ${OPEN['76']?`<div class="okids">${SECS_B.map(secBlock).join('')}</div>`:''}</div>
       </div>`:''}
     </div>`;
-  $('syr').onchange=e=>{SY=e.target.value;V.staff()};
+  $('syr').onchange=e=>{SY=e.target.value;try{localStorage.setItem('e76:sy',SY)}catch(x){};V.staff()};
   $('stDraft').onclick=()=>{STMODE='draft';V.staff()};
   $('stq').oninput=e=>{STQ=e.target.value;
     document.querySelectorAll('.orow').forEach(r=>{
@@ -7079,12 +7088,88 @@ function staffBoard(years){
           ${p.location?`<span class="dim">${esc(p.location)}</span>`:''}</span>`).join('')}
       </div>`:''}`;
 
-  const sy=$('sy'); if(sy)sy.onchange=e=>{SY=e.target.value;V.staff()};
+  const sy=$('sy'); if(sy)sy.onchange=e=>{SY=e.target.value;try{localStorage.setItem('e76:sy',SY)}catch(x){};V.staff()};
   const st=$('stq'); if(st)st.oninput=e=>{STQ=e.target.value;
     document.querySelectorAll('#view .pill,#view [style*="opacity"]').forEach(()=>{}); V.staff();
     const n=$('stq'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}};
   const to=$('toOrg'); if(to)to.onclick=()=>route('org');
   bindStaffEdit();
+}
+
+/* ══ ΕΙΣΑΓΩΓΗ ΕΠΙΤΕΛΕΙΩΝ ═════════════════════════════════════════════════
+   Το standalone «Επιτελείο» κρατά την κατάστασή του σε JSON. Αν έστησες εκεί
+   τα επιτελεία της νέας χρονιάς, τα φέρνεις εδώ αντί να τα ξαναστήσεις.
+   Δέχεται και απλή επικόλληση: Τμήμα · Ονοματεπώνυμο · Ρόλος.
+   Μπαίνει στο ΠΡΟΧΕΙΡΟ — τίποτα δεν οριστικοποιείται χωρίς εσένα. */
+function staffImport(){
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+      <div style="font-size:17px;font-weight:600">Εισαγωγή επιτελείων</div>
+      <div class="dim" style="font-size:12.5px">προς το πρόχειρο του ${esc(SY)}</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:9px">
+        Δύο τρόποι — αναγνωρίζει μόνο του ποιος είναι:<br>
+        <b>JSON</b> από το εργαλείο «Επιτελείο 76ου» (το κουμπί «JSON backup»), ή<br>
+        <b>επικόλληση</b> με στήλες <code>Τμήμα · Ονοματεπώνυμο · Ρόλος</code> από Excel.</div>
+      <textarea id="siT" rows="10" placeholder="Επικόλλησε εδώ…"
+        style="width:100%;font-family:ui-monospace,monospace;font-size:11.5px"></textarea>
+      <div style="margin-top:9px;display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn" id="siRead">Διάβασε</button>
+        <button class="btn p" id="siGo" style="display:none">Στο πρόχειρο</button></div>
+      <div id="siOut" style="margin-top:11px"></div></div>`;
+  drw.classList.add('on');
+  let ROWS=null;
+  $('siRead').onclick=()=>{
+    const raw=$('siT').value.trim();
+    if(!raw)return $('siOut').innerHTML='<div class="dim">Τίποτα να διαβάσω.</div>';
+    let items=[];
+    if(raw[0]==='{'||raw[0]==='['){
+      try{const j=JSON.parse(raw); const arr=Array.isArray(j)?j:(j.people||[]);
+        items=arr.map(p=>({name:p.name||((p.first_name||'')+' '+(p.last_name||'')).trim(),
+                           sec:p.section||'', role:p.headrole||p.category||''}));
+      }catch(e){return $('siOut').innerHTML='<div class="bad">Χαλασμένο JSON: '+esc(e.message)+'</div>'}
+    } else {
+      items=tsvRows(raw)||[];
+      if(items.length&&!items[0].Τμήμα){
+        items=raw.split(/\n/).map(l=>l.split(/\t|;/)).filter(c=>c.length>=2)
+          .map(c=>({sec:(c[0]||'').trim(), name:(c[1]||'').trim(), role:(c[2]||'').trim()}));
+      } else items=items.map(o=>({sec:o['Τμήμα']||'', name:o['Ονοματεπώνυμο']||o['Όνομα']||'', role:o['Ρόλος']||''}));
+    }
+    /* Ίδιος μηχανισμός ταιριάσματος με τους φακέλους δράσεων. */
+    const led=D.bh.filter(p=>isLed(p)&&p.status!=='Αρχειοθετημένος');
+    const REG=led.map(p=>M76.person(p.first_name,p.last_name,{ref:p,display:nm(p)}));
+    const SECMAP={'ΑΓΕΛΗ':'Αγέλη','ΟΜΑΔΑ':'Ομάδα','ΚΟΙΝΟΤΗΤΑ':'Κοινότητα','ΔΙΚΤΥΟ':'Δίκτυο','ΣΥΣΤΗΜΑ':'Σύστημα'};
+    ROWS=items.filter(x=>x.name).map(x=>{
+      const r=M76.match(M76.fromText(x.name),REG);
+      return {...x, sec:SECMAP[(x.sec||'').toUpperCase()]||x.sec,
+              p:r.status==='g'?led[r.pick]:null, st:r.status,
+              cands:(r.cands||[]).map(c=>({p:led[c.i],s:c.s}))}});
+    const ok=ROWS.filter(x=>x.p).length;
+    $('siOut').innerHTML=`<div class="kv"><b>Γραμμές</b><span>${ROWS.length}</span></div>
+      <div class="kv"><b>Ταίριαξαν</b><span>${ok}</span></div>
+      <div style="max-height:34vh;overflow:auto;margin-top:8px">${ROWS.map((x,i)=>`
+        <div class="kv" style="font-size:12.5px"><b style="flex:1">${esc(x.name)}</b>
+          <span class="dim">${esc(x.sec||'—')}${x.role?' · '+esc(x.role):''}</span>
+          ${x.p?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${esc(nm(x.p))}</span>`
+              :`<select data-simp="${i}" style="max-width:170px;font-size:11.5px;padding:3px 6px">
+                 <option value="">— κανένας —</option>
+                 ${x.cands.map(c=>`<option value="${c.p.id}">${esc(nm(c.p))} · ${Math.round(c.s*100)}%</option>`).join('')}
+                 <option disabled>──────</option>
+                 ${led.map(b=>`<option value="${b.id}">${esc(nm(b))}</option>`).join('')}</select>`}
+        </div>`).join('')}</div>`;
+    document.querySelectorAll('[data-simp]').forEach(sel=>sel.onchange=()=>{
+      ROWS[+sel.dataset.simp].p=led.find(b=>b.id===sel.value)||null});
+    $('siGo').style.display='';
+  };
+  $('siGo').onclick=()=>{
+    const use=ROWS.filter(x=>x.p&&x.sec);
+    if(!use.length)return toast('Καμία γραμμή με πρόσωπο και τμήμα');
+    use.forEach(x=>{ DRAFT[x.p.id]=Object.assign(DRAFT[x.p.id]||{},
+      {section:x.sec, role:x.role||undefined}); });
+    saveDraft(); drw.classList.remove('on');
+    toast(use.length+' στο πρόχειρο — δες τα και οριστικοποίησε');
+    V.staff();
+  };
 }
 
 function staffDraft(years){
@@ -7109,7 +7194,10 @@ function staffDraft(years){
         ${isFuture?'<span class="pill" style="background:var(--accbg);border-color:var(--accln);color:var(--acc)">νέα χρονιά · πρόχειρο</span>':'<span class="pill">ιστορικό</span>'}
         <span class="sp"></span>
         <input id="stq" placeholder="Αναζήτηση…" style="max-width:170px;font-size:13px">
+        ${isFuture?`<button class="btn sm${DRAGON?' p':''}" id="stDrag"
+          title="Όσο είναι κλειστό, τα κλικ δεν μετακινούν κανέναν κατά λάθος">↕ Μετακίνηση${DRAGON?' — ανοιχτή':''}</button>`:''}
         <button class="btn sm" id="stCsv">${ic('down',14)} CSV</button>
+        ${isFuture?`<button class="btn sm gh" id="stImp">${ic('down',14)} Εισαγωγή</button>`:''}
         <button class="btn sm" onclick="window.print()">Εκτύπωση</button>
         ${changed.length?`<span class="pill" style="background:var(--accbg);border-color:var(--accln);color:var(--acc)">${changed.length} αλλαγές</span>
           <button class="btn sm" id="stReset">Απόρριψη</button><button class="btn p" id="stApply">Οριστικοποίηση</button>`:''}
@@ -7132,7 +7220,7 @@ function staffDraft(years){
 
   function card(p,withRole){
     const mv=!!DRAFT[p.id];
-    return `<div class="pcard${mv?' moved':''}"${isFuture?' draggable="true"':''} data-id="${p.id}">
+    return `<div class="pcard${mv?' moved':''}"${isFuture&&DRAGON?' draggable="true"':''} data-id="${p.id}">
       ${avatar(p,24)}
       <span style="flex:1;min-width:0">
         <span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pn(p)}</span>
@@ -7144,7 +7232,7 @@ function staffDraft(years){
     </div>`;
   }
 
-  $('syr').onchange=e=>{SY=e.target.value;V.staff()};
+  $('syr').onchange=e=>{SY=e.target.value;try{localStorage.setItem('e76:sy',SY)}catch(x){};V.staff()};
   const sq=$('stq'); if(sq)sq.oninput=()=>{const q=nameKey(sq.value);
     document.querySelectorAll('.pcard').forEach(c=>{const p=led.find(x=>x.id===c.dataset.id);
       c.style.display=(!q||nameKey(nm(p)+' '+(p.nickname||'')+' '+(p.scout_name||'')).includes(q))?'':'none'})};
@@ -7154,6 +7242,9 @@ function staffDraft(years){
       .forEach(x=>R.push([s,rl(x),catOf(x),nm(x),x.scout_name||'',x.registry_no||'',x.phone||''])));
     const csv='\ufeff'+R.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`e76-diarthrosi-${SY}.csv`;a.click();toast('Κατέβηκε');};
+  const dg=$('stDrag'); if(dg)dg.onclick=()=>{DRAGON=!DRAGON;
+    try{localStorage.setItem('e76:dragon',DRAGON?'1':'')}catch(x){}; V.staff()};
+  const im=$('stImp'); if(im)im.onclick=staffImport;
   if(!isFuture)return;
   const setD=(id,f,v)=>{const p=led.find(x=>x.id===id);
     DRAFT[id]=Object.assign({section:place(p),role:rl(p),category:catOf(p)},DRAFT[id]||{},{[f]:v});
