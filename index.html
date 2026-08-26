@@ -97,6 +97,7 @@ button{font:inherit;color:inherit}
 .grid{display:grid;gap:14px}
 .muted{color:var(--ink2)}.dim{color:var(--ink3)}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2.5px 8px;border-radius:20px;background:var(--bg);border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
+.ldot{width:12px;height:12px;flex:0 0 12px}
 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:0 0 9px}
 .hr{height:1px;background:var(--line);margin:14px 0}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
@@ -772,7 +773,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-26 16:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-26 17:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2110,14 +2111,31 @@ const pnm=p=>`<b class="pn" data-p="${p.id}">${esc(nm(p))}</b>${
 
 /* ── κατάσταση εντολής / εκπαίδευσης / Ν.91(Ι) ── */
 const TR_B=/βασικ/i, TR_P=/προκαταρκτ/i;
-function trainLevel(id){
+const SEC_CODE={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Σύστημα':'ΑΣ','Δίκτυο':'Δ'};
+/* Η Βασική δεν είναι γενική: γράφεται ΑΝΑ ΚΛΑΔΟ (trainings.section = ΑΛ/ΟΠ/ΚΑ).
+   Βαθμοφόρος με Βασική Αγέλης που υπηρετεί στην Ομάδα ΔΕΝ είναι εκπαιδευμένος
+   για την Ομάδα — έχει όμως προπαίδευση, άρα δεν είναι και μηδέν.
+     2 = Βασική γι' αυτόν τον κλάδο
+     1 = προπαίδευση, ή Βασική άλλου κλάδου
+     0 = τίποτα                                                            */
+function trainLevel(id, sec){
   const t=(D.tr||[]).filter(x=>x.person_id===id);
-  if(t.some(x=>TR_B.test(x.type||x.code||'')))return 2;
+  const code=SEC_CODE[sec]||null;
+  const basics=t.filter(x=>TR_B.test(x.type||x.code||''));
+  if(basics.length){
+    if(!code) return 2;                                   // χωρίς κλάδο: αρκεί
+    if(basics.some(x=>(x.section||'')===code)) return 2;   // Βασική ΤΟΥ κλάδου
+    return 1;                                             // Βασική αλλού
+  }
   if(t.some(x=>TR_P.test(x.type||x.code||'')))return 1;
   return 0;
 }
-function warrantOf(id){
-  const rows=(D.sh||[]).filter(x=>x.person_id===id&&x.warrant_type&&x.warrant_type!=='ΠΡΟΣ ΕΛΕΓΧΟ');
+/* Η εντολή ανήκει σε ΧΡΟΝΙΑ. Στο στήσιμο της επόμενης, κανείς δεν έχει ακόμη —
+   και σωστά: δεν έχει εκδοθεί. Ο δακτύλιος λείπει από όλους, και αυτό είναι
+   η πληροφορία, όχι σφάλμα. */
+function warrantOf(id, yr){
+  let rows=(D.sh||[]).filter(x=>x.person_id===id&&x.warrant_type&&x.warrant_type!=='ΠΡΟΣ ΕΛΕΓΧΟ');
+  if(yr) rows=rows.filter(x=>x.scout_year===yr);
   if(!rows.length)return {k:'none'};
   const today=new Date().toISOString().slice(0,10);
   const act=rows.filter(x=>!x.end_date||x.end_date>=today);
@@ -2133,12 +2151,19 @@ const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6'};
 const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντομα',expired:'Ν.91(Ι) έληξε',none:'χωρίς Ν.91(Ι)'};
 const TRC=['#e74c3c','#f4c20d','#27ae60'];
 const TRTXT=['χωρίς εκπαίδευση','Προκαταρκτική','Βασική'];
-/* διπλή τελεία: αριστερά Ν.91(Ι) · δεξιά εκπαίδευση · δακτύλιος = εντολή */
-function leaderDot(p){
-  const cs=certState(p.id), tl=trainLevel(p.id), w=warrantOf(p.id);
+/* ══ Ο ΚΥΚΛΟΣ ΤΗΣ ΔΙΑΡΘΡΩΣΗΣ ══════════════════════════════════════════════
+   ΕΝΑΣ κύκλος, κομμένος στη μέση:
+     αριστερό μισό  Ν.91(Ι)
+     δεξί μισό      εκπαίδευση ΓΙΑ ΤΟΝ ΚΛΑΔΟ όπου υπηρετεί
+     δακτύλιος      η εντολή της χρονιάς — χωρίς δακτύλιο = δεν αιτήθηκε
+   Ζει ΜΟΝΟ εδώ. Οι λίστες (Μέλη, Βαθμοφόροι…) κρατούν τη ράβδο. */
+function leaderDot(p, sec, yr){
+  const s2=sec||secOf(p)||p.section;
+  const cs=certState(p.id), tl=trainLevel(p.id,s2), w=warrantOf(p.id,yr);
   const ring=RING[w.k]?`box-shadow:0 0 0 2px ${RING[w.k]};`:'';
-  const t=`${esc(nm(p))} — ${CERTTXT[cs.k]}${cs.d!=null&&cs.k==='soon'?' ('+cs.d+' μέρες)':''} · ${TRTXT[tl]} · ${RINGTXT[w.k]}`;
-  return `<span class="dot" title="${t}" style="${ring}background:linear-gradient(90deg,${CERTC[cs.k]} 0 50%,${TRC[tl]} 50% 100%)"></span>`;
+  const t=`${nm(p)} — ${CERTTXT[cs.k]}${cs.d!=null&&cs.k==='soon'?' ('+cs.d+' μέρες)':''}`
+    +` · ${TRTXT[tl]}${tl===1&&SEC_CODE[s2]?' (όχι '+SEC_CODE[s2]+')':''} · ${RINGTXT[w.k]}`;
+  return `<span class="dot ldot" title="${esc(t)}" style="${ring}background:linear-gradient(90deg,${CERTC[cs.k]} 0 50%,${TRC[tl]} 50% 100%)"></span>`;
 }
 
 
@@ -2595,7 +2620,16 @@ function wireVQ(){
 }
 
 /* ── επεξήγηση συμβόλων ── */
+/* Ποια σύμβολα υπάρχουν ΤΩΡΑ στην οθόνη. Το «Επιτελεία» δείχνει κύκλους
+   (Ν.91(Ι) + εντολή), οι λίστες δείχνουν ράβδο. Ένα υπόμνημα που τα δείχνει
+   όλα μαζί κάνει τον αναγνώστη να ψάχνει σύμβολο που δεν υπάρχει μπροστά του. */
+function legendScope(){
+  if(ROUTE==='staff') return (SUBTAB['staff']||'board')==='tree'?'tree':'staff';
+  if(['members','leaders','medical','enroll','desk','intake','handover','mykids','viewas'].includes(ROUTE))return 'bar';
+  return 'all';
+}
 function showLegend(){
+  const SCOPE=legendScope();
   const row=(sym,t,sub)=>`<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
      <span style="flex:0 0 78px">${sym}</span>
      <div><div style="font-size:13.5px">${t}</div>${sub?`<div class="dim" style="font-size:12px">${sub}</div>`:''}</div></div>`;
@@ -2616,6 +2650,31 @@ function showLegend(){
         τα υπόλοιπα αλλάζουν νόημα ανάλογα με το αν κοιτάς <b>μέλος</b> ή <b>βαθμοφόρο</b>.
         Γκρίζο σημαίνει πάντα <b>δεν υπάρχει ακόμη</b> — όχι λάθος.</div></div>
 
+    ${SCOPE==='staff'||SCOPE==='tree'?(()=>{
+      const half=(a,b,r)=>`<span class="dot ldot" style="${r?`box-shadow:0 0 0 2px ${r};`:''}background:linear-gradient(90deg,${a} 0 50%,${b} 50% 100%)"></span>`;
+      return `
+    <div class="dsec"><h4>Ο κύκλος της Διάρθρωσης</h4>
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:9px">
+        <b>Ένας</b> κύκλος, κομμένος στη μέση. <b>Αριστερά</b> το Ν.91(Ι),
+        <b>δεξιά</b> η εκπαίδευση <i>για τον κλάδο όπου υπηρετεί</i>,
+        και <b>γύρω-γύρω</b> ο δακτύλιος της εντολής.</div>
+      ${row(half(CERTC.ok,TRC[2],RING.entoli),'Όλα εντάξει','Ν.91(Ι) · Βασική του κλάδου · Εντολή Διοίκησης')}
+      ${row(half(CERTC.soon,TRC[2],RING.entoli),'Το Ν.91(Ι) λήγει',`≤ ${TH.certWarnDays||90} μέρες`)}
+      ${row(half(CERTC.expired,TRC[2],RING.entoli),'Το Ν.91(Ι) έληξε','')}
+      ${row(half(CERTC.none,TRC[2],RING.entoli),'Χωρίς Ν.91(Ι)','δεν καταχωρήθηκε')}
+      ${row(half(CERTC.ok,TRC[1],RING.entoli),'Βασική ΑΛΛΟΥ κλάδου','ή μόνο προπαίδευση — κίτρινο δεξιά')}
+      ${row(half(CERTC.ok,TRC[0],RING.entoli),'Καμία εκπαίδευση','κόκκινο δεξιά')}
+    </div>
+    <div class="dsec"><h4>Ο δακτύλιος — η εντολή <b>της χρονιάς</b></h4>
+      ${row(half(CERTC.ok,TRC[2],RING.entoli),'Εντολή Διοίκησης','πράσινος δακτύλιος')}
+      ${row(half(CERTC.ok,TRC[2],RING.anathesi),'Ανάθεση Καθηκόντων','κίτρινος')}
+      ${row(half(CERTC.ok,TRC[2],RING.expired),'Έληξε','κόκκινος')}
+      ${row(half(CERTC.ok,TRC[2],null),'Δεν έχει αιτηθεί','χωρίς δακτύλιο')}
+      <div class="dim" style="font-size:11.5px;margin-top:7px;line-height:1.5">
+        Στο <b>Στήσιμο</b> της επόμενης χρονιάς <b>κανείς</b> δεν έχει δακτύλιο —
+        δεν έχουν εκδοθεί ακόμη εντολές. Αυτό είναι η πληροφορία, όχι σφάλμα.</div>
+    </div>`})():''}
+    ${SCOPE==='staff'||SCOPE==='tree'?'':`
     <div class="dsec"><h4>Μέλος — τέσσερα τμήματα</h4>
       <div class="dim" style="font-size:12px;margin-bottom:8px">κλάδος · εγγραφή · ιατρικό · επαφή έκτακτης ανάγκης</div>
       ${row(bar([SEC('Αγέλη'),G,G,G]),'Όλα εντάξει','εγγεγραμμένο, με ιατρικό και επαφή')}
@@ -2642,7 +2701,7 @@ function showLegend(){
       ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],RING.anathesi,G]),'Ενεργή Ανάθεση Καθηκόντων','κίτρινο')}
       ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],RING.expired,G]),'Έληξε','κόκκινο')}
       ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],E,G]),'Δεν έχει αιτηθεί','γκρίζο')}
-    </div>
+    </div>`}
 
     <div class="dsec"><h4>Το πρώτο τμήμα — ο κλάδος</h4>
       <div class="dim" style="font-size:12px;margin-bottom:8px">Καταλαμβάνει το αριστερό
@@ -2735,7 +2794,7 @@ const ROLES_B=['Αρχηγός','Υπαρχηγός','Βοηθός','P/T','Έφ�
 const CATS_B=['ΑΣ','Αρχηγός','Βαθμοφόρος','P/T','Δίκτυο','Υπεύθυνος Δικτύου'];
 const SECFULL={'Αγέλη':'Αγέλης Λυκοπούλων','Ομάδα':'Ομάδας Προσκόπων','Κοινότητα':'Κοινότητας Ανιχνευτών','Δίκτυο':'Δικτύου','Σύστημα':'Συστήματος'};
 const nextY=y=>{const m=/^(\d{4})-(\d{2})$/.exec(y||'');if(!m)return null;const a=+m[1]+1;return a+'-'+String(a+1).slice(2)};
-let SY=null, DRAFT={};
+let SY=null, SYFROM=null, DRAFT={};
 /* Η μετακίνηση με σύρσιμο είναι ΚΛΕΙΣΤΗ εξ ορισμού. Σε πίνακα με εκατό κάρτες,
    ένα άστοχο σύρσιμο αλλάζει τμήμα σε άνθρωπο και δεν το προσέχεις. */
 let DRAGON=false; try{DRAGON=!!localStorage.getItem('e76:dragon')}catch(e){}
@@ -6665,13 +6724,16 @@ function secOfYear(p,yr){
 }
 function staffScreen(){
   /* Ο τρόπος θέασης έρχεται από την καρτέλα — αλλιώς δύο πηγές αλήθειας. */
-  if(ROUTE==='staff'&&STMODE!=='draft'&&STMODE!=='tree')STMODE='board';
+  if(ROUTE==='staff'&&!['draft','tree','board'].includes(STMODE))STMODE='board';
   const years=[...new Set([...(D.sh||[]).map(x=>x.scout_year),...D.my.map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
   const nx=nextY(years[0]||YEAR); if(nx&&!years.includes(nx))years.unshift(nx);
   /* Έπιανε την πιο πρόσφατη χρονιά ΜΕ ΔΕΔΟΜΕΝΑ — δηλαδή την περσινή, επειδή
      η φετινή είναι ακόμη άδεια. Αλλά τα επιτελεία τα φτιάχνεις για τη χρονιά
      που ΕΡΧΕΤΑΙ. Θυμάται και την επιλογή σου, ώστε να μη γυρίζει πίσω. */
-  if(!SY){ try{SY=localStorage.getItem('e76:sy')||null}catch(e){} }
+  /* Η χρονιά δεν είναι δική της υπόθεση: ακολουθεί την κεντρική επιλογή πάνω
+     δεξιά. Ο τοπικός επιλογέας είναι ΠΑΡΑΚΑΜΨΗ — και μόλις αλλάξεις κεντρικά,
+     η παράκαμψη πέφτει. Αλλιώς κοιτάς 25-26 ενώ όλη η εφαρμογή δείχνει 26-27. */
+  if(SYFROM!==YEAR){ SY=null; SYFROM=YEAR; }
   if(!SY||!years.includes(SY)) SY = years.includes(YEAR)?YEAR:(years[0]||YEAR);
   if(STMODE==='draft')return staffDraft(years);
   if(STMODE!=='tree')return staffBoard(years);
@@ -6698,8 +6760,7 @@ function staffScreen(){
       </div>
       <div class="oc2 hide-s">${tel?`<a href="tel:${esc(tel)}">${fphone(tel)}</a>`:'<span class="dim">—</span>'}</div>
       <div class="oc3 hide-s">${mail?`<a href="mailto:${esc(mail)}">${esc(mail)}</a>`:'<span class="dim">—</span>'}</div>
-      <div class="oc4" title="Ν.91(Ι): ${cs.k==='ok'?'σε ισχύ':cs.k==='soon'?'λήγει σύντομα':cs.k==='expired'?'έληξε':'δεν υπάρχει'}">
-        <span class="cdot ${cs.k}"></span>${w&&w.k?`<span class="wdot ${w.k}"></span>`:''}</div>
+      <div class="oc4">${leaderDot(p,secOf(p)||p.section,SY)}</div>
     </div>`};
 
   const orole=o=>`<div class="orow virt">
@@ -6745,7 +6806,7 @@ function staffScreen(){
           ${OPEN['76']?`<div class="okids">${SECS_B.map(secBlock).join('')}</div>`:''}</div>
       </div>`:''}
     </div>`;
-  $('syr').onchange=e=>{SY=e.target.value;try{localStorage.setItem('e76:sy',SY)}catch(x){};V.staff()};
+  $('syr').onchange=e=>{SY=e.target.value;V.staff()};
   $('stDraft').onclick=()=>{STMODE='draft';V.staff()};
   $('stq').oninput=e=>{STQ=e.target.value;
     document.querySelectorAll('.orow').forEach(r=>{
@@ -7001,12 +7062,11 @@ function staffBoard(years){
     (p.extra_sections||[]).filter(x=>x&&x!==sec).forEach(x=>
       h+=`<span class="chip" title="Υπηρετεί και αλλού">κοινό ↤ ${esc(x)}</span>`);
     return h};
-  /* Μία κουκκίδα «είναι εντάξει;»: Ν.91 + εκπαίδευση + εντολή */
-  const dot=p=>{const cs=certState(p.id), tl=trainLevel(p.id), w=warrantOf(p.id);
-    if(p.is_commissioner) return '<i class="edot" style="background:#8e44ad" title="Έφορος"></i>';
-    const c=cs.k==='expired'||w.k==='expired'?'#e74c3c'
-           :cs.k==='soon'||tl===0||w.k==='none'?'#f39c12':'#27ae60';
-    return `<i class="edot" style="background:${c}" title="${esc([CERTTXT[cs.k],TRTXT[tl],'εντολή: '+RINGTXT[w.k]].join(' · '))}"></i>`};
+  /* Ο ίδιος κύκλος με τη Διάρθρωση — αλλά με τον κλάδο ΠΡΟΟΡΙΣΜΟΥ: αν τον
+     σύρεις στην Ομάδα, το δεξί μισό ρωτά «έχει Βασική Ομάδας;», όχι Αγέλης. */
+  const dot=p=>p.is_commissioner
+    ? '<i class="edot" style="background:#8e44ad" title="Έφορος"></i>'
+    : leaderDot(p, place(p), SY);
   const fa=p=>{const c=(D.pc||[]).find(x=>x.person_id===p.id&&/ΠΡΩΤΕΣ|ΒΟΗΘ/i.test(x.type_code||'')
       &&(!x.expires_on||x.expires_on>=new Date().toISOString().slice(0,10)));
     return c?'<span class="facross" title="Ενεργές Α΄ Βοήθειες">✚</span>':''};
@@ -7088,7 +7148,7 @@ function staffBoard(years){
           ${p.location?`<span class="dim">${esc(p.location)}</span>`:''}</span>`).join('')}
       </div>`:''}`;
 
-  const sy=$('sy'); if(sy)sy.onchange=e=>{SY=e.target.value;try{localStorage.setItem('e76:sy',SY)}catch(x){};V.staff()};
+  const sy=$('sy'); if(sy)sy.onchange=e=>{SY=e.target.value;V.staff()};
   const st=$('stq'); if(st)st.oninput=e=>{STQ=e.target.value;
     document.querySelectorAll('#view .pill,#view [style*="opacity"]').forEach(()=>{}); V.staff();
     const n=$('stq'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}};
@@ -7232,7 +7292,7 @@ function staffDraft(years){
     </div>`;
   }
 
-  $('syr').onchange=e=>{SY=e.target.value;try{localStorage.setItem('e76:sy',SY)}catch(x){};V.staff()};
+  $('syr').onchange=e=>{SY=e.target.value;V.staff()};
   const sq=$('stq'); if(sq)sq.oninput=()=>{const q=nameKey(sq.value);
     document.querySelectorAll('.pcard').forEach(c=>{const p=led.find(x=>x.id===c.dataset.id);
       c.style.display=(!q||nameKey(nm(p)+' '+(p.nickname||'')+' '+(p.scout_name||'')).includes(q))?'':'none'})};
@@ -7895,7 +7955,13 @@ V.rollover=()=>{
         const {data}=await sb.from('member_year').insert(gr).select(); (data||[]).forEach(r=>D.my.push(r));
       }
       const y=$('yr'); if(![...y.options].some(o=>o.value===NY)){const o=document.createElement('option');o.textContent=NY;y.appendChild(o)}
-      saveCache(); toast(`Ολοκληρώθηκε · ${rows.length} εγγραφές για ${NY}`); S.step=1; save(); V.rollover();
+      /* Η μετάβαση δεν είναι μια εγγραφή — είναι αλλαγή εποχής. Από δω και πέρα
+         ΟΛΗ η εφαρμογή δείχνει τη νέα χρονιά: μέλη, επιτελεία, οργανόγραμμα,
+         παρουσίες. Αν άφηνα την παλιά επιλεγμένη, θα κοίταζες το παρελθόν
+         νομίζοντας ότι κοιτάς το αποτέλεσμα. */
+      YEAR=NY; y.value=NY; SY=null; SYFROM=null;
+      saveCache(); toast(`Ολοκληρώθηκε · ${rows.length} εγγραφές · η εφαρμογή δείχνει πλέον ${NY}`);
+      S.step=1; save(); route(ROUTE);
     }catch(e){toast('Σφάλμα: '+(e.message||e))}
     go.disabled=false; go.textContent='Εκτέλεση για '+NY;};
 };
@@ -9582,9 +9648,12 @@ function certsBody(){
 /* Το Οργανόγραμμα δείχνει ΙΕΡΑΡΧΙΑ — το δέντρο Σ.Π.Κ. → 76ο → τμήμα → βαθμοφόρος.
    Η Διάρθρωση δείχνει ΣΥΝΘΕΣΗ — ποιοι είναι σε κάθε τμήμα, όπως το τυπωμένο επιτελείο. */
 function staffBody(mode){ STMODE=mode; return staffScreen(); }
+/* Το σύρσιμο και η εισαγωγή ζουν στο ΣΤΗΣΙΜΟ — ήταν κρυμμένα πίσω από κουμπί
+   «Πρόχειρο επιτελείων» μέσα στην οθόνη, και δεν τα έβρισκε κανείς. Καρτέλα. */
 V.staff=()=>tabView('staff',[
-  {k:'board',t:'Επιτελεία',    i:'users', fn:()=>staffBody('board'), d:'ανά τμήμα'},
-  {k:'tree', t:'Οργανόγραμμα', i:'tree',  fn:()=>staffBody('tree'),  d:'όλο το Σύστημα σε δέντρο'}]);
+  {k:'board',t:'Επιτελεία',    i:'users', fn:()=>staffBody('board'), d:'ανά τμήμα, όπως είναι'},
+  {k:'tree', t:'Οργανόγραμμα', i:'tree',  fn:()=>staffBody('tree'),  d:'όλο το Σύστημα σε δέντρο'},
+  {k:'draft',t:'Στήσιμο',      i:'check', fn:()=>staffBody('draft'), d:'σύρε, άλλαξε, εισήγαγε — πρόχειρο'}]);
 
 
 V.warrants=()=>{
