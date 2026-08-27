@@ -82,7 +82,11 @@ button{font:inherit;color:inherit}
 .top h2{font-size:16.5px;font-weight:600}
 .top .sub{color:var(--ink3);font-size:12.5px;margin-left:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52vw}
 .sp{flex:1}
+/* 1180px είναι σωστό για κείμενο — άθλιο για πίνακες. Οι οθόνες με πλέγμα
+   ή στήλες (επιτελεία, μόλα, παρουσιολόγιο, μητρώα) παίρνουν όλο το
+   παράθυρο· τα κείμενα μένουν αναγνώσιμα. */
 .wrap{padding:22px;max-width:1180px;width:100%;margin:0 auto;flex:1}
+.wrap.wide{max-width:min(2200px,100%)}
 
 /* ── atoms ── */
 .btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);background:var(--card);padding:7px 12px;border-radius:var(--rs);cursor:pointer;font-size:13.5px;transition:.13s;white-space:nowrap}
@@ -317,8 +321,10 @@ td.mcell:hover .madd{opacity:1}
 /* Επτά στήλες × 215px δεν χωρούσαν σε φορητό — έσπαγαν σε δύο γραμμές και
    η κάρτα στριμωχνόταν. Τώρα σταθερό πλάτος με οριζόντια κύλιση: η στήλη
    κρατά το σχήμα της, εσύ κυλάς. */
+/* Σταθερό πλάτος σε φαρδιά οθόνη = μισό παράθυρο άδειο. Οι στήλες
+   μεγαλώνουν μέχρι ένα λογικό όριο και μετά κυλούν. */
 .board{display:flex;gap:11px;align-items:flex-start;overflow-x:auto;padding-bottom:6px}
-.board>.bcol{flex:0 0 232px;max-width:232px}
+.board>.bcol{flex:1 1 236px;min-width:236px;max-width:420px}
 .bgap{padding:5px 12px;font-size:11.5px;font-weight:600;background:var(--warnbg);color:var(--warn)}
 .bratio{padding:4px 12px;font-size:11px;color:var(--ink3)}
 .prow{display:flex;gap:7px;align-items:center;min-width:0}
@@ -895,7 +901,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 15:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 18:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1961,6 +1967,10 @@ $('mbtn').onclick=()=>{const s=$('side');s.classList.toggle('open');
   if(s.classList.contains('open')){const d=document.createElement('div');d.className='scrim';d.onclick=()=>{s.classList.remove('open');d.remove()};document.body.appendChild(d);}
   else document.querySelector('.scrim')?.remove();};
 
+/* Οι «φαρδιές» οθόνες. Ό,τι δεν είναι εδώ κρατά τα 1180px του κειμένου. */
+const WIDE_VIEWS=new Set(['staff','cal','attend','members','leaders','guardians',
+  'progAL','progOP','progKA','progress','exports','audit','reg','desk','year',
+  'rollover','training','warrants','events','groups','forms','dedupe','intake']);
 function route(r){
   if(typeof r==='string'&&r.includes('='))r='dash';
   ROUTE=MOD[r]?r:'dash'; location.hash=ROUTE;
@@ -1969,6 +1979,9 @@ function route(r){
      ΠΟΥ. Το εύρος πάει πρώτο, γιατί αλλάζει το νόημα όσων βλέπεις. */
   const sc=(PA&&PA.sc&&PA.sc!=='ΟΛΑ')?PA.sc:'';
   $('sub').textContent=[sc?'Μόνο '+sc:'', SUBS[ROUTE]||''].filter(Boolean).join(' · ');
+  /* Πλάτος ανά οθόνη: όποια δείχνει πίνακα ή στήλες, ανοίγει. */
+  try{const w=document.querySelector('.wrap');
+    if(w)w.classList.toggle('wide', WIDE_VIEWS.has(ROUTE));}catch(e){}
   renderNav(); window.scrollTo(0,0);
   if(m.s==='live'){
     // Αν μια οθόνη σκάσει, ΔΕΝ αφήνουμε την προηγούμενη στη θέση της — φαίνεται σαν παλιό αρχείο.
@@ -2894,6 +2907,14 @@ const SECCFG=()=>(D.sc||[]).filter(s=>s.active!==false).sort((a,b)=>(a.seq||0)-(
    Το «Δίκτυο» εδώ είναι το ΤΜΗΜΑ. Το άτυπο δίκτυο — όσοι κρατούν και άλλο
    τμήμα — δεν είναι στήλη· φαίνεται με το «-Δ» πάνω στον κωδικό τους. */
 const SECS_FALLBACK=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+/* Στόχοι μετακίνησης = ΜΟΝΟ τα ενεργά τμήματα. Το secsBoard() προσθέτει και
+   ό,τι βρει στο ιστορικό, οπότε εμφανίζονταν κουμπιά για «ΑΡΧΕΙΟΘΕΤΗΜΕΝΟΙ»
+   και «Εφορεία» — θέσεις όπου δεν στέλνεις κανέναν. */
+function MOVE_TARGETS(){
+  const cfg=(D.sc||[]).filter(x=>x.active!==false)
+    .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(x=>x.section);
+  return cfg.length?cfg:SECS_FALLBACK.slice();
+}
 function secsBoard(){
   const cfg=(D.sc||[]).filter(x=>x.active!==false)
     .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(x=>x.section);
@@ -7782,22 +7803,29 @@ function staffDraft(years){
 
   const roleKnown=r=>ROLES_B.find(k=>new RegExp('^'+k).test(r||''))||null;
   const roleShort=r=>roleKnown(r)||(r?'Βοηθός':'');
-  /* Ξεχωρίζουμε «Βοηθός» (απόφαση) από «δεν ξέρουμε» (κενή ή σκουπίδι
-     καταχώρηση, π.χ. appointment='Εντολή'). Το δεύτερο θέλει συμπλήρωση. */
-  const unknownRole=p=>!DRAFT[p.id] && real[p.id] && !roleKnown(real[p.id].role);
+  /* «Δεν ξέρουμε» σημαίνει ότι απέτυχε ΟΛΗ η αλυσίδα — όχι ότι η φετινή
+     καταχώρηση είναι σκουπίδι. Με το παλιό, ο περσινός Αρχηγός εμφανιζόταν
+     με «?» επειδή φέτος γράφει «Εντολή», ενώ τον ξέραμε μια χαρά. */
+  const resolved=p=>(DRAFT[p.id]&&DRAFT[p.id].role)
+    || (real[p.id]?roleKnown(real[p.id].role):null)
+    || (prev[p.id]?roleKnown(prev[p.id].role):null)
+    || normRole(p.category) || null;
+  const unknownRole=p=>!resolved(p);
   const place=p=>DRAFT[p.id]?DRAFT[p.id].section:(real[p.id]?real[p.id].section:null);
   /* Το πρόχειρο υπερισχύει ΜΟΝΟ όταν έχει απάντηση. Πριν, μια εισαγωγή που
      άφηνε τη βαθμίδα αόριστη έσβηνε και την πραγματική — και κάθε κάρτα
      έγραφε «όρισε βαθμίδα» ενώ ο άνθρωπος ήταν χρόνια Αρχηγός. */
-  const rl=p=>(DRAFT[p.id]&&DRAFT[p.id].role)
-    || (real[p.id]?roleShort(real[p.id].role):null)
-    || (prev[p.id]?roleKnown(prev[p.id].role):null)
-    || normRole(p.category) || 'Υπαρχηγός';
+  /* Η αλυσίδα πρέπει να ρωτά ΑΥΣΤΗΡΑ σε κάθε κρίκο. Το roleShort() επέστρεφε
+     «Βοηθός» ως εφεδρεία, οπότε το σκουπίδι «Εντολή» του 2026-27 έμοιαζε με
+     απάντηση και η αλυσίδα σταματούσε εκεί — ο περσινός Αρχηγός δεν έφτανε
+     ΠΟΤΕ να διαβαστεί. Γι' αυτό καμία στήλη δεν έβγαζε Αρχηγό. */
+  const rl=p=>resolved(p)||'Υπαρχηγός';
   const catOf=p=>DRAFT[p.id]&&DRAFT[p.id].category?DRAFT[p.id].category:(p.category||'Βαθμοφόρος');
   const changed=led.filter(p=>DRAFT[p.id]);
   const pool=led.filter(p=>!place(p));
   const poolPrev=pool.filter(p=>prev[p.id]).length;
-  const fixRole=led.filter(p=>unknownRole(p)&&prev[p.id]&&roleKnown(prev[p.id].role)).length;
+  const fixRole=led.filter(p=>!DRAFT[p.id]&&real[p.id]&&!roleKnown(real[p.id].role)
+                              &&prev[p.id]&&roleKnown(prev[p.id].role)).length;
   const canPrev=poolPrev+fixRole;
   const pendN=loadPend().length;
   const netTot=led.filter(p=>p.is_network||place(p)==='Δίκτυο').length;
@@ -7913,7 +7941,7 @@ function staffDraft(years){
           unknownRole(p)?'?':esc(code)}</b>`:''}
         </div>
       ${isFuture?`<div class="pmove">
-        <span class="dim">→</span>${secsBoard().filter(x=>x!==sec).map(x=>
+        <span class="dim">→</span>${MOVE_TARGETS().filter(x=>x!==sec).map(x=>
           `<button class="mvb" data-mv2="${p.id}|${esc(x)}" title="Στείλε στο ${esc(x)}">${esc(SEC_AB2[x]||x)}</button>`).join('')}
         ${sec?`<button class="mvb out" data-mv2="${p.id}|__none__" title="Βγάλ' τον από τα επιτελεία">✕</button>`:''}
       </div>`:''}
