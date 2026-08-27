@@ -902,7 +902,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 18:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 19:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2946,6 +2946,12 @@ const SECCFG=()=>(D.sc||[]).filter(s=>s.active!==false).sort((a,b)=>(a.seq||0)-(
    Το «Δίκτυο» εδώ είναι το ΤΜΗΜΑ. Το άτυπο δίκτυο — όσοι κρατούν και άλλο
    τμήμα — δεν είναι στήλη· φαίνεται με το «-Δ» πάνω στον κωδικό τους. */
 const SECS_FALLBACK=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+/* Ό,ΤΙ ΔΕΧΕΤΑΙ Η ΒΑΣΗ — τίποτα άλλο δεν γράφεται ποτέ στο πεδίο «τμήμα».
+   Ένα παλιό πρόχειρο κρατούσε «ΑΡΧΕΙΟΘΕΤΗΜΕΝΟΙ» (από τότε που εμφανιζόταν
+   κατά λάθος ως στόχος μετακίνησης) και η οριστικοποίηση έσκαγε στο enum.
+   Ο έλεγχος γίνεται ΠΡΙΝ το γράψιμο, όχι με μήνυμα σφάλματος μετά. */
+const SECTION_ENUM=['Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα','Εφορεία','Γονείς'];
+const validSection=x=>SECTION_ENUM.includes(x)?x:null;
 /* Στόχοι μετακίνησης = ΜΟΝΟ τα ενεργά τμήματα. Το secsBoard() προσθέτει και
    ό,τι βρει στο ιστορικό, οπότε εμφανίζονταν κουμπιά για «ΑΡΧΕΙΟΘΕΤΗΜΕΝΟΙ»
    και «Εφορεία» — θέσεις όπου δεν στέλνεις κανέναν. */
@@ -3102,7 +3108,15 @@ let DRAGON=false; try{DRAGON=!!localStorage.getItem('e76:dragon')}catch(e){}
 let STFIL=''; try{STFIL=localStorage.getItem('e76:stfil')||''}catch(e){}
 let PARKOPEN={};  try{PARKOPEN=JSON.parse(localStorage.getItem('e76:park')||'{}')}catch(e){PARKOPEN={}}
 function draftKey(){return 'e76:staff:'+SY}
-function loadDraft(){try{DRAFT=JSON.parse(localStorage.getItem(draftKey())||'{}')}catch(e){DRAFT={}}}
+function loadDraft(){
+  try{DRAFT=JSON.parse(localStorage.getItem(draftKey())||'{}')}catch(e){DRAFT={}}
+  /* Καθάρισμα παλιών προχείρων: ό,τι δείχνει σε τμήμα που δεν υπάρχει
+     γίνεται «αδιάθετος» αντί να σκάσει στην οριστικοποίηση. */
+  let fixed=0;
+  Object.keys(DRAFT||{}).forEach(k=>{const d=DRAFT[k];
+    if(d&&d.section&&!validSection(d.section)){d.section=null;fixed++}});
+  if(fixed){try{localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}catch(e){}}
+}
 function saveDraft(){localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}
 const initials=p=>((p.first_name||' ')[0]+(p.last_name||' ')[0]).toUpperCase();
 
@@ -7935,6 +7949,8 @@ function staffDraft(years){
     <div class="board">
       <div class="bcol" style="border-style:dashed">
         <div class="bhead" style="background:var(--sys)">Αδιάθετοι<span class="sp"></span><span style="font-weight:400;opacity:.8">${pool.length}</span></div>
+        ${pool.length&&isFuture?`<div class="bgap" style="background:var(--bg2);color:var(--ink3);font-weight:400">
+          Με την οριστικοποίηση μπαίνουν <b>σε αναστολή</b> — η προσκοπική τους πορεία παγώνει, δεν σβήνεται.</div>`:''}
         <div class="bbody" data-drop="__none__">${pool.map(p=>card(p,false)).join('')||'<div class="dim" style="font-size:12px;padding:6px 4px">— κανείς —</div>'}</div>
       </div>
       ${STFIL==='pool'?'':secsBoard().map(s=>{const all=led.filter(p=>place(p)===s)
@@ -8085,13 +8101,21 @@ function staffDraft(years){
       if(error){toast('Δεν άλλαξε ιδιότητα: '+error.message);return}
       const b=D.bh.find(x=>x.id===c.id); if(b)Object.assign(b,c.u); }
     if(chg.length)toast(chg.length+' άλλαξαν ιδιότητα');
-    const rows=changed.filter(p=>DRAFT[p.id].section).map(p=>({
-      person_id:p.id, scout_year:SY, section:DRAFT[p.id].section,
-      appointment:DRAFT[p.id].role+' '+(SECFULL[DRAFT[p.id].section]||''),
-      role:DRAFT[p.id].role, warrant_type:'Ανάθεση Καθηκόντων', source:'e76-draft',
+    const rows=changed.filter(p=>validSection(DRAFT[p.id].section)).map(p=>({
+      person_id:p.id, scout_year:SY, section:validSection(DRAFT[p.id].section),
+      appointment:(DRAFT[p.id].role||'Βαθμοφόρος')+' '+(SECFULL[DRAFT[p.id].section]||''),
+      role:DRAFT[p.id].role||null, warrant_type:'Ανάθεση Καθηκόντων', source:'e76-draft',
       start_date:new Date().toISOString().slice(0,10)}));
-    if(!rows.length)return toast('Καμία τοποθέτηση');
-    if(!confirm(`Θα καταχωρηθούν ${rows.length} τοποθετήσεις για ${SY}.\n\nΤο μητρώο των προηγούμενων χρονιών δεν αλλάζει.`))return;
+    /* ΑΔΙΑΘΕΤΟΣ ΔΕΝ ΣΗΜΑΙΝΕΙ «ξεχάστηκε». Σημαίνει ότι η προσκοπική του
+       πορεία μπαίνει ΣΕ ΑΝΑΣΤΟΛΗ — όπως η Νικολέτα, που δεν έδειξε
+       ενδιαφέρον να συνεχίσει. Χωρίς αυτό, έμενε «Ενεργός» για πάντα σε
+       λίστες, εξαγωγές και εγγραφές. */
+    const hold=led.filter(p=>!place(p)&&p.status==='Ενεργός');
+    if(!rows.length&&!hold.length)return toast('Καμία αλλαγή');
+    if(!confirm(`Για το ${SY}:\n\n`
+      +`· ${rows.length} τοποθετήσεις σε τμήματα\n`
+      +(hold.length?`· ${hold.length} χωρίς τμήμα → «Σε αναστολή»\n   (${hold.slice(0,4).map(nm).join(', ')}${hold.length>4?' …':''})\n`:'')
+      +`\nΤο μητρώο των προηγούμενων χρονιών δεν αλλάζει.`))return;
     ap.disabled=true; ap.textContent='Καταχώρηση…';
     const {data,error}=await sb.from('service_history').insert(rows).select();
     if(error){toast('Σφάλμα: '+error.message);ap.disabled=false;ap.textContent='Οριστικοποίηση';return}
@@ -8101,8 +8125,16 @@ function staffDraft(years){
         if(d.category&&d.category!==pp.category)v.category=d.category;
         if(Object.keys(v).length){ const {error:e3}=await sb.from('badgeholders').update(v).eq('id',pp.id);
           if(!e3)Object.assign(pp,v); } } }
+    /* Οι αδιάθετοι μπαίνουν σε αναστολή — αναστρέψιμο, με ημερομηνία. */
+    let held=0;
+    for(const h of hold){
+      const {error:e4}=await sb.from('badgeholders')
+        .update({status:'Σε αναστολή', status_reason:'Δεν τοποθετήθηκε στο επιτελείο '+SY,
+                 status_since:new Date().toISOString().slice(0,10)}).eq('id',h.id);
+      if(!e4){h.status='Σε αναστολή'; held++;}
+    }
     DRAFT={}; localStorage.removeItem(draftKey()); saveCache();
-    toast(`Καταχωρήθηκαν ${rows.length} τοποθετήσεις για ${SY}`); V.staff();};
+    toast(`${rows.length} τοποθετήσεις`+(held?` · ${held} σε αναστολή`:'')); V.staff();};
 };
 
 /* ── Προσωπικές όψεις ── */
