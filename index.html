@@ -326,6 +326,18 @@ td.mcell:hover .madd{opacity:1}
 .pcode{font-size:10.5px;letter-spacing:.03em;background:var(--side);color:#fff;
   border-radius:4px;padding:1px 5px;white-space:nowrap}
 .pcode.unk{background:var(--warn)}
+/* Γραμμές εισαγωγής: η κατάσταση φαίνεται στο χρώμα της αριστερής άκρης. */
+.srow{border:1px solid var(--ln);border-left-width:3px;border-radius:8px;padding:7px 9px;margin-bottom:6px}
+.srow.ok{border-left-color:var(--ok)}
+.srow.warn{border-left-color:var(--warn)}
+.srow.pend{border-left-color:var(--ink3);opacity:.72}
+.srow1{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.srow2{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap}
+.srow2 .sq{flex:1;min-width:150px;font-size:12px;padding:4px 7px}
+.scand{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.scand-b{font-size:11.5px;padding:3px 7px}
+.rkind{font-style:normal;font-size:9.5px;letter-spacing:.04em;background:var(--ln);
+  color:var(--ink2);border-radius:3px;padding:1px 5px;margin-left:5px}
 .prow2{display:flex;gap:5px;margin-top:6px}
 .prow2 select{font-size:11.5px;padding:3px 4px;min-width:0;flex:1}
 .pwas{font-size:10.5px;color:var(--ink3);margin-top:4px}
@@ -838,7 +850,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 12:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 13:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -7284,29 +7296,75 @@ function staffBoard(years){
 }
 
 /* ══ ΕΙΣΑΓΩΓΗ ΕΠΙΤΕΛΕΙΩΝ ═════════════════════════════════════════════════
-   Το standalone «Επιτελείο» κρατά την κατάστασή του σε JSON. Αν έστησες εκεί
-   τα επιτελεία της νέας χρονιάς, τα φέρνεις εδώ αντί να τα ξαναστήσεις.
-   Δέχεται και απλή επικόλληση: Τμήμα · Ονοματεπώνυμο · Ρόλος.
-   Μπαίνει στο ΠΡΟΧΕΙΡΟ — τίποτα δεν οριστικοποιείται χωρίς εσένα. */
+   Τέσσερα πράγματα που έσπαγαν στην πράξη:
+
+   1. Το μητρώο αναζήτησης είχε ΜΟΝΟ ενεργούς βαθμοφόρους. Οπότε η Ελένη
+      Χριστοφόρου (αρχειοθετημένη) και οι νέοι από την Κοινότητα δεν
+      υπήρχαν καν ως υποψήφιοι. Τώρα ψάχνει σε ΟΛΟΥΣ — και λέει τι είναι
+      ο καθένας.
+   2. Τα παρατσούκλια δεν ήταν στο μητρώο. «Νίτσα Χριστοφόρου» έβγαινε
+      κόκκινο ενώ η Νίτσα είναι στη βάση ως Ελένη.
+   3. Το «σχεδόν σίγουρο» (κομμένο όνομα, λατινικά) πήγαινε σε άδειο μενού
+      αντί να προτείνεται. Τώρα προ-επιλέγεται και ζητά επιβεβαίωση.
+   4. Δεν μπορούσες να ΠΡΟΧΩΡΗΣΕΙΣ. Ό,τι δεν έλυνες, χανόταν. Τώρα μένει
+      ΕΚΚΡΕΜΕΣ: περνάς ό,τι ξέρεις, τα υπόλοιπα σε περιμένουν.
+   Ο χειροκίνητος δρόμος υπάρχει πάντα και δεν κλείνει ποτέ.          */
+
+function pendKey(){return 'e76:staffpend:'+SY}
+function loadPend(){try{return JSON.parse(localStorage.getItem(pendKey())||'[]')}catch(e){return []}}
+function savePend(a){try{localStorage.setItem(pendKey(),JSON.stringify(a))}catch(e){}}
+
+/* Το μητρώο αναζήτησης: όλοι όσοι ΜΠΟΡΕΙ να μπουν σε επιτελείο. */
+function staffRegistry(){
+  const out=[];
+  const add=(p,kindLabel,note)=>{
+    const names=[[p.first_name,p.last_name]];
+    if(p.nickname)  names.push([p.nickname,p.last_name]);
+    if(p.scout_name)names.push([p.scout_name,p.last_name]);
+    if(p.latin_name){const w=String(p.latin_name).split(/\s+/);
+      if(w.length>1)names.push([w.slice(0,-1).join(' '),w[w.length-1]])}
+    names.forEach(([f,l])=>{
+      const e=M76.person(f,l,{ref:p, display:nm(p)});
+      e.kind=kindLabel; e.note=note; out.push(e);});
+  };
+  D.bh.forEach(p=>{
+    if(isLed(p)&&p.status!=='Αρχειοθετημένος') add(p,'βαθμοφόρος','');
+    else if(isLed(p)) add(p,'αρχειοθετημένος','δεν υπηρετεί φέτος');
+    else if((p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&secOf(p)==='Κοινότητα')
+      add(p,'μέλος Κοινότητας','θα γίνει βαθμοφόρος');
+    else if((p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&(p.is_network||secOf(p)==='Δίκτυο'))
+      add(p,'δίκτυο','');
+  });
+  return out;
+}
+
 function staffImport(){
-  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+  const REG=staffRegistry();
+  const SECMAP={'ΑΓΕΛΗ':'Αγέλη','ΜΙΚΡΗ ΑΓΕΛΗ':'Μικρή Αγέλη','ΟΜΑΔΑ':'Ομάδα',
+    'ΚΟΙΝΟΤΗΤΑ':'Κοινότητα','ΔΙΚΤΥΟ':'Δίκτυο','ΣΥΣΤΗΜΑ':'Σύστημα',
+    'ΑΛ':'Αγέλη','ΟΠ':'Ομάδα','ΚΑ':'Κοινότητα'};
+  let ROWS=[];
+
+  const head=()=>`<div class="dhead"><div style="flex:1">
       <div style="font-size:17px;font-weight:600">Εισαγωγή επιτελείων</div>
       <div class="dim" style="font-size:12.5px">προς το πρόχειρο του ${esc(SY)}</div></div>
-      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
-    <div class="dsec">
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>`;
+
+  const shell=()=>{ $('drwp').innerHTML=head()+`<div class="dsec">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:9px">
-        Δύο τρόποι — αναγνωρίζει μόνο του ποιος είναι:<br>
-        <b>JSON</b> από το εργαλείο «Επιτελείο 76ου» (το κουμπί «JSON backup»), ή<br>
-        <b>επικόλληση</b> με στήλες <code>Τμήμα · Ονοματεπώνυμο · Ρόλος</code> από Excel.</div>
-      <textarea id="siT" rows="10" placeholder="Επικόλλησε εδώ…"
+        <b>JSON</b> από το «Επιτελείο 76ου», ή <b>επικόλληση</b> με στήλες
+        <code>Τμήμα · Ονοματεπώνυμο · Ρόλος</code>.<br>
+        Ψάχνει σε βαθμοφόρους, <b>αρχειοθετημένους</b>, <b>μέλη Κοινότητας</b> και
+        παρατσούκλια. Ό,τι δεν λυθεί, μένει εκκρεμές — δεν σε σταματά.</div>
+      <textarea id="siT" rows="9" placeholder="Επικόλλησε εδώ…"
         style="width:100%;font-family:ui-monospace,monospace;font-size:11.5px"></textarea>
       <div style="margin-top:9px;display:flex;gap:7px;flex-wrap:wrap">
         <button class="btn" id="siRead">Διάβασε</button>
-        <button class="btn p" id="siGo" style="display:none">Στο πρόχειρο</button></div>
+        <button class="btn p" id="siGo" style="display:none">Πέρασε ό,τι είναι έτοιμο</button></div>
       <div id="siOut" style="margin-top:11px"></div></div>`;
-  drw.classList.add('on');
-  let ROWS=null;
-  $('siRead').onclick=()=>{
+    $('siRead').onclick=read; $('siGo').onclick=apply; };
+
+  function read(){
     const raw=$('siT').value.trim();
     if(!raw)return $('siOut').innerHTML='<div class="dim">Τίποτα να διαβάσω.</div>';
     let items=[];
@@ -7317,46 +7375,170 @@ function staffImport(){
       }catch(e){return $('siOut').innerHTML='<div class="bad">Χαλασμένο JSON: '+esc(e.message)+'</div>'}
     } else {
       items=tsvRows(raw)||[];
-      if(items.length&&!items[0].Τμήμα){
+      if(items.length&&!items[0]['Τμήμα']){
         items=raw.split(/\n/).map(l=>l.split(/\t|;/)).filter(c=>c.length>=2)
           .map(c=>({sec:(c[0]||'').trim(), name:(c[1]||'').trim(), role:(c[2]||'').trim()}));
       } else items=items.map(o=>({sec:o['Τμήμα']||'', name:o['Ονοματεπώνυμο']||o['Όνομα']||'', role:o['Ρόλος']||''}));
     }
-    /* Ίδιος μηχανισμός ταιριάσματος με τους φακέλους δράσεων. */
-    const led=D.bh.filter(p=>isLed(p)&&p.status!=='Αρχειοθετημένος');
-    const REG=led.map(p=>M76.person(p.first_name,p.last_name,{ref:p,display:nm(p)}));
-    const SECMAP={'ΑΓΕΛΗ':'Αγέλη','ΟΜΑΔΑ':'Ομάδα','ΚΟΙΝΟΤΗΤΑ':'Κοινότητα','ΔΙΚΤΥΟ':'Δίκτυο','ΣΥΣΤΗΜΑ':'Σύστημα'};
-    ROWS=items.filter(x=>x.name).map(x=>{
+    ROWS=items.filter(x=>x.name).map((x,i)=>{
       const r=M76.match(M76.fromText(x.name),REG);
-      return {...x, sec:SECMAP[(x.sec||'').toUpperCase()]||x.sec,
-              p:r.status==='g'?led[r.pick]:null, st:r.status,
-              cands:(r.cands||[]).map(c=>({p:led[c.i],s:c.s}))}});
-    const ok=ROWS.filter(x=>x.p).length;
-    $('siOut').innerHTML=`<div class="kv"><b>Γραμμές</b><span>${ROWS.length}</span></div>
-      <div class="kv"><b>Ταίριαξαν</b><span>${ok}</span></div>
-      <div style="max-height:34vh;overflow:auto;margin-top:8px">${ROWS.map((x,i)=>`
-        <div class="kv" style="font-size:12.5px"><b style="flex:1">${esc(x.name)}</b>
-          <span class="dim">${esc(x.sec||'—')}${x.role?' · '+esc(x.role):''}</span>
-          ${x.p?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${esc(nm(x.p))}</span>`
-              :`<select data-simp="${i}" style="max-width:170px;font-size:11.5px;padding:3px 6px">
-                 <option value="">— κανένας —</option>
-                 ${x.cands.map(c=>`<option value="${c.p.id}">${esc(nm(c.p))} · ${Math.round(c.s*100)}%</option>`).join('')}
-                 <option disabled>──────</option>
-                 ${led.map(b=>`<option value="${b.id}">${esc(nm(b))}</option>`).join('')}</select>`}
-        </div>`).join('')}</div>`;
-    document.querySelectorAll('[data-simp]').forEach(sel=>sel.onchange=()=>{
-      ROWS[+sel.dataset.simp].p=led.find(b=>b.id===sel.value)||null});
-    $('siGo').style.display='';
-  };
-  $('siGo').onclick=()=>{
-    const use=ROWS.filter(x=>x.p&&x.sec);
-    if(!use.length)return toast('Καμία γραμμή με πρόσωπο και τμήμα');
-    use.forEach(x=>{ DRAFT[x.p.id]=Object.assign(DRAFT[x.p.id]||{},
-      {section:x.sec, role:x.role||undefined}); });
-    saveDraft(); drw.classList.remove('on');
-    toast(use.length+' στο πρόχειρο — δες τα και οριστικοποίησε');
+      const cands=(r.cands||[]).map(c=>({e:REG[c.i], s:c.s}));
+      /* Το «σχεδόν σίγουρο» ΔΕΝ πετιέται: προτείνεται και θέλει ένα κλικ. */
+      const auto = r.status==='g' ? REG[r.pick] : null;
+      const sug  = (!auto && cands.length) ? cands[0].e : null;
+      const sc   = cands[0] ? cands[0].s : 0;
+      /* Πάνω από 70% το προτείνουμε ΣΥΜΠΛΗΡΩΜΕΝΟ και ζητάμε ένα «ναι».
+         Πριν, το κομμένο «Άντρεα-Φ.» έβγαινε 83% και κατέληγε σε άδειο
+         μενού — δηλαδή δουλειά από την αρχή για κάτι που ήξερε ήδη. */
+      const take = auto || (sug && sc>=0.70 ? sug : null);
+      return {i, name:x.name, sec:SECMAP[(x.sec||'').toUpperCase()]||x.sec||'', role:x.role||'',
+              pick:take?take.ref:null, sure:!!auto, sug:sug?sug.ref:null, sugScore:sc,
+              cands, st:r.status, pend:false, q:''};
+    });
+    draw();
+  }
+
+  const badge=e=>e&&e.kind&&e.kind!=='βαθμοφόρος'
+    ?`<i class="rkind">${esc(e.kind)}</i>`:'';
+  const kindOf=p=>{const e=REG.find(r=>r.ref===p); return e?e.kind:''};
+
+  function draw(){
+    const ok=ROWS.filter(x=>x.pick&&x.sure&&x.sec&&!x.pend).length;
+    const sug=ROWS.filter(x=>x.pick&&!x.sure&&!x.pend).length;
+    const pend=ROWS.filter(x=>x.pend).length;
+    const open=ROWS.filter(x=>!x.pick&&!x.pend).length;
+    $('siOut').innerHTML=`
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
+        <span class="pill">${ROWS.length} γραμμές</span>
+        <span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${ok} έτοιμες</span>
+        ${sug?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${sug} προτάσεις</span>`:''}
+        ${open?`<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">${open} αναπάντητες</span>`:''}
+        ${pend?`<span class="pill">${pend} εκκρεμούν</span>`:''}
+        <span class="sp"></span>
+        ${sug?`<button class="btn sm p" id="siAllYes">✓ Δέξου τις ${sug} προτάσεις</button>`:''}
+        ${open?`<button class="btn sm gh" id="siAllPend">⏸ Άφησέ τα εκκρεμή</button>`:''}
+      </div>
+      <div style="max-height:44vh;overflow:auto">${ROWS.map(x=>rowHtml(x)).join('')}</div>`;
+    bind();
+    $('siGo').style.display=(ok||pend||sug||open)?'':'none';
+    const ap=$('siAllPend'); if(ap)ap.onclick=()=>{ROWS.forEach(r=>{if(!r.pick)r.pend=true});draw()};
+    const ay=$('siAllYes'); if(ay)ay.onclick=()=>{ROWS.forEach(r=>{if(r.pick&&!r.pend)r.sure=true});draw()};
+  }
+
+  function rowHtml(x){
+    const done=!!x.pick;
+    return `<div class="srow${x.pend?' pend':(done?(x.sure?' ok':' warn'):'')}" data-r="${x.i}">
+      <div class="srow1">
+        <b style="flex:1">${esc(x.name)}</b>
+        <span class="dim" style="font-size:11.5px">${esc(x.sec||'— χωρίς τμήμα —')}${x.role?' · '+esc(x.role):''}</span>
+      </div>
+      ${x.pend?`<div class="srow2"><span class="dim" style="font-size:12px;flex:1">⏸ Εκκρεμεί — θα το δεις αργότερα</span>
+          <button class="btn sm gh" data-unpend="${x.i}">Ανάλαβέ το</button></div>`
+      : done?`<div class="srow2">
+          <span style="flex:1;font-size:12.5px">→ <b>${esc(nm(x.pick))}</b>${badge({kind:kindOf(x.pick)})}
+            ${x.sure?'':`<i class="dim">${Math.round(x.sugScore*100)}% — να επιβεβαιωθεί</i>`}</span>
+          ${x.sure?'':`<button class="btn sm p" data-conf="${x.i}">Ναι, αυτός</button>`}
+          <button class="btn sm gh" data-clear="${x.i}">Άλλαξε</button></div>`
+      : `<div class="srow2">
+          <input class="sq" data-q="${x.i}" value="${esc(x.q)}" placeholder="γράψε όνομα, παρατσούκλι ή Α.Μ.…">
+          <button class="btn sm gh" data-pend="${x.i}" title="Προχώρα — θα το λύσεις αργότερα">⏸ Αργότερα</button>
+        </div>
+        <div class="scand">${candList(x)}</div>`}
+    </div>`;
+  }
+
+  /* Ο χειροκίνητος δρόμος: ελεύθερη αναζήτηση σε ΟΛΟ το μητρώο. Το παλιό
+     μενού με 100 <option> ήταν άχρηστο μόλις δεν ήξερες το ακριβές όνομα. */
+  function candList(x){
+    let list;
+    if(x.q&&x.q.trim().length>1){
+      const q=nameKey(x.q);
+      const seen=new Set();
+      list=REG.filter(e=>{ if(seen.has(e.ref.id))return false;
+          const hay=nameKey(nm(e.ref)+' '+(e.ref.nickname||'')+' '+(e.ref.scout_name||''));
+          const hit=hay.includes(q)||String(e.ref.registry_no||'').includes(x.q.trim());
+          if(hit)seen.add(e.ref.id); return hit;})
+        .slice(0,8).map(e=>({e,s:null}));
+    } else {
+      const seen=new Set();
+      list=x.cands.filter(c=>{if(seen.has(c.e.ref.id))return false;seen.add(c.e.ref.id);return true}).slice(0,4);
+    }
+    if(!list.length)return '<span class="dim" style="font-size:12px">— κανένα αποτέλεσμα · γράψε για αναζήτηση —</span>';
+    return list.map(c=>`<button class="btn sm gh scand-b" data-pick="${x.i}|${c.e.ref.id}">
+      ${esc(nm(c.e.ref))}${badge(c.e)}${c.s!=null?` <i class="dim">${Math.round(c.s*100)}%</i>`:''}</button>`).join('');
+  }
+
+  function bind(){
+    document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{
+      const [i,id]=b.dataset.pick.split('|');
+      const r=ROWS[+i]; r.pick=D.bh.find(p=>p.id===id)||null; r.sure=true; r.pend=false; draw()});
+    document.querySelectorAll('[data-conf]').forEach(b=>b.onclick=()=>{ROWS[+b.dataset.conf].sure=true;draw()});
+    document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{
+      const r=ROWS[+b.dataset.clear]; r.pick=null; r.sure=false; draw()});
+    document.querySelectorAll('[data-pend]').forEach(b=>b.onclick=()=>{ROWS[+b.dataset.pend].pend=true;draw()});
+    document.querySelectorAll('[data-unpend]').forEach(b=>b.onclick=()=>{ROWS[+b.dataset.unpend].pend=false;draw()});
+    /* Η αναζήτηση φιλτράρει ΕΠΙ ΤΟΠΟΥ — χωρίς ξαναζωγράφισμα όλης της λίστας,
+       αλλιώς οι ελληνικοί τόνοι (νεκρά πλήκτρα) σπάνε στο κάθε πλήκτρο. */
+    document.querySelectorAll('[data-q]').forEach(inp=>inp.oninput=()=>{
+      const x=ROWS[+inp.dataset.q]; x.q=inp.value;
+      const host=inp.closest('.srow').querySelector('.scand');
+      if(host){host.innerHTML=candList(x);
+        host.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{
+          const [i,id]=b.dataset.pick.split('|');
+          const r=ROWS[+i]; r.pick=D.bh.find(p=>p.id===id)||null; r.sure=true; r.pend=false; draw()});}});
+  }
+
+  /* Περνάει ό,τι είναι έτοιμο ΚΑΙ κρατά τα εκκρεμή. Δεν χάνεται τίποτα. */
+  function apply(){
+    const use=ROWS.filter(x=>x.pick&&x.sure&&x.sec&&!x.pend);
+    const pend=ROWS.filter(x=>x.pend||!x.pick||!x.sure);
+    let promo=0;
+    use.forEach(x=>{
+      const k=kindOf(x.pick);
+      if(k==='μέλος Κοινότητας'||k==='αρχειοθετημένος')promo++;
+      DRAFT[x.pick.id]=Object.assign(DRAFT[x.pick.id]||{},
+        {section:x.sec, role:x.role||undefined,
+         promote:(k==='μέλος Κοινότητας')?'Βαθμοφόρος':undefined,
+         revive:(k==='αρχειοθετημένος')?true:undefined});
+    });
+    saveDraft();
+    savePend(pend.map(x=>({name:x.name, sec:x.sec, role:x.role,
+      sug:x.sug?nm(x.sug):null, at:new Date().toISOString().slice(0,10)})));
+    drw.classList.remove('on');
+    toast(use.length+' στο πρόχειρο'+(pend.length?' · '+pend.length+' εκκρεμούν':'')
+      +(promo?' · '+promo+' αλλάζουν ιδιότητα':''));
     V.staff();
-  };
+  }
+
+  shell(); drw.classList.add('on');
+}
+
+/* Τα εκκρεμή δεν εξαφανίζονται: κάθονται στο Στήσιμο και σε περιμένουν. */
+function staffPending(){
+  const P=loadPend();
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+      <div style="font-size:17px;font-weight:600">Εκκρεμούν από την εισαγωγή</div>
+      <div class="dim" style="font-size:12.5px">${P.length} γραμμές που δεν ταυτοποιήθηκαν</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">
+      ${P.length?`<div class="muted" style="font-size:12.5px;margin-bottom:9px">
+        Πέρασέ τα ξανά από την Εισαγωγή όταν βρεις ποιοι είναι, ή φτιάξε τους καρτέλα στο Μητρώο.</div>
+      ${P.map((x,i)=>`<div class="kv"><b style="flex:1">${esc(x.name)}</b>
+        <span class="dim" style="font-size:12px">${esc(x.sec||'—')}${x.role?' · '+esc(x.role):''}</span>
+        ${x.sug?`<span class="pill">μοιάζει με ${esc(x.sug)}</span>`:''}
+        <a href="#" data-pdel="${i}" style="color:var(--bad)">✕</a></div>`).join('')}
+      <div style="margin-top:11px;display:flex;gap:7px">
+        <button class="btn sm gh" id="pCopy">Αντιγραφή για επικόλληση</button>
+        <button class="btn sm gh" id="pClear" style="color:var(--bad)">Καθάρισε όλα</button></div>`
+      :'<div class="dim">Τίποτα εκκρεμές.</div>'}</div>`;
+  document.querySelectorAll('[data-pdel]').forEach(a=>a.onclick=e=>{e.preventDefault();
+    const L=loadPend(); L.splice(+a.dataset.pdel,1); savePend(L); staffPending(); V.staff()});
+  const c=$('pCopy'); if(c)c.onclick=()=>{
+    const t=P.map(x=>[x.sec||'',x.name,x.role||''].join('\t')).join('\n');
+    navigator.clipboard&&navigator.clipboard.writeText(t); toast('Αντιγράφηκε')};
+  const cl=$('pClear'); if(cl)cl.onclick=()=>{if(confirm('Καθάρισμα όλων των εκκρεμών;')){
+    savePend([]); drw.classList.remove('on'); V.staff()}};
+  drw.classList.add('on');
 }
 
 function staffDraft(years){
@@ -7388,6 +7570,7 @@ function staffDraft(years){
   const poolPrev=pool.filter(p=>prev[p.id]).length;
   const fixRole=led.filter(p=>unknownRole(p)&&prev[p.id]&&roleKnown(prev[p.id].role)).length;
   const canPrev=poolPrev+fixRole;
+  const pendN=loadPend().length;
 
   /* Ο κωδικός θέσης — ΑΑΛ, ΥΟΠ, ΑΣ — φτιάχνεται από κλάδο + βαθμίδα.
      Είναι το λεξιλόγιο που χρησιμοποιούμε προφορικά· η κάρτα πρέπει να το
@@ -7429,6 +7612,8 @@ function staffDraft(years){
           title="Τοποθετεί όσους λείπουν και συμπληρώνει τις βαθμίδες που δεν ξέρουμε. Μένει πρόχειρο.">
           ↺ Ξεκίνα από ${esc(prevY||'πέρσι')} · ${canPrev}</button>`:''}
         <button class="btn sm gh${STONLY?' p':''}" id="stOnly">Μόνο αδιάθετοι</button>
+        ${pendN?`<button class="btn sm" id="stPend"
+          title="Γραμμές εισαγωγής που δεν ταυτοποιήθηκαν — δεν χάθηκαν">⏸ Εκκρεμούν · ${pendN}</button>`:''}
         <button class="btn sm" id="stCsv">${ic('down',14)} CSV</button>
         ${isFuture?`<button class="btn sm gh" id="stImp">${ic('down',14)} Εισαγωγή</button>`:''}
         <button class="btn sm" onclick="window.print()">Εκτύπωση</button>
@@ -7498,6 +7683,7 @@ function staffDraft(years){
   const dg=$('stDrag'); if(dg)dg.onclick=()=>{DRAGON=!DRAGON;
     try{localStorage.setItem('e76:dragon',DRAGON?'1':'')}catch(x){}; V.staff()};
   const im=$('stImp'); if(im)im.onclick=staffImport;
+  const pn2=$('stPend'); if(pn2)pn2.onclick=staffPending;
   const on=$('stOnly'); if(on)on.onclick=()=>{STONLY=!STONLY;
     try{localStorage.setItem('e76:stonly',STONLY?'1':'')}catch(x){}; V.staff()};
   const pv=$('stPrev'); if(pv)pv.onclick=()=>{
@@ -7533,6 +7719,18 @@ function staffDraft(years){
   document.querySelectorAll('[data-cat]').forEach(s=>s.onchange=()=>setD(s.dataset.cat,'category',s.value));
   const rs=$('stReset'); if(rs)rs.onclick=()=>{if(confirm('Απόρριψη πρόχειρων αλλαγών για '+SY+';')){DRAFT={};localStorage.removeItem(draftKey());V.staff()}};
   const ap=$('stApply'); if(ap)ap.onclick=async()=>{
+    /* Όποιος ήρθε από την Κοινότητα γίνεται βαθμοφόρος· όποιος ήταν
+       αρχειοθετημένος ξαναζωντανεύει. Αλλιώς η οριστικοποίηση θα έγραφε
+       επιτελείο για ανθρώπους που το μητρώο δεν τους θεωρεί βαθμοφόρους. */
+    const chg=[];
+    changed.forEach(p=>{const d=DRAFT[p.id]||{};
+      const u={}; if(d.promote)u.kind=d.promote;
+      if(d.revive)u.status='Ενεργός';
+      if(Object.keys(u).length)chg.push({id:p.id,u});});
+    for(const c of chg){ const {error}=await sb.from('badgeholders').update(c.u).eq('id',c.id);
+      if(error){toast('Δεν άλλαξε ιδιότητα: '+error.message);return}
+      const b=D.bh.find(x=>x.id===c.id); if(b)Object.assign(b,c.u); }
+    if(chg.length)toast(chg.length+' άλλαξαν ιδιότητα');
     const rows=changed.filter(p=>DRAFT[p.id].section).map(p=>({
       person_id:p.id, scout_year:SY, section:DRAFT[p.id].section,
       appointment:DRAFT[p.id].role+' '+(SECFULL[DRAFT[p.id].section]||''),
