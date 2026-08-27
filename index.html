@@ -376,6 +376,7 @@ select.unset{border-color:var(--warn);color:var(--warn)}
 .psn{font-style:normal;font-size:10.5px;color:var(--ink3);margin-left:5px}
 .pwarn{font-size:10.5px;color:var(--warn);margin-top:4px;font-weight:600}
 .pcard.faded{opacity:.28}
+.edb.hasfile{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
 .bpark{margin-top:7px;border-top:1px dashed var(--ln);padding-top:6px}
 .bparkh{width:100%;text-align:left;background:transparent;border:0;cursor:pointer;
   font-size:11.5px;color:var(--ink3);padding:3px 2px}
@@ -910,7 +911,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 19:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 22:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1345,7 +1346,7 @@ async function loadAll(){
     sb.from('service_history').select('*').limit(3000),
     sb.from('honors').select('*').limit(500),
     sb.from('person_emails').select('*').limit(2000),
-    sb.from('documents').select('*').order('uploaded_at',{ascending:false}).limit(3000),
+    sb.from('documents').select('*').order('uploaded_at',{ascending:false}).limit(4000),
     sb.from('person_certificates').select('*').limit(4000),
     sb.from('certificate_types').select('*'),
     sb.from('vehicles').select('*').limit(500),
@@ -3992,11 +3993,17 @@ V.kidhealth=()=>{
       <div class="muted" style="margin-top:5px;font-size:13px">Μπορείς να τα ανεβάσεις εσύ,
         ή να τα φέρεις τυπωμένα στο τραπέζι των εγγραφών.</div>
       <div style="margin-top:10px">${reqs.map(r=>{const e=has(r);
+        /* Ό,τι ανέβασες, το βλέπεις. Χωρίς αυτό, ανεβάζεις σε μαύρο κουτί και
+           δεν ξέρεις αν πήγε το σωστό αρχείο ή αν διαβάζεται. */
+        const doc=e&&e.document_id?(D.doc||[]).find(d=>d.id===e.document_id):null;
         return `<div class="kv" style="border-top:1px solid var(--line);padding:8px 0">
           <span style="flex:1;min-width:0"><b style="font-size:13.5px">${esc(r.label)}</b>
             <div class="dim" style="font-size:11.5px">${esc(r.cadence)}${
-              e&&e.received_on?' · λάβαμε '+fdate(e.received_on):''}</div></span>
-          ${e?'<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">✓ το έχουμε</span>'
+              e&&e.received_on?' · λάβαμε '+fdate(e.received_on):''}${
+              doc?' · '+esc(doc.title||''):''}</div></span>
+          ${doc?`<button class="btn sm gh" data-doc="${doc.id}" title="Άνοιγμα">${ic('book',13)} δες</button>`:''}
+          ${e?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">✓ το έχουμε</span>
+               ${docCanReplace(r,e)?`<button class="btn sm gh" data-pu="${kid.id}" data-code="${esc(r.code)}">αντικατάσταση</button>`:''}`
              :'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">εκκρεμεί</span>'}
         </div>`}).join('')||'<div class="dim">—</div>'}</div>
       <button class="btn p sm" data-pu="${kid.id}" style="margin-top:11px">Ανέβασμα εντύπου</button>
@@ -4016,7 +4023,9 @@ V.kidhealth=()=>{
       }).join('')||'<div class="dim">—</div>'}</div>
     </div>`;
 
-  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu));
+  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu,b.dataset.code));
+  document.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>{
+    const d=(D.doc||[]).find(x=>x.id===b.dataset.doc); if(d)docOpen(d.path);});
   /* Πόσο φρέσκα είναι — χωρίς να δείξουμε τι λένε. */
   sb.rpc('medical_freshness',{p_person:kid.id}).then(({data})=>{
     const el=$('mfBox'); if(!el)return;
@@ -4531,9 +4540,13 @@ function scanToFile(file, baseName){
   });
 }
 
-function parentUpload(pid){
+/* Το ετήσιο έντυπο αντικαθίσταται μέσα στη χρονιά (π.χ. νέα βεβαίωση υγείας).
+   Το εφάπαξ —πιστοποιητικό γεννήσεως— δεν ξαναζητιέται. */
+function docCanReplace(r,e){ return !!e && r.cadence==='ετήσιο'; }
+
+function parentUpload(pid, only){
   const p=D.bh.find(x=>x.id===pid);
-  const reqs=(D.dr||[]).filter(r=>r.active!==false&&!edHas(p,r));
+  const reqs=(D.dr||[]).filter(r=>r.active!==false&&(only?r.code===only:!edHas(p,r)));
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Ανέβασμα</div>
       <div class="dim" style="font-size:12.5px">${pn(p)}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
@@ -9313,8 +9326,15 @@ function enrollBody(){
   const all=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός'&&(ENSEC==='all'||secOf(p)===ENSEC));
   const per=reqs.map(r=>({r,n:all.filter(p=>edHas(p,r)).length}));
   const chip=(v,t)=>`<button class="btn sm${ENSEC===v?' p':' gh'}" data-es="${v}">${t}</button>`;
+  /* Τρεις καταστάσεις, όχι δύο: λείπει · το πήραμε στο χέρι · ανέβηκε αρχείο.
+     Το ανεβασμένο ανοίγει με κλικ — αλλιώς δεν ξέρεις αν είναι το σωστό. */
   const cell=(p,r)=>{const h=edHas(p,r);
-    return `<td style="text-align:center"><button class="edb${h?' on':''}" data-ed="${p.id}" data-rc="${r.code}" title="${h?'Παραλήφθηκε '+(h.received_on?fdate(h.received_on):''):'Λείπει'}">${h?'✓':'—'}</button></td>`};
+    const doc=h&&h.document_id?(D.doc||[]).find(d=>d.id===h.document_id):null;
+    const t=!h?'Λείπει':(doc?('Ανέβηκε αρχείο'+(h.notes?' — '+h.notes:'')+' · κλικ για άνοιγμα')
+                            :('Παραλήφθηκε '+(h.received_on?fdate(h.received_on):'')));
+    return `<td style="text-align:center">
+      <button class="edb${h?' on':''}${doc?' hasfile':''}" data-ed="${p.id}" data-rc="${r.code}"
+        ${doc?`data-fdoc="${doc.id}"`:''} title="${esc(t)}">${h?(doc?'📎':'✓'):'—'}</button></td>`};
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Πιστοποιητικά εγγραφής ${esc(YEAR)}</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Τι έχει φέρει το κάθε παιδί. Το πιστοποιητικό γεννήσεως ζητείται μία φορά· τα υπόλοιπα κάθε χρονιά.</div>
@@ -9349,6 +9369,10 @@ function enrollBody(){
     const csv='﻿'+rows.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
     saveBlob(csv,'text/csv;charset=utf-8',`76-fakelos-eggrafis-${YEAR}.csv`)};
   document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=async()=>{
+    /* Αν υπάρχει ανεβασμένο αρχείο, το κλικ το ΑΝΟΙΓΕΙ — δεν το ξε-τικάρει.
+       Το ξε-τικάρισμα θα έσβηνε την παραλαβή ενός εγγράφου που υπάρχει. */
+    if(b.dataset.fdoc){ const d=(D.doc||[]).find(x=>x.id===b.dataset.fdoc);
+      if(d)return docOpen(d.path); }
     const pid=b.dataset.ed, code=b.dataset.rc, req=reqs.find(r=>r.code===code), p=D.bh.find(x=>x.id===pid);
     const cur=edHas(p,req);
     if(cur){const {error}=await sb.from('enrollment_docs').delete().eq('id',cur.id);
@@ -11475,7 +11499,11 @@ function molaEdit(id, slot, seed){
         <div class="dim" style="font-size:12.5px">${esc(lv.t)}${can?'':' · μόνο ανάγνωση'}</div></div>
         <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
       <div class="dsec">
-        ${can?'':`<div class="card pad" style="margin-bottom:11px;background:var(--warnbg)">
+        ${can?((lv.k==='ge'||lv.k==='ep')?`<div class="card pad" style="margin-bottom:11px;background:var(--warnbg)">
+          <b>Ανήκει στο «${esc(lv.t)}».</b> Το αλλάζεις ως <b>τεχνικός</b>, όχι ως Α.Σ.
+          Χρήσιμο όταν αλλάζει μια ημερομηνία και δεν το έχουν περάσει ακόμη —
+          αλλά αν το διορθώσουν κι εκείνοι, θα υπάρξουν δύο εκδοχές.</div>`:'')
+        :`<div class="card pad" style="margin-bottom:11px;background:var(--warnbg)">
           <b>Δεν είναι δικό σου.</b> Ανήκει στο κλιμάκιο «${esc(lv.t)}». Το βλέπεις, δεν το αλλάζεις.
           Αν είναι λάθος, ζήτησέ το από εκεί.</div>`}
         <label>Τίτλος<input id="meT" value="${esc(ev?ev.title:(seed&&seed.title||''))}" ${can?'':'disabled'}></label>
@@ -11527,6 +11555,12 @@ function molaEdit(id, slot, seed){
 
     const sv=$('meSave'); if(sv)sv.onclick=async()=>{
       const t=$('meT').value.trim(); if(!t)return toast('Θέλει τίτλο');
+      /* Γράψιμο ΠΡΟΣ ΤΑ ΠΑΝΩ: επιτρέπεται μόνο στον τεχνικό, και ποτέ
+         αθόρυβα — αλλάζεις δεδομένα άλλου κλιμακίου. */
+      if(ev&&(lv.k==='ge'||lv.k==='ep')&&!confirm(
+        'Αυτό ανήκει στο κλιμάκιο «'+lv.t+'», όχι στο 76ο.\n\n'
+        +'Το αλλάζεις ως τεχνικός. Αν το διορθώσουν και εκείνοι, θα υπάρξουν '
+        +'δύο εκδοχές.\n\nΝα προχωρήσω;'))return;
       const d=$('meD').value||null, n=parseInt($('meN').value,10)||0;
       const main=(tags[0]||'').split(':')[0];
       const K=molaKl();
@@ -11796,6 +11830,28 @@ function molaJson(yr){
    2) αρχείο .json που κατέβασες από εκεί ή από εδώ
    3) επικόλληση γραμμών  Ημερομηνία · Τίτλος · Κατηγορία
    Τίποτα δεν γράφεται πριν δεις τι θα μπει.                              */
+/* Τι μπορώ να γράψω: το δικό μου κλιμάκιο, ό,τι είναι από κάτω, και τα
+   καθολικά (αργίες). Ποτέ προς τα πάνω. */
+function canWriteKl(id){
+  const K=molaKl(), adm=!!(ME&&(ME.platform_admin||ME.role==='admin'));
+  if(id==null) return adm;                       // αργίες: μόνο διαχειριστής
+  if(K.ge&&id===K.ge.id) return !!(ME&&ME.platform_admin);
+  if(K.ep&&id===K.ep.id) return !!(ME&&ME.platform_admin);
+  return adm||(ME&&ME.role==='section_head');
+}
+/* Το μήνυμα σφάλματος να λέει ΤΙ φταίει, όχι μια πιθανή αιτία στην τύχη. */
+function writeHint(m){
+  m=String(m||'');
+  if(/ON CONFLICT/i.test(m))
+    return 'Σφάλμα σχήματος, όχι δικαιωμάτων: λείπει το μοναδικό ευρετήριο στο ext_id. Πες το μου.';
+  if(/row-level security|violates row-level/i.test(m))
+    return 'Δικαιώματα: προσπαθείς να γράψεις σε κλιμάκιο που δεν σου ανήκει.';
+  if(/duplicate key/i.test(m))
+    return 'Υπάρχει ήδη δράση με το ίδιο ext_id. Ξανακατέβασε το αρχείο και δοκίμασε πάλι.';
+  if(/invalid input value for enum/i.test(m))
+    return 'Μια τιμή δεν υπάρχει στη βάση (π.χ. τμήμα που δεν αναγνωρίζεται).';
+  return 'Δες το μήνυμα από πάνω — αν δεν βγάζει νόημα, στείλ' + String.fromCharCode(39) + ' το μου.';
+}
 const MOLA_API='https://script.google.com/macros/s/AKfycbxTME66DDDOOdU5m__M-_EFjp_DivUchyvXba6DNOmoKD7pJ7lifTEIoJsNBtLANCyE/exec';
 function molaImport(){
   const yr=YEAR; let PEND=null;
@@ -11830,8 +11886,12 @@ function molaImport(){
     const bad=items.length-PEND.length;
     const known=new Set((D.ev||[]).filter(e=>e.scout_year===yr).map(e=>e.ext_id).filter(Boolean));
     const nw=PEND.filter(x=>!x.ext_id||!known.has(x.ext_id)).length;
+    const canN=PEND.filter(x=>canWriteKl(x.klimakio_id)).length;
     $('miOut').innerHTML=`<div class="card pad">
       <b>${PEND.length}</b> δράσεις διαβάστηκαν — <b>${nw}</b> νέες, <b>${PEND.length-nw}</b> ενημερώνονται.
+      ${canN<PEND.length?`<div style="margin-top:6px;color:var(--warn)">
+        Θα γραφτούν <b>${canN}</b>. Οι υπόλοιπες <b>${PEND.length-canN}</b> ανήκουν σε ανώτερα
+        κλιμάκια (Γενική, Επαρχία) — τις βλέπεις, δεν τις αλλάζεις.</div>`:''}
       ${bad?`<div class="dim" style="margin-top:5px">${bad} αγνοήθηκαν (χωρίς τίτλο ή ημερομηνία).</div>`:''}
       <div style="margin-top:8px;max-height:220px;overflow:auto;font-size:12.5px">
         ${PEND.slice(0,60).map(x=>`<div style="padding:2px 0;border-bottom:1px solid var(--ln)">
@@ -11908,16 +11968,28 @@ function molaImport(){
       end_date:x.end_date||null, nights:x.nights||null, type:x.type||null, hours:x.hours||null,
       place:x.place||null, tags:x.tags||[], bold:!!x.bold, section:x.section||null,
       sat_slot:x.sat_slot||null, klimakio_id:x.klimakio_id||null, scout_year:yr, source:'mola-import'}));
-    const withId=rows.filter(r=>r.ext_id), noId=rows.filter(r=>!r.ext_id);
+
+    /* ΓΡΑΦΕΙΣ ΜΟΝΟ ΤΑ ΔΙΚΑ ΣΟΥ. Ένα αρχείο της μόλας περιέχει και τις σχολές
+       της Γενικής και τις δράσεις της Επαρχίας — αυτές τις ΒΛΕΠΕΙΣ, δεν τις
+       κατέχεις. Αντί να σκάει ολόκληρη η εισαγωγή, περνάει ό,τι σου ανήκει
+       και σου λέει τι παραλείφθηκε και γιατί. */
+    const mine=[], theirs=[];
+    rows.forEach(r=>{ (canWriteKl(r.klimakio_id) ? mine : theirs).push(r) });
+    if(!mine.length) return $('miOut').innerHTML=
+      `<div class="card pad"><b>Τίποτα δικό σου σε αυτό το αρχείο.</b>
+        <div class="dim" style="margin-top:6px">Και οι ${theirs.length} δράσεις ανήκουν σε ανώτερα
+        κλιμάκια (Γενική, Επαρχία). Τις βλέπεις — δεν τις αλλάζεις.</div></div>`;
+
+    const withId=mine.filter(r=>r.ext_id), noId=mine.filter(r=>!r.ext_id);
     let ok=0, err=null;
     if(withId.length){ const {data,error}=await sb.from('events')
         .upsert(withId,{onConflict:'ext_id'}).select();
       if(error)err=error; else ok+=(data||[]).length; }
     if(!err&&noId.length){ const {data,error}=await sb.from('events').insert(noId).select();
       if(error)err=error; else ok+=(data||[]).length; }
-    if(err)return $('miOut').innerHTML='<div class="bad">Δεν γράφτηκε: '+esc(err.message)+
-      '<div class="dim" style="margin-top:6px">Συνήθως σημαίνει ότι προσπαθείς να γράψεις σε κλιμάκιο που δεν σου ανήκει.</div></div>';
-    toast(ok+' δράσεις');
+    if(err)return $('miOut').innerHTML='<div class="bad">Δεν γράφτηκε: '+esc(err.message)
+      +'<div class="dim" style="margin-top:6px">'+esc(writeHint(err.message))+'</div></div>';
+    toast(ok+' δράσεις'+(theirs.length?' · '+theirs.length+' παραλείφθηκαν':''));
     await loadAll(); drw.classList.remove('on'); V.cal();
   };
 }
