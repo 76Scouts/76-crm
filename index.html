@@ -367,6 +367,7 @@ td.mcell:hover .madd{opacity:1}
 body.pip #side,body.pip .vabar,body.pip #owner{display:none!important}
 body.pip #main{margin-left:0!important;padding:10px}
 select.unset{border-color:var(--warn);color:var(--warn)}
+.stwin{font-size:11px;color:var(--warn);margin-top:5px;line-height:1.45}
 .rkind{font-style:normal;font-size:9.5px;letter-spacing:.04em;background:var(--ln);
   color:var(--ink2);border-radius:3px;padding:1px 5px;margin-left:5px}
 .prow2{display:flex;gap:5px;margin-top:6px}
@@ -901,7 +902,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 18:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 18:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1597,7 +1598,10 @@ function renderPersona(){
    Δεν αποφασίζει μόνος του: πράσινο = σίγουρο, κίτρινο = θέλει μάτι,
    κόκκινο = διάλεξε εσύ. Η χειροκίνητη επιλογή είναι πάντα διαθέσιμη. */
 const M76=(()=>{
-  const sp=s=>String(s||'').replace(/\s+/g,' ').trim();
+  /* Τα σύνθετα ονόματα γράφονται και «Αντρέα-Φωτεινή» και «Άντρεα - Φωτεινή».
+     Χωρίς κόλλημα της παύλας, το δεύτερο σπάει σε τρεις λέξεις και το
+     επώνυμο μαντεύεται λάθος. */
+  const sp=s=>String(s||'').replace(/\s*[-–—]\s*/g,'-').replace(/\s+/g,' ').trim();
   const dia=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').normalize('NFC');
   const canon=s=>sp(dia(sp(String(s).toLowerCase()).replace(/ς/g,'σ')).toUpperCase()
                     .replace(/[^Α-ΩA-Z0-9 ]/g,' '));
@@ -1667,10 +1671,24 @@ const M76=(()=>{
   const GREEN=0.90, AMBER=0.70;
   /* Επιστρέφει {status:'g'|'y'|'r', pick, sim, cands[]} — ποτέ σιωπηλή επιλογή. */
   const match=(p,R)=>{
-    const sc=R.map((r,i)=>({i,s:sim(p,r)})).sort((a,b)=>b.s-a.s);
+    const raw=R.map((r,i)=>({i,s:sim(p,r)})).sort((a,b)=>b.s-a.s);
+    /* ΕΝΑ ΑΤΟΜΟ = ΕΝΑΣ ΥΠΟΨΗΦΙΟΣ.
+       Το μητρώο κρατά τον ίδιο άνθρωπο κάτω από όνομα, παρατσούκλι και
+       προσκοπικό. Χωρίς αυτό, ο Νικόλαος Θεοδοσίου «ΩΡΙΩΝ» ταίριαζε δύο
+       φορές με τον εαυτό του και βγαινε «ομώνυμα» — δηλαδή η εφαρμογή
+       ζητούσε να διαλέξεις ανάμεσα σε αυτόν και σε αυτόν. */
+    const seen=new Set(), sc=[];
+    for(const x of raw){ const k=(R[x.i]&&R[x.i].ref)?(R[x.i].ref.id||R[x.i].ref):x.i;
+      if(seen.has(k))continue; seen.add(k); sc.push(x); }
     const top=sc[0]||{i:-1,s:0};
     const cands=sc.filter(x=>x.s>=0.55).slice(0,6);
+    /* Η ΑΚΡΙΒΗΣ ταύτιση δεν είναι ισοπαλία. Ένα 100% απέναντι σε ένα 95%
+       είναι απάντηση, όχι δίλημμα — αλλιώς κάθε «Αντρέας/Ανδρέας» κολλούσε. */
+    const EXACT=0.995;
     const ties=sc.filter(x=>x.s>=GREEN);
+    if(top.s>=EXACT && !(sc[1]&&sc[1].s>=EXACT))
+      return {status:'g',pick:top.i,sim:top.s,cands,
+              twin:(sc[1]&&sc[1].s>=GREEN)?sc[1].i:null};
     if(ties.length>1) return {status:'y',pick:top.i,sim:top.s,cands:ties.slice(0,6),omonyma:true};
     if(top.s>=GREEN)  return {status:'g',pick:top.i,sim:top.s,cands};
     if(top.s>=AMBER)  return {status:'y',pick:top.i,sim:top.s,cands};
@@ -7619,7 +7637,9 @@ function staffImport(){
       const take = auto || (sug && clear ? sug : null);
       return {i, name:x.name, sec:SECMAP[(x.sec||'').toUpperCase()]||x.sec||'', role:x.role||'',
               pick:take?take.ref:null, sure:!!auto, sug:sug?sug.ref:null, sugScore:sc,
-              cands, st:r.status, pend:false, q:''};
+              cands, st:r.status, pend:false, q:'',
+              twin:(r.twin!=null&&REG[r.twin])?REG[r.twin].ref:null,
+              omonyma:!!r.omonyma};
     });
     draw();
   }
@@ -7679,8 +7699,12 @@ function staffImport(){
           <span style="flex:1;font-size:12.5px">→ <b>${esc(nm(x.pick))}</b>${badge({kind:kindOf(x.pick)})}
             ${x.sure?'':`<i class="dim">${Math.round(x.sugScore*100)}% — να επιβεβαιωθεί</i>`}</span>
           ${x.sure?'':`<button class="btn sm p" data-conf="${x.i}">Ναι, αυτός</button>`}
-          <button class="btn sm gh" data-clear="${x.i}">Άλλαξε</button></div>`
-      : `<div class="srow2">
+          <button class="btn sm gh" data-clear="${x.i}">Άλλαξε</button></div>
+        ${x.twin?`<div class="stwin">⚠ Υπάρχει και <b>${esc(nm(x.twin))}</b> — παρόμοιο όνομα, άλλο πρόσωπο.
+          Αν εννοούσες εκείνον, πάτα «Άλλαξε».</div>`:''}`
+      : `${x.omonyma?'<div class="stwin">⚠ Δύο ή περισσότεροι με σχεδόν ίδιο όνομα — διάλεξε ποιον.</div>'
+          :(x.cands.length?'':'<div class="stwin">Δεν βρέθηκε κανείς κοντινός. Ίσως λείπει το επώνυμο από τη γραμμή.</div>')}
+        <div class="srow2">
           <input class="sq" data-q="${x.i}" value="${esc(x.q)}" placeholder="γράψε όνομα, παρατσούκλι ή Α.Μ.…">
           <button class="btn sm gh" data-pend="${x.i}" title="Προχώρα — θα το λύσεις αργότερα">⏸ Αργότερα</button>
         </div>
