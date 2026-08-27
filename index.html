@@ -377,6 +377,7 @@ select.unset{border-color:var(--warn);color:var(--warn)}
 .pwarn{font-size:10.5px;color:var(--warn);margin-top:4px;font-weight:600}
 .pcard.faded{opacity:.28}
 .edb.hasfile{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
+.approx{color:var(--warn);border-bottom:1px dotted var(--warn);cursor:help}
 .bpark{margin-top:7px;border-top:1px dashed var(--ln);padding-top:6px}
 .bparkh{width:100%;text-align:left;background:transparent;border:0;cursor:pointer;
   font-size:11.5px;color:var(--ink3);padding:3px 2px}
@@ -911,7 +912,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 22:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 22:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1381,7 +1382,7 @@ async function loadAll(){
     sb.from('ka_signature').select('*').limit(3000),
     sb.from('requirement_catalog').select('*,progression_catalog!stage_catalog_id(label,ordinal)').limit(1000),
     sb.from('progression_catalog').select('*').limit(500),
-    sb.from('member_progress').select('person_id,label,item_kind,date,catalog_id').limit(20000),
+    sb.from('member_progress').select('person_id,label,item_kind,date,catalog_id,date_approx,date_source').limit(20000),
     sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared').limit(20000),
     sb.from('progress_request').select('*').order('created_at',{ascending:false}).limit(2000),
     sb.from('progress_policy').select('*'),
@@ -1470,13 +1471,37 @@ const NAV_HEAD=[...NAV_LEADER,'viewas','approvals','training','warrants','intake
 const NAV_DEV=['audit','access','forms','mysys',
   'members','leaders','dedupe','intake'];
 /* Ο Α.Σ. και ο Έφορος τα βλέπουν όλα — γι' αυτό επιστρέφουμε null. */
-function navFor(role){
-  return role==='parent' ? NAV_PARENT
+/* Η πρόοδος είναι ΤΟΥ ΚΛΑΔΟΥ. Ο Αρχηγός Κοινότητας δεν έχει δουλειά με το
+   Κ.Α.Ν.Ε. της Ομάδας — και τα δεδομένα άλλωστε δεν του έρχονται (η βάση τον
+   κόβει). Το να του δείχνουμε την οθόνη ήταν υπόσχεση που δεν τηρείται.
+   Εξαίρεση που ΔΕΝ χρειάζεται ρύθμιση: ό,τι κέρδισε ένα παιδί στην Ομάδα
+   φαίνεται στον φάκελό του όταν έρθει στην Κοινότητα — γιατί το φιλτράρισμα
+   γίνεται ανά ΠΡΟΣΩΠΟ, όχι ανά κλάδο της εγγραφής. */
+const PROG_OF={'Αγέλη':'progAL','Ομάδα':'progOP','Κοινότητα':'progKA'};
+/* Η ημερομηνία προόδου δεν είναι πάντα ημερομηνία απονομής. 147 από τις 393
+   ήρθαν από τη μέρα της ΕΓΓΡΑΦΗΣ — δεκάδες παιδιά με την ίδια ημερομηνία.
+   Το «~» δεν είναι διακόσμηση: λέει «περίπου», ώστε να μη χτίζεις πάνω του. */
+function progDate(x){
+  if(!x||!x.date)return '<span class="dim">—</span>';
+  const t=fdate(x.date);
+  if(!x.date_approx)return esc(t);
+  const why=x.date_source==='εγγραφή'?'από την ημερομηνία εγγραφής, όχι απονομής'
+           :'κατά προσέγγιση — μαζική καταχώρηση';
+  return `<span class="approx" title="${esc(why)}">~${esc(t)}</span>`;
+}
+function navFor(role, sec){
+  const base = role==='parent' ? NAV_PARENT
        : role==='member' ? NAV_MEMBER
        : role==='dev'    ? NAV_DEV
        : role==='leader' ? NAV_LEADER
        : role==='head' || role==='section_head' ? NAV_HEAD
        : null;                                   // admin / commissioner = όλα
+  if(!base) return base;
+  if(role!=='leader' && role!=='head' && role!=='section_head') return base;
+  const mine = sec && PROG_OF[sec];
+  if(!mine) return base;
+  const others = Object.values(PROG_OF).filter(x=>x!==mine);
+  return base.filter(x=>!others.includes(x));
 }
 /* Οι κάρτες που είναι ο ΙΔΙΟΣ άνθρωπος με εμένα:
    η δική μου, η καρτέλα-γονέας που δείχνει σε εμένα (same_as), και ό,τι έχει το ίδιο email. */
@@ -1539,7 +1564,7 @@ function buildPersonas(subject){
 function personaIcon(k){return k==='parent'?'home':k==='member'?'users':k==='dev'?'shield':'award'}
 /* Τι θα δεις πραγματικά — με αριθμό οθονών, όχι με αόριστα λόγια. */
 function personaDesc(p){
-  const al=navFor(p.role||p.k);
+  const al=navFor(p.role||p.k, p.sec&&p.sec!=='ΟΛΑ'?p.sec:null);
   const n=al?al.length+' οθόνες':'όλες τις οθόνες';
   return p.k==='member' ? 'Η καρτέλα, οι παρουσίες και η πορεία μου · '+n
        : p.k==='parent' ? 'Πρόοδος, έντυπα και οφειλές των παιδιών μου · '+n
@@ -1813,7 +1838,7 @@ function setViewAs(k){
 }
 /* Η οθόνη «δεν το βλέπει αυτός» — με το ΓΙΑΤΙ και δύο εξόδους. */
 function vaBlocked(m){
-  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role)||[];
+  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role, VIEWAS.sec)||[];
   const land=VIEWAS.role==='parent'?'mykids':VIEWAS.role==='member'?'me'
             :VIEWAS.role==='dev'?'mysys':'dash';
   const tot=NAV.reduce((n,g)=>n+g.items.length,0);
@@ -1834,7 +1859,7 @@ function vaBlocked(m){
 }
 function viewAsBar(){
   if(!VIEWAS)return '';
-  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role);
+  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role, VIEWAS.sec);
   const tot=NAV.reduce((n,g)=>n+g.items.length,0);
   return `<div class="vabar">👁 Βλέπεις ως <b>${esc(VIEWAS.t)}</b>
     <span class="dim" style="color:#fff;opacity:.75">— ${al?al.length+' από '+tot+' οθόνες'
@@ -1855,7 +1880,7 @@ function vaHidesPerson(p){
 }
 function vaHidesRoute(r){
   if(!VIEWAS)return false;
-  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role);
+  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role, VIEWAS.sec);
   return al ? !al.includes(r) : false;
 }
 
@@ -1970,7 +1995,9 @@ function renderNav(){
   const K=VIEWAS ? (VIEWAS.role==='section_head'?'head':VIEWAS.role)
                  : (PA?(PA.role||PA.k):'leader');
   const MN=modeNav();
-  const AL=navFor(K);                       // null = τα πάντα
+  /* Το τμήμα καθορίζει ΠΟΙΑ οθόνη προόδου βλέπεις — όχι μόνο ο ρόλος. */
+  const mySec=(ME&&ME.rec&&(secOf(ME.rec)||ME.rec.section))||null;
+  const AL=navFor(K, VIEWAS?VIEWAS.sec:mySec);   // null = τα πάντα
   const personalRole=['member','parent','dev'].includes(K);
   const allow=id=>{
     if(AL && !AL.includes(id)) return false;
@@ -10582,7 +10609,7 @@ function stagePassBody(){
     return `<tr${h?' style="opacity:.55"':''}>
       <td>${h?'':`<input type="checkbox" class="sp-c" data-l="${esc(x.label)}"${SPSEL[x.label]!==undefined?' checked':''} style="width:auto">`}</td>
       <td style="font-size:13px">${esc(x.label)}</td>
-      <td>${h?`<span class="dim" style="font-size:12px">${h.date?fdate(h.date):'—'}${h.date_approx?' <i>(κατά προσ.)</i>':''}${h.via?' · '+esc(h.via):''}</span>`
+      <td>${h?`<span class="dim" style="font-size:12px">${progDate(h)}${h.via?' · '+esc(h.via):''}</span>`
              :`<input class="sp-d" data-l="${esc(x.label)}" value="${esc(SPSEL[x.label]||'')}" placeholder="κενό = το πάνω"
                  style="font-size:12.5px;padding:4px 7px;max-width:150px">`}</td>
       <td>${h?'<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">το έχει</span>'
