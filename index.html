@@ -381,6 +381,8 @@ select.unset{border-color:var(--warn);color:var(--warn)}
   border-radius:20px;cursor:pointer;color:var(--ink2);line-height:1.5}
 .mvb:hover{border-color:var(--acc);color:var(--acc);background:var(--accbg)}
 .mvb.out:hover{border-color:var(--bad);color:var(--bad);background:var(--badbg)}
+.alead{color:#c98a00;font-size:12px;line-height:1}
+.areagrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px}
 .bbody{min-height:96px}
 .bcol.over .bbody{background:var(--accbg);outline:2px dashed var(--acc);outline-offset:-4px}
 .prow2 select{flex:1}
@@ -893,7 +895,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 15:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 15:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2994,6 +2996,20 @@ const NET_B=[['','—'],['ενεργό','ενεργό δίκτυο (-Δ)'],['γ�
    Γι' αυτό δεν μπαίνει στους μετρητές και δεν βγάζει «χωρίς Αρχηγό». */
 const isParked=r=>r==='Δίκτυο';
 const SEC_AB2={'Αγέλη':'ΑΛ','Μικρή Αγέλη':'ΜΑ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Δίκτυο':'Δ','Σύστημα':'ΣΥΣ'};
+/* ΤΟ ΔΙΚΤΥΟ ΕΙΝΑΙ ΑΝΕΠΙΣΗΜΟ.
+   Δεν γράφονται ως Δίκτυο στο Σ.Π.Κ., δεν έχουν σχολές Δικτύου, δεν υπάρχει
+   ΕΝΑΣ υπεύθυνος. Λειτουργεί ως ένα σημείο με υπευθύνους ΑΝΑ ΠΕΡΙΟΧΗ.
+   Άρα δεν είναι στήλη· είναι φακός πάνω στα κανονικά τμήματα.            */
+const AREA_NAME={GR:'Ελλάδα',UK:'Ηνωμένο Βασίλειο',NL:'Ολλανδία',CZ:'Τσεχία',
+  FI:'Φινλανδία',CH:'Ελβετία','CY-NIC':'Λευκωσία','CY-LIM':'Λεμεσός','GR-ATH':'Αθήνα'};
+const areaLabel=a=>a?(AREA_NAME[a]?AREA_NAME[a]+' ('+a+')':a):'— χωρίς περιοχή —';
+function netAreas(){
+  const m={};
+  (D.bh||[]).filter(p=>p.status==='Ενεργός'&&isLed(p)&&p.is_network).forEach(p=>{
+    const a=p.network_area||''; (m[a]=m[a]||{a, lead:null, n:0}).n++;
+    if(p.is_area_lead)m[a].lead=p;});
+  return Object.values(m).sort((x,y)=>(y.lead?1:0)-(x.lead?1:0)||y.n-x.n);
+}
 /* ΜΙΑ πηγή για το «ποιες τιμές υπάρχουν». Ο φρουρός ρωτούσε το ROLES_B ενώ
    ο επιλογέας ζωγράφιζε το POS_B· το «Βοηθός» υπήρχε στο πρώτο και όχι στο
    δεύτερο, οπότε ο Βοηθός εμφανιζόταν σιωπηλά ως «Αρχηγός». Ίδιο σφάλμα με
@@ -7487,6 +7503,40 @@ function staffRegistry(){
   return out;
 }
 
+
+/* ── Το ανεπίσημο δίκτυο, ανά περιοχή ──────────────────────────────────
+   Δεν είναι τμήμα και δεν είναι στήλη. Είναι άνθρωποι σε τμήματα, που
+   ομαδοποιούνται γεωγραφικά και έχουν υπεύθυνο ΑΝΑ ΠΕΡΙΟΧΗ.           */
+function netPanel(){
+  const A=netAreas();
+  const inArea=a=>(D.bh||[]).filter(p=>p.status==='Ενεργός'&&isLed(p)&&p.is_network
+    &&(p.network_area||'')===a).sort((x,y)=>(y.is_area_lead?1:0)-(x.is_area_lead?1:0)||sortByName(x,y));
+  const tot=A.reduce((n,x)=>n+x.n,0);
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+      <div style="font-size:17px;font-weight:600">Δίκτυο ανά περιοχή</div>
+      <div class="dim" style="font-size:12.5px">${tot} άτομα · ${A.filter(x=>x.lead).length} υπεύθυνοι περιοχής</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:11px">
+        Το δίκτυο λειτουργεί <b>ανεπίσημα</b>: δεν γράφονται ως Δίκτυο στο Σ.Π.Κ.,
+        δεν έχουν σχολές Δικτύου, δεν υπάρχει ένας υπεύθυνος. Τυπικά είναι
+        βαθμοφόροι του τμήματός τους — εδώ φαίνεται η γεωγραφία.</div>
+      ${A.map(x=>`<div class="card pad" style="margin-bottom:8px">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+          <b style="flex:1">${esc(areaLabel(x.a))}</b>
+          <span class="pill">${x.n}</span></div>
+        ${x.lead?`<div style="font-size:12.5px;margin-top:4px">
+          <span class="alead">★</span> <b>${pn(x.lead)}</b>
+          <span class="dim">υπεύθυνη/ος περιοχής</span></div>`
+          :`<div class="dim" style="font-size:12px;margin-top:4px">— χωρίς υπεύθυνο —</div>`}
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+          ${inArea(x.a).filter(p=>!p.is_area_lead).map(p=>`<span class="pill" style="font-size:11px">
+            ${pn(p)} <i class="dim">${esc(SEC_AB2[secOf(p)]||'')}</i></span>`).join('')||'<span class="dim" style="font-size:12px">—</span>'}
+        </div></div>`).join('')}
+    </div>`;
+  drw.classList.add('on');
+}
+
 function staffImport(){
   const REG=staffRegistry();
   const SECMAP={'ΑΓΕΛΗ':'Αγέλη','ΜΙΚΡΗ ΑΓΕΛΗ':'Μικρή Αγέλη','ΟΜΑΔΑ':'Ομάδα',
@@ -7795,6 +7845,8 @@ function staffDraft(years){
            ['chg','αλλαγμένοι',changed.length]]
           .filter(([k,,n])=>!k||n)
           .map(([k,t,n])=>`<button class="btn sm fpill${STFIL===k?' p':' gh'}" data-sfil="${k}">${n} ${esc(t)}</button>`).join('')}
+        ${netTot?`<button class="btn sm gh" id="stArea"
+          title="Το δίκτυο ανά περιοχή, με τον υπεύθυνο της καθεμιάς">Δ Περιοχές</button>`:''}
         ${pendN?`<button class="btn sm" id="stPend"
           title="Γραμμές εισαγωγής που δεν ταυτοποιήθηκαν — δεν χάθηκαν">⏸ Εκκρεμούν · ${pendN}</button>`:''}
         <button class="btn sm" id="stCsv">${ic('down',14)} CSV</button>
@@ -7854,6 +7906,7 @@ function staffDraft(years){
       <div class="prow">
         ${avatar(p,24)}
         <span class="pnm2">${pn(p)}${p.scout_name?`<i class="psn">«${esc(p.scout_name)}»</i>`:''}</span>
+        ${p.is_area_lead?'<span class="alead" title="Υπεύθυνος περιοχής">★</span>':''}
         ${withRole?leaderDot(p,sec,SY):''}
         ${code?`<b class="pcode${unknownRole(p)?' unk':''}"
           title="${unknownRole(p)?'Η βαθμίδα δεν είναι καταχωρημένη — γράφει «'+esc(real[p.id].role||'—')+'»':esc(rl(p))+(sec?' · '+esc(sec):'')}">${
@@ -7879,6 +7932,7 @@ function staffDraft(years){
       ${withRole&&!isFuture&&real[p.id]?`<div class="pwas">${esc(real[p.id].role||'')}</div>`:''}
       ${!withRole&&was?`<div class="pwas">πέρσι: ${esc(was.section||'—')}</div>`:''}
       ${from&&from!==sec?`<div class="pwas">από ${esc(from)}</div>`:''}
+      ${netOf(p)&&p.network_area?`<div class="pwas">${esc(areaLabel(p.network_area))}</div>`:''}
 
     </div>`;
   }
@@ -7903,6 +7957,7 @@ function staffDraft(years){
   document.querySelectorAll('[data-park]').forEach(b=>b.onclick=()=>{
     const k=b.dataset.park; PARKOPEN[k]?delete PARKOPEN[k]:PARKOPEN[k]=1;
     try{localStorage.setItem('e76:park',JSON.stringify(PARKOPEN))}catch(x){}; V.staff()});
+  const na=$('stArea'); if(na)na.onclick=netPanel;
   document.querySelectorAll('[data-sfil]').forEach(b=>b.onclick=()=>{
     STFIL=b.dataset.sfil; try{localStorage.setItem('e76:stfil',STFIL)}catch(x){}; V.staff()});
   const pv=$('stPrev'); if(pv)pv.onclick=()=>{
