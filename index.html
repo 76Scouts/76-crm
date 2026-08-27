@@ -336,6 +336,31 @@ td.mcell:hover .madd{opacity:1}
 .srow2 .sq{flex:1;min-width:150px;font-size:12px;padding:4px 7px}
 .scand{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .scand-b{font-size:11.5px;padding:3px 7px}
+.fpill{border-radius:20px;font-size:11.5px;padding:3px 11px}
+/* Το πλαίσιο «προβολή ως»: πάνω από τη δουλειά σου, ποτέ αντί για αυτήν. */
+.pipw{position:fixed;right:18px;bottom:18px;width:460px;height:min(620px,78vh);
+  background:var(--card);border:1px solid var(--acc);border-radius:14px;z-index:180;
+  box-shadow:0 18px 60px rgba(0,0,0,.34);display:flex;flex-direction:column;overflow:hidden}
+.pipw.wide{width:min(880px,94vw)}
+.pipw.min{height:auto}
+.pipw.min .pipb,.pipw.min .pipf,.pipw.min .pipr{display:none}
+.piph{display:flex;gap:6px;align-items:center;padding:7px 9px;background:var(--acc);color:#fff;
+  cursor:grab;font-size:13px;user-select:none}
+.piph:active{cursor:grabbing}
+.piph .btn{color:#fff;border-color:rgba(255,255,255,.35);background:transparent;padding:2px 7px}
+.pipb{flex:1;min-height:0}
+.pipb iframe{width:100%;height:100%;border:0;display:block;background:var(--bg)}
+.pipf{padding:5px 10px;font-size:10.5px;color:var(--ink3);background:var(--bg2);
+  border-top:1px solid var(--ln)}
+.pipr{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize}
+.pipr::after{content:'';position:absolute;right:3px;bottom:3px;width:7px;height:7px;
+  border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3)}
+@media(max-width:820px){ .pipw{left:8px;right:8px;width:auto;height:70vh} }
+/* Μέσα στο πλαίσιο: χωρίς πλαϊνό μενού και χωρίς κόκκινη μπάρα — είναι
+   περιεχόμενο παραθύρου, όχι δεύτερη εφαρμογή. */
+body.pip #side,body.pip .vabar,body.pip #owner{display:none!important}
+body.pip #main{margin-left:0!important;padding:10px}
+select.unset{border-color:var(--warn);color:var(--warn)}
 .rkind{font-style:normal;font-size:9.5px;letter-spacing:.04em;background:var(--ln);
   color:var(--ink2);border-radius:3px;padding:1px 5px;margin-left:5px}
 .prow2{display:flex;gap:5px;margin-top:6px}
@@ -850,7 +875,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 13:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 14:38'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1633,7 +1658,20 @@ const M76=(()=>{
    να έρχονται με τα δικά σου δικαιώματα. Δεν είναι πλαστοπροσωπία και δεν σου κρύβει
    τίποτα μόνιμα· γι' αυτό υπάρχει μόνιμη κόκκινη μπάρα όσο είναι ενεργό. */
 let VIEWAS=null;
+/* ΠΑΡΑΘΥΡΟ ΜΕΣΑ ΣΕ ΠΑΡΑΘΥΡΟ
+   Το e76 είναι ΕΝΑ αρχείο — άρα μπορεί να φορτώσει τον εαυτό του σε πλαίσιο.
+   Με «?as=<person>:<ρόλος>&pip=1» ξεκινά ήδη φορεμένο, χωρίς μενού και χωρίς
+   κόκκινη μπάρα: είναι το περιεχόμενο του παραθύρου, όχι δεύτερη εφαρμογή.
+   Ίδιο origin ⇒ μοιράζεται localStorage ⇒ διαβάζει την ΙΔΙΑ cache, δεν
+   ξαναφορτώνει 64 ερωτήματα. */
+const PIPQ=new URLSearchParams(location.search);
+const IS_PIP=PIPQ.get('pip')==='1';
 try{VIEWAS=JSON.parse(sessionStorage.getItem('e76:viewas')||'null')}catch(e){VIEWAS=null}
+if(IS_PIP){try{document.body.classList.add('pip')}catch(e){}}
+if(PIPQ.get('as')){
+  const [pid,role]=String(PIPQ.get('as')).split(':');
+  VIEWAS={k:'person:'+pid+':'+role, t:'προβολή', role, pid, sec:null, pip:true};
+}
 const VA_OPTS=()=>{
   /* Λίστα ΡΟΛΩΝ, όχι λίστα ανθρώπων. Τετρακόσιοι γονείς σε ένα dropdown δεν
      είναι επιλογή — είναι τιμωρία. Το πρόσωπο διαλέγεται με αναζήτηση. */
@@ -2830,7 +2868,27 @@ V.trends=()=>{
 };
 
 const SECCFG=()=>(D.sc||[]).filter(s=>s.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
-const SECS_B=['Σύστημα','Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+/* Οι στήλες των επιτελείων ΔΕΝ είναι σταθερή λίστα — έρχονται από τις
+   ρυθμίσεις. Η «Μικρή Αγέλη» είναι active:false και εμφανιζόταν κάθε χρόνο
+   ως άδεια στήλη· αν κάποτε ανοίξει, θα εμφανιστεί μόνη της.
+   Το «Δίκτυο» εδώ είναι το ΤΜΗΜΑ. Το άτυπο δίκτυο — όσοι κρατούν και άλλο
+   τμήμα — δεν είναι στήλη· φαίνεται με το «-Δ» πάνω στον κωδικό τους. */
+const SECS_FALLBACK=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+function secsBoard(){
+  const cfg=(D.sc||[]).filter(x=>x.active!==false)
+    .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(x=>x.section);
+  if(!cfg.length)return SECS_FALLBACK.slice();
+  /* Το Σύστημα μπροστά: εκεί κάθεται ο Α.Σ. και το επιτελείο Συστήματος. */
+  const out=cfg.filter(x=>x==='Σύστημα').concat(cfg.filter(x=>x!=='Σύστημα'));
+  /* Αν κάποιος είναι ήδη τοποθετημένος σε κλειστό τμήμα, η στήλη ΠΡΕΠΕΙ να
+     φανεί — αλλιώς εξαφανίζεται άνθρωπος από την οθόνη. */
+  (D.sh||[]).filter(x=>x.scout_year===SY&&x.section).forEach(x=>{
+    if(!out.includes(x.section))out.push(x.section)});
+  Object.values(DRAFT||{}).forEach(d=>{
+    if(d&&d.section&&!out.includes(d.section))out.push(d.section)});
+  return out;
+}
+const SECS_B=SECS_FALLBACK;   // παλιές αναφορές· οι στήλες περνούν από secsBoard()
 const MEMSECS=()=>{const c=SECCFG().filter(s=>s.has_members).map(s=>s.section);
   return c.length?c:['Αγέλη','Ομάδα','Κοινότητα']};
 /* ══ ΣΥΜΒΟΛΟ ΒΑΘΜΟΦΟΡΟΥ ═══════════════════════════════════════════════════
@@ -2869,6 +2927,30 @@ function ledCodeFallback(p){
   return 'Βαθμ';
 }
 const ROLES_B=['Αρχηγός','Υπαρχηγός','Βοηθός','P/T','Έφορος'];
+/* Από ελεύθερο κείμενο σε βαθμίδα — ή σε ΤΙΠΟΤΑ.
+   Ο κανόνας: «δεν ξέρω» δεν γίνεται ποτέ «Αρχηγός». Ένας <select> με τιμή
+   εκτός λίστας δείχνει σιωπηλά την ΠΡΩΤΗ επιλογή· έτσι μια εισαγωγή με
+   «Αρχηγός Αγέλης Λυκοπούλων» εμφάνιζε όλους ως Αρχηγούς. */
+function normRole(t){
+  const v=String(t||'').trim(); if(!v)return undefined;
+  if(ROLES_B.includes(v))return v;
+  if(/^υπαρχηγ/i.test(v))return 'Υπαρχηγός';
+  if(/^αρχηγ/i.test(v))  return 'Αρχηγός';
+  if(/^βοηθ/i.test(v))   return 'Βοηθός';
+  if(/^εφορ|^έφορ/i.test(v))return 'Έφορος';
+  if(/p\/?t/i.test(v))   return 'P/T';
+  /* Και οι κωδικοί που λέμε προφορικά: ΑΑΛ, ΥΟΠ, ΒΚΑ — με ή χωρίς
+     προθέματα «ΥπΔ-» και καταλήξεις «-Δ». */
+  /* «Βαθμοφόρος» και «Εντολή» είναι ΚΑΤΗΓΟΡΙΑ και ΕΓΓΡΑΦΟ — όχι βαθμίδες.
+     Χωρίς αυτή τη γραμμή το «ΒΑΘΜΟΦΟΡΟΣ» έπεφτε στο μοτίβο «Β+κλάδος». */
+  if(/^(βαθμοφορ|εντολ|αναθεσ)/i.test(v.normalize('NFD').replace(/[\u0300-\u036f]/g,'')))return undefined;
+  const c=v.replace(/^ΥπΔ-/i,'').replace(/-Δ$/i,'').toUpperCase();
+  if(/^Υ[ΑΟΚΜ]/.test(c)) return 'Υπαρχηγός';   // ΥΑΛ, ΥΟΠ, ΥΚΑ
+  if(c==='ΑΣ')           return 'Αρχηγός';
+  if(/^Α[ΑΟΚΜ]/.test(c)) return 'Αρχηγός';     // ΑΑΛ, ΑΟΠ, ΑΚΑ
+  if(/^Β[ΑΟΚΜ]/.test(c)) return 'Βοηθός';      // ΒΑΛ, ΒΟΠ, ΒΚΑ
+  return undefined;                            // «Εντολή», «Βαθμοφόρος», σκουπίδια
+}
 const CATS_B=['ΑΣ','Αρχηγός','Βαθμοφόρος','P/T','Δίκτυο','Υπεύθυνος Δικτύου'];
 const SECFULL={'Αγέλη':'Αγέλης Λυκοπούλων','Ομάδα':'Ομάδας Προσκόπων','Κοινότητα':'Κοινότητας Ανιχνευτών','Δίκτυο':'Δικτύου','Σύστημα':'Συστήματος'};
 const nextY=y=>{const m=/^(\d{4})-(\d{2})$/.exec(y||'');if(!m)return null;const a=+m[1]+1;return a+'-'+String(a+1).slice(2)};
@@ -6775,7 +6857,10 @@ let STMODE='org', OPEN={}, STQ='';
 /* Οι κόμβοι του δέντρου σε ΕΝΑ σημείο. Ήταν γραμμένοι τρεις φορές μέσα στη
    staffScreen και ξεχνιόνταν — π.χ. η «Μικρή Αγέλη» δεν άνοιγε ποτέ με το
    «Ανάπτυξη όλων», οπότε δεν είχες πού να αφήσεις κάποιον. */
-const ORG_NODES=['ΣΠΚ','ΓΕ','ΕΕ','76',...SECS_B];
+const ORG_NODES_FIX=['ΣΠΚ','ΓΕ','ΕΕ','76'];
+const ORG_NODES=new Proxy([],{get(_,k){
+  const a=ORG_NODES_FIX.concat(typeof secsBoard==='function'?secsBoard():SECS_FALLBACK);
+  const v=a[k]; return typeof v==='function'?v.bind(a):v}});
 const ORG_ALL=()=>Object.fromEntries(ORG_NODES.map(k=>[k,1]));
 /* Προεπιλογή = ΟΛΑ ανοιχτά. Το κλειστό δέντρο σε αναγκάζει να κλικάρεις
    πέντε φορές πριν δεις τον πρώτο άνθρωπο. */
@@ -6911,7 +6996,7 @@ function staffScreen(){
         <div class="obranch">${tog('ΕΕ','Επαρχιακή Εφορεία Λευκωσίας',`${ep.length} θέσεις`,'#6b7280')}
           ${OPEN['ΕΕ']?`<div class="okids">${ep.map(orole).join('')}</div>`:''}</div>
         <div class="obranch">${tog('76','76ο ΣΥΣΤΗΜΑ ΠΡΟΣΚΟΠΩΝ ΣΤΡΟΒΟΛΟΥ',`${tot} βαθμοφόροι · ${mem} μέλη`,'var(--brand)')}
-          ${OPEN['76']?`<div class="okids">${SECS_B.map(secBlock).join('')}</div>`:''}</div>
+          ${OPEN['76']?`<div class="okids">${secsBoard().map(secBlock).join('')}</div>`:''}</div>
       </div>`:''}
     </div>`;
   $('syr').onchange=e=>{SY=e.target.value;V.staff()};
@@ -6960,7 +7045,7 @@ function staffScreen(){
     const rows=[['Επίπεδο','Τμήμα','Ρόλος','Επώνυμο','Όνομα','Προσκοπικό','Α.Μ.','Τηλέφωνο','Email','Ν.91(Ι) λήξη','Εντολή']];
     ge.forEach(o=>rows.push(['Γενική Εφορεία','',o.title,o.person_name||'','','','','',o.email||'','','']));
     ep.forEach(o=>rows.push(['Επαρχιακή Λευκωσίας','',o.title,o.person_name||'','','','','',o.email||'','','']));
-    SECS_B.forEach(s=>(bySec[s]||[]).forEach(p=>{const cs=certState(p.id),w=warrantOf(p.id);
+    secsBoard().forEach(s=>(bySec[s]||[]).forEach(p=>{const cs=certState(p.id),w=warrantOf(p.id);
       rows.push(['76ο Σύστημα',s,roleOfYear(p,SY),p.last_name,p.first_name,p.scout_name||'',p.registry_no||'',p.phone||'',p.email||'',cs.exp||'',w&&w.no?w.no:''])}));
     const csv='﻿'+rows.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
     saveBlob(csv,'text/csv;charset=utf-8',`76-diarthrwsi-${SY}.csv`)};
@@ -7343,7 +7428,7 @@ function staffImport(){
   const SECMAP={'ΑΓΕΛΗ':'Αγέλη','ΜΙΚΡΗ ΑΓΕΛΗ':'Μικρή Αγέλη','ΟΜΑΔΑ':'Ομάδα',
     'ΚΟΙΝΟΤΗΤΑ':'Κοινότητα','ΔΙΚΤΥΟ':'Δίκτυο','ΣΥΣΤΗΜΑ':'Σύστημα',
     'ΑΛ':'Αγέλη','ΟΠ':'Ομάδα','ΚΑ':'Κοινότητα'};
-  let ROWS=[];
+  let ROWS=[], FIL='all';
 
   const head=()=>`<div class="dhead"><div style="flex:1">
       <div style="font-size:17px;font-weight:600">Εισαγωγή επιτελείων</div>
@@ -7390,7 +7475,13 @@ function staffImport(){
       /* Πάνω από 70% το προτείνουμε ΣΥΜΠΛΗΡΩΜΕΝΟ και ζητάμε ένα «ναι».
          Πριν, το κομμένο «Άντρεα-Φ.» έβγαινε 83% και κατέληγε σε άδειο
          μενού — δηλαδή δουλειά από την αρχή για κάτι που ήξερε ήδη. */
-      const take = auto || (sug && sc>=0.70 ? sug : null);
+      /* Το 70% ήταν πολύ χαμηλά: ο αδερφός και ο πατέρας με το ίδιο επώνυμο
+         βγαίνουν ~70% και ζητούσαν επιβεβαίωση σαν να ήταν υποψήφιοι.
+         Θέλουμε ΚΑΙ ψηλό σκορ ΚΑΙ καθαρή διαφορά από τον δεύτερο — αλλιώς
+         δεν είναι πρόταση, είναι ερώτηση. */
+      const sc2 = cands[1] ? cands[1].s : 0;
+      const clear = sc>=0.80 && (sc-sc2)>=0.08;
+      const take = auto || (sug && clear ? sug : null);
       return {i, name:x.name, sec:SECMAP[(x.sec||'').toUpperCase()]||x.sec||'', role:x.role||'',
               pick:take?take.ref:null, sure:!!auto, sug:sug?sug.ref:null, sugScore:sc,
               cands, st:r.status, pend:false, q:''};
@@ -7402,6 +7493,13 @@ function staffImport(){
     ?`<i class="rkind">${esc(e.kind)}</i>`:'';
   const kindOf=p=>{const e=REG.find(r=>r.ref===p); return e?e.kind:''};
 
+  /* Ποιες γραμμές δείχνει το τρέχον φίλτρο. */
+  const keep=x=> FIL==='all' ? true
+    : FIL==='pend' ? x.pend
+    : FIL==='ok'   ? (!!x.pick&&x.sure&&!!x.sec&&!x.pend)
+    : FIL==='sug'  ? (!!x.pick&&!x.sure&&!x.pend)
+    : /* open */     (!x.pick&&!x.pend);
+
   function draw(){
     const ok=ROWS.filter(x=>x.pick&&x.sure&&x.sec&&!x.pend).length;
     const sug=ROWS.filter(x=>x.pick&&!x.sure&&!x.pend).length;
@@ -7409,20 +7507,28 @@ function staffImport(){
     const open=ROWS.filter(x=>!x.pick&&!x.pend).length;
     $('siOut').innerHTML=`
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px">
-        <span class="pill">${ROWS.length} γραμμές</span>
-        <span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${ok} έτοιμες</span>
-        ${sug?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${sug} προτάσεις</span>`:''}
-        ${open?`<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">${open} αναπάντητες</span>`:''}
-        ${pend?`<span class="pill">${pend} εκκρεμούν</span>`:''}
+        ${[['all','όλες',ROWS.length,'',''],
+           ['ok','έτοιμες',ok,'var(--okbg)','var(--ok)'],
+           ['sug','προτάσεις',sug,'var(--warnbg)','var(--warn)'],
+           ['open','αναπάντητες',open,'var(--badbg)','var(--bad)'],
+           ['pend','εκκρεμούν',pend,'',''] ]
+          .filter(([k,,n])=>k==='all'||n)
+          .map(([k,t,n,bg,fg])=>`<button class="btn sm fpill${FIL===k?' on':''}" data-fil="${k}"
+             style="${FIL===k?`background:${fg||'var(--side)'};border-color:${fg||'var(--side)'};color:#fff`
+                             :(bg?`background:${bg};color:${fg};border-color:transparent`:'')}">${n} ${esc(t)}</button>`).join('')}
         <span class="sp"></span>
         ${sug?`<button class="btn sm p" id="siAllYes">✓ Δέξου τις ${sug} προτάσεις</button>`:''}
         ${open?`<button class="btn sm gh" id="siAllPend">⏸ Άφησέ τα εκκρεμή</button>`:''}
       </div>
-      <div style="max-height:44vh;overflow:auto">${ROWS.map(x=>rowHtml(x)).join('')}</div>`;
+      <div style="max-height:44vh;overflow:auto">${
+        (()=>{const L=ROWS.filter(keep);
+          return L.length?L.map(x=>rowHtml(x)).join('')
+            :'<div class="dim" style="padding:10px">— καμία γραμμή σε αυτό το φίλτρο —</div>'})()}</div>`;
     bind();
     $('siGo').style.display=(ok||pend||sug||open)?'':'none';
+    document.querySelectorAll('[data-fil]').forEach(b=>b.onclick=()=>{FIL=b.dataset.fil;draw()});
     const ap=$('siAllPend'); if(ap)ap.onclick=()=>{ROWS.forEach(r=>{if(!r.pick)r.pend=true});draw()};
-    const ay=$('siAllYes'); if(ay)ay.onclick=()=>{ROWS.forEach(r=>{if(r.pick&&!r.pend)r.sure=true});draw()};
+    const ay=$('siAllYes'); if(ay)ay.onclick=()=>{ROWS.filter(keep).forEach(r=>{if(r.pick&&!r.pend)r.sure=true});draw()};
   }
 
   function rowHtml(x){
@@ -7496,8 +7602,11 @@ function staffImport(){
     use.forEach(x=>{
       const k=kindOf(x.pick);
       if(k==='μέλος Κοινότητας'||k==='αρχειοθετημένος')promo++;
+      /* Το JSON γράφει «Αρχηγός Αγέλης Λυκοπούλων» ή «Εντολή» ή σκέτο κενό.
+         Καμία από αυτές δεν είναι βαθμίδα. Ό,τι δεν αναγνωρίζεται μένει
+         ΑΟΡΙΣΤΟ — δεν γίνεται «Αρχηγός» επειδή έτυχε να είναι πρώτο. */
       DRAFT[x.pick.id]=Object.assign(DRAFT[x.pick.id]||{},
-        {section:x.sec, role:x.role||undefined,
+        {section:x.sec, role:normRole(x.role),
          promote:(k==='μέλος Κοινότητας')?'Βαθμοφόρος':undefined,
          revive:(k==='αρχειοθετημένος')?true:undefined});
     });
@@ -7629,7 +7738,7 @@ function staffDraft(years){
         <div class="bhead" style="background:var(--sys)">Αδιάθετοι<span class="sp"></span><span style="font-weight:400;opacity:.8">${pool.length}</span></div>
         <div class="bbody" data-drop="__none__">${pool.map(p=>card(p,false)).join('')||'<div class="dim" style="font-size:12px;padding:6px 4px">— κανείς —</div>'}</div>
       </div>
-      ${STONLY?'':SECS_B.map(s=>{const list=led.filter(p=>place(p)===s)
+      ${STONLY?'':secsBoard().map(s=>{const list=led.filter(p=>place(p)===s)
           .sort((a,b)=>ROLES_B.indexOf(rl(a))-ROLES_B.indexOf(rl(b))||sortByName(a,b));
         const mem=D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)&&secOf(x)===s).length;
         const g=gap(s,list);
@@ -7658,7 +7767,9 @@ function staffDraft(years){
         ${statusBar(p,true)}
       </div>
       ${withRole&&isFuture?`<div class="prow2">
-        <select data-role="${p.id}" title="Βαθμίδα">${ROLES_B.map(r=>`<option${r===rl(p)?' selected':''}>${esc(r)}</option>`).join('')}</select>
+        <select data-role="${p.id}" title="Βαθμίδα" class="${ROLES_B.includes(rl(p))?'':'unset'}">
+          ${ROLES_B.includes(rl(p))?'':'<option value="" selected>— όρισε βαθμίδα —</option>'}
+          ${ROLES_B.map(r=>`<option${r===rl(p)?' selected':''}>${esc(r)}</option>`).join('')}</select>
         <select data-cat="${p.id}" title="Κατηγορία μητρώου">${CATS_B.map(c=>`<option${c===catOf(p)?' selected':''}>${esc(c)}</option>`).join('')}</select>
       </div>`:''}
       ${withRole&&!isFuture&&real[p.id]?`<div class="pwas">${esc(real[p.id].role||'')}</div>`:''}
@@ -7676,7 +7787,7 @@ function staffDraft(years){
       c.style.display=(!q||nameKey(hay).includes(q)||String(p.registry_no||'').includes(sq.value.trim()))?'':'none'})};
   const cs=$('stCsv'); if(cs)cs.onclick=()=>{
     const R=[['Τμήμα','Ρόλος','Κατηγορία','Ονοματεπώνυμο','Προσκοπικό','Α.Μ.','Τηλέφωνο']];
-    SECS_B.forEach(s=>led.filter(x=>place(x)===s).sort((a,b)=>ROLES_B.indexOf(rl(a))-ROLES_B.indexOf(rl(b))||sortByName(a,b))
+    secsBoard().forEach(s=>led.filter(x=>place(x)===s).sort((a,b)=>ROLES_B.indexOf(rl(a))-ROLES_B.indexOf(rl(b))||sortByName(a,b))
       .forEach(x=>R.push([s,rl(x),catOf(x),nm(x),x.scout_name||'',x.registry_no||'',x.phone||''])));
     const csv='\ufeff'+R.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`e76-diarthrosi-${SY}.csv`;a.click();toast('Κατέβηκε');};
@@ -7715,7 +7826,9 @@ function staffDraft(years){
     z.ondrop=e=>{e.preventDefault();z.parentElement.classList.remove('over');
       const id=dragId||e.dataTransfer.getData('text/plain');
       if(id)setD(id,'section',z.dataset.drop==='__none__'?null:z.dataset.drop);};});
-  document.querySelectorAll('[data-role]').forEach(s=>s.onchange=()=>setD(s.dataset.role,'role',s.value));
+  document.querySelectorAll('[data-role]').forEach(s=>s.onchange=()=>{
+    if(!ROLES_B.includes(s.value))return;      // «— όρισε βαθμίδα —» δεν είναι απάντηση
+    setD(s.dataset.role,'role',s.value)});
   document.querySelectorAll('[data-cat]').forEach(s=>s.onchange=()=>setD(s.dataset.cat,'category',s.value));
   const rs=$('stReset'); if(rs)rs.onclick=()=>{if(confirm('Απόρριψη πρόχειρων αλλαγών για '+SY+';')){DRAFT={};localStorage.removeItem(draftKey());V.staff()}};
   const ap=$('stApply'); if(ap)ap.onclick=async()=>{
@@ -10443,6 +10556,67 @@ V.viewas=()=>{
    Ένα πρόσωπο, όλες οι ιδιότητές του, και για την επιλεγμένη: ΤΙ ΑΚΡΙΒΩΣ
    βλέπει. Αλλάζεις ιδιότητα μέσα στο ίδιο παράθυρο — δεν βγαίνεις, δεν
    ξαναψάχνεις. Το «μπες στα παπούτσια του» είναι χωριστή, ρητή πράξη. */
+
+/* ══ ΠΑΡΑΘΥΡΟ ΜΕΣΑ ΣΤΟ ΠΑΡΑΘΥΡΟ ══════════════════════════════════════════
+   Ο σκοπός του «Προβολή ως» δεν είναι να διαβάσεις λίστα με το τι βλέπει
+   κάποιος. Είναι να ΔΕΙΣ την οθόνη του — ενώ κρατάς τη δική σου. Γι' αυτό
+   το πλαίσιο κάθεται από πάνω, σέρνεται και αλλάζει μέγεθος, και η δουλειά
+   σου μένει ανέπαφη από κάτω.                                            */
+function openPip(pid, role, label){
+  const old=$('e76pip'); if(old)old.remove();
+  const src=location.pathname+'?pip=1&as='+encodeURIComponent(pid+':'+role);
+  const d=document.createElement('div');
+  d.id='e76pip'; d.className='pipw';
+  d.innerHTML=`<div class="piph">
+      <b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${ic('users',14)} ${esc(label||'Προβολή ως')}</b>
+      <button class="btn sm gh" data-pipw title="Πλάτος">⇔</button>
+      <button class="btn sm gh" data-pipm title="Ελαχιστοποίηση">–</button>
+      <button class="btn sm gh" data-pipo title="Σε νέο παράθυρο">↗</button>
+      <button class="btn sm gh" data-pipx title="Κλείσιμο">✕</button>
+    </div>
+    <div class="pipb"><iframe src="${esc(src)}" title="${esc(label||'')}"></iframe></div>
+    <div class="pipf">Βλέπεις την οθόνη του. Τα δεδομένα παραμένουν τα δικά σου.</div>
+    <div class="pipr" data-pipr></div>`;
+  document.body.appendChild(d);
+
+  d.querySelector('[data-pipx]').onclick=()=>d.remove();
+  d.querySelector('[data-pipo]').onclick=()=>{
+    window.open(src.replace('pip=1&',''),'e76as'+pid,'width=1100,height=800'); d.remove()};
+  d.querySelector('[data-pipm]').onclick=e=>{d.classList.toggle('min');
+    e.target.textContent=d.classList.contains('min')?'▢':'–'};
+  d.querySelector('[data-pipw]').onclick=()=>d.classList.toggle('wide');
+
+  /* Σύρσιμο από την μπάρα τίτλου. Χωρίς αυτό, το πλαίσιο σκεπάζει ακριβώς
+     ό,τι θέλεις να συγκρίνεις. */
+  const h=d.querySelector('.piph'); let dx=0,dy=0,on=false;
+  const move=e=>{if(!on)return; const t=e.touches?e.touches[0]:e;
+    d.style.left=Math.max(4,Math.min(innerWidth-60,t.clientX-dx))+'px';
+    d.style.top =Math.max(4,Math.min(innerHeight-40,t.clientY-dy))+'px';
+    d.style.right='auto'; d.style.bottom='auto'};
+  const up=()=>{on=false;document.removeEventListener('mousemove',move);
+    document.removeEventListener('touchmove',move)};
+  const down=e=>{if(e.target.closest('button'))return; const t=e.touches?e.touches[0]:e;
+    const r=d.getBoundingClientRect(); dx=t.clientX-r.left; dy=t.clientY-r.top; on=true;
+    document.addEventListener('mousemove',move); document.addEventListener('touchmove',move,{passive:true});
+    document.addEventListener('mouseup',up,{once:true}); document.addEventListener('touchend',up,{once:true})};
+  h.addEventListener('mousedown',down); h.addEventListener('touchstart',down,{passive:true});
+
+  /* Αλλαγή μεγέθους από την κάτω δεξιά γωνία. */
+  const g=d.querySelector('[data-pipr]'); let rz=false,w0=0,h0=0,x0=0,y0=0;
+  const rmove=e=>{if(!rz)return; const t=e.touches?e.touches[0]:e;
+    d.style.width =Math.max(300,w0+(t.clientX-x0))+'px';
+    d.style.height=Math.max(220,h0+(t.clientY-y0))+'px'};
+  const rup=()=>{rz=false;document.removeEventListener('mousemove',rmove);
+    document.removeEventListener('touchmove',rmove)};
+  const rdown=e=>{const t=e.touches?e.touches[0]:e; const r=d.getBoundingClientRect();
+    w0=r.width;h0=r.height;x0=t.clientX;y0=t.clientY;rz=true;
+    document.addEventListener('mousemove',rmove); document.addEventListener('touchmove',rmove,{passive:true});
+    document.addEventListener('mouseup',rup,{once:true}); document.addEventListener('touchend',rup,{once:true});
+    e.preventDefault()};
+  g.addEventListener('mousedown',rdown); g.addEventListener('touchstart',rdown,{passive:false});
+}
+
 function vaPanel(pid){
   const p=D.bh.find(x=>x.id===pid); if(!p)return;
   VASUB=pid;
@@ -10490,14 +10664,26 @@ function vaPanel(pid){
     </div>
 
     <div class="dsec" style="border:0">
-      <button class="btn p" id="vaWear" style="width:100%;justify-content:center">
-        ${ic('users',15)} Μπες στα παπούτσια του</button>
+      <button class="btn p" id="vaPip" style="width:100%;justify-content:center">
+        ${ic('grid',15)} Άνοιξέ το δίπλα — παράθυρο μέσα στο παράθυρο</button>
+      <div class="dim" style="font-size:11.5px;margin:7px 0 12px;line-height:1.5">
+        Η οθόνη του ανοίγει σε δικό της πλαίσιο. <b>Η δική σου μένει από κάτω</b> —
+        δεν φεύγεις από τη δουλειά σου για να δεις τι βλέπει.</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn gh sm" id="vaPop">${ic('users',14)} Σε νέο παράθυρο</button>
+        <button class="btn gh sm" id="vaWear">Πάρε ΟΛΗ την οθόνη</button>
+      </div>
       <div class="dim" style="font-size:11.5px;margin-top:7px;line-height:1.5">
-        Βλέπεις τι θα έβλεπε <i>εκείνος</i>, με τα δεδομένα που δικαιούσαι <i>εσύ</i>.
-        Μια κόκκινη μπάρα μένει στην κορυφή μέχρι να βγεις.</div>
+        Και στους τρεις τρόπους: βλέπεις τι θα έβλεπε <i>εκείνος</i>, με τα δεδομένα
+        που δικαιούσαι <i>εσύ</i>. Δεν είναι πλαστοπροσωπία.</div>
     </div>`}`;
   drw.classList.add('on');
   document.querySelectorAll('[data-varole]').forEach(b=>b.onclick=()=>{VAROLE=b.dataset.varole; vaPanel(pid)});
+  const pip=$('vaPip'); if(pip)pip.onclick=()=>{
+    drw.classList.remove('on'); openPip(pid, VAROLE, nm(p)+' · '+(cur?cur.t:VAROLE));};
+  const pop=$('vaPop'); if(pop)pop.onclick=()=>{
+    window.open(location.pathname+'?as='+encodeURIComponent(pid+':'+VAROLE),
+      'e76as'+pid,'width=1100,height=800');};
   const w=$('vaWear'); if(w)w.onclick=()=>{
     VIEWAS={k:'person:'+pid+':'+VAROLE, t:nm(p)+' · '+(cur?cur.t:VAROLE), role:VAROLE, pid,
             sec:(VAROLE==='leader'||VAROLE==='head')?secOf(p):null};
