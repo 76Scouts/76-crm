@@ -902,7 +902,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 18:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 18:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1670,6 +1670,24 @@ const M76=(()=>{
     return b};
   const GREEN=0.90, AMBER=0.70;
   /* Επιστρέφει {status:'g'|'y'|'r', pick, sim, cands[]} — ποτέ σιωπηλή επιλογή. */
+  /* ΜΟΝΑΔΙΚΟΤΗΤΑ — ισχυρότερο σήμα από το ποσοστό.
+     Αν γράψεις «Άντρεα-Φωτεινή» και στο Σύστημα υπάρχει ΜΙΑ Αντρέα-Φωτεινή,
+     είναι αυτή· δεν έχει σημασία ότι λείπει το επώνυμο και το σκορ βγαίνει
+     63%. Η αναζήτηση με το χέρι το έβρισκε με δύο γράμματα — ο αυτόματος
+     δεν είχε λόγο να είναι πιο χαζός.
+     Κάθε λέξη της εισόδου πρέπει να είναι ΑΡΧΗ κάποιας λέξης του ονόματος,
+     και να μένει ΕΝΑΣ άνθρωπος. Αλλιώς δεν αποφασίζουμε. */
+  const uniqueHit=(p,R)=>{
+    const want=canon(p.first+' '+p.last).split(' ').filter(w=>w.length>=2);
+    if(!want.length)return -1;
+    const hitIdx=[]; const ids=new Set();
+    R.forEach((r,i)=>{
+      const have=canon(r.first+' '+r.last).split(' ').filter(Boolean);
+      const ok=want.every(w=>have.some(h=>h.startsWith(w)||w.startsWith(h)&&h.length>=3));
+      if(ok){ hitIdx.push(i); ids.add((r.ref&&(r.ref.id||r.ref))||i); }
+    });
+    return ids.size===1 ? hitIdx[0] : -1;
+  };
   const match=(p,R)=>{
     const raw=R.map((r,i)=>({i,s:sim(p,r)})).sort((a,b)=>b.s-a.s);
     /* ΕΝΑ ΑΤΟΜΟ = ΕΝΑΣ ΥΠΟΨΗΦΙΟΣ.
@@ -1691,6 +1709,9 @@ const M76=(()=>{
               twin:(sc[1]&&sc[1].s>=GREEN)?sc[1].i:null};
     if(ties.length>1) return {status:'y',pick:top.i,sim:top.s,cands:ties.slice(0,6),omonyma:true};
     if(top.s>=GREEN)  return {status:'g',pick:top.i,sim:top.s,cands};
+    /* Πριν τα παρατήσουμε: μήπως ταιριάζει σε ΕΝΑΝ μόνο άνθρωπο; */
+    const u=uniqueHit(p,R);
+    if(u>=0) return {status:'g',pick:u,sim:Math.max(top.s,GREEN),cands,unique:true};
     if(top.s>=AMBER)  return {status:'y',pick:top.i,sim:top.s,cands};
     return {status:'r',pick:-1,sim:top.s,cands};
   };
