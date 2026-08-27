@@ -381,6 +381,14 @@ select.unset{border-color:var(--warn);color:var(--warn)}
   font-size:11.5px;color:var(--ink3);padding:3px 2px}
 .bparkh:hover{color:var(--acc)}
 .netsel{max-width:104px}
+.sescell{min-width:42px;font-size:10.5px;font-weight:700;padding:3px 6px;border-radius:6px;
+  border:1px solid var(--ln);background:var(--card);cursor:pointer}
+.sescell:hover{filter:brightness(.94)}
+.sescell:disabled{cursor:default;opacity:.6}
+.sesall{min-width:30px;border:1px solid var(--ln);background:var(--card);border-radius:6px;
+  cursor:pointer;font-size:12px;padding:3px 6px;color:var(--ink3)}
+.sesall.on{background:var(--ok);border-color:var(--ok);color:#fff}
+tr.argrow td{background:var(--bg2)}
 /* Μετακίνηση με ΚΛΙΚ — το σύρσιμο δεν δουλεύει σε κινητό και κουράζει στα εκατό. */
 .pmove{display:flex;gap:3px;align-items:center;margin-top:6px;flex-wrap:wrap}
 .pmove .dim{font-size:11px}
@@ -902,7 +910,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 19:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 19:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -11552,43 +11560,121 @@ function molaEdit(id, slot, seed){
   draw(); drw.classList.add('on');
 }
 
-/* ── Συγκεντρώσεις: ποια Σάββατα, ποια τμήματα ────────────────────────── */
+/* ── Συγκεντρώσεις: ο ΚΑΝΟΝΑΣ, όχι η εξαίρεση ──────────────────────────
+   Λάθος μοντέλο ήταν το προηγούμενο: άδειο πλέγμα και 156 κουτάκια να
+   τσεκάρεις. Στην πραγματικότητα ΚΑΘΕ Σάββατο έχει συγκέντρωση για όλους —
+   και βγάζεις ένα τμήμα όταν δεν θα κάνει, ή όταν την αντικαθιστά με δράση
+   ή ειδική συγκέντρωση. Γι' αυτό το κελί κυκλώνει καταστάσεις αντί να
+   ανοιγοκλείνει, και ο λόγος καταγράφεται — δεν σβήνεται η μέρα.        */
+const SES_CYCLE=[
+  ['Συγκέντρωση',      'Σ',  'var(--ok)',   'κανονική συγκέντρωση'],
+  ['Ειδική συγκέντρωση','ΕΙΔ','var(--acc)', 'ειδική — άλλη ώρα, τόπος ή μορφή'],
+  ['Δράση',            'ΔΡ', '#6D3BB5',     'αντικαθίσταται από δράση'],
+  ['—',                '',   '',            'δεν γίνεται']];
+const sesKind=x=>{ if(!x)return 3;
+  const i=SES_CYCLE.findIndex(c=>c[0]===(x.session_type||'Συγκέντρωση'));
+  return i<0?0:i; };
+
 function molaSesPanel(){
   const yr=YEAR, {G}=molaCells(yr), secs=['Αγέλη','Ομάδα','Κοινότητα'];
   const can=molaCanEdit();
+  const K=molaKl();
+  const argSat=new Set(molaArgies(yr).map(a=>a.ev.sat_slot).filter(Boolean));
+
   const draw=()=>{
+    const rows=G.flatMap(m=>m.sats.map(sv=>({m,s:sv})));
+    const have=rows.filter(r=>secs.some(x=>molaSes(yr,r.s.iso,x))).length;
     $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
         <div style="font-size:17px;font-weight:600">Συγκεντρώσεις ${esc(yr)}</div>
-        <div class="dim" style="font-size:12.5px">κάθε τικ γράφει πραγματική συνεδρία — το παρουσιολόγιο τη βρίσκει έτοιμη</div></div>
+        <div class="dim" style="font-size:12.5px">${have} από ${rows.length} Σάββατα · κάθε τικ γράφει πραγματική συνεδρία</div></div>
         <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
       <div class="dsec">
+        <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
+          Κανόνας: <b>κάθε Σάββατο έχει συγκέντρωση</b>. Βγάζεις τμήμα όταν δεν θα κάνει,
+          ή του αλλάζεις μορφή. Πάτα το κελί για να γυρίσει:
+          ${SES_CYCLE.map(c=>c[1]?`<b style="color:${c[2]}">${c[1]}</b>=${c[3]}`:`<b>—</b>=${c[3]}`).join(' · ')}</div>
         ${can?`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-          ${secs.map(s=>`<button class="btn sm gh" data-all="${esc(s)}">Όλα τα Σάββατα — ${MOLA_SECMAIN[s]}</button>`).join('')}
+          <button class="btn sm p" id="sesAll">✓ Συγκέντρωση σε ΟΛΑ τα Σάββατα</button>
+          <button class="btn sm gh" id="sesArg">Βγάλε τις εβδομάδες με αργία</button>
+          <button class="btn sm gh" id="sesNone" style="color:var(--bad)">Καθάρισε όλα</button>
         </div>`:''}
-        <div class="card" style="overflow:auto"><table><thead><tr><th>Σάββατο</th>
-          ${secs.map(s=>`<th style="text-align:center">${MOLA_SECMAIN[s]}</th>`).join('')}</tr></thead><tbody>
-          ${G.flatMap(m=>m.sats.map(s=>`<tr>
-            <td>${s.day} ${esc(m.label.split(' ')[0].slice(0,3))} ${m.y}</td>
-            ${secs.map(sec=>{const on=!!molaSes(yr,s.iso,sec);
-              return `<td style="text-align:center"><input type="checkbox" ${on?'checked':''}
-                ${can?'':'disabled'} data-ses="${s.iso}|${esc(sec)}" style="width:auto"></td>`}).join('')}
-          </tr>`)).join('')}
+        <div class="card" style="overflow:auto"><table><thead><tr>
+          <th>Σάββατο</th><th style="text-align:center">όλοι</th>
+          ${secs.map(x=>`<th style="text-align:center">${MOLA_SECMAIN[x]}</th>`).join('')}
+        </tr></thead><tbody>
+          ${rows.map(r=>{const arg=argSat.has(r.m.mi+'_'+r.s.si);
+            const on=secs.filter(x=>molaSes(yr,r.s.iso,x)).length;
+            return `<tr${arg?' class="argrow"':''}>
+              <td>${r.s.day} ${esc(r.m.label.split(' ')[0].slice(0,3))} ${r.m.y}
+                ${arg?'<i class="dim" style="font-size:10px">αργία</i>':''}</td>
+              <td style="text-align:center">${can?`<button class="sesall${on===3?' on':''}"
+                data-sesall="${r.s.iso}" title="Βάλε ή βγάλε και τα τρία">${on===3?'✓':(on?'–':'·')}</button>`:on}</td>
+              ${secs.map(x=>{const cur=molaSes(yr,r.s.iso,x); const k=sesKind(cur);
+                const c=SES_CYCLE[k];
+                return `<td style="text-align:center"><button class="sescell"
+                  ${can?`data-ses="${r.s.iso}|${esc(x)}"`:'disabled'}
+                  title="${esc(c[3])}" style="${c[2]?`color:${c[2]};border-color:${c[2]}`:'color:var(--ink3)'}">
+                  ${c[1]||'—'}</button></td>`}).join('')}
+            </tr>`}).join('')}
         </tbody></table></div></div>`;
-    document.querySelectorAll('[data-ses]').forEach(c=>c.onchange=async()=>{
-      const [iso,sec]=c.dataset.ses.split('|'); await molaToggleSes(yr,iso,sec); draw();});
-    document.querySelectorAll('[data-all]').forEach(b=>b.onclick=async()=>{
-      const sec=b.dataset.all;
-      const miss=G.flatMap(m=>m.sats).filter(s=>!molaSes(yr,s.iso,sec));
+
+    document.querySelectorAll('[data-ses]').forEach(b=>b.onclick=async()=>{
+      const [iso,sec]=b.dataset.ses.split('|');
+      const cur=molaSes(yr,iso,sec);
+      const nk=(sesKind(cur)+1)%SES_CYCLE.length;
+      await sesSet(yr,iso,sec,nk); draw();});
+    document.querySelectorAll('[data-sesall]').forEach(b=>b.onclick=async()=>{
+      const iso=b.dataset.sesall;
+      const all=secs.every(x=>molaSes(yr,iso,x));
+      for(const x of secs) await sesSet(yr,iso,x, all?3:0);
+      draw();});
+    const ba=$('sesAll'); if(ba)ba.onclick=async()=>{
+      const miss=[]; rows.forEach(r=>secs.forEach(x=>{if(!molaSes(yr,r.s.iso,x))miss.push([r.s.iso,x])}));
       if(!miss.length)return toast('Είναι ήδη όλα');
-      if(!confirm('Θα μπουν '+miss.length+' συγκεντρώσεις για '+sec+'. Συνέχεια;'))return;
-      const K=molaKl();
-      const rows=miss.map(s=>({session_date:s.iso, section:sec, scout_year:yr,
-        session_type:'Συγκέντρωση', status:'Προγραμματισμένη', klimakio_id:K.sy?K.sy.id:null}));
-      const {data,error}=await sb.from('sessions').insert(rows).select();
+      if(!confirm('Θα μπουν '+miss.length+' συγκεντρώσεις — κάθε Σάββατο, και τα τρία τμήματα.\n'
+        +'Μετά βγάζεις όποιες δεν θα γίνουν.'))return;
+      const rws=miss.map(([iso,sec])=>({session_date:iso,section:sec,scout_year:yr,
+        session_type:'Συγκέντρωση',status:'Προγραμματισμένη',klimakio_id:K.sy?K.sy.id:null}));
+      const {data,error}=await sb.from('sessions').insert(rws).select();
       if(error)return toast('Δεν μπήκαν: '+error.message);
-      D.ss=(D.ss||[]).concat(data||[]); saveCache(); toast(miss.length+' συγκεντρώσεις'); draw();});
+      D.ss=(D.ss||[]).concat(data||[]); saveCache(); toast(miss.length+' συγκεντρώσεις'); draw();};
+    const bg=$('sesArg'); if(bg)bg.onclick=async()=>{
+      const hit=rows.filter(r=>argSat.has(r.m.mi+'_'+r.s.si));
+      if(!hit.length)return toast('Καμία εβδομάδα με αργία');
+      if(!confirm('Θα βγουν οι συγκεντρώσεις '+hit.length+' Σαββάτων που πέφτουν σε εβδομάδα με αργία.\n'
+        +'Μπορείς να τις ξαναβάλεις μία-μία.'))return;
+      for(const r of hit) for(const x of secs) await sesSet(yr,r.s.iso,x,3);
+      draw();};
+    const bn=$('sesNone'); if(bn)bn.onclick=async()=>{
+      if(!confirm('Θα σβηστούν ΟΛΕΣ οι συγκεντρώσεις του '+yr+'. Σίγουρα;'))return;
+      const ids=(D.ss||[]).filter(x=>x.scout_year===yr).map(x=>x.id);
+      if(!ids.length)return;
+      const {error}=await sb.from('sessions').delete().in('id',ids);
+      if(error)return toast('Δεν σβήστηκαν: '+error.message);
+      D.ss=(D.ss||[]).filter(x=>x.scout_year!==yr); saveCache(); draw();};
   };
   draw(); drw.classList.add('on');
+}
+
+/* Μία θέση αλλάζει κατάσταση — δεν σβήνουμε τη μέρα, αλλάζουμε τι είναι. */
+async function sesSet(yr, iso, sec, kind){
+  const K=molaKl(), cur=molaSes(yr,iso,sec), want=SES_CYCLE[kind][0];
+  if(want==='—'){
+    if(!cur)return;
+    const {error}=await sb.from('sessions').delete().eq('id',cur.id);
+    if(error)return toast('Δεν έσβησε: '+error.message);
+    D.ss=(D.ss||[]).filter(x=>x.id!==cur.id); saveCache(); return;
+  }
+  if(cur){
+    const {error}=await sb.from('sessions').update({session_type:want}).eq('id',cur.id);
+    if(error)return toast('Δεν άλλαξε: '+error.message);
+    cur.session_type=want; saveCache(); return;
+  }
+  const row={session_date:iso, section:sec, scout_year:yr, session_type:want,
+             status:'Προγραμματισμένη', klimakio_id:K.sy?K.sy.id:null};
+  const {data,error}=await sb.from('sessions').insert(row).select().single();
+  if(error)return toast('Δεν μπήκε: '+error.message);
+  D.ss.push(data); saveCache();
 }
 
 /* ── Κατηγορίες: ποιος τις κατέχει, ποιος τις προσθέτει ───────────────── */
