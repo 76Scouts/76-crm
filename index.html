@@ -369,6 +369,20 @@ select.unset{border-color:var(--warn);color:var(--warn)}
 .psn{font-style:normal;font-size:10.5px;color:var(--ink3);margin-left:5px}
 .pwarn{font-size:10.5px;color:var(--warn);margin-top:4px;font-weight:600}
 .pcard.faded{opacity:.28}
+.bpark{margin-top:7px;border-top:1px dashed var(--ln);padding-top:6px}
+.bparkh{width:100%;text-align:left;background:transparent;border:0;cursor:pointer;
+  font-size:11.5px;color:var(--ink3);padding:3px 2px}
+.bparkh:hover{color:var(--acc)}
+.netsel{max-width:104px}
+/* Μετακίνηση με ΚΛΙΚ — το σύρσιμο δεν δουλεύει σε κινητό και κουράζει στα εκατό. */
+.pmove{display:flex;gap:3px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.pmove .dim{font-size:11px}
+.mvb{font-size:10.5px;padding:2px 7px;border:1px solid var(--ln);background:var(--card);
+  border-radius:20px;cursor:pointer;color:var(--ink2);line-height:1.5}
+.mvb:hover{border-color:var(--acc);color:var(--acc);background:var(--accbg)}
+.mvb.out:hover{border-color:var(--bad);color:var(--bad);background:var(--badbg)}
+.bbody{min-height:96px}
+.bcol.over .bbody{background:var(--accbg);outline:2px dashed var(--acc);outline-offset:-4px}
 .prow2 select{flex:1}
 @media(max-width:820px){ .board>.bcol{flex:0 0 200px;max-width:200px} }
 .bcol{background:var(--card);border:1px solid var(--line);border-radius:var(--r);min-height:120px;display:flex;flex-direction:column}
@@ -879,7 +893,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 15:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-27 15:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2963,8 +2977,23 @@ function normRole(t){
 const CATS_B=['ΑΣ','Αρχηγός','Βαθμοφόρος','P/T','Δίκτυο','Υπεύθυνος Δικτύου'];
 /* Δύο επιλογείς για την ίδια έννοια ήταν ο λόγος που η κάρτα δεν διαβαζόταν:
    «βαθμίδα» και «κατηγορία» λένε το ίδιο με άλλες λέξεις. Μία θέση. */
+/* ΔΥΟ ΑΝΕΞΑΡΤΗΤΟΙ ΑΞΟΝΕΣ — τους είχα μπερδεμένους σε έναν.
+
+   1) ΘΕΣΗ: τι κάνει στο τμήμα.  Αρχηγός · Υπαρχηγός · Βοηθός · P/T
+   2) ΔΙΚΤΥΟ: τι σχέση έχει με το Δίκτυο.  όχι · ενεργό (-Δ) · μόνο γραμμένος
+
+   Το Δίκτυο ΔΕΝ είναι τμήμα εργασίας. Τυπικά όλοι είναι «βαθμοφόροι Αγέλης
+   P/T» — εκτός αν ήδη δουλεύουν αλλού, οπότε κρατούν το τμήμα τους.
+   Ο Δημήτριος: Αγέλη · P/T · ενεργό δίκτυο  → «P/T-Δ», μετράει.
+   Η Ινές:      Αγέλη · μόνο γραμμένη        → «Δ», δεν πιάνει θέση.        */
 const POS_B=[['Αρχηγός','Αρχηγός'],['Υπαρχηγός','Υπαρχηγός (Βαθμοφόρος)'],
-  ['Βοηθός','Βοηθός'],['P/T','P/T (YOLO)'],['ΑΣ','Αρχηγός Συστήματος'],['Έφορος','Έφορος']];
+  ['Βοηθός','Βοηθός'],['P/T','P/T (YOLO)'],
+  ['Δίκτυο','Δίκτυο — μόνο γραμμένος'],['ΑΣ','Αρχηγός Συστήματος'],['Έφορος','Έφορος']];
+const NET_B=[['','—'],['ενεργό','ενεργό δίκτυο (-Δ)'],['γραμμένο','μόνο γραμμένος']];
+/* «Μόνο γραμμένος» δεν είναι θέση που λείπει — είναι θέση που δεν ζητήθηκε.
+   Γι' αυτό δεν μπαίνει στους μετρητές και δεν βγάζει «χωρίς Αρχηγό». */
+const isParked=r=>r==='Δίκτυο';
+const SEC_AB2={'Αγέλη':'ΑΛ','Μικρή Αγέλη':'ΜΑ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Δίκτυο':'Δ','Σύστημα':'ΣΥΣ'};
 /* ΜΙΑ πηγή για το «ποιες τιμές υπάρχουν». Ο φρουρός ρωτούσε το ROLES_B ενώ
    ο επιλογέας ζωγράφιζε το POS_B· το «Βοηθός» υπήρχε στο πρώτο και όχι στο
    δεύτερο, οπότε ο Βοηθός εμφανιζόταν σιωπηλά ως «Αρχηγός». Ίδιο σφάλμα με
@@ -2972,6 +3001,18 @@ const POS_B=[['Αρχηγός','Αρχηγός'],['Υπαρχηγός','Υπαρ
 const POS_VALS=POS_B.map(x=>x[0]);
 /* Σειρά εμφάνισης: ο Αρχηγός πρώτος, μετά ο Υπαρχηγός, μετά οι υπόλοιποι. */
 const POS_RANK=r=>{const i=POS_VALS.indexOf(r);return i<0?99:i};
+/* Ο κωδικός δείχνει ΚΑΙ τους δύο άξονες: «P/T-Δ» = δουλεύει P/T ΚΑΙ δίκτυο. */
+function posCode(pos, sec, net){
+  const A={'Αγέλη':'ΑΛ','Μικρή Αγέλη':'ΜΑ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Δίκτυο':'Δ','Σύστημα':''}[sec];
+  if(pos==='ΑΣ')return 'ΑΣ';
+  if(pos==='Έφορος')return 'Έφ';
+  if(pos==='Δίκτυο')return 'Δ';
+  if(A===undefined)return '';
+  if(sec==='Σύστημα')return pos==='Αρχηγός'?'ΑΣ':'Βαθμ';
+  const base = pos==='P/T' ? 'P/T'
+    : pos==='Αρχηγός'?('Α'+A) : pos==='Υπαρχηγός'?('Υ'+A) : ('Β'+A);
+  return net==='ενεργό' ? base+'-Δ' : base;
+}
 const SECFULL={'Αγέλη':'Αγέλης Λυκοπούλων','Ομάδα':'Ομάδας Προσκόπων','Κοινότητα':'Κοινότητας Ανιχνευτών','Δίκτυο':'Δικτύου','Σύστημα':'Συστήματος'};
 const nextY=y=>{const m=/^(\d{4})-(\d{2})$/.exec(y||'');if(!m)return null;const a=+m[1]+1;return a+'-'+String(a+1).slice(2)};
 let SY=null, SYFROM=null, DRAFT={};
@@ -2980,8 +3021,10 @@ let SY=null, SYFROM=null, DRAFT={};
 let DRAGON=false; try{DRAGON=!!localStorage.getItem('e76:dragon')}catch(e){}
 /* «Μόνο αδιάθετοι»: όταν έχεις 76 ανθρώπους να μοιράσεις, οι γεμάτες στήλες
    είναι θόρυβος. Κρύβονται, μένει η στοίβα και τα ρίχνεις ένα-ένα. */
-let STONLY=false; try{STONLY=!!localStorage.getItem('e76:stonly')}catch(e){}
-let STNET=false;  try{STNET=!!localStorage.getItem('e76:stnet')}catch(e){}
+/* Ένα φίλτρο με ονόματα και μετρητές αντί για δύο διακόπτες που δεν έλεγαν
+   πόσους αφορούν. Ο μετρητής είναι ο μισός λόγος που πατάς το κουμπί. */
+let STFIL=''; try{STFIL=localStorage.getItem('e76:stfil')||''}catch(e){}
+let PARKOPEN={};  try{PARKOPEN=JSON.parse(localStorage.getItem('e76:park')||'{}')}catch(e){PARKOPEN={}}
 function draftKey(){return 'e76:staff:'+SY}
 function loadDraft(){try{DRAFT=JSON.parse(localStorage.getItem(draftKey())||'{}')}catch(e){DRAFT={}}}
 function saveDraft(){localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}
@@ -7713,22 +7756,19 @@ function staffDraft(years){
      Είναι το λεξιλόγιο που χρησιμοποιούμε προφορικά· η κάρτα πρέπει να το
      λέει, όχι να γράφει «Βοηθός» και να μαντεύεις σε ποιο τμήμα. */
   const SECAB={'Αγέλη':'ΑΛ','Μικρή Αγέλη':'ΜΑ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Δίκτυο':'Δ','Σύστημα':''};
-  const codeOf=(p,sec,role)=>{
-    const cat=catOf(p);
-    if(cat==='ΑΣ')return 'ΑΣ';
-    if(role==='Έφορος')return 'Έφ';
-    if(role==='P/T')return 'P/T';
-    const a=SECAB[sec]; if(a===undefined)return '';
-    if(sec==='Σύστημα')return role==='Αρχηγός'?'ΑΣ':'Βαθμ';
-    let base = role==='Αρχηγός'?('Α'+a) : role==='Υπαρχηγός'?('Υ'+a) : ('Β'+a);
-    if(cat==='Υπεύθυνος Δικτύου')return 'ΥπΔ-'+base;
-    if(p.is_network&&sec!=='Δίκτυο')return base+'-Δ';
-    return base;
+  /* Ο άξονας «δίκτυο» ζει στο πρόχειρο ή στο μητρώο — ποτέ στη θέση. */
+  const netOf=p=>{
+    if(DRAFT[p.id]&&DRAFT[p.id].net!==undefined)return DRAFT[p.id].net;
+    if(rl(p)==='Δίκτυο')return 'γραμμένο';
+    return p.is_network?'ενεργό':'';
   };
+  const codeOf=(p,sec,role)=>posCode(role, sec, netOf(p));
+
   /* Τι λείπει από κάθε τμήμα. Αυτός είναι ο ΛΟΓΟΣ που στήνεις επιτελεία —
      όχι για να δεις ποιοι είναι, αλλά για να δεις ποιοι ΔΕΝ είναι. */
-  const gap=(sec,list)=>{
+  const gap=(sec,list0)=>{
     if(sec==='Σύστημα'||sec==='Δίκτυο')return null;
+    const list=list0.filter(p=>!isParked(rl(p)));   // οι γραμμένοι δεν πιάνουν θέση
     const has=r=>list.some(p=>rl(p)===r);
     if(!list.length)return 'κανένας';
     if(!has('Αρχηγός'))return 'χωρίς Αρχηγό';
@@ -7748,9 +7788,13 @@ function staffDraft(years){
         ${isFuture&&canPrev?`<button class="btn sm p" id="stPrev"
           title="Τοποθετεί όσους λείπουν και συμπληρώνει τις βαθμίδες που δεν ξέρουμε. Μένει πρόχειρο.">
           ↺ Ξεκίνα από ${esc(prevY||'πέρσι')} · ${canPrev}</button>`:''}
-        <button class="btn sm gh${STONLY?' p':''}" id="stOnly">Μόνο αδιάθετοι</button>
-        ${netTot?`<button class="btn sm gh${STNET?' p':''}" id="stNet"
-          title="Τονίζει όλο το δίκτυο — και το τμήμα και τους άτυπους σε άλλα τμήματα">Δ Δίκτυο · ${netTot}</button>`:''}
+        ${[['','όλοι',led.length],
+           ['pool','αδιάθετοι',pool.length],
+           ['net','δίκτυο',netTot],
+           ['gap','χωρίς Ν.91(Ι)',led.filter(p=>place(p)&&certState(p.id).k==='none').length],
+           ['chg','αλλαγμένοι',changed.length]]
+          .filter(([k,,n])=>!k||n)
+          .map(([k,t,n])=>`<button class="btn sm fpill${STFIL===k?' p':' gh'}" data-sfil="${k}">${n} ${esc(t)}</button>`).join('')}
         ${pendN?`<button class="btn sm" id="stPend"
           title="Γραμμές εισαγωγής που δεν ταυτοποιήθηκαν — δεν χάθηκαν">⏸ Εκκρεμούν · ${pendN}</button>`:''}
         <button class="btn sm" id="stCsv">${ic('down',14)} CSV</button>
@@ -7768,21 +7812,28 @@ function staffDraft(years){
         <div class="bhead" style="background:var(--sys)">Αδιάθετοι<span class="sp"></span><span style="font-weight:400;opacity:.8">${pool.length}</span></div>
         <div class="bbody" data-drop="__none__">${pool.map(p=>card(p,false)).join('')||'<div class="dim" style="font-size:12px;padding:6px 4px">— κανείς —</div>'}</div>
       </div>
-      ${STONLY?'':secsBoard().map(s=>{const list=led.filter(p=>place(p)===s)
+      ${STFIL==='pool'?'':secsBoard().map(s=>{const all=led.filter(p=>place(p)===s)
           .sort((a,b)=>POS_RANK(rl(a))-POS_RANK(rl(b))||sortByName(a,b));
+        /* Οι «μόνο γραμμένοι» μαζεύονται στο τέλος, κλειστοί. Είκοσι πέντε
+           ονόματα που δεν θα ασχοληθούν έκρυβαν τους οκτώ που δουλεύουν. */
+        const list=all.filter(p=>!isParked(rl(p)));
+        const parked=all.filter(p=>isParked(rl(p)));
         const mem=D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)&&secOf(x)===s).length;
         /* Το ΤΜΗΜΑ Δίκτυο είναι στήλη. Το ΑΤΥΠΟ δίκτυο δεν είναι — είναι
            άνθρωποι που κρατούν κι άλλο τμήμα. Χωρίς αυτόν τον αριθμό, οι
            μισοί τους ήταν αόρατοι ως δίκτυο. */
-        const netHere=s==='Δίκτυο'
-          ? led.filter(p=>p.is_network&&place(p)&&place(p)!=='Δίκτυο').length : 0;
+        const netHere=list.filter(p=>netOf(p)==='ενεργό').length;
         const g=gap(s,list);
         return `<div class="bcol"><div class="bhead" style="background:${SECCOLOR[s]};${s==='Αγέλη'||s==='Ομάδα'?'color:#3d2f10':''}">
             ${esc(s)}<span class="sp"></span><span style="font-weight:400;opacity:.85">${list.length}${
-              mem?' · '+mem+' μέλη':''}${netHere?' · +'+netHere+' άτυπα':''}</span></div>
+              netHere?'+'+netHere+'Δ':''}${mem?' · '+mem+' μέλη':''}</span></div>
           ${g?`<div class="bgap">⚠ ${esc(g)}</div>`
              :(mem&&list.length?`<div class="bratio">1 βαθμοφόρος ανά ${Math.round(mem/list.length)} μέλη</div>`:'')}
-          <div class="bbody" data-drop="${esc(s)}">${list.map(p=>card(p,true)).join('')||'<div class="dim" style="font-size:12px;padding:6px 4px">— κενό —</div>'}</div></div>`}).join('')}
+          <div class="bbody" data-drop="${esc(s)}">${list.map(p=>card(p,true)).join('')||'<div class="dim" style="font-size:12px;padding:6px 4px">— σύρε κάποιον εδώ —</div>'}
+            ${parked.length?`<div class="bpark">
+              <button class="bparkh" data-park="${esc(s)}">${PARKOPEN[s]?'▾':'▸'} Δίκτυο — μόνο γραμμένοι <b>${parked.length}</b></button>
+              ${PARKOPEN[s]?parked.map(p=>card(p,true)).join(''):''}</div>`:''}
+          </div></div>`}).join('')}
     </div>`;
 
   /* Η κάρτα ήταν μία σειρά: άβαταρ + όνομα + μπάρα + ΔΥΟ επιλογείς, σε στήλη
@@ -7794,7 +7845,12 @@ function staffDraft(years){
     const was=prev[p.id];
     const from=mv&&was?was.section:null;
     const isNet=p.is_network||sec==='Δίκτυο';
-    return `<div class="pcard${mv?' moved':''}${STNET&&!isNet?' faded':''}"${isFuture&&DRAGON?' draggable="true"':''} data-id="${p.id}">
+    /* Το φίλτρο ΞΕΘΩΡΙΑΖΕΙ αντί να κρύβει: κρατάς το σχήμα του επιτελείου
+       και βλέπεις πού πέφτουν αυτοί που ψάχνεις. */
+    const dim = (STFIL==='net'&&!isNet)
+             || (STFIL==='gap'&&certState(p.id).k!=='none')
+             || (STFIL==='chg'&&!mv);
+    return `<div class="pcard${mv?' moved':''}${dim?' faded':''}"${isFuture&&DRAGON?' draggable="true"':''} data-id="${p.id}">
       <div class="prow">
         ${avatar(p,24)}
         <span class="pnm2">${pn(p)}${p.scout_name?`<i class="psn">«${esc(p.scout_name)}»</i>`:''}</span>
@@ -7803,6 +7859,11 @@ function staffDraft(years){
           title="${unknownRole(p)?'Η βαθμίδα δεν είναι καταχωρημένη — γράφει «'+esc(real[p.id].role||'—')+'»':esc(rl(p))+(sec?' · '+esc(sec):'')}">${
           unknownRole(p)?'?':esc(code)}</b>`:''}
         </div>
+      ${isFuture?`<div class="pmove">
+        <span class="dim">→</span>${secsBoard().filter(x=>x!==sec).map(x=>
+          `<button class="mvb" data-mv2="${p.id}|${esc(x)}" title="Στείλε στο ${esc(x)}">${esc(SEC_AB2[x]||x)}</button>`).join('')}
+        ${sec?`<button class="mvb out" data-mv2="${p.id}|__none__" title="Βγάλ' τον από τα επιτελεία">✕</button>`:''}
+      </div>`:''}
       ${withRole&&isFuture&&rl(p)==='Αρχηγός'&&trainLevel(p.id,sec)<2
         ?`<div class="pwarn" title="Αρχηγός τμήματος χωρίς Βασική Εκπαίδευση του κλάδου">
             ⚠ Αρχηγός χωρίς Βασική ${esc(SEC_CODE[sec]||'')}</div>`:''}
@@ -7812,11 +7873,13 @@ function staffDraft(years){
         <select data-role="${p.id}" title="Θέση στο τμήμα" class="${POS_VALS.includes(rl(p))?'':'unset'}">
           ${POS_VALS.includes(rl(p))?'':'<option value="" selected>— όρισε θέση —</option>'}
           ${POS_B.map(([v,t])=>`<option value="${esc(v)}"${v===rl(p)?' selected':''}>${esc(t)}</option>`).join('')}</select>
+        ${!isParked(rl(p))?`<select data-net="${p.id}" title="Σχέση με το Δίκτυο" class="netsel">
+          ${NET_B.map(([v,t])=>`<option value="${esc(v)}"${v===netOf(p)?' selected':''}>${esc(t)}</option>`).join('')}</select>`:''}
       </div>`:''}
       ${withRole&&!isFuture&&real[p.id]?`<div class="pwas">${esc(real[p.id].role||'')}</div>`:''}
       ${!withRole&&was?`<div class="pwas">πέρσι: ${esc(was.section||'—')}</div>`:''}
       ${from&&from!==sec?`<div class="pwas">από ${esc(from)}</div>`:''}
-      ${p.is_network&&sec&&sec!=='Δίκτυο'?`<div class="pwas">άτυπο δίκτυο</div>`:''}
+
     </div>`;
   }
 
@@ -7837,10 +7900,11 @@ function staffDraft(years){
     try{localStorage.setItem('e76:dragon',DRAGON?'1':'')}catch(x){}; V.staff()};
   const im=$('stImp'); if(im)im.onclick=staffImport;
   const pn2=$('stPend'); if(pn2)pn2.onclick=staffPending;
-  const nt=$('stNet'); if(nt)nt.onclick=()=>{STNET=!STNET;
-    try{localStorage.setItem('e76:stnet',STNET?'1':'')}catch(x){}; V.staff()};
-  const on=$('stOnly'); if(on)on.onclick=()=>{STONLY=!STONLY;
-    try{localStorage.setItem('e76:stonly',STONLY?'1':'')}catch(x){}; V.staff()};
+  document.querySelectorAll('[data-park]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.park; PARKOPEN[k]?delete PARKOPEN[k]:PARKOPEN[k]=1;
+    try{localStorage.setItem('e76:park',JSON.stringify(PARKOPEN))}catch(x){}; V.staff()});
+  document.querySelectorAll('[data-sfil]').forEach(b=>b.onclick=()=>{
+    STFIL=b.dataset.sfil; try{localStorage.setItem('e76:stfil',STFIL)}catch(x){}; V.staff()});
   const pv=$('stPrev'); if(pv)pv.onclick=()=>{
     if(!confirm('Από το '+prevY+':\n· '+poolPrev+' θα τοποθετηθούν σε τμήμα\n· '
       +fixRole+' θα πάρουν βαθμίδα που λείπει\n\nΜένει ΠΡΟΧΕΙΡΟ — τίποτα δεν γράφεται μέχρι την οριστικοποίηση.'))return;
@@ -7873,7 +7937,12 @@ function staffDraft(years){
   document.querySelectorAll('[data-role]').forEach(s=>s.onchange=()=>{
     if(!POS_VALS.includes(s.value))return;     // «— όρισε θέση —» δεν είναι απάντηση
     setD(s.dataset.role,'role',s.value)});
-  document.querySelectorAll('[data-cat]').forEach(s=>s.onchange=()=>setD(s.dataset.cat,'category',s.value));
+  document.querySelectorAll('[data-net]').forEach(s=>s.onchange=()=>setD(s.dataset.net,'net',s.value));
+  /* Το σύρσιμο είναι ωραίο σε δέκα κάρτες· σε εκατό είναι αγγαρεία. Ένα κλικ
+     στο «→ ΟΠ» κάνει την ίδια δουλειά και δουλεύει και σε κινητό. */
+  document.querySelectorAll('[data-mv2]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation(); const [id,to]=b.dataset.mv2.split('|');
+    setD(id,'section',to==='__none__'?null:to)});
   const rs=$('stReset'); if(rs)rs.onclick=()=>{if(confirm('Απόρριψη πρόχειρων αλλαγών για '+SY+';')){DRAFT={};localStorage.removeItem(draftKey());V.staff()}};
   const ap=$('stApply'); if(ap)ap.onclick=async()=>{
     /* Όποιος ήρθε από την Κοινότητα γίνεται βαθμοφόρος· όποιος ήταν
