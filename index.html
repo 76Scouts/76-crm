@@ -876,6 +876,7 @@ const NAV=[
    {id:'accounts',t:'Λογαριασμοί & κωδικοί',i:'users',s:'live'},
    {id:'access',t:'Ρόλοι & πρόσβαση',i:'shield',s:'live'},
    {id:'viewas',t:'Προβολή ως',i:'users',s:'live'},
+   {id:'matrix',t:'Πίνακας δικαιωμάτων',i:'lock',s:'live'},
    {id:'audit',t:'Ιστορικό αλλαγών',i:'book',s:'live'}]},
 
  /* ΤΕΛΕΥΤΑΙΑ ΚΑΙ ΓΙΑ ΟΛΟΥΣ. Ο κωδικός μου δεν είναι λειτουργία διαχείρισης —
@@ -908,6 +909,7 @@ const SUBS={
  myfees:'Τι έχει πληρωθεί και τι εκκρεμεί',
  myprofile:'Τα στοιχεία επικοινωνίας μου',
  account:'Ο κωδικός μου, η εμφάνιση της εφαρμογής, η αποσύνδεση',
+ matrix:'Ποιος διαβάζει και ποιος γράφει τι — από τις ίδιες τις πολιτικές της βάσης',
 
  members:'Όλα τα παιδιά — φίλτρα ανά τμήμα, τάξη, κατάσταση',
  leaders:'Οι βαθμοφόροι, τα καθήκοντα και οι εκπαιδεύσεις τους',
@@ -974,7 +976,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-28 08:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-28 08:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1456,9 +1458,12 @@ async function loadAll(){
        σήμανση περιορισμού και την εσωτερική σημείωση· τον βλέπει μόνο ο Α.Σ.
        Ο αρχηγός τμήματος παίρνει αυτή την όψη: όνομα, τηλέφωνο, παραλαβή,
        επικοινωνία. Χωρίς το γιατί. Δεν παραχωρείται ποτέ μέσω grants. */
-    sb.from('v_care_operational').select('*').limit(3000)   // ΠΑΝΤΑ τελευταίο
+    sb.from('v_care_operational').select('*').limit(3000),
+    /* Ο πίνακας δικαιωμάτων. Διαβάζει τις ΙΔΙΕΣ τις πολιτικές της βάσης —
+       όχι περιγραφή τους. Χειρόγραφος πίνακας θα ήταν σωστός μία μέρα. */
+    sb.from('v_access_matrix').select('*')                  // ΠΑΝΤΑ τελευταίο
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1496,7 +1501,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -4360,6 +4365,65 @@ V.myfees=()=>{
    Τρία πράγματα που ανήκουν στον χρήστη και σε κανέναν άλλο: ο κωδικός του,
    η εμφάνιση στη ΔΙΚΗ του συσκευή, και η έξοδος. Δεν υπάρχει «διαχειριστής
    της εμφάνισής μου». */
+/* ══ ΠΙΝΑΚΑΣ ΔΙΚΑΙΩΜΑΤΩΝ ═════════════════════════════════════════════════
+   Δεν περιγράφει τι νομίζουμε ότι ισχύει — δείχνει τι ισχύει. Η όψη
+   v_access_matrix διαβάζει τις ίδιες τις πολιτικές, οπότε αν κάποιος
+   χαλαρώσει έναν πίνακα, φαίνεται εδώ την ίδια στιγμή. */
+let MXQ='', MXF='ola';
+V.matrix=()=>{
+  const rows=(D.amx||[]);
+  if(!rows.length)return $('view').innerHTML=`<div class="uc"><div class="ico">${ic('lock',26)}</div>
+    <h3>Δεν φορτώθηκε ο πίνακας</h3><p>Η όψη <code>v_access_matrix</code> είναι ορατή μόνο σε λογαριασμό
+    με πρόσβαση. Αν είσαι Α.Σ. και το βλέπεις αυτό, κάτι δεν πάει καλά.</p></div>`;
+  const open =rows.filter(r=>r.grafei_opoiosdipote);
+  const shut =rows.filter(r=>r.kleisto_telws);
+  const norls=rows.filter(r=>!r.rls);
+  const q=nameKey(MXQ);
+  const list=rows.filter(r=>{
+    if(MXF==='anoixta'&&!r.grafei_opoiosdipote)return false;
+    if(MXF==='kleista'&&!r.kleisto_telws)return false;
+    if(MXF==='idios'&&!/ο ίδιος|γονέας/.test(r.grafei||''))return false;
+    return !q||nameKey(r.pinakas).includes(q);
+  });
+  const tile=(n,l,cls)=>`<div class="tile${cls?' '+cls:''}"><b>${n}</b><span>${esc(l)}</span></div>`;
+  const cell=v=>{
+    const s=String(v||'—');
+    const bad=/ΟΠΟΙΟΣΔΗΠΟΤΕ/.test(s), self=/ο ίδιος|γονέας/.test(s);
+    return `<span class="pill"${bad?' style="background:var(--badbg);border-color:transparent;color:var(--bad)"'
+      :self?' style="background:var(--warnbg);border-color:transparent;color:var(--warn)"':''}>${esc(s)}</span>`};
+  $('view').innerHTML=`
+    <div class="tiles" style="margin-bottom:14px">
+      ${tile(rows.length,'πίνακες')}
+      ${tile(open.length,'γράφει ο καθένας',open.length?'bad':'')}
+      ${tile(shut.length,'κλειστοί τελείως',shut.length?'warn':'')}
+      ${tile(norls.length,'χωρίς RLS',norls.length?'bad':'')}</div>
+
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="muted" style="font-size:13.5px;line-height:1.6">Ο πίνακας διαβάζει τις <b>πραγματικές
+        πολιτικές</b> της βάσης — δεν είναι περιγραφή. Ό,τι αλλάξει εκεί, αλλάζει εδώ.
+        <br><b style="color:var(--bad)">Κόκκινο</b> = γράφει οποιοσδήποτε συνδεδεμένος.
+        <b style="color:var(--warn)">Πορτοκαλί</b> = γράφει ο ίδιος ή ο γονέας — θέλει έλεγχο
+        ότι δεν γράφει και πράγματα που δεν του ανήκουν.</div></div>
+
+    <div class="bar" style="margin-bottom:11px">
+      <input id="mxq" placeholder="Αναζήτηση πίνακα…" value="${esc(MXQ)}" style="max-width:250px">
+      ${[['ola','Όλοι'],['anoixta','Ανοιχτοί'],['kleista','Κλειστοί'],['idios','Ο ίδιος/γονέας']]
+        .map(([v,l])=>`<button class="btn sm${MXF===v?' p':''}" data-mxf="${v}">${l}</button>`).join('')}
+      <span class="dim" style="font-size:12.5px;margin-left:auto">${list.length} από ${rows.length}</span></div>
+
+    <div class="card"><table class="tbl"><thead><tr>
+      <th>Πίνακας</th><th>Διαβάζει</th><th>Γράφει</th><th class="hide-s">Πολιτικές</th></tr></thead><tbody>
+      ${list.map(r=>`<tr${r.grafei_opoiosdipote?' style="background:var(--badbg)"':''}>
+        <td><code style="font-size:12.5px">${esc(r.pinakas)}</code>${r.kleisto_telws
+          ?' <span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">κλειστός</span>':''}</td>
+        <td>${cell(r.diavazei)}</td><td>${cell(r.grafei)}</td>
+        <td class="hide-s dim" style="font-size:12.5px">${r.politikes}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  $('mxq').oninput=e=>{MXQ=e.target.value; const p=e.target.selectionStart; V.matrix();
+    const n=$('mxq'); if(n){n.focus(); try{n.setSelectionRange(p,p)}catch(x){}}};
+  document.querySelectorAll('[data-mxf]').forEach(b=>b.onclick=()=>{MXF=b.dataset.mxf; V.matrix()});
+};
+
 const ACCENTS=[['blue','Μπλε','#2f6fed'],['teal','Τιρκουάζ','#0d7d87'],
   ['green','Πράσινο','#177a55'],['purple','Μοβ','#6b46c1'],['rose','Ροζ','#b02a72'],
   ['amber','Κεχριμπάρι','#a96a12'],['rust','Κεραμιδί','#a8442a'],['slate','Ανθρακί','#475569']];
