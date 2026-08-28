@@ -34,17 +34,27 @@
   --okbg:#0f2620; --warnbg:#2a1f0c; --badbg:#2b1512; --side:#0a0e13; --sidehov:#161d27;
   --sh:0 1px 2px rgba(0,0,0,.3);
 }
-/* Μέγεθος κειμένου: το body ορίζει 15px — το ξαναγράφουμε, δεν το πολλαπλασιάζουμε,
-   γιατί δεκάδες κανόνες είναι σε px και το rem θα τους άφηνε πίσω. */
-:root[data-size="m"] body{font-size:16.5px}
-:root[data-size="l"] body{font-size:18px}
-/* Χρώμα τόνου — ένα πράγμα αλλάζει, όχι όλη η παλέτα. */
+/* Μέγεθος: το font-size του body ΔΕΝ αρκεί — εκατοντάδες κανόνες γράφουν
+   ρητά px (12.5px, 13.5px…) και έμεναν ίδιοι. Άλλαζε ο τίτλος, όχι η οθόνη.
+   Το zoom μεγαλώνει τα πάντα μαζί: κείμενο, εικονίδια, αποστάσεις. */
+:root[data-size="m"] body{zoom:1.15}
+:root[data-size="l"] body{zoom:1.32}
+/* Χρώμα τόνου — αλλάζει ΜΟΝΟ ο τόνος. Τα χρώματα που σημαίνουν κάτι
+   (κλάδοι, εντάξει/προσοχή/σφάλμα) δεν αγγίζονται ποτέ από προτίμηση. */
 :root[data-acc="green"] {--acc:#177a55; --accbg:#e8f6f0; --accln:#b7e0d0}
+:root[data-acc="teal"]  {--acc:#0d7d87; --accbg:#e6f5f6; --accln:#b3dfe3}
 :root[data-acc="purple"]{--acc:#6b46c1; --accbg:#f1ecfb; --accln:#d6c8f5}
+:root[data-acc="rose"]  {--acc:#b02a72; --accbg:#fceef5; --accln:#f2cbe0}
 :root[data-acc="amber"] {--acc:#a96a12; --accbg:#fdf3e3; --accln:#f0d8ac}
+:root[data-acc="rust"]  {--acc:#a8442a; --accbg:#fcefeb; --accln:#f0cabd}
+:root[data-acc="slate"] {--acc:#475569; --accbg:#eef1f5; --accln:#cbd3de}
 :root[data-acc="green"][data-theme="dark"] {--accbg:#0f2620; --accln:#1d4a3a}
+:root[data-acc="teal"][data-theme="dark"]  {--accbg:#0b2427; --accln:#164449}
 :root[data-acc="purple"][data-theme="dark"]{--accbg:#1e1730; --accln:#3a2c5c}
+:root[data-acc="rose"][data-theme="dark"]  {--accbg:#2b1322; --accln:#4f2440}
 :root[data-acc="amber"][data-theme="dark"] {--accbg:#2a1f0c; --accln:#4d3a15}
+:root[data-acc="rust"][data-theme="dark"]  {--accbg:#2a1610; --accln:#4d2a1e}
+:root[data-acc="slate"][data-theme="dark"] {--accbg:#1a1f27; --accln:#333c4a}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
@@ -964,7 +974,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-28 08:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-28 08:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -4350,11 +4360,14 @@ V.myfees=()=>{
    Τρία πράγματα που ανήκουν στον χρήστη και σε κανέναν άλλο: ο κωδικός του,
    η εμφάνιση στη ΔΙΚΗ του συσκευή, και η έξοδος. Δεν υπάρχει «διαχειριστής
    της εμφάνισής μου». */
+const ACCENTS=[['blue','Μπλε','#2f6fed'],['teal','Τιρκουάζ','#0d7d87'],
+  ['green','Πράσινο','#177a55'],['purple','Μοβ','#6b46c1'],['rose','Ροζ','#b02a72'],
+  ['amber','Κεχριμπάρι','#a96a12'],['rust','Κεραμιδί','#a8442a'],['slate','Ανθρακί','#475569']];
 V.account=()=>{
   const me=meRec();
   const opt=(k,v,l,cur)=>`<button class="btn sm${cur===v?' p':''}" data-pref="${k}|${v}">${esc(l)}</button>`;
-  const dot=(v,c)=>`<button class="btn sm${PREFS.acc===v?' p':''}" data-pref="acc|${v}"
-     title="${esc(c)}"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c};margin-right:6px;vertical-align:-1px"></span>${esc(c==='#2f6fed'?'Μπλε':c==='#177a55'?'Πράσινο':c==='#6b46c1'?'Μοβ':'Κεχριμπάρι')}</button>`;
+  const dot=([v,l,c])=>`<button class="btn sm${PREFS.acc===v?' p':''}" data-pref="acc|${v}" title="${esc(l)}"
+     ><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c};margin-right:6px;vertical-align:-1px"></span>${esc(l)}</button>`;
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px;display:flex;gap:11px;align-items:center">
       ${me?avatar(me,42):''}
@@ -4367,10 +4380,13 @@ V.account=()=>{
       <b>Κωδικός</b>
       <div class="dim" style="font-size:12.5px;margin:5px 0 12px">Ο λογαριασμός δείχνει προσωπικά δεδομένα
         παιδιών. Μην τον μοιραστείς — ούτε «προσωρινά».</div>
-      <input type="password" id="ac1" placeholder="Νέος κωδικός (8+ χαρακτήρες)" style="max-width:340px;margin-bottom:7px">
-      <input type="password" id="ac2" placeholder="Ξανά, για σιγουριά" style="max-width:340px;margin-bottom:10px">
+      <input type="password" id="ac0" placeholder="Ο τωρινός κωδικός" style="max-width:340px;margin-bottom:7px" autocomplete="current-password">
+      <input type="password" id="ac1" placeholder="Νέος κωδικός (8+ χαρακτήρες)" style="max-width:340px;margin-bottom:7px" autocomplete="new-password">
+      <input type="password" id="ac2" placeholder="Ξανά, για σιγουριά" style="max-width:340px;margin-bottom:10px" autocomplete="new-password">
       <div><button class="btn p" id="acPw">Αλλαγή κωδικού</button>
-        <span class="dim" id="acMsg" style="font-size:12.5px;margin-left:9px"></span></div></div>
+        <span class="dim" id="acMsg" style="font-size:12.5px;margin-left:9px"></span></div>
+      <div class="dim" style="font-size:11.5px;margin-top:9px">Ζητάμε τον τωρινό γιατί μια ανοιχτή
+        οθόνη δεν αποδεικνύει ποιος κάθεται μπροστά της.</div></div>
 
     <div class="card pad">
       <b>Εμφάνιση</b>
@@ -4381,7 +4397,7 @@ V.account=()=>{
       <div class="kv"><span style="flex:1">Μέγεθος κειμένου</span><span style="display:flex;gap:5px;flex-wrap:wrap">
         ${opt('size','s','Κανονικό',PREFS.size)}${opt('size','m','Μεγάλο',PREFS.size)}${opt('size','l','Πολύ μεγάλο',PREFS.size)}</span></div>
       <div class="kv"><span style="flex:1">Χρώμα τόνου</span><span style="display:flex;gap:5px;flex-wrap:wrap">
-        ${dot('blue','#2f6fed')}${dot('green','#177a55')}${dot('purple','#6b46c1')}${dot('amber','#a96a12')}</span></div>
+        ${ACCENTS.map(dot).join('')}</span></div>
       <div style="margin-top:11px"><button class="btn gh sm" id="acReset">Επαναφορά</button></div></div>`;
 
   document.querySelectorAll('[data-pref]').forEach(b=>b.onclick=()=>{
@@ -4391,10 +4407,17 @@ V.account=()=>{
   $('acOut').onclick=async()=>{ if(!confirm('Αποσύνδεση;'))return;
     await sb.auth.signOut(); location.reload()};
   $('acPw').onclick=async()=>{
-    const a=$('ac1').value, b=$('ac2').value, m=$('acMsg');
+    const old=$('ac0').value, a=$('ac1').value, b=$('ac2').value, m=$('acMsg');
+    if(!old)       return m.textContent='Γράψε πρώτα τον τωρινό κωδικό.';
     if(a.length<8) return m.textContent='Τουλάχιστον 8 χαρακτήρες.';
     if(a!==b)      return m.textContent='Τα δύο δεν ταιριάζουν.';
+    if(a===old)    return m.textContent='Ο νέος είναι ίδιος με τον παλιό.';
     m.textContent='…';
+    /* Το updateUser ΔΕΝ ζητά τον παλιό κωδικό. Δηλαδή όποιος βρει ξεκλείδωτη
+       οθόνη αλλάζει τον κωδικό και σε κλειδώνει έξω από τα δικά σου δεδομένα.
+       Τον επαληθεύουμε εμείς — μία είσοδος με τα ίδια στοιχεία. */
+    const {error:bad}=await sb.auth.signInWithPassword({email:ME.email, password:old});
+    if(bad) return m.textContent='Ο τωρινός κωδικός δεν είναι σωστός.';
     const {error}=await sb.auth.updateUser({password:a});
     if(error) return m.textContent='Σφάλμα: '+error.message;
     /* Η σημαία κατεβαίνει ΜΟΝΟ όταν όντως άλλαξε ο κωδικός — όχι όταν
@@ -4402,7 +4425,7 @@ V.account=()=>{
     const {data:{user}}=await sb.auth.getUser();
     if(user) await sb.from('profiles').update({must_set_password:false,
       password_set_on:new Date().toISOString()}).eq('id',user.id);
-    $('ac1').value=$('ac2').value='';
+    $('ac0').value=$('ac1').value=$('ac2').value='';
     m.textContent='Άλλαξε.'; toast('Ο κωδικός άλλαξε')};
 };
 
@@ -6025,6 +6048,10 @@ async function mustSetPassword(){
      πότε γράφτηκε κάτι, όχι ότι το διάλεξε άνθρωπος. Η σημαία αποφασίζει. */
   return !!(pr&&pr.must_set_password);
 }
+/* Εδώ —και ΜΟΝΟ εδώ— δεν ζητάμε τον τωρινό κωδικό: ο χρήστης μόλις τον
+   πληκτρολόγησε (τον εξαψήφιο) για να φτάσει σε αυτή την οθόνη. Στο
+   «Ο λογαριασμός μου» τον ζητάμε πάντα, γιατί εκεί η οθόνη μπορεί να είναι
+   ανοιχτή από ώρα και να κάθεται άλλος μπροστά της. */
 function setPasswordScreen(){
   $('view').innerHTML=`<div class="card pad" style="max-width:440px;margin:8vh auto;text-align:center">
     <div style="font-size:18px;font-weight:600">Καλωσόρισες</div>
