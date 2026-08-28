@@ -915,7 +915,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-27 22:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-28 07:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6091,6 +6091,10 @@ const opReqs=st=>(D.rc2||[]).filter(r=>r.section===PSEC&&r.stage_catalog_id===st
 const opKids=()=>D.bh.filter(p=>isMem(p)&&secOf(p)===PSEC&&p.status==='Ενεργός'&&inScope(p))
                      .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
 const SECWORD={'Αγέλη':'Αγέλης','Ομάδα':'Ομάδας','Κοινότητα':'Κοινότητας'};
+const GRMONTH=['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος',
+  'Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος'];
+const fmonthYear=d=>{if(!d)return '';const x=new Date(d+'T00:00:00Z');
+  return GRMONTH[x.getUTCMonth()]+' '+x.getUTCFullYear()};
 const hasReq=(pid,rid)=>(D.mreq||[]).some(x=>x.person_id===pid&&x.requirement_id===rid);
 const badgesOf=pid=>(D.mprog||[]).filter(x=>x.person_id===pid&&x.item_kind==='ειδικότητα')
   .map(x=>({label:x.label,cat:(PCAT().find(c=>c.item_kind==='ειδικότητα'&&c.label===x.label)||{}).category}))
@@ -10112,20 +10116,24 @@ function consentForms(kids){
     // αν λείπουν οι γονείς, πέφτουμε πίσω στο τριπλότυπο (αδέλφια)
     const key=(pair!=='‖')?pair:((y.triptycho_no||'').split('.')[0]||('ΜΟΝΟ:'+p.id));
     (fam[key]=fam[key]||[]).push(p)});
+  /* Τριτιμη επιλογή στο χαρτί κιόλας: αν μείνει κενό, το κενό είναι η
+     απάντηση — και καταγράφεται ως τέτοιο, όχι ως «δεν ξέρουμε». */
   const yn='<span style="white-space:nowrap">☐ Συμφωνώ &nbsp;&nbsp; ☐ Δεν Συμφωνώ</span>';
   const page=list=>{
     const g=gOf(list[0].registry_no)||{};
     return `<div class="fpage">
       <div class="fhead"><div><div class="ft">ΣΥΓΚΑΤΑΘΕΣΗ ΓΙΑ ΠΡΟΣΩΠΙΚΑ ΔΕΔΟΜΕΝΑ</div>
-        <div class="fs">Προσκοπική χρονιά ${esc(YEAR)}${t?` · έκδοση ${t.version}`:''}</div></div>
+        <div class="fs">${t?`Έκδοση ${t.version}`:'Έκδοση —'}${t&&t.effective_from?` · ${fmonthYear(t.effective_from)}`:''}
+          <span style="color:#888"> · ισχύει μέχρι ανάκληση ή νέα έκδοση</span></div></div>
         <div class="fs" style="text-align:right">76ο ΣΥΣΤΗΜΑ ΠΡΟΣΚΟΠΩΝ ΣΤΡΟΒΟΛΟΥ<br>Σώμα Προσκόπων Κύπρου</div></div>
       <div class="fdec" style="font-size:9.5px;color:#555">${esc((t&&t.intro)||'')}</div>
+      ${t&&t.body?`<div class="fdec" style="font-size:9.5px;color:#555;margin-top:3px"><b>${esc(t.body)}</b></div>`:''}
 
       <div class="fsec">Η συγκατάθεση αφορά</div>
       <table style="width:100%;border-collapse:collapse;font-size:10.5px">
         <tr style="font-size:8.5px;color:#666;text-transform:uppercase;letter-spacing:.03em">
-          <td style="width:14px"></td><td style="width:58px">Αρ. Μητρώου</td><td>Ονοματεπώνυμο</td>
-          <td style="width:33%">Υπογραφή <span style="text-transform:none">(από 16 ετών)</span></td><td style="width:19%">Ημερομηνία</td></tr>
+          <td style="width:14px"></td><td style="width:56px">Αρ. Μητρώου</td><td>Ονοματεπώνυμο</td><td style="width:74px">Ημ. γέννησης</td>
+          <td style="width:26%">Υπογραφή <span style="text-transform:none">(από 16 ετών)</span></td><td style="width:17%">Ημερομηνία</td></tr>
         ${list.map((p,i)=>`<tr>
           <td style="padding:9px 0 2px;font-weight:600">${i+1}.</td>
           <td style="border-bottom:1px solid #999;padding:9px 4px 2px">${esc(p.registry_no||'')}</td>
@@ -10133,20 +10141,25 @@ function consentForms(kids){
           <td style="border-bottom:1px solid #999;padding:9px 6px 2px">&nbsp;</td>
           <td style="border-bottom:1px solid #999;padding:9px 6px 2px">&nbsp;</td></tr>`).join('')}
       </table>
-      <div class="fnote" style="margin-top:6px">Η υπογραφή του ίδιου του μέλους είναι <b>απαραίτητη από τα 16 του χρόνια</b>. Υπογράφεται όταν συμπληρωθεί η ηλικία, με την ημερομηνία εκείνης της ημέρας.</div>
+      <div class="fnote" style="margin-top:6px">Η υπογραφή του ίδιου του μέλους είναι <b>απαραίτητη από τα 16 του χρόνια</b>. Υπογράφεται όταν συμπληρωθεί η ηλικία, με την ημερομηνία εκείνης της ημέρας. Ο Αριθμός Μητρώου συμπληρώνεται όταν αποδοθεί από το Σ.Π.Κ.</div>
 
       <div class="fsec">Επιτρέπω στο 76ο Σ.Π. Στροβόλου να</div>
-      ${items.map((c,i)=>`<div style="display:flex;gap:9px;margin-bottom:7px;align-items:flex-start">
-        <b style="flex:0 0 12px;font-size:10px">${i+1}.</b>
+      ${items.map(c=>`<div style="display:flex;gap:9px;margin-bottom:7px;align-items:flex-start">
+        <b style="flex:0 0 14px;font-size:10px">${c.seq}.</b>
         <div class="fdec" style="flex:1">${esc(c.text)}</div>
         <div style="flex:0 0 118px;font-size:10px;padding-top:1px">${yn}</div></div>`).join('')}
 
-      <div class="fnote">Τα στοιχεία διατηρούνται στα αρχεία του Συστήματος υπό την ευθύνη του/της εκάστοτε Αρχηγού Συστήματος και διαγράφονται όταν ζητηθεί γραπτώς στο <b>as@76.life</b>. Η συγκατάθεση μπορεί να ανακληθεί ανά πάσα στιγμή, <b>χωρίς καμία επίπτωση στη συμμετοχή του παιδιού</b> στο προσκοπικό πρόγραμμα.</div>
+      <div class="fnote" style="margin-top:4px">Πεδίο που μένει <b>κενό</b> καταγράφεται ως κενό και <b>ερμηνεύεται ως άρνηση</b>. Κάθε επιλογή μπορεί να αλλάξει με νέο έντυπο ή γραπτή ανάκληση.</div>
+      <div class="fnote">Τα στοιχεία τηρούνται στα αρχεία του 76ου Συστήματος Προσκόπων Στροβόλου, μονάδας του Σώματος Προσκόπων Κύπρου, και διαγράφονται όταν ζητηθεί γραπτώς στο <b>as@76.life</b>, το οποίο αποτελεί και το σημείο επικοινωνίας για κάθε θέμα προσωπικών δεδομένων. Η συγκατάθεση μπορεί να ανακληθεί ανά πάσα στιγμή, γραπτώς ή με νέο έντυπο, <b>χωρίς καμία επίπτωση στη συμμετοχή του παιδιού</b> στο προσκοπικό πρόγραμμα.</div>
 
-      <div class="fsec">Υπογραφές γονέων / κηδεμόνων <span class="fn">— και από τους δύο, όπου εμπίπτει</span></div>
-      <div class="frow">${LN('Ονοματεπώνυμο',g.father_name,2)}${LN('Υπογραφή',' ',1.5)}${LN('Ημερομηνία',' ',1)}</div>
-      <div class="frow">${LN('Ονοματεπώνυμο',g.mother_name,2)}${LN('Υπογραφή',' ',1.5)}${LN('Ημερομηνία',' ',1)}</div>
-      <div class="ffoot"><span>Ερωτήματα: as@76.life &nbsp;·&nbsp; Αρχή Προστασίας Δεδομένων: commissioner@dataprotection.gov.cy</span><span>${list.length} ${list.length===1?'μέλος':'μέλη'}</span></div>
+      <div class="fsec">Υπογραφές γονέων / κηδεμόνων</div>
+      <div class="fnote" style="margin:0 0 5px">Για τις επιλογές <b>1</b> και <b>2</b> αρκεί η υπογραφή ενός προσώπου που ασκεί τη γονική μέριμνα. Για την επιλογή <b>4</b> (οπτικοακουστικό υλικό) υπογράφουν όλοι όσοι την ασκούν.</div>
+      <div class="frow">${LN('Ονοματεπώνυμο',g.father_name,2)}${LN('Ιδιότητα','π.χ. πατέρας',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
+      <div class="frow">${LN('Ονοματεπώνυμο',g.mother_name,2)}${LN('Ιδιότητα','π.χ. μητέρα',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
+      <div class="frow">${LN('Ονοματεπώνυμο',' ',2)}${LN('Ιδιότητα',' ',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
+      <div class="fnote" style="margin-top:4px">Μία γραμμή ανά πρόσωπο. Κηδεμόνας που προστίθεται αργότερα υπογράφει σε κενή γραμμή με τη δική του ημερομηνία — <b>το έντυπο δεν επανεκδίδεται</b>.</div>
+      <div class="ffoot"><span>Ερωτήματα: as@76.life &nbsp;·&nbsp; Αρχή Προστασίας Δεδομένων: commissioner@dataprotection.gov.cy</span>
+        <span><b>${t?'ΣΥΓΚ-v'+t.version:'ΣΥΓΚ-v?'}</b> · ${list.length} ${list.length===1?'μέλος':'μέλη'}</span></div>
     </div>`};
   const groups=Object.values(fam).map(l=>l.sort(sortByName)).sort((a,b)=>sortByName(a[0],b[0]));
   openPrint('Συγκαταθέσεις '+YEAR, groups.map(page).join(''));
