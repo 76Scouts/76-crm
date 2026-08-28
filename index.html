@@ -20,12 +20,31 @@
   --r:12px; --rs:8px;
   --sh:0 1px 2px rgba(16,22,30,.04),0 1px 3px rgba(16,22,30,.06);
 }
-@media(prefers-color-scheme:dark){:root{
+/* Το σκούρο ακολουθεί το σύστημα — ΕΚΤΟΣ αν ο χρήστης είπε ρητά τι θέλει.
+   Το data-theme στο <html> κερδίζει· χωρίς αυτό, αποφασίζει η συσκευή. */
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0d1116; --card:#151a21; --ink:#e9ecf1; --ink2:#a4adba; --ink3:#727c8a;
   --line:#242b35; --line2:#323a46; --accbg:#16233a; --accln:#25406b;
   --okbg:#0f2620; --warnbg:#2a1f0c; --badbg:#2b1512; --side:#0a0e13; --sidehov:#161d27;
   --sh:0 1px 2px rgba(0,0,0,.3);
 }}
+:root[data-theme="dark"]{
+  --bg:#0d1116; --card:#151a21; --ink:#e9ecf1; --ink2:#a4adba; --ink3:#727c8a;
+  --line:#242b35; --line2:#323a46; --accbg:#16233a; --accln:#25406b;
+  --okbg:#0f2620; --warnbg:#2a1f0c; --badbg:#2b1512; --side:#0a0e13; --sidehov:#161d27;
+  --sh:0 1px 2px rgba(0,0,0,.3);
+}
+/* Μέγεθος κειμένου: το body ορίζει 15px — το ξαναγράφουμε, δεν το πολλαπλασιάζουμε,
+   γιατί δεκάδες κανόνες είναι σε px και το rem θα τους άφηνε πίσω. */
+:root[data-size="m"] body{font-size:16.5px}
+:root[data-size="l"] body{font-size:18px}
+/* Χρώμα τόνου — ένα πράγμα αλλάζει, όχι όλη η παλέτα. */
+:root[data-acc="green"] {--acc:#177a55; --accbg:#e8f6f0; --accln:#b7e0d0}
+:root[data-acc="purple"]{--acc:#6b46c1; --accbg:#f1ecfb; --accln:#d6c8f5}
+:root[data-acc="amber"] {--acc:#a96a12; --accbg:#fdf3e3; --accln:#f0d8ac}
+:root[data-acc="green"][data-theme="dark"] {--accbg:#0f2620; --accln:#1d4a3a}
+:root[data-acc="purple"][data-theme="dark"]{--accbg:#1e1730; --accln:#3a2c5c}
+:root[data-acc="amber"][data-theme="dark"] {--accbg:#2a1f0c; --accln:#4d3a15}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
@@ -696,6 +715,26 @@ tr.argrow td{background:var(--bg2)}
 const SB_URL='https://cofiscmvdagizlchrian.supabase.co';
 const SB_KEY='sb_publishable_OvYhjMAqZ9ty6T2De2by-g_uJ6mnm50';
 const sb=supabase.createClient(SB_URL,SB_KEY);
+/* ══ ΠΡΟΤΙΜΗΣΕΙΣ ΕΜΦΑΝΙΣΗΣ ══════════════════════════════════════════════
+   Μπαίνουν ΠΡΩΤΕΣ, πριν ζωγραφιστεί οτιδήποτε — αλλιώς η οθόνη αναβοσβήνει
+   λευκή πριν γυρίσει σκούρα. Ζουν στη συσκευή, όχι στη βάση: είναι
+   προτίμηση αυτού του μηχανήματος, όχι δεδομένο του Συστήματος. */
+const PREF_DEF={theme:'auto', size:'s', acc:'blue'};
+function loadPrefs(){ try{ return {...PREF_DEF, ...JSON.parse(localStorage.getItem('e76:prefs')||'{}')} }
+                      catch(e){ return {...PREF_DEF} } }
+let PREFS=loadPrefs();
+function applyPrefs(){
+  /* Τρέχει ΠΡΩΤΟ απ' όλα. Αν σκάσει εδώ, δεν φορτώνει τίποτα άλλο — και μια
+     προτίμηση χρώματος δεν αξίζει να ρίξει την εφαρμογή. */
+  const r=document.documentElement;
+  if(!r||typeof r.setAttribute!=='function')return;
+  const put=(k,v,def)=>{ try{ v===def ? r.removeAttribute(k) : r.setAttribute(k,v) }catch(e){} };
+  put('data-theme',PREFS.theme,'auto');
+  put('data-size', PREFS.size, 's');
+  put('data-acc',  PREFS.acc,  'blue');
+}
+function setPref(k,v){ PREFS[k]=v; try{localStorage.setItem('e76:prefs',JSON.stringify(PREFS))}catch(e){} applyPrefs() }
+applyPrefs();
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const MON=['Ιανουαρίου','Φεβρουαρίου','Μαρτίου','Απριλίου','Μαΐου','Ιουνίου','Ιουλίου','Αυγούστου','Σεπτεμβρίου','Οκτωβρίου','Νοεμβρίου','Δεκεμβρίου'];
@@ -827,8 +866,17 @@ const NAV=[
    {id:'accounts',t:'Λογαριασμοί & κωδικοί',i:'users',s:'live'},
    {id:'access',t:'Ρόλοι & πρόσβαση',i:'shield',s:'live'},
    {id:'viewas',t:'Προβολή ως',i:'users',s:'live'},
-   {id:'audit',t:'Ιστορικό αλλαγών',i:'book',s:'live'}]}
+   {id:'audit',t:'Ιστορικό αλλαγών',i:'book',s:'live'}]},
+
+ /* ΤΕΛΕΥΤΑΙΑ ΚΑΙ ΓΙΑ ΟΛΟΥΣ. Ο κωδικός μου δεν είναι λειτουργία διαχείρισης —
+    είναι δικός μου. Μέχρι σήμερα ο μόνος τρόπος να αλλάξει κωδικός ήταν το
+    Supabase Dashboard, δηλαδή κανένας τρόπος για όποιον δεν είναι εγώ. */
+ {g:'Ο λογαριασμός μου', d:'Κωδικός, εμφάνιση, αποσύνδεση', items:[
+   {id:'account',t:'Ο λογαριασμός μου',i:'cog',s:'live'}]}
 ];
+/* Οθόνες που δεν φιλτράρονται ΠΟΤΕ από ρόλο — τις έχει ο καθένας για τον
+   εαυτό του. Αν μπει εδώ κάτι που δείχνει δεδομένα άλλου, είναι λάθος. */
+const NAV_ALWAYS=['account'];
 /* ══ ΥΠΟΤΙΤΛΟΙ ΟΘΟΝΩΝ ══════════════════════════════════════════════════════
    Μία γραμμή κάτω από κάθε τίτλο: τι κάνει αυτή η οθόνη και πότε την ανοίγεις.
    Ο τίτλος λέει ΤΟ ΟΝΟΜΑ· ο υπότιτλος λέει ΤΗ ΔΟΥΛΕΙΑ. Χωρίς αυτόν, μια
@@ -849,6 +897,7 @@ const SUBS={
  kidprog:'Οι επόμενες συγκεντρώσεις και δράσεις',
  myfees:'Τι έχει πληρωθεί και τι εκκρεμεί',
  myprofile:'Τα στοιχεία επικοινωνίας μου',
+ account:'Ο κωδικός μου, η εμφάνιση της εφαρμογής, η αποσύνδεση',
 
  members:'Όλα τα παιδιά — φίλτρα ανά τμήμα, τάξη, κατάσταση',
  leaders:'Οι βαθμοφόροι, τα καθήκοντα και οι εκπαιδεύσεις τους',
@@ -915,7 +964,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-28 08:11'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-28 08:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2013,6 +2062,7 @@ function renderNav(){
   const AL=navFor(K, VIEWAS?VIEWAS.sec:mySec);   // null = τα πάντα
   const personalRole=['member','parent','dev'].includes(K);
   const allow=id=>{
+    if(NAV_ALWAYS.includes(id)) return true;      // ο εαυτός μου δεν εξαρτάται από ρόλο
     if(AL && !AL.includes(id)) return false;
     if(!AL && id==='dev' && !(ME.platform_admin||ME.role==='admin')) return false;
     if(!AL && NAV_PARENT.includes(id) && K!=='parent') return false;   // οθόνες γονέα
@@ -4296,6 +4346,66 @@ V.myfees=()=>{
 };
 
 /* ── ΤΑ ΣΤΟΙΧΕΙΑ ΜΟΥ ─────────────────────────────────────────────────────── */
+/* ══ Ο ΛΟΓΑΡΙΑΣΜΟΣ ΜΟΥ ═══════════════════════════════════════════════════
+   Τρία πράγματα που ανήκουν στον χρήστη και σε κανέναν άλλο: ο κωδικός του,
+   η εμφάνιση στη ΔΙΚΗ του συσκευή, και η έξοδος. Δεν υπάρχει «διαχειριστής
+   της εμφάνισής μου». */
+V.account=()=>{
+  const me=meRec();
+  const opt=(k,v,l,cur)=>`<button class="btn sm${cur===v?' p':''}" data-pref="${k}|${v}">${esc(l)}</button>`;
+  const dot=(v,c)=>`<button class="btn sm${PREFS.acc===v?' p':''}" data-pref="acc|${v}"
+     title="${esc(c)}"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${c};margin-right:6px;vertical-align:-1px"></span>${esc(c==='#2f6fed'?'Μπλε':c==='#177a55'?'Πράσινο':c==='#6b46c1'?'Μοβ':'Κεχριμπάρι')}</button>`;
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px;display:flex;gap:11px;align-items:center">
+      ${me?avatar(me,42):''}
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:15.5px">${me?pn(me):esc(ME.email||'—')}</div>
+        <div class="dim" style="font-size:12.5px">${esc(ME.email||'')}${PA&&PA.t?' · '+esc(PA.t):''}</div></div>
+      <button class="btn gh sm" id="acOut">Αποσύνδεση</button></div>
+
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Κωδικός</b>
+      <div class="dim" style="font-size:12.5px;margin:5px 0 12px">Ο λογαριασμός δείχνει προσωπικά δεδομένα
+        παιδιών. Μην τον μοιραστείς — ούτε «προσωρινά».</div>
+      <input type="password" id="ac1" placeholder="Νέος κωδικός (8+ χαρακτήρες)" style="max-width:340px;margin-bottom:7px">
+      <input type="password" id="ac2" placeholder="Ξανά, για σιγουριά" style="max-width:340px;margin-bottom:10px">
+      <div><button class="btn p" id="acPw">Αλλαγή κωδικού</button>
+        <span class="dim" id="acMsg" style="font-size:12.5px;margin-left:9px"></span></div></div>
+
+    <div class="card pad">
+      <b>Εμφάνιση</b>
+      <div class="dim" style="font-size:12.5px;margin:5px 0 12px">Ισχύει σε αυτή τη συσκευή. Κανείς άλλος
+        δεν τη βλέπει και δεν την αλλάζει.</div>
+      <div class="kv"><span style="flex:1">Θέμα</span><span style="display:flex;gap:5px;flex-wrap:wrap">
+        ${opt('theme','auto','Όπως η συσκευή',PREFS.theme)}${opt('theme','light','Ανοιχτό',PREFS.theme)}${opt('theme','dark','Σκούρο',PREFS.theme)}</span></div>
+      <div class="kv"><span style="flex:1">Μέγεθος κειμένου</span><span style="display:flex;gap:5px;flex-wrap:wrap">
+        ${opt('size','s','Κανονικό',PREFS.size)}${opt('size','m','Μεγάλο',PREFS.size)}${opt('size','l','Πολύ μεγάλο',PREFS.size)}</span></div>
+      <div class="kv"><span style="flex:1">Χρώμα τόνου</span><span style="display:flex;gap:5px;flex-wrap:wrap">
+        ${dot('blue','#2f6fed')}${dot('green','#177a55')}${dot('purple','#6b46c1')}${dot('amber','#a96a12')}</span></div>
+      <div style="margin-top:11px"><button class="btn gh sm" id="acReset">Επαναφορά</button></div></div>`;
+
+  document.querySelectorAll('[data-pref]').forEach(b=>b.onclick=()=>{
+    const [k,v]=b.dataset.pref.split('|'); setPref(k,v); V.account()});
+  $('acReset').onclick=()=>{ PREFS={...PREF_DEF};
+    try{localStorage.removeItem('e76:prefs')}catch(e){} applyPrefs(); V.account()};
+  $('acOut').onclick=async()=>{ if(!confirm('Αποσύνδεση;'))return;
+    await sb.auth.signOut(); location.reload()};
+  $('acPw').onclick=async()=>{
+    const a=$('ac1').value, b=$('ac2').value, m=$('acMsg');
+    if(a.length<8) return m.textContent='Τουλάχιστον 8 χαρακτήρες.';
+    if(a!==b)      return m.textContent='Τα δύο δεν ταιριάζουν.';
+    m.textContent='…';
+    const {error}=await sb.auth.updateUser({password:a});
+    if(error) return m.textContent='Σφάλμα: '+error.message;
+    /* Η σημαία κατεβαίνει ΜΟΝΟ όταν όντως άλλαξε ο κωδικός — όχι όταν
+       δημιουργήθηκε ο λογαριασμός. Αυτό ήταν το λάθος του as@76.life. */
+    const {data:{user}}=await sb.auth.getUser();
+    if(user) await sb.from('profiles').update({must_set_password:false,
+      password_set_on:new Date().toISOString()}).eq('id',user.id);
+    $('ac1').value=$('ac2').value='';
+    m.textContent='Άλλαξε.'; toast('Ο κωδικός άλλαξε')};
+};
+
 V.myprofile=()=>{
   const me=meRec(); if(!me)return $('view').innerHTML=noKids();
   const ks=myKids();
@@ -5908,7 +6018,12 @@ function expiryBody(){
 async function mustSetPassword(){
   const {data:{user}}=await sb.auth.getUser(); if(!user)return false;
   const {data:pr}=await sb.from('profiles').select('must_set_password,password_set_on').eq('id',user.id).maybeSingle();
-  return !!(pr&&pr.must_set_password&&!pr.password_set_on);
+  /* ΠΡΟΣΟΧΗ: το password_set_on ΔΕΝ ακυρώνει τη σημαία.
+     Ο λογαριασμός as@76.life είχε password_set_on από 08/08 — σφραγίστηκε τη
+     στιγμή που δημιουργήθηκε, με τον προσωρινό κωδικό μέσα. Η εφαρμογή το
+     διάβασε ως «διάλεξε κωδικό» και δεν ξαναρώτησε ποτέ. Η ημερομηνία λέει
+     πότε γράφτηκε κάτι, όχι ότι το διάλεξε άνθρωπος. Η σημαία αποφασίζει. */
+  return !!(pr&&pr.must_set_password);
 }
 function setPasswordScreen(){
   $('view').innerHTML=`<div class="card pad" style="max-width:440px;margin:8vh auto;text-align:center">
