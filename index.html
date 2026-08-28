@@ -886,8 +886,11 @@ const NAV=[
    {id:'account',t:'Ο λογαριασμός μου',i:'cog',s:'live'}]}
 ];
 /* Οθόνες που δεν φιλτράρονται ΠΟΤΕ από ρόλο — τις έχει ο καθένας για τον
-   εαυτό του. Αν μπει εδώ κάτι που δείχνει δεδομένα άλλου, είναι λάθος. */
-const NAV_ALWAYS=['account'];
+   εαυτό του. Αν μπει εδώ κάτι που δείχνει δεδομένα άλλου, είναι λάθος.
+   Ο φάκελός ΜΟΥ ήταν κρυμμένος από τους βαθμοφόρους, με το σκεπτικό «όποιος
+   θέλει τα δικά του αλλάζει ιδιότητα σε Μέλος». Δηλαδή ο Α.Σ. δεν έβλεπε τα
+   δικά του πιστοποιητικά χωρίς να μεταμφιεστεί. Κακή απαίτηση. */
+const NAV_ALWAYS=['account','me','myatt','myforms'];
 /* ══ ΥΠΟΤΙΤΛΟΙ ΟΘΟΝΩΝ ══════════════════════════════════════════════════════
    Μία γραμμή κάτω από κάθε τίτλο: τι κάνει αυτή η οθόνη και πότε την ανοίγεις.
    Ο τίτλος λέει ΤΟ ΟΝΟΜΑ· ο υπότιτλος λέει ΤΗ ΔΟΥΛΕΙΑ. Χωρίς αυτόν, μια
@@ -976,7 +979,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-28 08:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-28 08:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1508,7 +1511,17 @@ async function loadAll(){
   if(!(D.cl||[]).length && (D.care_op||[]).length) D.cl=D.care_op.map(x=>({...x}));
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   const _ow=$('owner');
-  if(_ow&&(D.am||[]).length)_ow.innerHTML=`e76 · λογισμικό <b>${esc(OWNER())}</b><br>Τα δεδομένα ανήκουν στο κλιμάκιο`;
+  /* Ο ιδιοκτήτης του λογισμικού γίνεται σύνδεσμος ΜΟΝΟ αν υπάρχει διεύθυνση
+     στο app_meta.owner_url. Κενό = σκέτο κείμενο· δεν μαντεύουμε διεύθυνση
+     σε νομική σημείωση. */
+  if(_ow&&(D.am||[]).length){
+    const url=(((D.am||[]).find(x=>x.k==='owner_url')||{}).v||'').trim();
+    const own=esc(OWNER());
+    const lbl=/^https?:\/\//i.test(url)
+      ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer"
+           style="color:inherit;text-decoration:underline"><b>${own}</b></a>` : `<b>${own}</b>`;
+    _ow.innerHTML=`e76 · λογισμικό ${lbl}<br>Τα δεδομένα ανήκουν στο κλιμάκιο`;
+  }
   };
   assign();
   restJob.then(()=>{ assign(); saveCache();
@@ -2723,7 +2736,9 @@ function certChip(c){
 }
 /* συνολική κατάσταση Ν.91(Ι) από τον νέο πίνακα, με πίσω-συμβατότητα */
 function certState(id){
-  const c=(D.pc||[]).filter(x=>x.person_id===id&&x.type_code==='Ν91')
+  /* Ίδιος κανόνας με το certOn: αδήλωτο από τον Α.Σ. = ισχυρισμός, όχι απόδειξη.
+     Εδώ κρίνεται το Ν.91(Ι) — ποιος επιτρέπεται να εργάζεται με παιδιά. */
+  const c=(D.pc||[]).filter(x=>x.person_id===id&&x.type_code==='Ν91'&&x.confirmed_on)
     .sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
   const exp=c?c.expires_on:((D.cert||[]).find(x=>x.person_id===id)||{}).sexoxarto_expiry;
   if(!exp)return {k:'none',d:null};
@@ -2739,7 +2754,9 @@ function certsHTML(p){
           <b style="font-weight:500;font-size:13.5px">${esc(ctype(c.type_code).name)}</b>
           ${c.label?`<span class="pill" style="font-size:11px">${esc(c.label)}</span>`:''}
           ${/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes||'')?'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">προς επιβεβαίωση</span>':''}
+          ${c.confirmed_on?'':'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)" title="Το δήλωσε ο ίδιος. Δεν μετράει για καταλληλότητα μέχρι να το επιβεβαιώσεις.">δηλώθηκε — δεν μετράει</span>'}
           <span class="sp"></span>${certChip(c)}
+          ${c.confirmed_on?'':`<button class="btn p sm pcok" data-id="${c.id}" title="Είδα το χαρτί — ισχύει">Επιβεβαίωση</button>`}
           <button class="btn gh sm pcdel" data-id="${c.id}" title="Διαγραφή">✕</button></div>
         <div class="dim" style="font-size:11.5px">${c.notes&&/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes)?esc(c.notes.split('—')[0].trim())+' · ':''}${c.issued_on?'έκδοση '+fdate(c.issued_on):''}${c.number?' · αρ. '+esc(c.number):''}
           ${d?` · <a href="#" class="docopen" data-path="${esc(d.path)}">${esc(d.title||'αρχείο')}</a>`:''}</div>
@@ -2757,6 +2774,17 @@ function certsHTML(p){
     <div class="dim" style="font-size:11.5px;margin-top:7px">Η λήξη υπολογίζεται αυτόματα από τον τύπο, αν αφήσεις το πεδίο κενό.</div></div>`;
 }
 function wireCerts(p,after){
+  /* Η επιβεβαίωση είναι πράξη, όχι πεδίο: «είδα το χαρτί». Γι' αυτό είναι
+     κουμπί με όνομα και ημερομηνία, και όχι ένα ακόμη checkbox. */
+  document.querySelectorAll('.pcok').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Επιβεβαιώνεις ότι είδες το πιστοποιητικό; Από εδώ και πέρα μετράει για τις δράσεις.'))return;
+    const today=new Date().toISOString().slice(0,10);
+    const {error}=await sb.from('person_certificates')
+      .update({confirmed_on:today, confirmed_by:ME.person_id}).eq('id',b.dataset.id);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const c=(D.pc||[]).find(x=>x.id===b.dataset.id);
+    if(c){c.confirmed_on=today; c.confirmed_by=ME.person_id}
+    saveCache(); toast('Επιβεβαιώθηκε'); after&&after();});
   document.querySelectorAll('.pcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή πιστοποιητικού;'))return;
     await sb.from('person_certificates').delete().eq('id',b.dataset.id);
@@ -3100,9 +3128,15 @@ const MEMSECS=()=>{const c=SECCFG().filter(s=>s.has_members).map(s=>s.section);
    πέφτουμε στην κατηγορία — αλλά το σωστό είναι να μπει καπέλο. */
 /* Η ιδιότητα όπως τη διαβάζει άνθρωπος: σύμβολο μπροστά, τίτλος πίσω.
    Ήταν γραμμένη με έξι διαφορετικούς τρόπους σε έξι οθόνες. */
+/* Το «ΕΔ» ΔΕΝ είναι αξίωμα — είναι χαρτί. Και οι 23 τιμές του πεδίου
+   appointment είναι «ΕΔ», δηλαδή σημαία «έχει Εντολή Διοίκησης», όχι τίτλος.
+   Τυπωμένο δίπλα στον ρόλο διάβαζε «ΑΣ · ΕΔ», σαν δύο αξιώματα. Η κατάσταση
+   του χαρτιού ανήκει στην οθόνη «Εντολές & Αναθέσεις». */
+const PAPER_ONLY=new Set(['ΕΔ','Ε.Δ.','ΑΝΑΘΕΣΗ','Ανάθεση','ΕΝΤΟΛΗ','Εντολή']);
 function ledLabel(p,full){
   const c=ledCode(p);
-  const t=(p.appointment&&p.appointment!=='-'&&p.appointment!=='—')?p.appointment:(p.category||'');
+  const ap=(p.appointment&&!PAPER_ONLY.has(String(p.appointment).trim()))?p.appointment:'';
+  const t=(ap&&ap!=='-'&&ap!=='—')?ap:(p.category||'');
   if(!full) return c||t||'';
   return c&&t&&t!==c ? c+' · '+t : (c||t||'');
 }
@@ -8473,6 +8507,11 @@ V.me=()=>{
     </div>
 
     <div class="sec"><h3>Τα πιστοποιητικά μου</h3><span class="n">${(D.pc||[]).filter(x=>x.person_id===p.id).length}</span></div>
+    <div class="card pad" style="margin-bottom:0;border-bottom:0;border-radius:var(--r) var(--r) 0 0">
+      <div class="dim" style="font-size:12.5px;line-height:1.6">Δηλώνεις εσύ, <b>επιβεβαιώνει ο Α.Σ.</b>
+        Μέχρι τότε το πιστοποιητικό φαίνεται εδώ αλλά <b>δεν μετράει</b> για το ποιος συνοδεύει σε δράση —
+        αλλιώς ο ελεγχόμενος θα έγραφε το αποτέλεσμα του ελέγχου. Ανέβασε και το αρχείο: χωρίς αυτό
+        ο Α.Σ. δεν έχει τι να επιβεβαιώσει.</div></div>
     <div class="card pad">
       <div class="dim" style="font-size:12.5px;margin-bottom:10px">Ανέβασέ τα μόνος σου — σεξόχαρτο, πρώτες βοήθειες, άδεια οδήγησης.
         Ο Α.Σ. τα βλέπει· δεν χρειάζεται να του τα στείλεις.</div>
@@ -8487,6 +8526,7 @@ V.me=()=>{
           return `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
             <b style="font-size:13.5px;flex:1;min-width:170px">${esc(ct(x.type_code))}${x.label?` <span class="dim">${esc(x.label)}</span>`:''}</b>
             <span class="pill"${k?` style="background:var(--${k}bg);color:var(--${k});border-color:transparent"`:''}>${esc(t)}</span>
+            ${x.confirmed_on?'':'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Το δήλωσες εσύ. Μετράει για καταλληλότητα μόλις το επιβεβαιώσει ο Α.Σ.">εκκρεμεί επιβεβαίωση</span>'}
             ${x.document_id?'<span class="pill">📎 αρχείο</span>':'<span class="pill" title="Δεν έχει ανέβει έγγραφο — μόνο ημερομηνία">χωρίς αρχείο</span>'}
           </div>`}).join('')})()}
       <div class="grow" style="margin-top:12px">
@@ -9486,9 +9526,13 @@ const efPersons=eid=>efParts(eid).map(x=>({pa:x, p:(D.bh||[]).find(b=>b.id===x.p
    λήγει μεθαύριο είναι έγκυρο για το τριήμερο· ένα που έληξε χθες δεν είναι,
    όσο «πρόσφατο» κι αν φαίνεται. */
 function certOn(pid, code, onDate){
-  const c=(D.pc||[]).filter(x=>x.person_id===pid&&x.type_code===code)
-    .sort((a,b)=>String(b.expires_on||'9999').localeCompare(String(a.expires_on||'9999')))[0];
-  if(!c)return {k:'none'};
+  const all=(D.pc||[]).filter(x=>x.person_id===pid&&x.type_code===code)
+    .sort((a,b)=>String(b.expires_on||'9999').localeCompare(String(a.expires_on||'9999')));
+  /* ΜΟΝΟ επιβεβαιωμένα μετράνε. Ένα πιστοποιητικό που δήλωσε ο ίδιος και δεν
+     το είδε ο Α.Σ. δεν είναι απόδειξη — είναι ισχυρισμός. Το κρατάμε όμως
+     ορατό ως «εκκρεμεί», γιατί «καθόλου» και «περιμένει» θέλουν άλλη ενέργεια. */
+  const c=all.find(x=>x.confirmed_on);
+  if(!c) return all.length ? {k:'pending', c:all[0]} : {k:'none'};
   if(!c.expires_on)return {k:'ok', c};
   return {k:(c.expires_on>=onDate?'ok':'expired'), c};
 }
@@ -9869,7 +9913,8 @@ function efCertsWire(e,parts,onDate){
     const R=[['Ονοματεπώνυμο','Ρόλος',...codes.map(c=>((D.ct||[]).find(t=>t.code===c)||{}).name||c)]];
     led.forEach(x=>R.push([nm(x.p), x.pa.role||'', ...codes.map(c=>{
       const s=certOn(x.p.id,c,onDate);
-      return s.k==='ok'?(s.c&&s.c.expires_on?'έως '+s.c.expires_on:'ΝΑΙ'):(s.k==='expired'?'ΕΛΗΞΕ':'')})]));
+      return s.k==='ok'?(s.c&&s.c.expires_on?'έως '+s.c.expires_on:'ΝΑΙ')
+           :s.k==='expired'?'ΕΛΗΞΕ':s.k==='pending'?'ΕΚΚΡΕΜΕΙ ΕΠΙΒΕΒΑΙΩΣΗ':''})]));
     const csv='﻿'+R.map(r=>r.map(c=>{const v=c==null?'':String(c);
       return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
     saveBlob(csv,'text/csv;charset=utf-8',`76-pistopoiitika-${(e.title||'drasi').replace(/\W+/g,'-')}.csv`)};
