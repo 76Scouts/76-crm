@@ -915,7 +915,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-28 07:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-28 08:11'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1392,9 +1392,14 @@ async function loadAll(){
     sb.from('ka_step').select('*').limit(5000),
     sb.from('subgroup_roles').select('*'),
     sb.from('prog_category').select('*').order('seq'),
-    sb.from('venues').select('*').order('name')        // ΠΑΝΤΑ τελευταίο: η θέση είναι η ταυτότητα
+    sb.from('venues').select('*').order('name'),
+    /* Κηδεμονικά — κλιμακωτά. Ο πίνακας care_links κρατά ΚΑΙ το διάταγμα, τη
+       σήμανση περιορισμού και την εσωτερική σημείωση· τον βλέπει μόνο ο Α.Σ.
+       Ο αρχηγός τμήματος παίρνει αυτή την όψη: όνομα, τηλέφωνο, παραλαβή,
+       επικοινωνία. Χωρίς το γιατί. Δεν παραχωρείται ποτέ μέσω grants. */
+    sb.from('v_care_operational').select('*').limit(3000)   // ΠΑΝΤΑ τελευταίο
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1432,7 +1437,11 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];
+  /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
+     η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
+     τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
+  if(!(D.cl||[]).length && (D.care_op||[]).length) D.cl=D.care_op.map(x=>({...x}));
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   const _ow=$('owner');
   if(_ow&&(D.am||[]).length)_ow.innerHTML=`e76 · λογισμικό <b>${esc(OWNER())}</b><br>Τα δεδομένα ανήκουν στο κλιμάκιο`;
@@ -4637,7 +4646,44 @@ function parentEdit(pid){
 /* ══ ΔΕΣΜΟΙ ΦΡΟΝΤΙΔΑΣ — η καρτέλα του παιδιού και του γονέα ══ */
 const RELS=['Μητέρα','Πατέρας','Θετή μητέρα','Θετός πατέρας','Γιαγιά','Παππούς','Αδελφή','Αδελφός','Θεία','Θείος','Ανάδοχος','Κηδεμόνας','Άλλο'];
 const linksOf=id=>(D.cl||[]).filter(x=>x.member_id===id);
+/* Τα εκτελέσιμα κηδεμονικά: ποιον παραδίδω, ποιον παίρνω τηλέφωνο.
+   Έρχονται από όψη — ο πίνακας care_links δεν φεύγει από τον Α.Σ. */
+const careOpOf=id=>(D.care_op||[]).filter(x=>x.member_id===id)
+  .sort((a,b)=>(a.call_order||99)-(b.call_order||99));
+const canSeeCustody=()=>ME.role==='admin';
+
+/* Ο αρχηγός τμήματος: ΟΝΟΜΑ, τηλέφωνο, παραλαβή, επικοινωνία. Τίποτε άλλο.
+   Χωρίς όνομα η σήμανση δεν εκτελείται — γι' αυτό το όνομα ΔΕΝ κρύβεται. */
+function careReadOnly(memberId){
+  const p=D.bh.find(x=>x.id===memberId); if(!p)return;
+  const ls=careOpOf(memberId);
+  $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1">
+      <div style="font-size:17px;font-weight:600">${pn(p)}</div>
+      <div class="dim" style="font-size:12.5px">Ποιον παραδίδεις, ποιον καλείς</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    ${ls.map(l=>{const c=D.bh.find(b=>b.id===l.carer_id)||{first_name:l.first_name,last_name:l.last_name};
+      const yes=(v,t,n)=>v===true?`<span class="pill ok">${t}</span>`
+                     :v===false?`<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">${n}</span>`:'';
+      return `<div class="dsec">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        ${avatar(c,30)}<div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px">${esc((l.first_name||'')+' '+(l.last_name||''))}</div>
+          <div class="dim" style="font-size:12px">${esc(l.relation||'')}${l.call_order?' · '+l.call_order+'ος στη σειρά':''}${l.phone?' · '+esc(fphone(l.phone)):''}</div></div></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${yes(l.can_collect,'παραλαβή','ΟΧΙ παραλαβή')}
+        ${yes(l.receives_comms,'επικοινωνία','ΟΧΙ επικοινωνία')}
+        ${l.can_consent_medical===true?'<span class="pill ok">ιατρική συναίνεση</span>':''}
+      </div></div>`}).join('')
+      ||'<div class="dsec dim" style="font-size:13px">Καμία καταχώρηση</div>'}
+    <div class="dsec dim" style="border:0;font-size:12px;line-height:1.5">
+      Βλέπεις μόνο ό,τι χρειάζεσαι για να το εκτελέσεις. Ο λόγος —διατάγματα,
+      σημειώματα, ιστορικό— μένει στον Α.Σ.<br>
+      Αν κάτι δεν βγάζει νόημα, ρώτησε τον Α.Σ. Μην αυτοσχεδιάσεις.</div>`;
+  drw.classList.add('on');
+}
+
 function careDrawer(memberId){
+  if(!canSeeCustody()) return careReadOnly(memberId);
   const p=D.bh.find(x=>x.id===memberId); if(!p)return;
   const ls=linksOf(memberId).map(l=>({l,c:D.bh.find(b=>b.id===l.carer_id)})).filter(x=>x.c)
     .sort((a,b)=>(a.l.call_order||99)-(b.l.call_order||99));
@@ -10108,14 +10154,12 @@ function consentForms(kids){
   if(!kids||!kids.length)return toast('Κανένα παιδί');
   const t=tmpl('SYGKATATHESI');
   const items=(D.ci||[]).filter(c=>t&&c.template_id===t.id).sort((a,b)=>(a.seq||0)-(b.seq||0));
-  // ΚΛΕΙΔΙ = το ΖΕΥΓΟΣ που υπογράφει. Ίδιος πατέρας + άλλη μητέρα ⇒ ΞΕΧΩΡΙΣΤΟ έντυπο,
-  // γιατί η κάθε μητέρα υπογράφει μόνο για το δικό της παιδί.
-  const fam={};
-  kids.forEach(p=>{const g=gOf(p.registry_no)||{}, y=myOf(p)||{};
-    const pair=nameKey(g.father_name||'')+'‖'+nameKey(g.mother_name||'');
-    // αν λείπουν οι γονείς, πέφτουμε πίσω στο τριπλότυπο (αδέλφια)
-    const key=(pair!=='‖')?pair:((y.triptycho_no||'').split('.')[0]||('ΜΟΝΟ:'+p.id));
-    (fam[key]=fam[key]||[]).push(p)});
+  /* ΕΝΑ ΕΝΤΥΠΟ ΑΝΑ ΠΑΙΔΙ — όχι οικογενειακό.
+     Το ομαδοποιημένο έντυπο έμοιαζε οικονομικό: μία υπογραφή, τρία αδέλφια.
+     Αλλά ο πίνακας μελών έχει ΜΙΑ γραμμή ανά παιδί, και η συγκατάθεση
+     ανακαλείται ανά παιδί. Ένα κοινό χαρτί σημαίνει ότι η ανάκληση για το ένα
+     αδέλφι αφήνει το άλλο να κρέμεται από σάρωση που δεν το αφορά πια.
+     Μία σάρωση = ένα παιδί = ένα SHA-256. */
   /* Τριτιμη επιλογή στο χαρτί κιόλας: αν μείνει κενό, το κενό είναι η
      απάντηση — και καταγράφεται ως τέτοιο, όχι ως «δεν ξέρουμε». */
   const yn='<span style="white-space:nowrap">☐ Συμφωνώ &nbsp;&nbsp; ☐ Δεν Συμφωνώ</span>';
@@ -10159,10 +10203,10 @@ function consentForms(kids){
       <div class="frow">${LN('Ονοματεπώνυμο',' ',2)}${LN('Ιδιότητα',' ',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
       <div class="fnote" style="margin-top:4px">Μία γραμμή ανά πρόσωπο. Κηδεμόνας που προστίθεται αργότερα υπογράφει σε κενή γραμμή με τη δική του ημερομηνία — <b>το έντυπο δεν επανεκδίδεται</b>.</div>
       <div class="ffoot"><span>Ερωτήματα: as@76.life &nbsp;·&nbsp; Αρχή Προστασίας Δεδομένων: commissioner@dataprotection.gov.cy</span>
-        <span><b>${t?'ΣΥΓΚ-v'+t.version:'ΣΥΓΚ-v?'}</b> · ${list.length} ${list.length===1?'μέλος':'μέλη'}</span></div>
+        <span><b>${t?'ΣΥΓΚ-v'+t.version:'ΣΥΓΚ-v?'}</b> · ένα έντυπο ανά μέλος</span></div>
     </div>`};
-  const groups=Object.values(fam).map(l=>l.sort(sortByName)).sort((a,b)=>sortByName(a[0],b[0]));
-  openPrint('Συγκαταθέσεις '+YEAR, groups.map(page).join(''));
+  const one=kids.slice().sort(sortByName).map(p=>[p]);   // ένα παιδί ανά σελίδα
+  openPrint('Συγκαταθέσεις '+YEAR, one.map(page).join(''));
 }
 /* ══ ΕΙΣΑΓΩΓΗ ΑΠΟ SMARTESPOT (Quform export) ══ */
 function sniffDelim(txt){
