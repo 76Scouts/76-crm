@@ -990,7 +990,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-29 19:51'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-29 20:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1450,7 +1450,7 @@ async function loadAll(){
     sb.from('transfers').select('*').limit(1000),
     sb.from('transfer_policy').select('*'),
     sb.from('app_meta').select('*'),
-    sb.from('audit_log').select('*').order('at',{ascending:false}).limit(1000),
+    sb.from('audit_log').select('*').order('at',{ascending:false}).limit(300),
     sb.from('v_accounts').select('*'),
     sb.from('consents').select('*').limit(3000),
     sb.from('synod').select('*').limit(500),
@@ -1493,9 +1493,13 @@ async function loadAll(){
   const core=[...CORE].filter(i=>i<q.length);
   await Promise.all(core.map(async i=>{ r[i]=await guard(q[i],names[i]) }));
   const rest=q.map((_,i)=>i).filter(i=>!CORE.has(i));
+  /* Δώδεκα τη φορά, όχι έξι. Τα ερωτήματα είναι γρήγορα στη βάση (7-12 ms
+     μετρημένα) — ό,τι κοστίζει είναι οι ΓΥΡΟΙ στο δίκτυο. Με 59 ερωτήματα
+     ανά έξι έκανε δέκα κύματα· ανά δώδεκα κάνει πέντε. Το HTTP/2 πολυπλέκει,
+     οπότε δεν στοιβάζονται. */
   const restJob=(async()=>{
-    for(let i=0;i<rest.length;i+=6){
-      await Promise.all(rest.slice(i,i+6).map(async k=>{ r[k]=await guard(q[k],names[k]) }));
+    for(let i=0;i<rest.length;i+=12){
+      await Promise.all(rest.slice(i,i+12).map(async k=>{ r[k]=await guard(q[k],names[k]) }));
     }
   })();
   window.__REST=restJob;
@@ -2838,12 +2842,18 @@ function wireCerts(p,after){
 const DOC_KINDS=['Πιστοποιητικό Ν.91(Ι)','Πιστοποιητικό γέννησης','Ιατρικό','Εντολή / Ανάθεση','Βεβαίωση εκπαίδευσης','Πρόγραμμα δράσης','Έντυπο συμμετοχής','Φωτογραφία','Άλλο'];
 const fsize=n=>!n?'':n<1024?n+' B':n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(1)+' MB';
 const fileIcon=m=>/pdf/i.test(m||'')?'book':/image/i.test(m||'')?'award':'book';
+/* Το άνοιγμα αρχείου έσπαγε από τον αποκλεισμό αναδυόμενων: η υπογεγραμμένη
+   διεύθυνση ζητιέται από τον διακομιστή, και ό,τι ανοίξει ΜΕΤΑ το await δεν
+   μετράει πια ως χειρονομία του χρήστη. Η καρτέλα ανοίγει ΤΩΡΑ, κενή, και
+   πλοηγείται μόλις έρθει η διεύθυνση. */
 async function docOpen(path){
   if(String(path).startsWith('drive:')){
     window.open('https://drive.google.com/file/d/'+String(path).slice(6)+'/view','_blank','noopener');return;}
+  const w=window.open('','_blank');
   const {data,error}=await sb.storage.from('e76').createSignedUrl(path,120);
-  if(error||!data)return toast('Δεν άνοιξε: '+((error&&error.message)||''));
-  window.open(data.signedUrl,'_blank','noopener');
+  if(error||!data){ if(w)w.close(); return toast('Δεν άνοιξε: '+((error&&error.message)||'')) }
+  if(w){ try{w.opener=null}catch(e){} w.location.replace(data.signedUrl); }
+  else window.open(data.signedUrl,'_blank','noopener');
 }
 async function docUpload(file,meta){
   const safe=file.name.replace(/[^\w.\-]+/g,'_');
