@@ -981,7 +981,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-29 16:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-29 19:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -4284,8 +4284,11 @@ function signupOpen(ev){
 }
 async function declareAndOpen(ev, kid, parent){
   const existing=(D.pa||[]).find(x=>x.person_id===kid.id&&x.event_id===ev.id);
+  /* Η καρτέλα ανοίγει ΤΩΡΑ, όσο κρατά ακόμη η χειρονομία του χρήστη. Ό,τι
+     ανοίξει μετά από await το κόβει ο αποκλεισμός αναδυόμενων. */
+  const w=ev.form_url?window.open('','_blank'):null;
   const url=await esUrl(ev,kid,parent);
-  if(!url)return toast('Δεν έχει οριστεί φόρμα για τη δράση.');
+  if(!url){ if(w)w.close(); return toast('Δεν έχει οριστεί φόρμα για τη δράση.') }
   if(!existing){
     const rec={person_id:kid.id, event_id:ev.id, status:'Δηλώθηκε',
       declared_by:ME.person_id||null, declared_at:new Date().toISOString(),
@@ -4295,7 +4298,8 @@ async function declareAndOpen(ev, kid, parent){
     (D.pa=D.pa||[]).push(rec);
   }
   /* Νέα καρτέλα: αν ανοίξει στην ίδια, ο γονέας χάνει τη σελίδα του μεσοδρομίς. */
-  window.open(url,'_blank','noopener');
+  if(w){ try{w.opener=null}catch(e){} w.location.replace(url); }
+  else window.open(url,'_blank','noopener');
 }
 
 /* ── ΤΙ ΕΧΟΥΜΕ ΜΠΡΟΣΤΑ ───────────────────────────────────────────────────── */
@@ -6778,13 +6782,17 @@ V.myforms=()=>{
       </div>`}).join('');
     document.querySelectorAll('[data-fopen]').forEach(b=>b.onclick=async()=>{
       /* Το παράθυρο ανοίγει ΠΡΩΤΑ, με το πάτημα — αλλιώς ο αποκλεισμός
-         αναδυόμενων το κόβει, γιατί μεσολαβεί κλήση δικτύου. */
-      const w=window.open('','_blank','noopener');
+         αναδυόμενων το κόβει, γιατί μεσολαβεί κλήση δικτύου.
+         ΧΩΡΙΣ 'noopener': με αυτό το window.open επιστρέφει null, οπότε η
+         καρτέλα άνοιγε και έμενε about:blank — δεν κρατούσαμε λαβή για να τη
+         στείλουμε κάπου. Την ασφάλεια την κρατά το w.opener=null πιο κάτω. */
+      const w=window.open('','_blank');
       b.disabled=true;
       const u=await formUrl(b.dataset.fopen, who, b.dataset.fkind||'δράση');
       b.disabled=false;
       if(!u){ if(w)w.close(); return }
-      if(w) w.location=u; else window.open(u,'_blank','noopener');
+      if(w){ try{w.opener=null}catch(e){} w.location.replace(u); }
+      else window.open(u,'_blank','noopener');   // αν ο φυλλομετρητής μπλόκαρε
     });
   });
 };
