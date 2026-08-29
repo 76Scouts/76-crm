@@ -729,6 +729,15 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
    Μπαίνουν ΠΡΩΤΕΣ, πριν ζωγραφιστεί οτιδήποτε — αλλιώς η οθόνη αναβοσβήνει
    λευκή πριν γυρίσει σκούρα. Ζουν στη συσκευή, όχι στη βάση: είναι
    προτίμηση αυτού του μηχανήματος, όχι δεδομένο του Συστήματος. */
+/* Η προσκοπική χρονιά αλλάζει την 1η Σεπτεμβρίου. Ήταν ΚΑΡΦΩΜΕΝΗ σε
+   '2025-26': από 1/9/2026 η εφαρμογή θα έδειχνε περσινή χρονιά ενώ η βάση
+   (cur_scout_year) θα είχε ήδη γυρίσει — δύο αλήθειες στο ίδιο σύστημα.
+   ΙΔΙΟΣ κανόνας με τη βάση: μήνας >= 9 ⇒ φέτος-του χρόνου. */
+function curScoutYear(d){
+  const t=d?new Date(d):new Date(), y=t.getFullYear();
+  const a=(t.getMonth()+1)>=9 ? y : y-1;
+  return a+'-'+String((a+1)%100).padStart(2,'0');
+}
 const PREF_DEF={theme:'auto', size:'s', acc:'blue'};
 function loadPrefs(){ try{ return {...PREF_DEF, ...JSON.parse(localStorage.getItem('e76:prefs')||'{}')} }
                       catch(e){ return {...PREF_DEF} } }
@@ -981,7 +990,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-29 19:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-29 19:51'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
