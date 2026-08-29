@@ -981,7 +981,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-29 11:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-29 16:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -4261,37 +4261,19 @@ V.kidfile=()=>{
    της βασικής φόρμας (Data → Dynamic default value → Parameter name) και,
    επειδή κάθε νέα φόρμα φτιάχνεται με διπλασιασμό, κληρονομούνται μόνες τους.
    Αποφεύγονται τα δεσμευμένα του WordPress: name, p, s, post_id, year, day. */
-const ES_PARAMS={
-  am:'am', epitheto:'epitheto', onoma:'onoma', tmima:'tmima', fanela:'fanela',
-  ait_idiotita:'ait_idiotita', ait_epitheto:'ait_epitheto', ait_onoma:'ait_onoma',
-  ait_email:'ait_email', ait_tilefono:'ait_tilefono',
-  drasi:'drasi', kleidi:'e76key'
-};
-function esUrl(ev, kid, parent){
+/* Τα παλιά ονόματα παραμέτρων δεν χρειάζονται πια: η φόρμα δεν διαβάζει
+   τίποτα από τη διεύθυνση. Το WordPress παίρνει τα πεδία με ένα POST
+   στο prefill-resolve και τα γεμίζει μόνο του. */
+/* Ίδιος κανόνας με τη φόρμα βαθμοφόρου: στη διεύθυνση ΜΟΝΟ το εισιτήριο.
+   Εδώ δεν ταξίδευαν ιατρικά, αλλά ταξίδευαν Α.Μ., ονοματεπώνυμο παιδιού,
+   τμήμα, και email/τηλέφωνο γονέα — αρκετά για να ταυτοποιηθεί ένα παιδί από
+   ένα access log. Και το κλειδί ήταν πάλι παράγωγο των id, χωρίς λήξη. */
+async function esUrl(ev, kid, parent){
   if(!ev||!ev.form_url)return null;
-  const y=myOf(kid)||{};
-  const q={
-    [ES_PARAMS.am]:kid.registry_no||'',
-    [ES_PARAMS.epitheto]:kid.last_name||'',
-    [ES_PARAMS.onoma]:kid.first_name||'',
-    [ES_PARAMS.tmima]:secOf(kid)||kid.section||'',
-    [ES_PARAMS.fanela]:y.shirt_size||'',
-    [ES_PARAMS.ait_idiotita]:'Γονέας',
-    [ES_PARAMS.ait_epitheto]:(parent&&parent.last_name)||'',
-    [ES_PARAMS.ait_onoma]:(parent&&parent.first_name)||'',
-    [ES_PARAMS.ait_email]:(parent&&parent.email)||ME.email||'',
-    [ES_PARAMS.ait_tilefono]:(parent&&(parent.phone||parent.home_phone))||'',
-    [ES_PARAMS.drasi]:ev.title||'',
-    [ES_PARAMS.kleidi]:signupKey(kid.id, ev.id)
-  };
-  const qs=Object.entries(q).filter(([,v])=>v!=='' && v!=null)
-    .map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
-  return ev.form_url + (ev.form_url.includes('?')?'&':'?') + qs;
-}
-/* Ίδιος αλγόριθμος με τη signup_key() της βάσης δεν χρειάζεται — αρκεί να είναι
-   σταθερό και μοναδικό ανά ζεύγος. Το κρατάμε απλό και αναγνώσιμο στην εξαγωγή. */
-function signupKey(pid, eid){
-  return 'e76-'+(pid.replace(/-/g,'').slice(0,6))+(eid.replace(/-/g,'').slice(0,4));
+  const {data:tok, error} = await sb.rpc('prefill_issue',
+    {p_person:kid.id, p_kind:'δράση', p_event:ev.id});
+  if(error||!tok){ toast('Δεν βγήκε σύνδεσμος: '+((error&&error.message)||'—')); return null }
+  return ev.form_url + (ev.form_url.includes('?')?'&':'?') + 't=' + encodeURIComponent(tok);
 }
 function signupOpen(ev){
   const t=new Date().toISOString().slice(0,10);
@@ -4302,7 +4284,7 @@ function signupOpen(ev){
 }
 async function declareAndOpen(ev, kid, parent){
   const existing=(D.pa||[]).find(x=>x.person_id===kid.id&&x.event_id===ev.id);
-  const url=esUrl(ev,kid,parent);
+  const url=await esUrl(ev,kid,parent);
   if(!url)return toast('Δεν έχει οριστεί φόρμα για τη δράση.');
   if(!existing){
     const rec={person_id:kid.id, event_id:ev.id, status:'Δηλώθηκε',
@@ -6717,75 +6699,35 @@ async function reloadProgress(){
    μήνυμα λάθους. Η επιστροφή τα ξαναγυρίζει σε boolean. */
 const YN = v => v===true||v==='true'||v===1 ? 'Ναι'
               : v===false||v==='false'||v===0 ? 'Όχι' : '';
-/* Το «fasting» ΔΕΝ στέλνεται: βγήκε συνειδητά από τη φόρμα βαθμοφόρων.
-   Η στήλη μένει για τα μέλη — για τους βαθμοφόρους θα είναι πάντα κενή.
-   Ούτε tmima / appointment / leader_registry_no στέλνονται: δεν υπάρχουν πια
-   ως πεδία, και τα δύο πρώτα είναι διοικητικές αποφάσεις. */
-const YN_FIELDS = ['tetanus','recent_illness','chronic','mental','on_medication',
-  'allergy_drugs','allergy_food','allergy_other','other_medical',
-  'sleep_talks','night_toilet','sleep_other','dietary_yes'];
-/* Το tetanus_until στέλνεται ΟΠΩΣ το έγραψε ο ίδιος — «2029», «ΔΕΝ ΓΝΩΡΙΖΩ»
-   — ώστε να μη δει ημερομηνία που δεν έδωσε ποτέ. */
-const MED_TEXT = ['blood_type','recent_illness_txt','allergies',
-  'allergy_drugs_txt','allergy_food_txt','allergy_other_txt','conditions','mental_txt',
-  'medication','mobility','dietary','night_toilet_txt','sleep_other_txt',
-  'doctor_name','doctor_phone','insurance_no','notes'];
-/* Το Quform δέχεται μόνο αυτά — ό,τι άλλο αγνοείται σιωπηλά. */
-const FANELA_OK = ['Extra Small','Small','Medium','Large','Extra Large','XXL','3XL','4XL'];
-
-/* Ομάδα αίματος: οκτώ τιμές, λατινικά γράμματα, παύλα ASCII.
-   Το ελληνικό «Ο» μοιάζει ΑΚΡΙΒΩΣ με το λατινικό, και το μηδέν σχεδόν. Σε
-   δεδομένα γραμμένα με το χέρι υπάρχουν και τα τρία. Αν σταλεί λάθος, το
-   select δεν ταιριάζει και το πεδίο έρχεται κενό — χωρίς μήνυμα λάθους.
-   Ό,τι δεν αναγνωρίζεται ΔΕΝ στέλνεται καθόλου: καλύτερα κενό που το βλέπει
-   ο ίδιος, παρά τιμή που χάθηκε στη διαδρομή. */
-const BLOOD_OK=['A+','A-','B+','B-','AB+','AB-','O+','O-'];
-const normBlood = t => {
-  if(!t) return '';
-  const v = String(t).toUpperCase().trim()
-    .replace(/[ΑА]/g,'A').replace(/[ΒВ]/g,'B').replace(/[ΟО0]/g,'O')
-    .replace(/[\u2212\u2013\u2014\u2012]/g,'-')
-    .replace(/[^AB O+\-]/g,'').replace(/\s+/g,'');
-  return BLOOD_OK.includes(v) ? v : '';
-};
-
+/* Οι κατάλογοι πεδίων (YN_FIELDS, MED_TEXT, FANELA_OK) και ο καθαρισμός
+   της ομάδας αίματος μετακόμισαν στο edge function prefill-resolve, εκεί
+   που πλέον συναρμολογούνται τα πεδία. Στον φυλλομετρητή δεν χρειάζονται:
+   δεν φτιάχνει πια αυτός τη φόρμα. */
 const ddmmyyyy = d => { if(!d) return '';
   const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
 
-function formUrl(base, p){
-  const me = D.bh.find(b=>b.id===p);
-  if(!me) return null;
-  const med = (D.med||[]).find(x=>x.person_id===p) || {};
-  const sen = (D.sen||[]).find(x=>x.person_id===p) || {};
-  const ec  = (D.ecs||[]).filter(x=>x.person_id===p && !x.event_id)
-                         .sort((a,b)=>(a.priority||9)-(b.priority||9));
-  const q = {
-    e76key:'e76-'+p.replace(/-/g,'').slice(0,6),
-    epitheto: me.last_name, onoma: me.first_name,
-    am: me.registry_no, dob: ddmmyyyy(sen.dob),
-    scout_name: me.scout_name, occupation: me.occupation,
-    home_address: me.home_address, home_phone: me.home_phone,
-    ait_email: me.email, ait_tilefono: me.phone,
-    fanela: FANELA_OK.includes(me.shirt_size) ? me.shirt_size : ''
-  };
-  MED_TEXT.forEach(k=>{ if(med[k]!=null&&med[k]!=='') q[k]=med[k] });
-  q.blood_type = normBlood(med.blood_type);   // αναγνωρίσιμο ή τίποτα
-  if(med.tetanus_until_raw) q.tetanus_until = med.tetanus_until_raw;
-  else if(med.tetanus_until) q.tetanus_until = med.tetanus_until_approx
-        ? String(med.tetanus_until).slice(0,4)            // μόνο η χρονιά
-        : ddmmyyyy(med.tetanus_until);
-  YN_FIELDS.forEach(k=>{ const v=YN(med[k]); if(v) q[k]=v });
-  ec.slice(0,2).forEach((c,i)=>{ const n=i+1;
-    if(c.name)      q['ec'+n+'_onoma']=c.name;
-    if(c.relation)  q['ec'+n+'_sxesi']=c.relation;
-    if(c.phone)     q['ec'+n+'_tilefono']=c.phone;
-    if(c.alt_phone) q['ec'+n+'_tilefono2']=c.alt_phone; });
+/* ══ Ο ΣΥΝΔΕΣΜΟΣ ΤΗΣ ΦΟΡΜΑΣ ═════════════════════════════════════════════
+   Πριν: ο σύνδεσμος κουβαλούσε ΤΑ ΙΔΙΑ ΤΑ ΔΕΔΟΜΕΝΑ ως παραμέτρους — ψυχική
+   υγεία, αλλεργίες, αγωγή, ομάδα αίματος, ημερομηνία γέννησης, διεύθυνση,
+   δύο επαφές έκτακτης ανάγκης. Δεδομένα άρθρου 9 σε access logs, σε ιστορικό
+   φυλλομετρητή, στην κεφαλίδα Referer προς κάθε τρίτο πόρο της σελίδας, και
+   σε προεπισκόπηση αν προωθηθεί ο σύνδεσμος σε Viber ή WhatsApp.
 
-  /* encodeURIComponent παντού: το «O+» της ομάδας αίματος φτάνει αλλιώς ως «O ». */
-  const qs=Object.entries(q).filter(([,v])=>v!=null&&String(v).trim()!=='')
-    .map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(String(v).trim())).join('&');
-  return base + (base.includes('?')?'&':'?') + qs;
+   Τώρα ταξιδεύει ΜΟΝΟ ένα τυχαίο εισιτήριο 15 λεπτών. Τα δεδομένα τα παίρνει
+   το WordPress από τον διακομιστή του, όχι από τη διεύθυνση.
+
+   Το e76key καταργήθηκε: ήταν 'e76-' + έξι hex του person_id — ντετερμινιστικό,
+   χωρίς λήξη, χωρίς υπογραφή, και ταξίδευε στο ίδιο URL με τα δεδομένα. */
+async function formUrl(base, p, kind, eventId){
+  const {data:tok, error} = await sb.rpc('prefill_issue',
+    {p_person:p, p_kind:kind||'δράση', p_event:eventId||null});
+  if(error||!tok){ toast('Δεν βγήκε σύνδεσμος: '+((error&&error.message)||'—')); return null }
+  return base + (base.includes('?')?'&':'?') + 't=' + encodeURIComponent(tok);
 }
+
+/* Η συναρμολόγηση των πεδίων έφυγε ΟΛΟΚΛΗΡΗ στο prefill-resolve. Δεν
+   κρατιέται «για συμβατότητα»: κώδικας που ξέρει να βάζει ιατρικά σε
+   διεύθυνση είναι κώδικας που κάποια μέρα θα ξανακληθεί κατά λάθος. */
 
 const FST={'δεν έχει υποβληθεί':['bad','Δεν το έχεις στείλει ακόμη'],
            'έληξε — θέλει ανανέωση':['bad','Πέρασε χρόνος — θέλει ανανέωση'],
@@ -6832,12 +6774,17 @@ V.myforms=()=>{
             ${f.last_on?`<span class="dim" style="font-size:11.5px;margin-left:6px">στάλθηκε ${fdate(f.last_on)}${
               f.valid_until?' · ισχύει ως '+fdate(f.valid_until):''}</span>`:''}
           </div></span>
-        <button class="btn p sm" data-fopen="${esc(f.url)}">Άνοιγμα</button>
+        <button class="btn p sm" data-fopen="${esc(f.url)}" data-fkind="${esc(f.form_kind||'δράση')}">Άνοιγμα</button>
       </div>`}).join('');
-    document.querySelectorAll('[data-fopen]').forEach(b=>b.onclick=()=>{
-      const u=formUrl(b.dataset.fopen, who);
-      if(!u)return toast('Δεν βρέθηκαν στοιχεία');
-      window.open(u,'_blank','noopener');
+    document.querySelectorAll('[data-fopen]').forEach(b=>b.onclick=async()=>{
+      /* Το παράθυρο ανοίγει ΠΡΩΤΑ, με το πάτημα — αλλιώς ο αποκλεισμός
+         αναδυόμενων το κόβει, γιατί μεσολαβεί κλήση δικτύου. */
+      const w=window.open('','_blank','noopener');
+      b.disabled=true;
+      const u=await formUrl(b.dataset.fopen, who, b.dataset.fkind||'δράση');
+      b.disabled=false;
+      if(!u){ if(w)w.close(); return }
+      if(w) w.location=u; else window.open(u,'_blank','noopener');
     });
   });
 };
