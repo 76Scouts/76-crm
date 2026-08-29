@@ -990,7 +990,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-29 20:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-29 20:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1475,9 +1475,13 @@ async function loadAll(){
     sb.from('v_care_operational').select('*').limit(3000),
     /* Ο πίνακας δικαιωμάτων. Διαβάζει τις ΙΔΙΕΣ τις πολιτικές της βάσης —
        όχι περιγραφή τους. Χειρόγραφος πίνακας θα ήταν σωστός μία μέρα. */
-    sb.from('v_access_matrix').select('*')                  // ΠΑΝΤΑ τελευταίο
+    sb.from('v_access_matrix').select('*'),
+    /* Ουρά επιβεβαίωσης ταυτότητας. Ορατή μόνο στον Α.Σ. — ο καθένας άλλος
+       παίρνει άδειο πίνακα από την RLS, όχι σφάλμα. */
+    sb.from('identity_review').select('*').is('decision',null)
+      .order('created_at',{ascending:false}).limit(200)   // ΠΑΝΤΑ τελευταίο
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1519,7 +1523,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -9180,7 +9184,29 @@ function issuesBody(){
    ]}];
   const tot=I.reduce((s,g)=>s+g.items.reduce((x,i)=>x+((i.pairs||i.l||[]).length),0),0);
   const crit=I[0].items.filter(i=>i.s==='bad').reduce((s,i)=>s+(i.l||[]).length,0)+dups.length;
-  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+  /* ΤΑΥΤΟΤΗΤΑ ΠΡΟΣ ΚΡΙΣΗ — πάνω από όλα, πριν τους μετρητές.
+     Δεν μπαίνει στις ομάδες πιο κάτω γιατί δεν είναι λίστα προσώπων: είναι
+     ΑΠΟΦΑΣΗ, και θέλει κουμπιά. Ώσπου να κριθεί, τίποτα δεν έχει γραφτεί. */
+  const FLD={adt:'Αριθμός ταυτότητας', dob:'Ημερομηνία γέννησης'};
+  const idr=(D.idrev||[]).filter(x=>!x.decision);
+  const idHTML = !idr.length ? '' : `<div class="card pad" style="margin-bottom:14px;border-color:var(--warn)">
+      <b>Ταυτότητα προς επιβεβαίωση <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${idr.length}</span></b>
+      <div class="muted" style="font-size:13px;margin:5px 0 11px;line-height:1.6">Μια υποβολή έφερε διαφορετική τιμή
+        από αυτήν που ξέρουμε. Τα πιθανά είναι τρία: λάθος πληκτρολόγηση, διόρθωση παλιού λάθους,
+        ή <b>λάθος πρόσωπο</b>. Μέχρι να αποφασίσεις, <b>δεν έχει γραφτεί τίποτα</b>.</div>
+      ${idr.map(x=>{const p=D.bh.find(b=>b.id===x.person_id);
+        const fmt=v=>x.field==='dob'?fdate(v):v;
+        return `<div class="kv" style="border-top:1px solid var(--line);padding:9px 0;align-items:flex-start;flex-wrap:wrap">
+          <span style="flex:1;min-width:200px">
+            <b style="font-size:13.5px">${p?pn(p):'—'}</b>
+            <div class="dim" style="font-size:12.5px;margin-top:2px">${esc(FLD[x.field]||x.field)}:
+              <s>${esc(fmt(x.old_value)||'—')}</s> → <b style="color:var(--ink)">${esc(fmt(x.new_value))}</b></div></span>
+          <span style="display:flex;gap:5px">
+            <button class="btn p sm" data-idok="${x.id}">Ισχύει το νέο</button>
+            <button class="btn gh sm" data-idno="${x.id}">Κράτα το παλιό</button></span>
+        </div>`}).join('')}</div>`;
+
+  $('view').innerHTML=idHTML+`<div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
         <div><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">${tot}</div><div class="dim" style="font-size:12.5px">εκκρεμότητες</div></div>
         <div style="border-left:1px solid var(--line);padding-left:14px"><div style="font-size:26px;font-weight:600;color:${crit?'var(--bad)':'var(--ok)'}">${crit}</div><div class="dim" style="font-size:12.5px">κρίσιμες</div></div>
@@ -9206,6 +9232,19 @@ function issuesBody(){
     ${!tot?`<div class="uc"><div class="ico">${ic('check',26)}</div><h3>Καμία εκκρεμότητα</h3><p>Το μητρώο είναι πλήρες.</p></div>`:''}`;
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const d=$(b.dataset.x+'_b');d.style.display=d.style.display==='none'?'block':'none'});
   document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>route(b.dataset.goto));
+  /* Η απόφαση γίνεται στη ΒΑΣΗ (identity_review_decide): γράφει την τιμή ΚΑΙ
+     κλείνει την εγγραφή σε μία πράξη, ώστε να μη μείνει ποτέ μισοτελειωμένη. */
+  const idDecide=async(id,ok,btn)=>{
+    if(!confirm(ok?'Επιβεβαιώνεις ότι ισχύει η ΝΕΑ τιμή;'
+                  :'Να κρατηθεί η παλιά τιμή και να απορριφθεί η νέα;'))return;
+    btn.disabled=true;
+    const {data,error}=await sb.rpc('identity_review_decide',{p_id:id,p_ok:ok});
+    if(error||(data&&data.error)){btn.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
+    D.idrev=(D.idrev||[]).filter(x=>x.id!==id); saveCache();
+    toast(ok?'Ενημερώθηκε':'Κρατήθηκε η παλιά τιμή'); V.issues();
+  };
+  document.querySelectorAll('[data-idok]').forEach(b=>b.onclick=()=>idDecide(b.dataset.idok,true,b));
+  document.querySelectorAll('[data-idno]').forEach(b=>b.onclick=()=>idDecide(b.dataset.idno,false,b));
 };
 
 /* Πιθανές διπλοεγγραφές: ίδιο ονοματεπώνυμο χωρίς τόνους, ανεξάρτητα σειράς.
