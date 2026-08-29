@@ -981,7 +981,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-28 10:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-29 11:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR='2025-26', ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6925,6 +6925,9 @@ ${rows.map((r,i)=>`<Row>${r.map(c=>i===0?cell(c).replace('<Cell>','<Cell ss:Styl
 
 /* ══ ΥΠΟΟΜΑΔΕΣ ══ */
 let SGSEC='Αγέλη';
+/* SGTO = σε ποια υποομάδα μοιράζω τώρα. Όσο είναι ορισμένο, τα ονόματα
+   γίνονται κουμπιά· κενό = απλή προβολή. */
+let SGTO=null;
 V.groups=()=>{
   const secs=['Αγέλη','Ομάδα','Κοινότητα'];
   const sgs=(D.sg||[]).filter(s=>s.scout_year===YEAR&&s.section===SGSEC&&s.active!==false)
@@ -6946,9 +6949,13 @@ V.groups=()=>{
         return `<div class="kv" style="font-size:12.5px"><b>Υπεύθυνος βαθμοφόρος</b><span>${
           st?esc(nm(st)):'<span class="dim">—</span>'}</span></div>`})()}
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
-        ${list.map(p=>`<span class="pill" style="font-size:11.5px"><span class="pn" data-p="${p.id}">${pn(p)}</span></span>`).join('')
+        ${list.map(p=>`<span class="pill${SGTO?' sgpick':''}" style="font-size:11.5px${SGTO?';cursor:pointer':''}"
+           ${SGTO?`data-sgmove="${p.id}"`:''}><span class="${SGTO?'':'pn'}" ${SGTO?'':`data-p="${p.id}"`}>${pn(p)}</span></span>`).join('')
           ||'<span class="dim" style="font-size:12px">— κενή —</span>'}</div>
-      <div style="margin-top:9px;display:flex;gap:6px"><button class="btn sm gh" data-sgl="${g.id}">Θέσεις</button></div></div>`};
+      <div style="margin-top:9px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn sm gh" data-sgl="${g.id}">Θέσεις</button>
+        <button class="btn sm${SGTO===g.name?' p':' gh'}" data-sgto="${esc(g.name)}">${
+          SGTO===g.name?'✓ προορισμός':'Μοίρασε εδώ'}</button></div></div>`};
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Υποομάδες</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Εξάδες, ενωμοτίες και όμιλοι — ανά χρονιά. Κάθε κλάδος έχει τις δικές του θέσεις, και κάθε υποομάδα έναν βαθμοφόρο που την έχει χρεωθεί.</div>
@@ -6959,9 +6966,32 @@ V.groups=()=>{
         <button class="btn sm" id="sgAdd">+</button>
         <button class="btn sm" id="sgExp">${ic('down',14)} Εξαγωγή</button></div></div>
     ${listBar('',false)}<div class="cgrid">${sgs.map(card).join('')||'<div class="card pad dim">Καμία υποομάδα ακόμη — γράψε όνομα πιο πάνω και πάτα +</div>'}</div>
+    ${SGTO?`<div class="card pad" style="margin-bottom:12px;background:var(--accbg);border-color:var(--accln)">
+      <b>Μοίρασμα σε «${esc(SGTO)}»</b>
+      <div class="muted" style="font-size:13px;margin-top:4px">Πάτα ονόματα για να μπουν. Μπορείς να τα
+        πάρεις και από άλλη ${esc(kindOf.toLowerCase())} — η μετακίνηση καταγράφεται με ημερομηνία.</div>
+      <button class="btn sm gh" id="sgStop" style="margin-top:8px">Τέλος μοιράσματος</button></div>`:''}
     ${none.length?`<div class="sec"><h3>Χωρίς υποομάδα</h3><span class="n">${none.length}</span></div>
-      <div class="card pad" style="display:flex;flex-wrap:wrap;gap:5px">${none.map(p=>`<span class="pill"><span class="pn" data-p="${p.id}">${pn(p)}</span></span>`).join('')}</div>`:''}`;
+      <div class="card pad" style="display:flex;flex-wrap:wrap;gap:5px">${none.map(p=>
+        `<span class="pill${SGTO?' sgpick':''}" style="${SGTO?'cursor:pointer':''}"
+          ${SGTO?`data-sgmove="${p.id}"`:''}><span class="${SGTO?'':'pn'}" ${SGTO?'':`data-p="${p.id}"`}>${pn(p)}</span></span>`).join('')}</div>`:''}`;
   wireVQ();
+  /* Ένας προορισμός, μετά πατάς ονόματα. Πριν: άνοιγες το συρτάρι κάθε
+     παιδιού και πλήκτρολογούσες το όνομα της εξάδας. Για 50 λυκόπουλα σε
+     8 εξάδες, 50 συρτάρια. */
+  document.querySelectorAll('[data-sgto]').forEach(b=>b.onclick=()=>{
+    SGTO = (SGTO===b.dataset.sgto) ? null : b.dataset.sgto; V.groups()});
+  const stop=$('sgStop'); if(stop)stop.onclick=()=>{SGTO=null; V.groups()};
+  document.querySelectorAll('[data-sgmove]').forEach(el=>el.onclick=async()=>{
+    if(!SGTO)return;
+    const pid=el.dataset.sgmove, y=(D.my||[]).find(x=>x.person_id===pid&&x.scout_year===YEAR);
+    if(!y)return toast('Δεν βρέθηκε εγγραφή χρονιάς');
+    if(y.group_name===SGTO)return;
+    el.style.opacity='.4';
+    const {error}=await sb.from('member_year').update({group_name:SGTO})
+      .eq('person_id',pid).eq('scout_year',YEAR);
+    if(error){el.style.opacity='1'; return toast('Σφάλμα: '+error.message)}
+    y.group_name=SGTO; saveCache(); V.groups()});
   document.querySelectorAll('[data-sg]').forEach(b=>b.onclick=()=>{SGSEC=b.dataset.sg;V.groups()});
   $('sgAdd').onclick=async()=>{const n=$('sgNew').value.trim(); if(!n)return;
     const {data,error}=await sb.from('subgroups').insert({scout_year:YEAR,section:SGSEC,name:n,kind:kindOf}).select().single();
