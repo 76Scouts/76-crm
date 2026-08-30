@@ -1002,7 +1002,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 13:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 14:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1495,10 +1495,11 @@ async function loadAll(){
     sb.from('vehicle_papers').select('*').limit(1000),
     sb.from('vehicle_paper_inbox').select('*').is('resolved_at',null).limit(500),
     sb.from('cert_ocr_hint').select('*').limit(2000),
-    sb.from('cert_documents').select('*').limit(4000)
+    sb.from('cert_documents').select('*').limit(4000),
+    sb.from('vehicle_doc_sides').select('*').limit(2000)
       // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1540,7 +1541,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -9443,7 +9444,24 @@ V.vpapers=()=>{
       veh:(D.veh||[]).filter(v=>v.owner_id===id)}))
     .filter(x=>x.p).sort((a,b)=>nm(a.p).localeCompare(nm(b.p),'el'));
 
-  /* Ό,τι έχει ήδη τακτοποιηθεί, φαίνεται — αλλιώς δεν ξέρεις τι πέτυχε. */
+  const sides=(target,tid)=>(D.vds||[]).filter(x=>x.target===target&&x.target_id===tid)
+    .sort((a,b)=>(a.seq||0)-(b.seq||0))
+    .map(x=>({s:x, f:(D.doc||[]).find(y=>y.id===x.document_id)})).filter(x=>x.f);
+  /* Ίδια γραμμή αρχείων με τα πιστοποιητικά: όνομα, σειρά, σάρωση, επαναφορά. */
+  const fileLine=(target,tid,fallback)=>{
+    let rows=sides(target,tid);
+    if(!rows.length && fallback) rows=[{s:{},f:fallback}];
+    if(!rows.length) return '<span class="dim">χωρίς αρχείο</span>';
+    return rows.map((r,ix)=>`<span style="white-space:nowrap">`
+      +`<a href="#" class="vpopen" data-path="${esc(r.f.path)}">📄 ${
+          esc(r.s.label || (rows.length>1?'όψη '+(ix+1):'δες το χαρτί'))}</a>`
+      +(isImg(r.f.path)?`<a href="#" class="vpedit" data-id="${r.f.id}" title="Σάρωση — σύρε τις τέσσερις γωνίες" style="margin-left:3px">✂</a>`:'')
+      +(r.f.original_path?`<a href="#" class="vprev" data-id="${r.f.id}" title="Επαναφορά πρωτοτύπου" style="margin-left:2px">↺</a>`:'')
+      +(r.s.id?`<a href="#" class="vsname" data-id="${r.s.id}" title="Δώσε όνομα σε αυτή την όψη" style="margin-left:3px">✎</a>`
+        +(ix?`<a href="#" class="vsfirst" data-id="${r.s.id}" title="Κάν' την πρώτη" style="margin-left:2px">↑</a>`:''):'')
+      +`</span>`).join(' · ');
+  };
+
   const done=(D.veh||[]).map(v=>({v,
       ins:(D.vi||[]).filter(i=>i.vehicle_id===v.id).sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0],
       pap:(D.vp||[]).filter(x=>x.vehicle_id===v.id)}))
@@ -9455,34 +9473,49 @@ V.vpapers=()=>{
       <div class="muted" style="font-size:13px;margin:5px 0 0;line-height:1.6">
         Ήρθαν από τον φάκελο ως πιστοποιητικά προσώπου, αλλά ανήκουν σε <b>όχημα</b>.
         Η πινακίδα δίπλα είναι <b>πρόταση του OCR</b> — άνοιξε το χαρτί και δες την.
-        Ό,τι δεν αναθέσεις, μένει εδώ· τίποτα δεν μαντεύεται.</div></div>
+        Αν το όχημα δεν υπάρχει στο μητρώο, διάλεξε <b>«＋ Νέο όχημα»</b> και φτιάχνεται εδώ.</div></div>
 
     ${ord.map(({p,xs,veh})=>`<div class="card" style="margin-bottom:9px">
       <div class="pad" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-bottom:4px">
         <b style="font-size:14px">${pn(p)}</b>
         ${veh.length?`<span class="dim" style="font-size:12px">οχήματα: ${veh.map(v=>esc(v.plate)).join(' · ')}</span>`
-                    :'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent;font-size:11px">κανένα όχημα στο μητρώο</span>'}</div>
+                    :'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent;font-size:11px">κανένα όχημα στο μητρώο</span>'}
+        <span class="sp"></span>
+        ${(()=>{const g={}; xs.forEach(x=>(g[x.kind]=g[x.kind]||[]).push(x));
+          return Object.keys(g).filter(k=>g[k].length>1).map(k=>
+            `<button class="btn sm vpmerge" data-ids="${g[k].map(x=>x.id).join(',')}"
+              title="Σελίδες του ίδιου χαρτιού">⇄ Ένωσε τα ${g[k].length} «${esc(VP_KIND[k]||k)}»</button>`).join('')})()}
+      </div>
       <div style="padding:0 16px 12px">
-        ${xs.map(x=>{const d=(D.doc||[]).find(y=>y.id===x.document_id);
+        ${xs.map(x=>{const f=(D.doc||[]).find(y=>y.id===x.document_id);
+          const h=(D.coh||[]).find(y=>y.document_id===x.document_id)||{};
+          const extra=(x.sides||[]).length;
           return `<div style="border-top:1px solid var(--line);padding:9px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span style="flex:1 1 190px;min-width:160px">
+            <span style="flex:1 1 200px;min-width:170px">
               <b style="font-weight:500;font-size:13.5px">${esc(VP_KIND[x.kind]||x.kind)}</b>
+              ${extra?`<span class="pill" style="font-size:11px;margin-left:5px">${extra+1} όψεις</span>`:''}
               <div class="dim" style="font-size:11.5px;margin-top:2px">
-                ${d?`<a href="#" class="vdocopen" data-path="${esc(d.path)}">📄 δες το χαρτί</a>`:'χωρίς αρχείο'}
-                ${x.ocr_plate?` · OCR: <b style="color:var(--ink)">${esc(x.ocr_plate)}</b>`:' · χωρίς πινακίδα στο OCR'}</div></span>
+                ${f?`<a href="#" class="vpopen" data-path="${esc(f.path)}">📄 δες το χαρτί</a>`:'χωρίς αρχείο'}
+                ${f&&isImg(f.path)?`<a href="#" class="vpedit" data-id="${f.id}" title="Σάρωση — σύρε τις τέσσερις γωνίες" style="margin-left:3px">✂</a>`:''}
+                ${f&&f.original_path?`<a href="#" class="vprev" data-id="${f.id}" title="Επαναφορά πρωτοτύπου" style="margin-left:2px">↺</a>`:''}
+                ${(x.sides||[]).map((sd,i)=>{const sf=(D.doc||[]).find(y=>y.id===sd);
+                  return sf?` · <a href="#" class="vpopen" data-path="${esc(sf.path)}">📄 όψη ${i+2}</a>`
+                    +(isImg(sf.path)?`<a href="#" class="vpedit" data-id="${sf.id}" style="margin-left:3px">✂</a>`:''):''}).join('')}
+                ${x.ocr_plate?` · OCR: <b style="color:var(--ink)">${esc(x.ocr_plate)}</b>`:''}</div></span>
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Ημ. έκδοσης</label>
-              <input type="date" class="vpiss" data-id="${x.id}"
-                     value="${esc((D.coh||[]).find(h=>h.document_id===x.document_id)?.issued_on||'')}"></span>
+              <input type="date" class="vpiss" data-id="${x.id}" value="${esc(h.issued_on||'')}"></span>
             <span style="display:flex;flex-direction:column;gap:2px">
-              <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης</label>
+              <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης${x.ocr_expires?' · OCR':''}</label>
               <input type="date" class="vpdate" data-id="${x.id}" value="${esc(x.ocr_expires||'')}"
                      title="${x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'?'Για 12μηνη άδεια: 31 Δεκεμβρίου της χρονιάς που πλήρωσες':''}"></span>
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Όχημα</label>
               <select class="vpsel" data-id="${x.id}">
                 <option value="">— διάλεξε —</option>
-                ${veh.map(v=>`<option value="${v.id}">${esc(v.plate)}</option>`).join('')}
+                ${veh.map(v=>`<option value="${v.id}"${
+                  x.ocr_plate&&v.plate.replace(/\s/g,'')===x.ocr_plate.replace(/\s/g,'')?' selected':''
+                  }>${esc(v.plate)}</option>`).join('')}
                 <option value="NEW">＋ Νέο όχημα…</option></select></span>
             <span style="display:flex;gap:5px">
               <button class="btn p sm vpok" data-id="${x.id}">Ανάθεση</button></span>
@@ -9498,43 +9531,102 @@ V.vpapers=()=>{
       const rt =pap.filter(x=>x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ').sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
       const own=D.bh.find(b=>b.id===v.owner_id);
       const chip=(lbl,row)=>{
-        if(!row||!row.expires_on)return `<span class="pill" style="font-size:11px">${lbl}: <span class="dim">—</span></span>`;
+        if(!row)return `<span class="pill" style="font-size:11px">${lbl}: <span class="dim">—</span></span>`;
+        if(!row.expires_on)return `<span class="pill" style="font-size:11px;background:var(--warnbg);border-color:transparent;color:var(--warn)">${lbl}: χωρίς λήξη</span>`;
         const dd=Math.round((new Date(row.expires_on)-new Date())/864e5);
         const c=dd<0?['badbg','bad']:dd<=60?['warnbg','warn']:['okbg','ok'];
         return `<span class="pill" style="font-size:11px;background:var(--${c[0]});border-color:transparent;color:var(--${c[1]})">${lbl}: ${fdate(row.expires_on)}</span>`};
-      return `<div class="card pad" style="margin-bottom:7px;display:flex;gap:9px;align-items:center;flex-wrap:wrap">
-        <b style="font-size:14px;font-variant-numeric:tabular-nums">${esc(v.plate)}</b>
-        ${v.make?`<span class="dim" style="font-size:12.5px">${esc(v.make)} ${esc(v.model||'')}</span>`:''}
-        <span class="dim" style="font-size:12.5px">${own?pn(own):'—'}</span>
-        <span class="sp"></span>
-        ${chip('Ασφάλεια',ins)}${chip('ΜΟΤ',mot)}${chip('Άδεια',rt)}</div>`}).join('')
+      return `<div class="card pad" style="margin-bottom:7px">
+        <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+          <b style="font-size:14px;font-variant-numeric:tabular-nums">${esc(v.plate)}</b>
+          ${v.make?`<span class="dim" style="font-size:12.5px">${esc(v.make)} ${esc(v.model||'')}</span>`:''}
+          <span class="dim" style="font-size:12.5px">${own?pn(own):'—'}</span>
+          <span class="sp"></span>
+          ${chip('Ασφάλεια',ins)}${chip('ΜΟΤ',mot)}${chip('Άδεια',rt)}</div>
+        ${(ins||mot||rt)?`<div class="dim" style="font-size:11.5px;margin-top:6px;display:flex;gap:12px;flex-wrap:wrap">
+          ${ins?`<span>Ασφάλεια: ${fileLine('ΑΣΦΑΛΕΙΑ',ins.id,(D.doc||[]).find(d=>d.id===ins.document_id))}</span>`:''}
+          ${mot?`<span>ΜΟΤ: ${fileLine('ΧΑΡΤΙ',mot.id,(D.doc||[]).find(d=>d.id===mot.document_id))}</span>`:''}
+          ${rt?`<span>Άδεια: ${fileLine('ΧΑΡΤΙ',rt.id,(D.doc||[]).find(d=>d.id===rt.document_id))}</span>`:''}
+        </div>`:''}</div>`}).join('')
       :'<div class="dim" style="font-size:13px">Κανένα όχημα καταχωρημένο.</div>'}`;
 
-  document.querySelectorAll('.vdocopen').forEach(a=>a.onclick=e=>{
+  const re=()=>V.vpapers();
+  document.querySelectorAll('.vpopen').forEach(a=>a.onclick=e=>{
     e.preventDefault();e.stopPropagation();docOpen(a.dataset.path)});
+  document.querySelectorAll('.vpedit').forEach(a=>a.onclick=e=>{
+    e.preventDefault();e.stopPropagation();
+    const f=(D.doc||[]).find(x=>x.id===a.dataset.id); if(f)docEdit(f,re)});
+  document.querySelectorAll('.vprev').forEach(a=>a.onclick=e=>{
+    e.preventDefault();e.stopPropagation();
+    const f=(D.doc||[]).find(x=>x.id===a.dataset.id); if(f)docRevert(f,re)});
+  document.querySelectorAll('.vsname').forEach(a=>a.onclick=async e=>{
+    e.preventDefault();
+    const cur=(D.vds||[]).find(x=>x.id===a.dataset.id)||{};
+    const v=prompt('Όνομα όψης (π.χ. Μπροστά, Πίσω, Σελίδα 2):', cur.label||'');
+    if(v===null)return;
+    const {error}=await sb.from('vehicle_doc_sides').update({label:v.trim()||null}).eq('id',a.dataset.id);
+    if(error)return toast('Σφάλμα: '+error.message);
+    cur.label=v.trim()||null; saveCache(); re();
+  });
+  document.querySelectorAll('.vsfirst').forEach(a=>a.onclick=async e=>{
+    e.preventDefault();
+    const me=(D.vds||[]).find(x=>x.id===a.dataset.id); if(!me)return;
+    const grp=(D.vds||[]).filter(x=>x.target===me.target&&x.target_id===me.target_id);
+    me.seq=0;
+    grp.sort((p,q)=>(p.seq||0)-(q.seq||0)).forEach((x,i)=>{x.seq=i+1});
+    for(const x of grp){ await sb.from('vehicle_doc_sides').update({seq:x.seq}).eq('id',x.id) }
+    saveCache(); toast('Μπήκε πρώτη'); re();
+  });
+
+  /* Ένωση ΠΡΙΝ την ανάθεση: οι επιπλέον σελίδες κρέμονται από την πρώτη και
+     πάνε μαζί της στο όχημα. Τοπικά — καμία εγγραφή δεν έχει γίνει ακόμη. */
+  document.querySelectorAll('.vpmerge').forEach(b=>b.onclick=()=>{
+    const ids=b.dataset.ids.split(',');
+    if(!confirm('Είναι ΤΟ ΙΔΙΟ χαρτί σε '+ids.length+' σελίδες;\n\n'
+      +'Θα ανατεθούν μαζί, σαν ένα χαρτί με '+ids.length+' όψεις.'))return;
+    const keep=(D.vpi||[]).find(x=>x.id===ids[0]); if(!keep)return;
+    keep.sides=keep.sides||[];
+    ids.slice(1).forEach(id=>{
+      const a=(D.vpi||[]).find(x=>x.id===id); if(!a)return;
+      keep.sides.push(a.document_id);
+      if(!keep.ocr_plate)   keep.ocr_plate=a.ocr_plate;
+      if(!keep.ocr_expires) keep.ocr_expires=a.ocr_expires;
+      a._mergedInto=keep.id;
+      D.vpi=(D.vpi||[]).filter(x=>x.id!==id);
+      (D.vpi||[]).push(Object.assign({},a,{resolved_at:'merged'}));
+    });
+    D.vpi=(D.vpi||[]).filter(x=>x.resolved_at!=='merged'||false);
+    saveCache(); toast('Ενώθηκαν'); re();
+  });
+
   document.querySelectorAll('.vpok').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id;
     const sel=document.querySelector('.vpsel[data-id="'+id+'"]');
     const dt =document.querySelector('.vpdate[data-id="'+id+'"]');
-    if(!dt.value){dt.focus();return toast('Βάλε την ημερομηνία λήξης που γράφει το χαρτί.')}
-    if(!sel.value){sel.focus();return toast('Διάλεξε όχημα.')}
-    let res;
-    b.disabled=true;
     const iss=document.querySelector('.vpiss[data-id="'+id+'"]');
+    if(!sel.value){sel.focus();return toast('Διάλεξε όχημα — ή «＋ Νέο όχημα» αν δεν υπάρχει.')}
+    /* Χωρίς λήξη ΕΠΙΤΡΕΠΕΤΑΙ: το όχημα πρέπει να μπει στο μητρώο έστω κι αν
+       δεν διαβάζεται η ημερομηνία. Λέγεται όμως τι σημαίνει. */
+    if(!dt.value && !confirm('Χωρίς ημερομηνία λήξης.\n\nΤο χαρτί θα μπει στο όχημα, '
+      +'αλλά ΔΕΝ θα μετράει για καταλληλότητα σε δράση — δεν ξέρουμε ως πότε ισχύει. Να συνεχίσω;')) return;
+    b.disabled=true;
+    let res;
     if(sel.value==='NEW'){
       const x=(D.vpi||[]).find(y=>y.id===id);
-      const pl=prompt('Πινακίδα του οχήματος (π.χ. KQF 182):', x&&x.ocr_plate||'');
+      const pl=prompt('Πινακίδα του οχήματος (π.χ. KQF 182):', (x&&x.ocr_plate)||'');
       if(!pl){b.disabled=false;return}
-      res=await sb.rpc('vehicle_paper_new_vehicle',{p_inbox:id,p_plate:pl,p_expires:dt.value});
+      res=await sb.rpc('vehicle_paper_new_vehicle',{p_inbox:id,p_plate:pl,p_expires:dt.value||null});
     }else{
-      res=await sb.rpc('vehicle_paper_assign',{p_inbox:id,p_vehicle:sel.value,p_expires:dt.value});
-    }
-    if(iss&&iss.value&&res&&res.data&&res.data.ok){
-      await sb.rpc('vehicle_paper_set_issued',{p_inbox:id,p_issued:iss.value});
+      res=await sb.rpc('vehicle_paper_assign',{p_inbox:id,p_vehicle:sel.value,p_expires:dt.value||null});
     }
     const {data,error}=res;
     if(error||(data&&data.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
-    toast('Μπήκε στο '+(data.plate||'όχημα'));
+    if(iss&&iss.value) await sb.rpc('vehicle_paper_set_issued',{p_inbox:id,p_issued:iss.value});
+    const x=(D.vpi||[]).find(y=>y.id===id);
+    if(x&&(x.sides||[]).length) await sb.rpc('vehicle_paper_add_sides',{p_inbox:id,p_docs:x.sides});
+    toast('Μπήκε στο '+((data&&data.plate)||'όχημα'));
+    /* Το όχημα μπορεί να είναι ΝΕΟ και οι πίνακες οχημάτων να μην το ξέρουν —
+       γι' αυτό εδώ, και μόνο εδώ, ξαναφορτώνουμε. */
     await loadAll(); V.vpapers();
   });
 };
