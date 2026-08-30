@@ -1002,7 +1002,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 12:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 12:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -4879,6 +4879,7 @@ function cropPt(e){
   return [ (e.clientX-r.left)*(cv.width/r.width), (e.clientY-r.top)*(cv.height/r.height) ];
 }
 function openCrop(work, onDone){
+  if(!cropWire()){ toast('Ο σαρωτής δεν φορτώθηκε.'); onDone&&onDone(null); return; }
   _cropWork=work; _cropDone=onDone;
   var iw=work.width, ih=work.height;
   _cropCorners=[[iw*0.08,ih*0.08],[iw*0.92,ih*0.08],[iw*0.92,ih*0.92],[iw*0.08,ih*0.92]];
@@ -4886,11 +4887,20 @@ function openCrop(work, onDone){
   cropDraw();
   $('cropOverlay').classList.add('show');
 }
-(function(){
-  /* Αν λείπει το στοιχείο, ΒΓΑΙΝΟΥΜΕ σιωπηλά. Ένα null εδώ έριχνε ολόκληρο
-     το script και έμεναν αόριστες όλες οι επόμενες οθόνες. */
+/* ΤΟ ΠΑΡΑΘΥΡΟ ΣΑΡΩΣΗΣ ΓΡΑΦΕΤΑΙ ΜΕΤΑ ΤΟ SCRIPT.
+   Παλιά αυτό ήταν αυτόματα εκτελούμενη συνάρτηση: έτρεχε τη στιγμή που
+   διαβαζόταν το script, όταν το #cropCanvas ΔΕΝ ΥΠΗΡΧΕ ΑΚΟΜΑ. Έβγαζε
+   προειδοποίηση στην κονσόλα και σταματούσε — άρα ΟΥΤΕ οι γωνίες έσερναν
+   ΟΥΤΕ τα κουμπιά δούλευαν, πουθενά στην εφαρμογή. Το παράθυρο άνοιγε και
+   ό,τι πατούσες δεν έκανε τίποτα.
+   Τώρα η σύνδεση γίνεται την ΠΡΩΤΗ φορά που ανοίγει ο σαρωτής, όταν το
+   στοιχείο σίγουρα υπάρχει. */
+var _cropWired=false;
+function cropWire(){
+  if(_cropWired) return true;
   var cv=$('cropCanvas');
-  if(!cv){ console.warn('cropCanvas: δεν βρέθηκε — η σάρωση με γωνίες είναι ανενεργή'); return; }
+  if(!cv){ console.warn('cropCanvas: δεν βρέθηκε'); return false; }
+  _cropWired=true;
   cv.addEventListener('pointerdown', function(e){
     e.preventDefault();
     var p=cropPt(e), best=-1, bd=1e9, thr=Math.max(cv.width,cv.height)*0.06;
@@ -4924,7 +4934,8 @@ function openCrop(work, onDone){
   if($('cropApply'))$('cropApply').addEventListener('click', function(){ finish('crop'); });
   if($('cropNo'))$('cropNo').addEventListener('click', function(){ finish('nocrop'); });
   if($('cropCancel'))$('cropCancel').addEventListener('click', function(){ finish('cancel'); });
-})();
+  return true;
+}
 
 function processImage(file, cb){
   loadOriented(file, function(src){
