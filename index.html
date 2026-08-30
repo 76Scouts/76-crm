@@ -869,6 +869,10 @@ const NAV=[
    {id:'fimport',t:'Εισαγωγή ιστορικού φορμών',i:'down',s:'live'}]},
 
  {g:'Διοίκηση', d:'Ό,τι υπογράφεται ή στέλνεται', items:[
+   /* Δική της οθόνη, όχι λίστα μέσα στις Εκκρεμότητες: η επιβεβαίωση είναι
+      ΔΟΥΛΕΙΑ που κάθεσαι και την κάνεις — ανοίγεις χαρτιά, κρίνεις, δέχεσαι.
+      Οι Εκκρεμότητες λένε ΤΙ λείπει· εδώ το κλείνεις. */
+   {id:'certq',t:'Επιβεβαίωση πιστοποιητικών',i:'shield',s:'live'},
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'training',t:'Εκπαιδεύσεις',i:'book',s:'live'},
    {id:'forms',t:'Έντυπα & εξαγωγές Σ.Π.Κ.',i:'book',s:'live'},
@@ -972,6 +976,7 @@ const SUBS={
  esimport:'Επικόλληση από e-Scouts — Α.Μ., τριπλότυπα, εντολές',
  fimport:'Επικόλληση από εξαγωγή φόρμας — ιατρικά προηγούμενων ετών',
 
+ certq:'Χαρτιά που περιμένουν να τα δεις — μέχρι τότε δεν μετρούν σε δράση',
  warrants:'Εντολές Διοίκησης και Αναθέσεις Καθηκόντων',
  honours:'Εύφημες μνείες και μετάλλια — σχεδόν πάντα βαθμοφόρων',
  approvals:'Αίτηση προς την Επαρχία — Εντολή, Ανάθεση, σχολή',
@@ -994,7 +999,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 11:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 11:07'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2801,7 +2806,14 @@ function certsHTML(p){
         <select id="pcType">${certTypesFor(p).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')
           ||'<option value="">— κανένα διαθέσιμο —</option>'}</select>
         <input id="pcLabel" placeholder="Πινακίδα / κατηγορία / περιγραφή">
-        <div style="display:flex;gap:7px"><input id="pcIss" type="date" title="Ημ. έκδοσης"><input id="pcExp" type="date" title="Ημ. λήξης"></div>
+        <div style="display:flex;gap:7px">
+          <label style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <span class="dim" id="pcIssL" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. έκδοσης</span>
+            <input id="pcIss" type="date"></label>
+          <label style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <span class="dim" id="pcExpL" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης</span>
+            <input id="pcExp" type="date"></label></div>
+        <div class="dim" id="pcHint" style="font-size:11.5px"></div>
         <label class="btn sm" style="cursor:pointer;justify-content:center">📎 Επισύναψη αρχείου<input type="file" id="pcFile" style="display:none" accept=".pdf,.png,.jpg,.jpeg,.heic"></label>
         <span class="dim" id="pcFileName" style="font-size:12px"></span>
         <button class="btn p sm" id="pcAdd">Καταχώρηση</button>
@@ -2826,14 +2838,26 @@ function wireCerts(p,after){
     D.pc=(D.pc||[]).filter(x=>x.id!==b.dataset.id); saveCache(); after&&after();});
   let pending=null;
   const pf=$('pcFile'); if(pf)pf.onchange=()=>{pending=pf.files&&pf.files[0];$('pcFileName').textContent=pending?pending.name:''};
+  /* Ποιο πεδίο είναι ΤΟ ΖΗΤΟΥΜΕΝΟ το λέει ο τύπος: σε άδεια/ασφάλεια/ΜΟΤ
+     τυπώνεται η ΛΗΞΗ και δεν υπολογίζεται από πουθενά· σε πιστοποιητικό
+     εκπαίδευσης τυπώνεται η ΕΚΔΟΣΗ και η λήξη βγαίνει μόνη της. */
   const ty=$('pcType'); const upd=()=>{const t=ctype(ty.value);
     $('pcLabel').placeholder=t.label_hint||'Περιγραφή (προαιρετικά)';
-    $('pcLabel').style.display=t.needs_label?'':'';};
+    $('pcLabel').style.display=t.needs_label?'':'';
+    const exp=t.date_basis==='λήξη';
+    $('pcIssL').textContent = exp?'Ημ. έκδοσης (προαιρετικά)':'Ημ. έκδοσης';
+    $('pcExpL').textContent = exp?'Ημ. λήξης':'Ημ. λήξης (υπολογίζεται)';
+    $('pcHint').textContent = exp
+      ? 'Γράψε τη λήξη που τυπώνει το χαρτί — δεν υπολογίζεται.'
+      : (t.validity_months
+          ? 'Γράψε την έκδοση· η λήξη μπαίνει μόνη της, '+t.validity_months+' μήνες μετά.'
+          : 'Αυτός ο τύπος δεν έχει σταθερή διάρκεια — γράψε ό,τι λέει το χαρτί.');};
   if(ty){ty.onchange=upd;upd();}
   const ad=$('pcAdd'); if(ad)ad.onclick=async()=>{
     const t=ctype($('pcType').value);
     let exp=$('pcExp').value||null, iss=$('pcIss').value||null;
-    if(!exp&&iss&&t.validity_months){const d=new Date(iss);d.setMonth(d.getMonth()+t.validity_months);exp=d.toISOString().slice(0,10);}
+    if(!exp&&iss&&t.validity_months)exp=addMonths(iss,t.validity_months);
+    if(!exp&&!iss)return toast('Βάλε ημερομηνία — χωρίς αυτήν δεν ξέρουμε ως πότε ισχύει.');
     ad.disabled=true; ad.textContent='Καταχώρηση…';
     try{
       let docId=null;
@@ -9146,7 +9170,7 @@ function issuesBody(){
     {t:'Βαθμοφόροι χωρίς Ν.91(Ι)',w:'Δεν επιτρέπεται να εργάζονται με παιδιά χωρίς αυτό.',s:'bad',l:led.filter(p=>certState(p.id).k==='none')},
     {t:'Ν.91(Ι) που έληξε',w:'Χρειάζεται άμεση ανανέωση.',s:'bad',l:led.filter(p=>certState(p.id).k==='expired')},
     {t:'Ν.91(Ι) που λήγει σύντομα',w:`Λήγει εντός ${TH.certWarnDays||90} ημερών.`,s:'warn',l:led.filter(p=>certState(p.id).k==='soon')},
-    {t:'Πιστοποιητικά προς επιβεβαίωση',w:'Άνοιξε το αρχείο και επιβεβαίωσε — η ουρά είναι στην κορυφή αυτής της οθόνης.',s:'warn',
+    {t:'Πιστοποιητικά προς επιβεβαίωση',w:'Χαρτιά που δεν τα έχει δει άνθρωπος — δεν μετρούν σε δράση.',s:'warn',goto:'certq',
      l:[...new Set((D.pc||[]).filter(c=>!c.confirmed_on).map(c=>c.person_id))].map(id=>D.bh.find(p=>p.id===id)).filter(Boolean)},
     {t:'Οδηγοί με ανασφάλιστο όχημα',w:'Το όχημα που δηλώνουν δεν έχει ασφάλεια σε ισχύ.',s:'bad',
      l:[...new Set((D.vl||[]).filter(l=>{const i=(D.vi||[]).filter(x=>x.vehicle_id===l.vehicle_id)
@@ -9210,37 +9234,7 @@ function issuesBody(){
             <button class="btn gh sm" data-idno="${x.id}">Κράτα το παλιό</button></span>
         </div>`}).join('')}</div>`;
 
-  /* ΠΙΣΤΟΠΟΙΗΤΙΚΑ ΠΡΟΣ ΕΠΙΒΕΒΑΙΩΣΗ — ουρά, όχι λίστα ονομάτων.
-     Η επιβεβαίωση είναι πράξη κρίσης: ανοίγεις το χαρτί, το βλέπεις, το δέχεσαι.
-     Αν χρειαστεί να ανοίξεις 40 καρτέλες για να το κάνεις, δεν γίνεται ποτέ. */
-  const pend=(D.pc||[]).filter(c=>!c.confirmed_on);
-  const pByP={}; pend.forEach(c=>(pByP[c.person_id]=pByP[c.person_id]||[]).push(c));
-  const pOrd=Object.keys(pByP).map(id=>({p:D.bh.find(b=>b.id===id),cs:pByP[id]}))
-    .filter(x=>x.p).sort((a,b)=>pn(a.p).localeCompare(pn(b.p),'el'));
-  const certHTML = !pend.length ? '' : `<div class="card pad" style="margin-bottom:14px;border-color:var(--warn)">
-      <b>Πιστοποιητικά προς επιβεβαίωση <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${pend.length}</span></b>
-      <div class="muted" style="font-size:13px;margin:5px 0 11px;line-height:1.6">Άνοιξε το αρχείο, δες το, και δέξου το.
-        Μέχρι τότε <b>δεν μετράει</b> για καταλληλότητα σε δράση. Η «επιβεβαίωση» σημαίνει
-        <b>το είδα εγώ</b> — γράφεται το όνομά σου και η ημερομηνία.</div>
-      ${pOrd.map(({p,cs})=>`<div style="border-top:1px solid var(--line);padding:9px 0">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <b style="font-size:13.5px">${pn(p)}</b>
-          <span class="sp"></span>
-          ${cs.length>1?`<button class="btn sm qcokall" data-ids="${cs.map(c=>c.id).join(',')}">Επιβεβαίωση και των ${cs.length}</button>`:''}
-        </div>
-        ${cs.map(c=>{const d=(D.doc||[]).find(x=>x.id===c.document_id);
-          return `<div class="kv" style="padding:5px 0 0;align-items:center;flex-wrap:wrap;gap:7px">
-            <span style="flex:1;min-width:190px;font-size:13px">${esc(ctype(c.type_code).name)}
-              <span class="dim" style="font-size:11.5px">${c.issued_on?' · έκδοση '+fdate(c.issued_on):' · χωρίς ημερομηνία'}</span>
-              ${d?` · <a href="#" class="qdocopen" data-path="${esc(d.path)}">δες το αρχείο</a>`
-                  :' <span class="dim" style="font-size:11.5px">· χωρίς αρχείο</span>'}</span>
-            <span style="display:flex;gap:5px">
-              <button class="btn p sm qcok" data-id="${c.id}">Επιβεβαίωση</button>
-              <button class="btn gh sm qcdel" data-id="${c.id}" title="Λάθος καταχώρηση">✕</button></span>
-          </div>`}).join('')}
-      </div>`).join('')}</div>`;
-
-  $('view').innerHTML=certHTML+idHTML+`<div class="card pad" style="margin-bottom:14px">
+  $('view').innerHTML=idHTML+`<div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
         <div><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">${tot}</div><div class="dim" style="font-size:12.5px">εκκρεμότητες</div></div>
         <div style="border-left:1px solid var(--line);padding-left:14px"><div style="font-size:26px;font-weight:600;color:${crit?'var(--bad)':'var(--ok)'}">${crit}</div><div class="dim" style="font-size:12.5px">κρίσιμες</div></div>
@@ -9262,6 +9256,7 @@ function issuesBody(){
               :it.l.slice(0,60).map(x=>`<span class="pill" style="margin:3px 3px 0 0"><span class="pn" data-p="${x.id}">${pn(x)}</span>${x.section?`<span class="dim">${esc(x.section)}</span>`:''}</span>`).join('')}
             ${n>60?`<div class="dim" style="font-size:12px;margin-top:7px">+ ${n-60} ακόμη</div>`:''}
             ${it.pairs?'<div style="margin-top:10px"><button class="btn sm" data-goto="dedupe">Άνοιγμα Ταυτοποίησης →</button></div>':''}
+            ${it.goto?`<div style="margin-top:10px"><button class="btn p sm" data-goto="${it.goto}">Άνοιγμα οθόνης →</button></div>`:''}
           </div></div>`}).join('')}`).join('')}
     ${!tot?`<div class="uc"><div class="ico">${ic('check',26)}</div><h3>Καμία εκκρεμότητα</h3><p>Το μητρώο είναι πλήρες.</p></div>`:''}`;
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const d=$(b.dataset.x+'_b');d.style.display=d.style.display==='none'?'block':'none'});
@@ -9279,30 +9274,125 @@ function issuesBody(){
   };
   document.querySelectorAll('[data-idok]').forEach(b=>b.onclick=()=>idDecide(b.dataset.idok,true,b));
   document.querySelectorAll('[data-idno]').forEach(b=>b.onclick=()=>idDecide(b.dataset.idno,false,b));
-  /* Η ουρά πιστοποιητικών: ίδια πράξη με το κουμπί στην καρτέλα προσώπου. */
-  const pcAccept=async(ids,btn)=>{
+};
+
+/* ══ ΕΠΙΒΕΒΑΙΩΣΗ ΠΙΣΤΟΠΟΙΗΤΙΚΩΝ ══════════════════════════════════════════
+   Δική της οθόνη, όχι λίστα μέσα στις Εκκρεμότητες. Οι Εκκρεμότητες λένε ΤΙ
+   λείπει· εδώ κάθεσαι και το κλείνεις: ανοίγεις το χαρτί, γράφεις την
+   ημερομηνία που τυπώνει, δέχεσαι.
+
+   ΠΟΙΑ ημερομηνία ζητάμε το λέει ο ΤΥΠΟΣ, όχι εμείς:
+     · πιστοποιητικό εκπαίδευσης  → τυπώνει ΕΚΔΟΣΗ, η λήξη υπολογίζεται
+     · άδεια / ασφάλεια / ΜΟΤ     → τυπώνει ΛΗΞΗ, δεν βγαίνει από πουθενά
+   Ζητώντας λάθος πεδίο, ο χρήστης γράφει σωστή ημερομηνία σε λάθος θέση —
+   και μετά το σύστημα λέει «σε ισχύ» κάτι που έχει λήξει.                */
+function addMonths(iso,m){
+  const d=new Date(iso+'T00:00:00'); const day=d.getDate();
+  d.setMonth(d.getMonth()+m);
+  if(d.getDate()<day) d.setDate(0);          // 31 Ιαν + 1 μήνα = 28/29 Φεβ
+  return d.toISOString().slice(0,10);
+}
+V.certq=()=>{
+  const pend=(D.pc||[]).filter(c=>!c.confirmed_on);
+  const byP={}; pend.forEach(c=>(byP[c.person_id]=byP[c.person_id]||[]).push(c));
+  const ord=Object.keys(byP).map(id=>({p:D.bh.find(b=>b.id===id),cs:byP[id]}))
+    .filter(x=>x.p).sort((a,b)=>nm(a.p).localeCompare(nm(b.p),'el'));
+
+  if(!pend.length){
+    $('view').innerHTML=`<div class="uc"><div class="ico">${ic('check',26)}</div>
+      <h3>Τίποτα δεν περιμένει</h3>
+      <p>Κάθε πιστοποιητικό στο μητρώο το έχει δει άνθρωπος.</p></div>`;
+    return;
+  }
+
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <div><div style="font-size:26px;font-weight:600;letter-spacing:-.02em">${pend.length}</div>
+          <div class="dim" style="font-size:12.5px">περιμένουν</div></div>
+        <div style="border-left:1px solid var(--line);padding-left:14px">
+          <div style="font-size:26px;font-weight:600">${ord.length}</div>
+          <div class="dim" style="font-size:12.5px">άτομα</div></div>
+        <span class="sp"></span>
+        <span class="muted" style="font-size:13px;max-width:400px">Άνοιξε το αρχείο, γράψε την ημερομηνία
+          που τυπώνει, και δέξου το. Μέχρι τότε <b>δεν μετράει</b> για καταλληλότητα σε δράση.
+          Η επιβεβαίωση γράφει το όνομά σου και τη σημερινή ημερομηνία.</span></div></div>
+
+    ${ord.map(({p,cs})=>`<div class="card" style="margin-bottom:9px">
+      <div class="pad" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-bottom:4px">
+        <b style="font-size:14px">${pn(p)}</b>
+        ${p.section?`<span class="pill" style="font-size:11px">${esc(p.section)}</span>`:''}
+        <span class="sp"></span>
+        ${cs.length>1?`<button class="btn sm qcokall" data-ids="${cs.map(c=>c.id).join(',')}">Δέξου και τα ${cs.length}</button>`:''}
+      </div>
+      <div style="padding:0 16px 12px">
+        ${cs.map(c=>{const t=ctype(c.type_code), d=(D.doc||[]).find(x=>x.id===c.document_id);
+          const exp = t.date_basis==='λήξη';
+          const cur = exp ? (c.expires_on||'') : (c.issued_on||'');
+          return `<div style="border-top:1px solid var(--line);padding:9px 0;display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+            <span style="flex:1 1 210px;min-width:180px">
+              <b style="font-weight:500;font-size:13.5px">${esc(t.name)}</b>
+              ${c.label?`<span class="pill" style="font-size:11px;margin-left:5px">${esc(c.label)}</span>`:''}
+              <div class="dim" style="font-size:11.5px;margin-top:2px">
+                ${d?`<a href="#" class="qdocopen" data-path="${esc(d.path)}">📄 δες το αρχείο</a>`
+                   :'χωρίς αρχείο'}
+                ${!exp&&t.validity_months?` · ισχύει ${t.validity_months} μήνες`:''}</div></span>
+            <span style="display:flex;flex-direction:column;gap:2px">
+              <label class="dim" style="font-size:10.5px;letter-spacing:.03em;text-transform:uppercase">
+                ${exp?'Ημ. λήξης':'Ημ. έκδοσης'}</label>
+              <input type="date" class="qdate" data-id="${c.id}" value="${esc(cur)}"
+                title="${exp?'Γράψε την ημερομηνία λήξης που τυπώνει το χαρτί'
+                            :'Γράψε την ημερομηνία έκδοσης· η λήξη υπολογίζεται'}"></span>
+            <span style="display:flex;gap:5px">
+              <button class="btn p sm qcok" data-id="${c.id}">Επιβεβαίωση</button>
+              <button class="btn gh sm qcdel" data-id="${c.id}" title="Λάθος καταχώρηση">✕</button></span>
+          </div>`}).join('')}
+      </div></div>`).join('')}`;
+
+  /* Η ημερομηνία μπαίνει στο ΣΩΣΤΟ πεδίο και το άλλο υπολογίζεται όπου γίνεται.
+     Χωρίς ημερομηνία δεν δεχόμαστε: «το είδα» χωρίς να ξέρω ως πότε ισχύει
+     δεν είναι έλεγχος. */
+  const rowPatch=id=>{
+    const c=(D.pc||[]).find(x=>x.id===id); if(!c)return null;
+    const t=ctype(c.type_code), exp=t.date_basis==='λήξη';
+    const el=document.querySelector('.qdate[data-id="'+id+'"]');
+    const v=el&&el.value;
+    if(!v){ if(el)el.focus(); return {err:'Λείπει η '+(exp?'ημερομηνία λήξης':'ημερομηνία έκδοσης')
+      +' για «'+t.name+'» ('+nm(D.bh.find(b=>b.id===c.person_id)||{})+')'} }
+    return exp ? {expires_on:v}
+               : {issued_on:v, expires_on:t.validity_months?addMonths(v,t.validity_months):c.expires_on||null};
+  };
+  const accept=async(ids,btn)=>{
     const today=new Date().toISOString().slice(0,10);
+    const patches=[];
+    for(const id of ids){ const p=rowPatch(id);
+      if(!p) return toast('Δεν βρέθηκε η εγγραφή');
+      if(p.err) return toast(p.err);
+      patches.push([id,p]); }
     btn.disabled=true;
-    const {error}=await sb.from('person_certificates')
-      .update({confirmed_on:today, confirmed_by:ME.person_id}).in('id',ids);
-    if(error){btn.disabled=false;return toast('Σφάλμα: '+error.message)}
-    ids.forEach(id=>{const c=(D.pc||[]).find(x=>x.id===id);
-      if(c){c.confirmed_on=today; c.confirmed_by=ME.person_id}});
-    saveCache(); toast(ids.length>1?ids.length+' επιβεβαιώθηκαν':'Επιβεβαιώθηκε'); V.issues();
+    for(const [id,p] of patches){
+      const {error}=await sb.from('person_certificates')
+        .update({...p, confirmed_on:today, confirmed_by:ME.person_id}).eq('id',id);
+      if(error){btn.disabled=false;return toast('Σφάλμα: '+error.message)}
+      const c=(D.pc||[]).find(x=>x.id===id);
+      if(c)Object.assign(c,p,{confirmed_on:today, confirmed_by:ME.person_id});
+    }
+    saveCache(); toast(ids.length>1?ids.length+' επιβεβαιώθηκαν':'Επιβεβαιώθηκε'); V.certq();
   };
   document.querySelectorAll('.qcok').forEach(b=>b.onclick=()=>{
     if(!confirm('Επιβεβαιώνεις ότι είδες το πιστοποιητικό; Από εδώ και πέρα μετράει για τις δράσεις.'))return;
-    pcAccept([b.dataset.id],b)});
+    accept([b.dataset.id],b)});
   document.querySelectorAll('.qcokall').forEach(b=>b.onclick=()=>{
     const ids=b.dataset.ids.split(',');
-    if(!confirm('Επιβεβαιώνεις ότι είδες και τα '+ids.length+' πιστοποιητικά αυτού του ατόμου;'))return;
-    pcAccept(ids,b)});
+    if(!confirm('Επιβεβαιώνεις ότι είδες και τα '+ids.length+' χαρτιά αυτού του ατόμου;'))return;
+    accept(ids,b)});
   document.querySelectorAll('.qcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή αυτής της καταχώρησης; Το αρχείο μένει στα έγγραφα του ατόμου.'))return;
     const {error}=await sb.from('person_certificates').delete().eq('id',b.dataset.id);
     if(error)return toast('Σφάλμα: '+error.message);
-    D.pc=(D.pc||[]).filter(x=>x.id!==b.dataset.id); saveCache(); V.issues();});
-  document.querySelectorAll('.qdocopen').forEach(a=>a.onclick=e=>{e.preventDefault();e.stopPropagation();docOpen(a.dataset.path)});
+    D.pc=(D.pc||[]).filter(x=>x.id!==b.dataset.id); saveCache(); V.certq();});
+  document.querySelectorAll('.qdocopen').forEach(a=>a.onclick=e=>{
+    e.preventDefault();e.stopPropagation();docOpen(a.dataset.path)});
 };
 
 /* Πιθανές διπλοεγγραφές: ίδιο ονοματεπώνυμο χωρίς τόνους, ανεξάρτητα σειράς.
