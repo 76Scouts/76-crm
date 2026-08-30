@@ -1002,7 +1002,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 13:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 13:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2956,7 +2956,10 @@ async function docEdit(doc, after){
       const r=await sb.rpc('document_set_edited',
         {p_doc:doc.id, p_new_path:np, p_note:'σάρωση με τέσσερις γωνίες'});
       if(r.error||(r.data&&r.data.error)) return toast('Σφάλμα: '+((r.error&&r.error.message)||r.data.error));
-      toast('Διορθώθηκε'); await loadAll(); after&&after();
+      const d=(D.doc||[]).find(x=>x.id===doc.id);
+      if(d){ if(!d.original_path)d.original_path=d.path;
+             d.path=np; d.mime='image/jpeg'; d.edited_at=new Date().toISOString(); }
+      saveCache(); toast('Διορθώθηκε'); after&&after();
     });
   };
   img.src=blobUrl;
@@ -2965,7 +2968,9 @@ async function docRevert(doc, after){
   if(!confirm('Να γυρίσει η αρχική, απείραχτη εικόνα;'))return;
   const {data,error}=await sb.rpc('document_revert',{p_doc:doc.id});
   if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
-  toast('Επανήλθε το πρωτότυπο'); await loadAll(); after&&after();
+  const d=(D.doc||[]).find(x=>x.id===doc.id);
+  if(d){ d.path=data.path; d.original_path=null; d.edited_at=null; }
+  saveCache(); toast('Επανήλθε το πρωτότυπο'); after&&after();
 }
 async function docDelete(d){
   await sb.storage.from('e76').remove([d.path]);
@@ -9633,18 +9638,36 @@ V.certq=()=>{
     const t=ctype(c.type_code), exp=t.date_basis==='λήξη';
     const el=document.querySelector('.qdate[data-id="'+id+'"]');
     const v=el&&el.value;
-    if(!v){ if(el)el.focus(); return {err:'Λείπει η '+(exp?'ημερομηνία λήξης':'ημερομηνία έκδοσης')
-      +' για «'+t.name+'» ('+nm(D.bh.find(b=>b.id===c.person_id)||{})+')'} }
+    if(!v) return {};                      // χωρίς ημερομηνία — επιτρεπτό, με προειδοποίηση
     return exp ? {expires_on:v}
                : {issued_on:v, expires_on:t.validity_months?addMonths(v,t.validity_months):c.expires_on||null};
   };
+  /* Η ημερομηνία σώζεται ΜΟΛΙΣ τη γράψεις — χωρίς να επιβεβαιώσεις.
+     Είναι δύο διαφορετικά πράγματα: «διάβασα τι λέει το χαρτί» και «το είδα
+     και το εγκρίνω». Αν έπρεπε να τα κάνεις μαζί, ό,τι πληκτρολογούσες και
+     δεν προλάβαινες να κρίνεις, χανόταν. */
+  document.querySelectorAll('.qdate').forEach(el=>el.onchange=async()=>{
+    const id=el.dataset.id, p=rowPatch(id);
+    if(!p||!Object.keys(p).length)return;
+    const {error}=await sb.from('person_certificates').update(p).eq('id',id);
+    if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
+    const c=(D.pc||[]).find(x=>x.id===id); if(c)Object.assign(c,p);
+    saveCache(); toast('Η ημερομηνία αποθηκεύτηκε');
+  });
   const accept=async(ids,btn)=>{
     const today=new Date().toISOString().slice(0,10);
-    const patches=[];
+    const patches=[]; const noDate=[];
     for(const id of ids){ const p=rowPatch(id);
       if(!p) return toast('Δεν βρέθηκε η εγγραφή');
-      if(p.err) return toast(p.err);
+      const c=(D.pc||[]).find(x=>x.id===id);
+      /* Επιβεβαίωση χωρίς ημερομηνία ΕΠΙΤΡΕΠΕΤΑΙ — υπάρχουν χαρτιά που δεν
+         διαβάζονται ή δεν γράφουν λήξη. Αλλά λέγεται καθαρά τι σημαίνει:
+         «το είδα» χωρίς «ως πότε ισχύει» δεν είναι καταλληλότητα. */
+      if(!p.expires_on && !(c&&c.expires_on)) noDate.push(ctype(c.type_code).name);
       patches.push([id,p]); }
+    if(noDate.length && !confirm('Χωρίς ημερομηνία λήξης: '+noDate.join(', ')
+        +'\n\nΘα καταγραφεί ότι το είδες, αλλά ΔΕΝ θα μετράει για καταλληλότητα σε δράση'
+        +' — δεν ξέρουμε ως πότε ισχύει. Να συνεχίσω;')) return;
     btn.disabled=true;
     for(const [id,p] of patches){
       const {error}=await sb.from('person_certificates')
@@ -9671,7 +9694,28 @@ V.certq=()=>{
     b.disabled=true;
     const {data,error}=await sb.rpc('cert_merge_sides',{p_keep:ids[0],p_absorb:ids.slice(1)});
     if(error||(data&&data.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
-    toast('Ενώθηκαν σε ένα'); await loadAll(); V.certq();
+    /* Η ίδια αλλαγή, τοπικά. Ένα loadAll() είναι 72 ερωτήματα για να ενωθούν
+       δύο γραμμές — μισό λεπτό αναμονής για δουλειά ενός δευτερολέπτου. */
+    const keep=(D.pc||[]).find(x=>x.id===ids[0]);
+    ids.slice(1).forEach(id=>{
+      const a=(D.pc||[]).find(x=>x.id===id);
+      let s=Math.max(0,...(D.cd||[]).filter(x=>x.cert_id===ids[0]).map(x=>x.seq||0));
+      (D.cd||[]).filter(x=>x.cert_id===id).forEach(x=>{x.cert_id=ids[0]; x.seq=++s});
+      if(a){
+        if(a.document_id && !(D.cd||[]).some(x=>x.cert_id===ids[0]&&x.document_id===a.document_id))
+          (D.cd=D.cd||[]).push({id:'tmp'+Math.random(),cert_id:ids[0],document_id:a.document_id,seq:++s,label:null});
+        if(keep)['issued_on','expires_on','label','number'].forEach(k=>{ if(!keep[k]&&a[k])keep[k]=a[k] });
+      }
+      D.pc=(D.pc||[]).filter(x=>x.id!==id);
+    });
+    /* Ό,τι διάβασε το OCR σε οποιαδήποτε όψη γεμίζει τα κενά — όπως στη βάση. */
+    if(keep){
+      const hs=(D.cd||[]).filter(x=>x.cert_id===ids[0])
+        .map(x=>(D.coh||[]).find(h=>h.document_id===x.document_id)).filter(Boolean);
+      if(!keep.issued_on) keep.issued_on =hs.map(h=>h.issued_on ).filter(Boolean).sort()[0]||null;
+      if(!keep.expires_on)keep.expires_on=hs.map(h=>h.expires_on).filter(Boolean).sort().pop()||null;
+    }
+    saveCache(); toast('Ενώθηκαν σε ένα'); V.certq();
   });
   /* Ονομασία και σειρά όψεων. Οι συνηθισμένες τιμές προτείνονται, αλλά δεν
      επιβάλλονται: υπάρχουν και τρισέλιδα χαρτιά. */
@@ -9698,7 +9742,17 @@ V.certq=()=>{
     e.preventDefault();
     const {data,error}=await sb.rpc('cert_doc_first',{p_id:a.dataset.id});
     if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
-    toast('Μπήκε πρώτη'); await loadAll(); V.certq();
+    /* Ίδια αναρίθμηση με τη βάση, τοπικά — χωρίς 72 ερωτήματα για μια σειρά. */
+    const me=(D.cd||[]).find(x=>x.id===a.dataset.id);
+    if(me){
+      me.seq=0;
+      (D.cd||[]).filter(x=>x.cert_id===me.cert_id)
+        .sort((p,q)=>(p.seq||0)-(q.seq||0)||String(p.id).localeCompare(String(q.id)))
+        .forEach((x,i)=>{x.seq=i+1});
+      const pc=(D.pc||[]).find(x=>x.id===me.cert_id);
+      if(pc)pc.document_id=me.document_id;
+    }
+    saveCache(); toast('Μπήκε πρώτη'); V.certq();
   });
   document.querySelectorAll('.qcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή αυτής της καταχώρησης; Το αρχείο μένει στα έγγραφα του ατόμου.'))return;
@@ -10052,7 +10106,14 @@ function certOn(pid, code, onDate){
      ορατό ως «εκκρεμεί», γιατί «καθόλου» και «περιμένει» θέλουν άλλη ενέργεια. */
   const c=all.find(x=>x.confirmed_on);
   if(!c) return all.length ? {k:'pending', c:all[0]} : {k:'none'};
-  if(!c.expires_on)return {k:'ok', c};
+  if(!c.expires_on){
+    /* Επιβεβαιωμένο ΧΩΡΙΣ λήξη δεν είναι «ισχύει για πάντα». Ξέρουμε ότι
+       κάποιος το είδε — δεν ξέρουμε ως πότε ισχύει, άρα δεν μπορούμε να
+       πούμε ότι ισχύει σήμερα. Εξαίρεση μόνο τα είδη που όντως δεν λήγουν. */
+    const t=ctype(code)||{};
+    const lixei = t.date_basis==='λήξη' || !!t.validity_months;
+    return lixei ? {k:'nodate', c} : {k:'ok', c};
+  }
   return {k:(c.expires_on>=onDate?'ok':'expired'), c};
 }
 
@@ -10433,7 +10494,8 @@ function efCertsWire(e,parts,onDate){
     led.forEach(x=>R.push([nm(x.p), x.pa.role||'', ...codes.map(c=>{
       const s=certOn(x.p.id,c,onDate);
       return s.k==='ok'?(s.c&&s.c.expires_on?'έως '+s.c.expires_on:'ΝΑΙ')
-           :s.k==='expired'?'ΕΛΗΞΕ':s.k==='pending'?'ΕΚΚΡΕΜΕΙ ΕΠΙΒΕΒΑΙΩΣΗ':''})]));
+           :s.k==='expired'?'ΕΛΗΞΕ':s.k==='pending'?'ΕΚΚΡΕΜΕΙ ΕΠΙΒΕΒΑΙΩΣΗ'
+           :s.k==='nodate'?'ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΛΗΞΗΣ':''})]));
     const csv='﻿'+R.map(r=>r.map(c=>{const v=c==null?'':String(c);
       return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
     saveBlob(csv,'text/csv;charset=utf-8',`76-pistopoiitika-${(e.title||'drasi').replace(/\W+/g,'-')}.csv`)};
