@@ -789,6 +789,7 @@ const I={
  check:'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
  trend:'M23 6l-9.5 9.5-5-5L1 18M17 6h6v6',
  shield:'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+ car:'M5 17h14M5 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm14 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM3 17v-4l2-5h14l2 5v4M6 13h12',
  book:'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
  card:'M3 4h18a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M1 10h22',
  flag:'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7',
@@ -873,6 +874,7 @@ const NAV=[
       ΔΟΥΛΕΙΑ που κάθεσαι και την κάνεις — ανοίγεις χαρτιά, κρίνεις, δέχεσαι.
       Οι Εκκρεμότητες λένε ΤΙ λείπει· εδώ το κλείνεις. */
    {id:'certq',t:'Επιβεβαίωση πιστοποιητικών',i:'shield',s:'live'},
+   {id:'vpapers',t:'Χαρτιά οχημάτων',i:'car',s:'live'},
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'training',t:'Εκπαιδεύσεις',i:'book',s:'live'},
    {id:'forms',t:'Έντυπα & εξαγωγές Σ.Π.Κ.',i:'book',s:'live'},
@@ -977,6 +979,7 @@ const SUBS={
  fimport:'Επικόλληση από εξαγωγή φόρμας — ιατρικά προηγούμενων ετών',
 
  certq:'Χαρτιά που περιμένουν να τα δεις — μέχρι τότε δεν μετρούν σε δράση',
+ vpapers:'ΜΟΤ, ασφάλειες και άδειες κυκλοφορίας — ανά όχημα, όχι ανά άνθρωπο',
  warrants:'Εντολές Διοίκησης και Αναθέσεις Καθηκόντων',
  honours:'Εύφημες μνείες και μετάλλια — σχεδόν πάντα βαθμοφόρων',
  approvals:'Αίτηση προς την Επαρχία — Εντολή, Ανάθεση, σχολή',
@@ -999,7 +1002,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 11:08'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 11:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1488,9 +1491,12 @@ async function loadAll(){
     /* Ουρά επιβεβαίωσης ταυτότητας. Ορατή μόνο στον Α.Σ. — ο καθένας άλλος
        παίρνει άδειο πίνακα από την RLS, όχι σφάλμα. */
     sb.from('identity_review').select('*').is('decision',null)
-      .order('created_at',{ascending:false}).limit(200)   // ΠΑΝΤΑ τελευταίο
+      .order('created_at',{ascending:false}).limit(200),
+    sb.from('vehicle_papers').select('*').limit(1000),
+    sb.from('vehicle_paper_inbox').select('*').is('resolved_at',null).limit(500)
+      // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1532,7 +1538,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -9158,6 +9164,22 @@ V.rollover=()=>{
 };
 
 /* ── Κέντρο εκκρεμοτήτων ── */
+/* Το παράθυρο ανανέωσης αδειών κυκλοφορίας (Κύπρος): ανοίγει 7 Ιανουαρίου,
+   κλείνει 11 Μαρτίου — ίδιο 2025 και 2026. Μετά την προθεσμία επιβάλλεται
+   €10 συν 10% των τελών. Δεν το ανακαλύπτουμε από τα δεδομένα: είναι νόμος,
+   και το λέμε ρητά ώστε να μη χαθεί σε καμιά «λήξη σε Χ μέρες». */
+function roadTaxWindow(d){
+  const t=d?new Date(d):new Date(), y=t.getFullYear();
+  const open=new Date(y,0,7), close=new Date(y,2,11,23,59,59);
+  const inside = t>=open && t<=close;
+  const days = Math.ceil((close-t)/864e5);
+  if(t<open) return {open:false, sev:'info',
+    msg:'Ανοίγει 7 Ιανουαρίου '+(y)+'. Προθεσμία: 11 Μαρτίου.'};
+  if(!inside) return {open:false, sev:'info',
+    msg:'Η προθεσμία του '+y+' έκλεισε στις 11 Μαρτίου. Ανοίγει ξανά 7 Ιανουαρίου '+(y+1)+'.'};
+  return {open:true, sev: days<=21?'bad':'warn',
+    msg:'Ανοιχτή μέχρι 11 Μαρτίου — '+days+' μέρες. Μετά: €10 συν 10% των τελών.'};
+}
 function issuesBody(){
   const act=D.bh.filter(p=>p.status==='Ενεργός');
   const led=act.filter(p=>isLed(p));
@@ -9172,6 +9194,16 @@ function issuesBody(){
     {t:'Ν.91(Ι) που λήγει σύντομα',w:`Λήγει εντός ${TH.certWarnDays||90} ημερών.`,s:'warn',l:led.filter(p=>certState(p.id).k==='soon')},
     {t:'Πιστοποιητικά προς επιβεβαίωση',w:'Χαρτιά που δεν τα έχει δει άνθρωπος — δεν μετρούν σε δράση.',s:'warn',goto:'certq',
      l:[...new Set((D.pc||[]).filter(c=>!c.confirmed_on).map(c=>c.person_id))].map(id=>D.bh.find(p=>p.id===id)).filter(Boolean)},
+    /* Η άδεια κυκλοφορίας στην Κύπρο είναι ΕΤΗΣΙΑ και κοινή για όλους: ανοίγει
+       7 Ιανουαρίου, κλείνει 11 Μαρτίου. Μετά, €10 + 10%. Δεν είναι «λήγει σε Χ
+       μέρες» ανά όχημα — είναι μία ημερομηνία που αφορά ΟΛΟ τον στόλο. */
+    {t:'Άδειες κυκλοφορίας — προθεσμία 11 Μαρτίου',
+     w:roadTaxWindow().msg, s:roadTaxWindow().sev, goto:'vpapers',
+     l:roadTaxWindow().open?(D.veh||[]).filter(v=>{
+         const p=(D.vp||[]).filter(x=>x.vehicle_id===v.id&&x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ')
+           .sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
+         return !p||!p.expires_on||new Date(p.expires_on)<new Date();
+       }).map(v=>({id:v.owner_id,first_name:v.plate,last_name:'',section:null})):[]},
     {t:'Οδηγοί με ανασφάλιστο όχημα',w:'Το όχημα που δηλώνουν δεν έχει ασφάλεια σε ισχύ.',s:'bad',
      l:[...new Set((D.vl||[]).filter(l=>{const i=(D.vi||[]).filter(x=>x.vehicle_id===l.vehicle_id)
           .sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
@@ -9292,6 +9324,109 @@ function addMonths(iso,m){
   if(d.getDate()<day) d.setDate(0);          // 31 Ιαν + 1 μήνα = 28/29 Φεβ
   return d.toISOString().slice(0,10);
 }
+/* ══ ΧΑΡΤΙΑ ΟΧΗΜΑΤΩΝ ═════════════════════════════════════════════════════
+   ΜΟΤ, ασφάλεια και άδεια κυκλοφορίας ΔΕΝ ανήκουν στον άνθρωπο. Όταν πουληθεί
+   το αυτοκίνητο φεύγουν μαζί του· όταν το οδηγεί άλλος εξακολουθούν να
+   ισχύουν. Η εισαγωγή από τον φάκελο τα είχε περάσει ως πιστοποιητικά
+   προσώπου — «ο Χ έχει 4 ασφάλειες», χωρίς να λέει για ποιο όχημα.
+
+   Το OCR διάβασε πινακίδα και λήξη από κάθε χαρτί. ΠΡΟΤΕΙΝΕΙ· δεν αποφασίζει.
+   Ένα λάθος εδώ σημαίνει «ασφαλισμένο» αυτοκίνητο που δεν είναι.          */
+const VP_KIND={'ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ':'Ασφάλεια οχήματος','ΜΟΤ':'ΜΟΤ','ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ':'Άδεια κυκλοφορίας'};
+V.vpapers=()=>{
+  const inb=(D.vpi||[]).filter(x=>!x.resolved_at);
+  const byP={}; inb.forEach(x=>(byP[x.person_id]=byP[x.person_id]||[]).push(x));
+  const ord=Object.keys(byP).map(id=>({p:D.bh.find(b=>b.id===id),xs:byP[id],
+      veh:(D.veh||[]).filter(v=>v.owner_id===id)}))
+    .filter(x=>x.p).sort((a,b)=>nm(a.p).localeCompare(nm(b.p),'el'));
+
+  /* Ό,τι έχει ήδη τακτοποιηθεί, φαίνεται — αλλιώς δεν ξέρεις τι πέτυχε. */
+  const done=(D.veh||[]).map(v=>({v,
+      ins:(D.vi||[]).filter(i=>i.vehicle_id===v.id).sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0],
+      pap:(D.vp||[]).filter(x=>x.vehicle_id===v.id)}))
+    .sort((a,b)=>String(a.v.plate).localeCompare(String(b.v.plate)));
+
+  $('view').innerHTML=`
+    ${inb.length?`<div class="card pad" style="margin-bottom:14px;border-color:var(--warn)">
+      <b>Χαρτιά χωρίς όχημα <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${inb.length}</span></b>
+      <div class="muted" style="font-size:13px;margin:5px 0 0;line-height:1.6">
+        Ήρθαν από τον φάκελο ως πιστοποιητικά προσώπου, αλλά ανήκουν σε <b>όχημα</b>.
+        Η πινακίδα δίπλα είναι <b>πρόταση του OCR</b> — άνοιξε το χαρτί και δες την.
+        Ό,τι δεν αναθέσεις, μένει εδώ· τίποτα δεν μαντεύεται.</div></div>
+
+    ${ord.map(({p,xs,veh})=>`<div class="card" style="margin-bottom:9px">
+      <div class="pad" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-bottom:4px">
+        <b style="font-size:14px">${pn(p)}</b>
+        ${veh.length?`<span class="dim" style="font-size:12px">οχήματα: ${veh.map(v=>esc(v.plate)).join(' · ')}</span>`
+                    :'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent;font-size:11px">κανένα όχημα στο μητρώο</span>'}</div>
+      <div style="padding:0 16px 12px">
+        ${xs.map(x=>{const d=(D.doc||[]).find(y=>y.id===x.document_id);
+          return `<div style="border-top:1px solid var(--line);padding:9px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="flex:1 1 190px;min-width:160px">
+              <b style="font-weight:500;font-size:13.5px">${esc(VP_KIND[x.kind]||x.kind)}</b>
+              <div class="dim" style="font-size:11.5px;margin-top:2px">
+                ${d?`<a href="#" class="vdocopen" data-path="${esc(d.path)}">📄 δες το χαρτί</a>`:'χωρίς αρχείο'}
+                ${x.ocr_plate?` · OCR: <b style="color:var(--ink)">${esc(x.ocr_plate)}</b>`:' · χωρίς πινακίδα στο OCR'}</div></span>
+            <span style="display:flex;flex-direction:column;gap:2px">
+              <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης</label>
+              <input type="date" class="vpdate" data-id="${x.id}" value="${esc(x.ocr_expires||'')}"></span>
+            <span style="display:flex;flex-direction:column;gap:2px">
+              <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Όχημα</label>
+              <select class="vpsel" data-id="${x.id}">
+                <option value="">— διάλεξε —</option>
+                ${veh.map(v=>`<option value="${v.id}">${esc(v.plate)}</option>`).join('')}
+                <option value="NEW">＋ Νέο όχημα…</option></select></span>
+            <span style="display:flex;gap:5px">
+              <button class="btn p sm vpok" data-id="${x.id}">Ανάθεση</button></span>
+          </div>`}).join('')}
+      </div></div>`).join('')}`
+    :`<div class="card pad" style="margin-bottom:14px">
+        <b>Κάθε χαρτί έχει όχημα</b>
+        <div class="muted" style="font-size:13px;margin-top:4px">Δεν έμεινε τίποτα αδέσποτο.</div></div>`}
+
+    <div class="sec"><h3>Τα οχήματά μας</h3></div>
+    ${done.length?done.map(({v,ins,pap})=>{
+      const mot=pap.filter(x=>x.kind==='ΜΟΤ').sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
+      const rt =pap.filter(x=>x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ').sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
+      const own=D.bh.find(b=>b.id===v.owner_id);
+      const chip=(lbl,row)=>{
+        if(!row||!row.expires_on)return `<span class="pill" style="font-size:11px">${lbl}: <span class="dim">—</span></span>`;
+        const dd=Math.round((new Date(row.expires_on)-new Date())/864e5);
+        const c=dd<0?['badbg','bad']:dd<=60?['warnbg','warn']:['okbg','ok'];
+        return `<span class="pill" style="font-size:11px;background:var(--${c[0]});border-color:transparent;color:var(--${c[1]})">${lbl}: ${fdate(row.expires_on)}</span>`};
+      return `<div class="card pad" style="margin-bottom:7px;display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+        <b style="font-size:14px;font-variant-numeric:tabular-nums">${esc(v.plate)}</b>
+        ${v.make?`<span class="dim" style="font-size:12.5px">${esc(v.make)} ${esc(v.model||'')}</span>`:''}
+        <span class="dim" style="font-size:12.5px">${own?pn(own):'—'}</span>
+        <span class="sp"></span>
+        ${chip('Ασφάλεια',ins)}${chip('ΜΟΤ',mot)}${chip('Άδεια',rt)}</div>`}).join('')
+      :'<div class="dim" style="font-size:13px">Κανένα όχημα καταχωρημένο.</div>'}`;
+
+  document.querySelectorAll('.vdocopen').forEach(a=>a.onclick=e=>{
+    e.preventDefault();e.stopPropagation();docOpen(a.dataset.path)});
+  document.querySelectorAll('.vpok').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.id;
+    const sel=document.querySelector('.vpsel[data-id="'+id+'"]');
+    const dt =document.querySelector('.vpdate[data-id="'+id+'"]');
+    if(!dt.value){dt.focus();return toast('Βάλε την ημερομηνία λήξης που γράφει το χαρτί.')}
+    if(!sel.value){sel.focus();return toast('Διάλεξε όχημα.')}
+    let res;
+    b.disabled=true;
+    if(sel.value==='NEW'){
+      const x=(D.vpi||[]).find(y=>y.id===id);
+      const pl=prompt('Πινακίδα του οχήματος (π.χ. KQF 182):', x&&x.ocr_plate||'');
+      if(!pl){b.disabled=false;return}
+      res=await sb.rpc('vehicle_paper_new_vehicle',{p_inbox:id,p_plate:pl,p_expires:dt.value});
+    }else{
+      res=await sb.rpc('vehicle_paper_assign',{p_inbox:id,p_vehicle:sel.value,p_expires:dt.value});
+    }
+    const {data,error}=res;
+    if(error||(data&&data.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
+    toast('Μπήκε στο '+(data.plate||'όχημα'));
+    await loadAll(); V.vpapers();
+  });
+};
+
 V.certq=()=>{
   const pend=(D.pc||[]).filter(c=>!c.confirmed_on);
   const byP={}; pend.forEach(c=>(byP[c.person_id]=byP[c.person_id]||[]).push(c));
