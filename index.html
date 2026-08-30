@@ -1002,7 +1002,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 12:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 13:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2910,17 +2910,6 @@ async function docUpload(file,meta){
   if(error)throw error;
   D.doc=(D.doc||[]); D.doc.push(data); saveCache(); return data;
 }
-/* ══ ΕΠΕΞΕΡΓΑΣΙΑ ΕΙΚΟΝΑΣ ══════════════════════════════════════════════════
-   Οι μισές φωτογραφίες χαρτιών είναι στραβές, με μισό τραπέζι μέσα. Μέχρι
-   τώρα έπρεπε να τις φτιάξεις αλλού και να τις ξανανεβάσεις — δηλαδή δεν τις
-   έφτιαχνε κανείς.
-
-   ΤΟ ΠΡΩΤΟΤΥΠΟ ΜΕΝΕΙ. Είναι νομικά χαρτιά: η επεξεργασία ανεβαίνει ως ΝΕΟ
-   αρχείο και το παλιό μένει στη θέση του, με κουμπί επαναφοράς. Αν αύριο
-   ρωτήσει κάποιος «τι ακριβώς είδες;», η απάντηση υπάρχει.
-
-   Δουλεύει ΜΟΝΟ σε εικόνες. Ένα PDF δεν είναι καμβάς — για PDF δεν
-   προσφέρουμε το κουμπί, αντί να το προσφέρουμε και να αποτυγχάνει.        */
 /* ══ ΔΙΟΡΘΩΣΗ ΕΙΚΟΝΑΣ ═════════════════════════════════════════════════════
    ΜΙΑ σάρωση σε όλη την εφαρμογή: οι ΤΕΣΣΕΡΙΣ ΓΩΝΙΕΣ, όπως στις αποδείξεις
    της κατασκήνωσης. Σέρνεις τις γωνίες πάνω στο χαρτί και ο μετασχηματισμός
@@ -2942,9 +2931,21 @@ async function docEdit(doc, after){
   if(typeof openCrop!=='function') return toast('Ο σαρωτής δεν φορτώθηκε.');
   const {data,error}=await sb.storage.from('e76').createSignedUrl(doc.path,300);
   if(error||!data) return toast('Δεν άνοιξε η εικόνα');
-  const img=new Image(); img.crossOrigin='anonymous';
-  img.onerror=()=>toast('Δεν διαβάστηκε η εικόνα');
+  /* ΓΙΑΤΙ ΚΑΤΕΒΑΖΟΥΜΕ ΤΑ BYTES ΑΝΤΙ ΝΑ ΔΩΣΟΥΜΕ ΤΗ ΔΙΕΥΘΥΝΣΗ ΣΤΗΝ ΕΙΚΟΝΑ:
+     εικόνα φορτωμένη από άλλη προέλευση «μολύνει» τον καμβά — ο φυλλομετρητής
+     απαγορεύει μετά το διάβασμα των pixel, που είναι ΑΚΡΙΒΩΣ ό,τι κάνει το
+     ίσιωμα. Έσκαγε σιωπηλά μόλις πατούσες «Εφαρμογή». Τα bytes που κατεβαίνουν
+     με fetch γίνονται blob της ίδιας προέλευσης — καθαρός καμβάς, πάντα. */
+  let blobUrl;
+  try{
+    const r=await fetch(data.signedUrl);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    blobUrl=URL.createObjectURL(await r.blob());
+  }catch(e){ return toast('Δεν κατέβηκε η εικόνα: '+(e.message||e)) }
+  const img=new Image();
+  img.onerror=()=>{URL.revokeObjectURL(blobUrl); toast('Δεν διαβάστηκε η εικόνα')};
   img.onload=()=>{
+    URL.revokeObjectURL(blobUrl);
     openCrop(fitCanvas(img,1500), async out=>{
       if(!out) return;                                   // άκυρο — τίποτα δεν άλλαξε
       const blob=await new Promise(r=>out.toBlob(r,'image/jpeg',0.85));
@@ -2958,7 +2959,7 @@ async function docEdit(doc, after){
       toast('Διορθώθηκε'); await loadAll(); after&&after();
     });
   };
-  img.src=data.signedUrl;
+  img.src=blobUrl;
 }
 async function docRevert(doc, after){
   if(!confirm('Να γυρίσει η αρχική, απείραχτη εικόνα;'))return;
@@ -4924,11 +4925,21 @@ function cropWire(){
     if(mode==='cancel'){ done(null); return; }
     $('cropBusy').classList.add('show');
     setTimeout(function(){
-      var out = (mode==='crop') ? warpCanvas(work, corners) : work;   // nocrop: work ≤1500 (≤1600)
-      enhanceCanvas(out);
-      
-      $('cropBusy').classList.remove('show');
-      done(out);
+      /* Ό,τι σκάει εδώ, έσκαγε ΣΙΩΠΗΛΑ: το «Επεξεργασία εικόνας…» έμενε
+         κολλημένο και ο χρήστης έβλεπε μια εφαρμογή που δεν αποκρίνεται.
+         Η συνηθέστερη αιτία είναι «μολυσμένος» καμβάς — εικόνα από άλλη
+         προέλευση, όπου το getImageData απαγορεύεται. */
+      try{
+        var out = (mode==='crop') ? warpCanvas(work, corners) : work;  // nocrop: work ≤1500
+        enhanceCanvas(out);
+        $('cropBusy').classList.remove('show');
+        done(out);
+      }catch(err){
+        $('cropBusy').classList.remove('show');
+        console.error('crop:', err);
+        toast('Δεν έγινε η σάρωση: '+(err&&err.message||err));
+        done(null);
+      }
     }, 30);
   }
   if($('cropApply'))$('cropApply').addEventListener('click', function(){ finish('crop'); });
