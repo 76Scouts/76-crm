@@ -1002,7 +1002,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 11:52'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 12:02'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2808,10 +2808,10 @@ function certsHTML(p){
           <button class="btn gh sm pcdel" data-id="${c.id}" title="Διαγραφή">✕</button></div>
         <div class="dim" style="font-size:11.5px">${c.notes&&/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes)?esc(c.notes.split('—')[0].trim())+' · ':''}${c.issued_on?'έκδοση '+fdate(c.issued_on):''}${c.number?' · αρ. '+esc(c.number):''}
           ${(()=>{const ds=(D.cd||[]).filter(x=>x.cert_id===c.id).sort((a,b)=>(a.seq||0)-(b.seq||0))
-              .map(x=>(D.doc||[]).find(y=>y.id===x.document_id)).filter(Boolean);
-            const all=ds.length?ds:(d?[d]:[]);
-            return all.map((f,ix)=>` · <a href="#" class="docopen" data-path="${esc(f.path)}">${
-              all.length>1?'όψη '+(ix+1):esc(f.title||'αρχείο')}</a>`).join('')})()}</div>
+              .map(x=>({cd:x,f:(D.doc||[]).find(y=>y.id===x.document_id)})).filter(x=>x.f);
+            const all=ds.length?ds:(d?[{cd:{},f:d}]:[]);
+            return all.map((r,ix)=>` · <a href="#" class="docopen" data-path="${esc(r.f.path)}">${
+              esc(r.cd.label || (all.length>1?'όψη '+(ix+1):(r.f.title||'αρχείο')))}</a>`).join('')})()}</div>
       </div>`}).join(''):'<div class="dim" style="font-size:13px">Κανένα καταχωρημένο</div>'}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Νέο πιστοποιητικό</summary>
       <div style="display:grid;gap:7px;margin-top:9px">
@@ -9500,15 +9500,23 @@ V.certq=()=>{
               <b style="font-weight:500;font-size:13.5px">${esc(t.name)}</b>
               ${c.label?`<span class="pill" style="font-size:11px;margin-left:5px">${esc(c.label)}</span>`:''}
               <div class="dim" style="font-size:11.5px;margin-top:2px">
-                ${(()=>{ /* ΟΛΕΣ οι όψεις, όχι μόνο η πρώτη — αλλιώς το πίσω
-                            μέρος υπάρχει και δεν φαίνεται πουθενά. */
-                  const ds=(D.cd||[]).filter(x=>x.cert_id===c.id)
+                ${(()=>{ /* ΟΛΕΣ οι όψεις, με το όνομα ΚΑΙ τη σειρά που τους
+                            δίνεις εσύ. «Όψη 1» είναι η σειρά που τις βρήκε η
+                            μηχανή· η μπροστινή είναι που θες πρώτη. */
+                  const rows=(D.cd||[]).filter(x=>x.cert_id===c.id)
                     .sort((a,b)=>(a.seq||0)-(b.seq||0))
-                    .map(x=>(D.doc||[]).find(y=>y.id===x.document_id)).filter(Boolean);
-                  const all = ds.length?ds : (d?[d]:[]);
-                  if(!all.length) return 'χωρίς αρχείο';
-                  return all.map((f,ix)=>`<a href="#" class="qdocopen" data-path="${esc(f.path)}">📄 ${
-                    all.length>1?'όψη '+(ix+1):'δες το αρχείο'}</a>`).join(' · ')})()}
+                    .map(x=>({cd:x, f:(D.doc||[]).find(y=>y.id===x.document_id)}))
+                    .filter(x=>x.f);
+                  if(!rows.length) return d
+                    ? `<a href="#" class="qdocopen" data-path="${esc(d.path)}">📄 δες το αρχείο</a>`
+                    : 'χωρίς αρχείο';
+                  return rows.map((r,ix)=>{
+                    const nm=r.cd.label || (rows.length>1?'όψη '+(ix+1):'δες το αρχείο');
+                    return `<span style="white-space:nowrap">`
+                      +`<a href="#" class="qdocopen" data-path="${esc(r.f.path)}">📄 ${esc(nm)}</a>`
+                      +(rows.length>1?`<a href="#" class="cdname" data-id="${r.cd.id}" title="Δώσε όνομα σε αυτή την όψη" style="margin-left:3px">✎</a>`
+                        +(ix?`<a href="#" class="cdfirst" data-id="${r.cd.id}" title="Κάν' την πρώτη" style="margin-left:2px">↑</a>`:'')
+                       :'')+`</span>`}).join(' · ')})()}
                 ${!exp&&t.validity_months?` · ισχύει ${t.validity_months} μήνες`:''}
                 ${fromOcr?' · <b style="color:var(--warn)">η ημερομηνία είναι πρόταση OCR</b>':''}</div></span>
             <span style="display:flex;flex-direction:column;gap:2px">
@@ -9570,6 +9578,23 @@ V.certq=()=>{
     const {data,error}=await sb.rpc('cert_merge_sides',{p_keep:ids[0],p_absorb:ids.slice(1)});
     if(error||(data&&data.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
     toast('Ενώθηκαν σε ένα'); await loadAll(); V.certq();
+  });
+  /* Ονομασία και σειρά όψεων. Οι συνηθισμένες τιμές προτείνονται, αλλά δεν
+     επιβάλλονται: υπάρχουν και τρισέλιδα χαρτιά. */
+  document.querySelectorAll('.cdname').forEach(a=>a.onclick=async e=>{
+    e.preventDefault();
+    const cur=(D.cd||[]).find(x=>x.id===a.dataset.id)||{};
+    const v=prompt('Όνομα όψης (π.χ. Μπροστά, Πίσω, Σελίδα 2):', cur.label||'');
+    if(v===null)return;
+    const {data,error}=await sb.rpc('cert_doc_rename',{p_id:a.dataset.id,p_label:v});
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    if(cur)cur.label=v.trim()||null; saveCache(); V.certq();
+  });
+  document.querySelectorAll('.cdfirst').forEach(a=>a.onclick=async e=>{
+    e.preventDefault();
+    const {data,error}=await sb.rpc('cert_doc_first',{p_id:a.dataset.id});
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    toast('Μπήκε πρώτη'); await loadAll(); V.certq();
   });
   document.querySelectorAll('.qcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή αυτής της καταχώρησης; Το αρχείο μένει στα έγγραφα του ατόμου.'))return;
