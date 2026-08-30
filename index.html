@@ -1002,7 +1002,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 11:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 11:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1494,10 +1494,11 @@ async function loadAll(){
       .order('created_at',{ascending:false}).limit(200),
     sb.from('vehicle_papers').select('*').limit(1000),
     sb.from('vehicle_paper_inbox').select('*').is('resolved_at',null).limit(500),
-    sb.from('cert_ocr_hint').select('*').limit(2000)
+    sb.from('cert_ocr_hint').select('*').limit(2000),
+    sb.from('cert_documents').select('*').limit(4000)
       // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1539,7 +1540,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -2806,7 +2807,11 @@ function certsHTML(p){
           ${c.confirmed_on?'':`<button class="btn p sm pcok" data-id="${c.id}" title="Είδα το χαρτί — ισχύει">Επιβεβαίωση</button>`}
           <button class="btn gh sm pcdel" data-id="${c.id}" title="Διαγραφή">✕</button></div>
         <div class="dim" style="font-size:11.5px">${c.notes&&/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes)?esc(c.notes.split('—')[0].trim())+' · ':''}${c.issued_on?'έκδοση '+fdate(c.issued_on):''}${c.number?' · αρ. '+esc(c.number):''}
-          ${d?` · <a href="#" class="docopen" data-path="${esc(d.path)}">${esc(d.title||'αρχείο')}</a>`:''}</div>
+          ${(()=>{const ds=(D.cd||[]).filter(x=>x.cert_id===c.id).sort((a,b)=>(a.seq||0)-(b.seq||0))
+              .map(x=>(D.doc||[]).find(y=>y.id===x.document_id)).filter(Boolean);
+            const all=ds.length?ds:(d?[d]:[]);
+            return all.map((f,ix)=>` · <a href="#" class="docopen" data-path="${esc(f.path)}">${
+              all.length>1?'όψη '+(ix+1):esc(f.title||'αρχείο')}</a>`).join('')})()}</div>
       </div>`}).join(''):'<div class="dim" style="font-size:13px">Κανένα καταχωρημένο</div>'}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Νέο πιστοποιητικό</summary>
       <div style="display:grid;gap:7px;margin-top:9px">
@@ -9472,6 +9477,13 @@ V.certq=()=>{
         <b style="font-size:14px">${pn(p)}</b>
         ${p.section?`<span class="pill" style="font-size:11px">${esc(p.section)}</span>`:''}
         <span class="sp"></span>
+        ${(()=>{ /* Δύο εγγραφές ΙΔΙΟΥ είδους = συνήθως μπρος και πίσω του ίδιου
+                    χαρτιού. Το προτείνουμε· δεν το κάνουμε μόνοι μας, γιατί
+                    μπορεί κάποιος να έχει όντως δύο (π.χ. παλιό και νέο). */
+          const g={}; cs.forEach(c=>(g[c.type_code]=g[c.type_code]||[]).push(c));
+          return Object.keys(g).filter(k=>g[k].length>1).map(k=>
+            `<button class="btn sm qmerge" data-ids="${g[k].map(c=>c.id).join(',')}"
+              title="Μπρος και πίσω του ίδιου χαρτιού σε δύο λήψεις">⇄ Ένωσε τα ${g[k].length} «${esc(ctype(k).name)}»</button>`).join('')})()}
         ${cs.length>1?`<button class="btn sm qcokall" data-ids="${cs.map(c=>c.id).join(',')}">Δέξου και τα ${cs.length}</button>`:''}
       </div>
       <div style="padding:0 16px 12px">
@@ -9488,8 +9500,15 @@ V.certq=()=>{
               <b style="font-weight:500;font-size:13.5px">${esc(t.name)}</b>
               ${c.label?`<span class="pill" style="font-size:11px;margin-left:5px">${esc(c.label)}</span>`:''}
               <div class="dim" style="font-size:11.5px;margin-top:2px">
-                ${d?`<a href="#" class="qdocopen" data-path="${esc(d.path)}">📄 δες το αρχείο</a>`
-                   :'χωρίς αρχείο'}
+                ${(()=>{ /* ΟΛΕΣ οι όψεις, όχι μόνο η πρώτη — αλλιώς το πίσω
+                            μέρος υπάρχει και δεν φαίνεται πουθενά. */
+                  const ds=(D.cd||[]).filter(x=>x.cert_id===c.id)
+                    .sort((a,b)=>(a.seq||0)-(b.seq||0))
+                    .map(x=>(D.doc||[]).find(y=>y.id===x.document_id)).filter(Boolean);
+                  const all = ds.length?ds : (d?[d]:[]);
+                  if(!all.length) return 'χωρίς αρχείο';
+                  return all.map((f,ix)=>`<a href="#" class="qdocopen" data-path="${esc(f.path)}">📄 ${
+                    all.length>1?'όψη '+(ix+1):'δες το αρχείο'}</a>`).join(' · ')})()}
                 ${!exp&&t.validity_months?` · ισχύει ${t.validity_months} μήνες`:''}
                 ${fromOcr?' · <b style="color:var(--warn)">η ημερομηνία είναι πρόταση OCR</b>':''}</div></span>
             <span style="display:flex;flex-direction:column;gap:2px">
@@ -9541,6 +9560,17 @@ V.certq=()=>{
     const ids=b.dataset.ids.split(',');
     if(!confirm('Επιβεβαιώνεις ότι είδες και τα '+ids.length+' χαρτιά αυτού του ατόμου;'))return;
     accept(ids,b)});
+  /* Η ένωση γίνεται στη ΒΑΣΗ, γιατί πρέπει να ελεγχθεί ότι είναι ίδιο πρόσωπο
+     και ίδιο είδος. Ο φυλλομετρητής δεν είναι μέρος για τέτοιους ελέγχους. */
+  document.querySelectorAll('.qmerge').forEach(b=>b.onclick=async()=>{
+    const ids=b.dataset.ids.split(',');
+    if(!confirm('Είναι ΤΟ ΙΔΙΟ χαρτί σε '+ids.length+' λήψεις (π.χ. μπρος και πίσω);\n\n'
+      +'Θα μείνει ένα πιστοποιητικό με '+ids.length+' αρχεία. Κανένα αρχείο δεν χάνεται.'))return;
+    b.disabled=true;
+    const {data,error}=await sb.rpc('cert_merge_sides',{p_keep:ids[0],p_absorb:ids.slice(1)});
+    if(error||(data&&data.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
+    toast('Ενώθηκαν σε ένα'); await loadAll(); V.certq();
+  });
   document.querySelectorAll('.qcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή αυτής της καταχώρησης; Το αρχείο μένει στα έγγραφα του ατόμου.'))return;
     const {error}=await sb.from('person_certificates').delete().eq('id',b.dataset.id);
