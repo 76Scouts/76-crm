@@ -1002,7 +1002,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 12:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-08-30 12:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2921,146 +2921,50 @@ async function docUpload(file,meta){
 
    Δουλεύει ΜΟΝΟ σε εικόνες. Ένα PDF δεν είναι καμβάς — για PDF δεν
    προσφέρουμε το κουμπί, αντί να το προσφέρουμε και να αποτυγχάνει.        */
+/* ══ ΔΙΟΡΘΩΣΗ ΕΙΚΟΝΑΣ ═════════════════════════════════════════════════════
+   ΜΙΑ σάρωση σε όλη την εφαρμογή: οι ΤΕΣΣΕΡΙΣ ΓΩΝΙΕΣ, όπως στις αποδείξεις
+   της κατασκήνωσης. Σέρνεις τις γωνίες πάνω στο χαρτί και ο μετασχηματισμός
+   προοπτικής το ισιώνει — δουλεύει και σε φωτογραφία από γωνία, που κανένας
+   ροοστάτης «ισιώματος» δεν πιάνει.
+
+   Είχα φτιάξει δεύτερο εργαλείο με ροοστάτη. Λάθος: χειρότερο αποτέλεσμα, και
+   δύο διαφορετικοί τρόποι να κάνεις το ίδιο πράγμα μέσα στην ίδια εφαρμογή.
+
+   ΤΟ ΠΡΩΤΟΤΥΠΟ ΜΕΝΕΙ. Η διόρθωση ανεβαίνει ως ΝΕΟ αρχείο· το αρχικό μένει και
+   επιστρέφεται με ένα πάτημα. Είναι νομικά χαρτιά: αν αύριο ρωτήσει κάποιος
+   «τι ακριβώς είδες;», η απάντηση πρέπει να υπάρχει.
+
+   Μόνο σε εικόνες. Ένα PDF δεν είναι καμβάς — δεν δείχνουμε κουμπί που θα
+   αποτύγχανε.                                                              */
 const isImg=p=>/\.(jpe?g|png|heic|webp|gif|bmp|tiff?)$/i.test(String(p||''));
-function docEdit(doc, after){
-  if(!isImg(doc.path)) return toast('Η επεξεργασία δουλεύει σε φωτογραφίες, όχι σε PDF.');
-  const S={rot:0, deg:0, contrast:false, crop:null};   // rot = τέταρτα, deg = ίσιωμα
-  let img=null, drag=null;
-
-  const ov=document.createElement('div');
-  ov.className='ovl'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:900;display:flex;align-items:center;justify-content:center;padding:14px';
-  ov.innerHTML=`<div class="card" style="max-width:820px;width:100%;max-height:94vh;overflow:auto">
-    <div class="pad" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line)">
-      <b style="font-size:15px">Διόρθωση εικόνας</b>
-      <span class="dim" style="font-size:12px">${esc(doc.title||'')}</span>
-      <span class="sp"></span><button class="btn gh sm" id="deX">Κλείσιμο</button></div>
-    <div style="padding:12px 16px">
-      <div id="deWrap" style="position:relative;background:var(--bg2);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:220px">
-        <canvas id="deCv" style="max-width:100%;display:block;cursor:crosshair"></canvas>
-        <div id="deBox" style="position:absolute;border:2px dashed var(--acc);background:rgba(0,0,0,.15);display:none;pointer-events:none"></div>
-      </div>
-      <div class="dim" style="font-size:11.5px;margin-top:6px">Σύρε πάνω στην εικόνα για να διαλέξεις τι κρατάς. Ξανασύρε για να αλλάξεις.</div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:10px">
-        <button class="btn sm" id="deL">↺ 90°</button>
-        <button class="btn sm" id="deR">↻ 90°</button>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">Ίσιωμα
-          <input type="range" id="deDeg" min="-15" max="15" step="0.5" value="0" style="width:130px">
-          <span id="deDegV" class="dim" style="font-variant-numeric:tabular-nums;min-width:38px">0°</span></label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:12.5px">
-          <input type="checkbox" id="deC"> Πιο ευανάγνωστο</label>
-        <button class="btn gh sm" id="deReset">Από την αρχή</button>
-      </div>
-      <div style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn p" id="deSave">Αποθήκευση</button>
-        ${doc.original_path?'<button class="btn gh" id="deRev">Επαναφορά πρωτοτύπου</button>':''}
-        <span class="sp"></span>
-        <span class="dim" style="font-size:11.5px;align-self:center">Το πρωτότυπο δεν σβήνεται.</span>
-      </div>
-    </div></div>`;
-  document.body.appendChild(ov);
-  const $$=id=>ov.querySelector('#'+id);
-  const cv=$$('deCv'), ctx=cv.getContext('2d');
-  const close=()=>ov.remove();
-  $$('deX').onclick=close;
-  ov.onclick=e=>{if(e.target===ov)close()};
-
-  function draw(){
-    if(!img)return;
-    const q=((S.rot%4)+4)%4, swap=q===1||q===3;
-    const w=swap?img.height:img.width, h=swap?img.width:img.height;
-    const rad=S.deg*Math.PI/180, c=Math.abs(Math.cos(rad)), s=Math.abs(Math.sin(rad));
-    const W=Math.round(w*c+h*s), H=Math.round(w*s+h*c);
-    const sc=Math.min(1, 1400/Math.max(W,H));
-    cv.width=Math.round(W*sc); cv.height=Math.round(H*sc);
-    ctx.save(); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height);
-    ctx.translate(cv.width/2, cv.height/2); ctx.rotate(rad); ctx.scale(sc,sc);
-    ctx.rotate(q*Math.PI/2);
-    ctx.drawImage(img, -img.width/2, -img.height/2);
-    ctx.restore();
-    if(S.contrast){
-      /* Απλή τέντωση αντίθεσης σε γκρι — τα σκαναρίσματα με κιτρινωπό φόντο
-         γίνονται αναγνώσιμα χωρίς να αλλοιωθεί το περιεχόμενο. */
-      const d=ctx.getImageData(0,0,cv.width,cv.height), a=d.data;
-      let lo=255, hi=0;
-      for(let i=0;i<a.length;i+=4){const g=(a[i]*.299+a[i+1]*.587+a[i+2]*.114);
-        if(g<lo)lo=g; if(g>hi)hi=g;}
-      const rng=Math.max(1,hi-lo);
-      for(let i=0;i<a.length;i+=4){
-        const g=(a[i]*.299+a[i+1]*.587+a[i+2]*.114);
-        let v=(g-lo)/rng*255; v=Math.max(0,Math.min(255,v));
-        a[i]=a[i+1]=a[i+2]=v;}
-      ctx.putImageData(d,0,0);
-    }
-    showBox();
-  }
-  function showBox(){
-    const b=$$('deBox');
-    if(!S.crop){b.style.display='none';return}
-    const r=cv.getBoundingClientRect(), p=$$('deWrap').getBoundingClientRect();
-    const k=r.width/cv.width;
-    b.style.display='block';
-    b.style.left=(r.left-p.left+S.crop.x*k)+'px'; b.style.top=(r.top-p.top+S.crop.y*k)+'px';
-    b.style.width=(S.crop.w*k)+'px'; b.style.height=(S.crop.h*k)+'px';
-  }
-  const pt=e=>{const r=cv.getBoundingClientRect(), k=cv.width/r.width;
-    const t=e.touches?e.touches[0]:e;
-    return {x:Math.max(0,Math.min(cv.width,(t.clientX-r.left)*k)),
-            y:Math.max(0,Math.min(cv.height,(t.clientY-r.top)*k))}};
-  const down=e=>{e.preventDefault(); drag=pt(e); S.crop=null; showBox()};
-  const move=e=>{if(!drag)return; e.preventDefault(); const p=pt(e);
-    S.crop={x:Math.min(drag.x,p.x),y:Math.min(drag.y,p.y),
-            w:Math.abs(p.x-drag.x),h:Math.abs(p.y-drag.y)}; showBox()};
-  const up=()=>{drag=null; if(S.crop&&(S.crop.w<12||S.crop.h<12)){S.crop=null;showBox()}};
-  cv.addEventListener('mousedown',down); cv.addEventListener('touchstart',down,{passive:false});
-  window.addEventListener('mousemove',move); cv.addEventListener('touchmove',move,{passive:false});
-  window.addEventListener('mouseup',up);   cv.addEventListener('touchend',up);
-
-  $$('deL').onclick=()=>{S.rot--;S.crop=null;draw()};
-  $$('deR').onclick=()=>{S.rot++;S.crop=null;draw()};
-  $$('deDeg').oninput=e=>{S.deg=parseFloat(e.target.value);$$('deDegV').textContent=S.deg+'°';S.crop=null;draw()};
-  $$('deC').onchange=e=>{S.contrast=e.target.checked;draw()};
-  $$('deReset').onclick=()=>{S.rot=0;S.deg=0;S.contrast=false;S.crop=null;
-    $$('deDeg').value=0;$$('deDegV').textContent='0°';$$('deC').checked=false;draw()};
-
-  const rev=$$('deRev');
-  if(rev)rev.onclick=async()=>{
-    if(!confirm('Να γυρίσει η αρχική, απείραχτη εικόνα;'))return;
-    const {data,error}=await sb.rpc('document_revert',{p_doc:doc.id});
-    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
-    toast('Επανήλθε το πρωτότυπο'); close(); await loadAll(); after&&after();
-  };
-
-  $$('deSave').onclick=async()=>{
-    const b=$$('deSave'); b.disabled=true; b.textContent='Αποθήκευση…';
-    try{
-      let out=cv;
-      if(S.crop&&S.crop.w>12&&S.crop.h>12){
-        out=document.createElement('canvas');
-        out.width=Math.round(S.crop.w); out.height=Math.round(S.crop.h);
-        out.getContext('2d').drawImage(cv, S.crop.x,S.crop.y,S.crop.w,S.crop.h, 0,0,out.width,out.height);
-      }
-      const blob=await new Promise(r=>out.toBlob(r,'image/jpeg',0.9));
-      if(!blob) throw new Error('Δεν παρήχθη εικόνα');
-      const base=String(doc.path).replace(/\.[^.]+$/,'');
-      const np=`${base}__edit${Date.now()}.jpg`;
+async function docEdit(doc, after){
+  if(!isImg(doc.path)) return toast('Η διόρθωση δουλεύει σε φωτογραφίες, όχι σε PDF.');
+  if(typeof openCrop!=='function') return toast('Ο σαρωτής δεν φορτώθηκε.');
+  const {data,error}=await sb.storage.from('e76').createSignedUrl(doc.path,300);
+  if(error||!data) return toast('Δεν άνοιξε η εικόνα');
+  const img=new Image(); img.crossOrigin='anonymous';
+  img.onerror=()=>toast('Δεν διαβάστηκε η εικόνα');
+  img.onload=()=>{
+    openCrop(fitCanvas(img,1500), async out=>{
+      if(!out) return;                                   // άκυρο — τίποτα δεν άλλαξε
+      const blob=await new Promise(r=>out.toBlob(r,'image/jpeg',0.85));
+      if(!blob) return toast('Δεν παρήχθη εικόνα');
+      const np=String(doc.path).replace(/\.[^.]+$/,'')+'__edit'+Date.now()+'.jpg';
       const up=await sb.storage.from('e76').upload(np, blob, {contentType:'image/jpeg',upsert:false});
-      if(up.error) throw up.error;
-      const {data,error}=await sb.rpc('document_set_edited',
-        {p_doc:doc.id, p_new_path:np, p_note:'περιστροφή/ίσιωμα/περικοπή από το e76'});
-      if(error||(data&&data.error)) throw new Error((error&&error.message)||data.error);
-      toast('Αποθηκεύτηκε'); close(); await loadAll(); after&&after();
-    }catch(e){ b.disabled=false; b.textContent='Αποθήκευση'; toast('Σφάλμα: '+(e.message||e)) }
+      if(up.error) return toast('Σφάλμα: '+up.error.message);
+      const r=await sb.rpc('document_set_edited',
+        {p_doc:doc.id, p_new_path:np, p_note:'σάρωση με τέσσερις γωνίες'});
+      if(r.error||(r.data&&r.data.error)) return toast('Σφάλμα: '+((r.error&&r.error.message)||r.data.error));
+      toast('Διορθώθηκε'); await loadAll(); after&&after();
+    });
   };
-
-  /* Η εικόνα κατεβαίνει με υπογεγραμμένη διεύθυνση — ο κάδος είναι ιδιωτικός. */
-  (async()=>{
-    const {data,error}=await sb.storage.from('e76').createSignedUrl(doc.path,300);
-    if(error||!data){toast('Δεν άνοιξε η εικόνα');close();return}
-    img=new Image(); img.crossOrigin='anonymous';
-    img.onload=draw;
-    img.onerror=()=>{toast('Δεν διαβάστηκε η εικόνα');close()};
-    img.src=data.signedUrl;
-  })();
+  img.src=data.signedUrl;
+}
+async function docRevert(doc, after){
+  if(!confirm('Να γυρίσει η αρχική, απείραχτη εικόνα;'))return;
+  const {data,error}=await sb.rpc('document_revert',{p_doc:doc.id});
+  if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+  toast('Επανήλθε το πρωτότυπο'); await loadAll(); after&&after();
 }
 async function docDelete(d){
   await sb.storage.from('e76').remove([d.path]);
@@ -3076,7 +2980,8 @@ function filesHTML(list,ctx){
           <a href="#" class="docopen" data-path="${esc(d.path)}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">${esc(d.title||'αρχείο')}</a>
           <span class="dim" style="font-size:11.5px">${esc(d.kind)}${d.size_bytes?' · '+fsize(d.size_bytes):''}${d.uploaded_at?' · '+fdate(d.uploaded_at):''}${
             d.original_path?' · <span title="Διορθώθηκε — το πρωτότυπο φυλάσσεται">διορθωμένο</span>':''}</span></span>
-        ${isImg(d.path)?`<button class="btn gh sm docedit" data-id="${d.id}" title="Ίσιωσε, κόψε, καθάρισε">✂</button>`:''}
+        ${isImg(d.path)?`<button class="btn gh sm docedit" data-id="${d.id}" title="Σάρωση — σύρε τις τέσσερις γωνίες">✂</button>`:''}
+        ${d.original_path?`<button class="btn gh sm docrev" data-id="${d.id}" title="Επαναφορά πρωτοτύπου">↺</button>`:''}
         <button class="btn gh sm docdel" data-id="${d.id}" title="Διαγραφή">✕</button>
       </div>`).join(''):'<div class="dim" style="font-size:13px">Κανένα αρχείο</div>'}</div>
     <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
@@ -3089,6 +2994,9 @@ function wireFiles(ctx,after){
   document.querySelectorAll('.docopen').forEach(a=>a.onclick=e=>{e.preventDefault();docOpen(a.dataset.path)});
   document.querySelectorAll('.docedit').forEach(b=>b.onclick=()=>{
     const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(d)docEdit(d, after);
+  });
+  document.querySelectorAll('.docrev').forEach(b=>b.onclick=()=>{
+    const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(d)docRevert(d, after);
   });
   document.querySelectorAll('.docdel').forEach(b=>b.onclick=async()=>{
     const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(!d)return;
@@ -3107,11 +3015,10 @@ function wireFiles(ctx,after){
     if(!file){ m.textContent=''; f.value=''; return; }
     m.textContent='Ανέβασμα…';
     try{
-      const nd=await docUpload(file,Object.assign({kind:$('docKind').value},ctx));
+      await docUpload(file,Object.assign({kind:$('docKind').value},ctx));
       m.textContent=''; toast('Ανέβηκε'); after&&after();
-      /* Η ώρα να ισιώσεις μια φωτογραφία είναι όσο τη θυμάσαι. Αν χρειάζεται
-         να τη βρεις ξανά αργότερα, δεν τη διορθώνει κανείς. */
-      if(nd&&isImg(nd.path)) docEdit(nd, after);
+      /* Ο σαρωτής έτρεξε ΗΔΗ πιο πάνω (scanToFile) πάνω στο πρωτότυπο αρχείο.
+         Δεν τον ξανακαλούμε — θα ήταν δεύτερη σάρωση σαρωμένου. */
     }
     catch(e){m.textContent='';toast('Σφάλμα: '+(e.message||e))}
     finally{ f.value=''; }};
@@ -9677,8 +9584,8 @@ V.certq=()=>{
                     const nm=r.cd.label || (rows.length>1?'όψη '+(ix+1):'δες το αρχείο');
                     return `<span style="white-space:nowrap">`
                       +`<a href="#" class="qdocopen" data-path="${esc(r.f.path)}">📄 ${esc(nm)}</a>`
-                      +(isImg(r.f.path)?`<a href="#" class="qdocedit" data-id="${r.f.id}" title="Ίσιωσε, κόψε, καθάρισε" style="margin-left:3px">✂</a>`:'')
-                      +(r.f.original_path?'<span class="dim" title="Έχει διορθωθεί — το πρωτότυπο φυλάσσεται" style="margin-left:2px">✓</span>':'')
+                      +(isImg(r.f.path)?`<a href="#" class="qdocedit" data-id="${r.f.id}" title="Σάρωση — σύρε τις τέσσερις γωνίες" style="margin-left:3px">✂</a>`:'')
+                      +(r.f.original_path?`<a href="#" class="qdocrev" data-id="${r.f.id}" title="Διορθωμένο — επαναφορά πρωτοτύπου" style="margin-left:2px">↺</a>`:'')
                       +(rows.length>1?`<a href="#" class="cdname" data-id="${r.cd.id}" title="Δώσε όνομα σε αυτή την όψη" style="margin-left:3px">✎</a>`
                         +(ix?`<a href="#" class="cdfirst" data-id="${r.cd.id}" title="Κάν' την πρώτη" style="margin-left:2px">↑</a>`:'')
                        :'')+`</span>`}).join(' · ')})()}
@@ -9759,6 +9666,11 @@ V.certq=()=>{
     e.preventDefault(); e.stopPropagation();
     const f=(D.doc||[]).find(x=>x.id===a.dataset.id);
     if(f)docEdit(f, ()=>V.certq());
+  });
+  document.querySelectorAll('.qdocrev').forEach(a=>a.onclick=e=>{
+    e.preventDefault(); e.stopPropagation();
+    const f=(D.doc||[]).find(x=>x.id===a.dataset.id);
+    if(f)docRevert(f, ()=>V.certq());
   });
   document.querySelectorAll('.cdfirst').forEach(a=>a.onclick=async e=>{
     e.preventDefault();
