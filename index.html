@@ -677,6 +677,9 @@ tr.argrow td{background:var(--bg2)}
       <div class="dim" style="margin-top:14px;font-size:11.5px;border-top:1px solid var(--line);padding-top:9px">
         Ο λογαριασμός δείχνει προσωπικά στοιχεία παιδιών. Μην τον μοιράζεσαι, και διάλεξε
         συνθηματικό που δεν χρησιμοποιείς αλλού.
+        <!-- Οι Όροι διαβάζονται ΠΡΙΝ τη σύνδεση, όχι μόνο μετά. Αλλιώς
+             «διαβάστε τους πριν συνδεθείτε» είναι κενό γράμμα. -->
+        <div style="margin-top:7px"><a href="#" id="loginTerms" style="color:var(--acc)">Όροι χρήσης της εφαρμογής</a></div>
       </div>
     </details>
     </div>
@@ -896,13 +899,19 @@ const NAV=[
    {id:'access',t:'Ρόλοι & πρόσβαση',i:'shield',s:'live'},
    {id:'viewas',t:'Προβολή ως',i:'users',s:'live'},
    {id:'matrix',t:'Πίνακας δικαιωμάτων',i:'lock',s:'live'},
+   /* ΠΡΟΣΧΕΔΙΟ, μόνο για τον Α.Σ. Δεν δημοσιεύεται όσο δεν υπάρχει διαδρομή
+      διαγραφής — το κείμενο υπόσχεται δικαίωμα που δεν μπορεί ακόμη να ασκηθεί. */
+   {id:'privacy',t:'Πολιτική Απορρήτου (προσχέδιο)',i:'shield',s:'live'},
    {id:'audit',t:'Ιστορικό αλλαγών',i:'book',s:'live'}]},
 
  /* ΤΕΛΕΥΤΑΙΑ ΚΑΙ ΓΙΑ ΟΛΟΥΣ. Ο κωδικός μου δεν είναι λειτουργία διαχείρισης —
     είναι δικός μου. Μέχρι σήμερα ο μόνος τρόπος να αλλάξει κωδικός ήταν το
     Supabase Dashboard, δηλαδή κανένας τρόπος για όποιον δεν είναι εγώ. */
  {g:'Ο λογαριασμός μου', d:'Κωδικός, εμφάνιση, αποσύνδεση', items:[
-   {id:'account',t:'Ο λογαριασμός μου',i:'cog',s:'live'}]}
+   {id:'account',t:'Ο λογαριασμός μου',i:'cog',s:'live'},
+   /* Οι Όροι είναι για ΟΛΟΥΣ — τους αποδέχεσαι, άρα πρέπει να μπορείς να τους
+      ξαναδιαβάσεις όποτε θες, χωρίς να ρωτήσεις κανέναν. */
+   {id:'terms',t:'Όροι χρήσης',i:'book',s:'live'}]}
 ];
 /* Οθόνες που δεν φιλτράρονται ΠΟΤΕ από ρόλο. Το κριτήριο είναι στενό:
    μπαίνει εδώ μόνο ό,τι ΔΕΝ είναι προσκοπικός ρόλος — ο κωδικός μου και η
@@ -911,7 +920,7 @@ const NAV=[
    αλλάζοντας καπέλο. Το δοκίμασα ανοιχτό για όλους και ήταν λάθος — κάθε
    ρόλος θα κουβαλούσε μόνιμα τις οθόνες ενός άλλου. Τα δικά του χαρτιά ο
    Α.Σ. τα βρίσκει στην καρτέλα του, από τους «Βαθμοφόρους». */
-const NAV_ALWAYS=['account'];
+const NAV_ALWAYS=['account','terms'];   // οι Όροι δεν φιλτράρονται ΠΟΤΕ: τους αποδέχτηκες, τους ξαναδιαβάζεις
 /* ══ ΥΠΟΤΙΤΛΟΙ ΟΘΟΝΩΝ ══════════════════════════════════════════════════════
    Μία γραμμή κάτω από κάθε τίτλο: τι κάνει αυτή η οθόνη και πότε την ανοίγεις.
    Ο τίτλος λέει ΤΟ ΟΝΟΜΑ· ο υπότιτλος λέει ΤΗ ΔΟΥΛΕΙΑ. Χωρίς αυτόν, μια
@@ -978,6 +987,8 @@ const SUBS={
  esimport:'Επικόλληση από e-Scouts — Α.Μ., τριπλότυπα, εντολές',
  fimport:'Επικόλληση από εξαγωγή φόρμας — ιατρικά προηγούμενων ετών',
 
+ terms:'Οι όροι που αποδέχτηκες — και ποια έκδοση ίσχυε τότε',
+ privacy:'Πολιτική Απορρήτου · ΠΡΟΣΧΕΔΙΟ, δεν έχει δημοσιευτεί',
  certq:'Χαρτιά που περιμένουν να τα δεις — μέχρι τότε δεν μετρούν σε δράση',
  vpapers:'ΜΟΤ, ασφάλειες και άδειες κυκλοφορίας — ανά όχημα, όχι ανά άνθρωπο',
  warrants:'Εντολές Διοίκησης και Αναθέσεις Καθηκόντων',
@@ -1002,7 +1013,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-08-30 14:54'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-01 22:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1496,10 +1507,12 @@ async function loadAll(){
     sb.from('vehicle_paper_inbox').select('*').is('resolved_at',null).limit(500),
     sb.from('cert_ocr_hint').select('*').limit(2000),
     sb.from('cert_documents').select('*').limit(4000),
-    sb.from('vehicle_doc_sides').select('*').limit(2000)
+    sb.from('vehicle_doc_sides').select('*').limit(2000),
+    sb.from('legal_documents').select('*').order('version',{ascending:false}),
+    sb.from('legal_acceptances').select('*').limit(2000)
       // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1541,7 +1554,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -1566,6 +1579,8 @@ async function loadAll(){
     if(LOADED&&ROUTE)route(ROUTE); });
   saveCache(); qFlush();
   ensurePhotos((D.bh||[]).map(x=>x.photo_path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
+  /* Η πύλη των Όρων ΜΕΤΑ τη φόρτωση: χρειάζεται ME.person_id και τα κείμενα. */
+  try{ legalGate() }catch(e){ console.warn('legalGate:',e) }
   const yrs=[...new Set([...D.my.map(x=>x.scout_year),...(D.sh||[]).map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
   const nx=nextYear(yrs[0]||YEAR); if(nx&&!yrs.includes(nx))yrs.unshift(nx);   // η επόμενη πάντα επιλέξιμη
   if(yrs.length&&!yrs.includes(YEAR))YEAR=yrs.find(y=>D.my.some(x=>x.scout_year===y))||yrs[0];
@@ -9428,6 +9443,138 @@ function addMonths(iso,m){
   if(d.getDate()<day) d.setDate(0);          // 31 Ιαν + 1 μήνα = 28/29 Φεβ
   return d.toISOString().slice(0,10);
 }
+/* ══ ΝΟΜΙΚΑ ΚΕΙΜΕΝΑ ═══════════════════════════════════════════════════════
+   ΔΥΟ ΚΕΙΜΕΝΑ, ΔΙΑΦΟΡΕΤΙΚΗ ΜΕΤΑΧΕΙΡΙΣΗ — και η διαφορά δεν είναι τυπική.
+
+   ΟΡΟΙ ΧΡΗΣΗΣ: συμφωνία. Τους αποδέχεσαι, και η αποδοχή καταγράφεται με το
+   πρόσωπο, την ΕΚΔΟΣΗ και τη χρονοσφραγίδα. Γι' αυτό καμία έκδοση δεν
+   σβήνεται: χωρίς το κείμενο που ίσχυε τότε, η καταγραφή δεν αποδεικνύει τίποτα.
+
+   ΠΟΛΙΤΙΚΗ ΑΠΟΡΡΗΤΟΥ: ΕΝΗΜΕΡΩΣΗ. ΔΕΝ ζητείται αποδοχή, ποτέ. Βάζοντάς την
+   πίσω από κουτάκι «αποδέχομαι» θα δίναμε την ψευδή εντύπωση ότι η επεξεργασία
+   στηρίζεται στη συγκατάθεση του χρήστη — ενώ στηρίζεται σε άλλες βάσεις.   */
+const legalDoc=code=>(D.legal||[]).filter(x=>x.code===code)
+  .sort((a,b)=>b.version-a.version)[0]||null;
+const legalLive=code=>(D.legal||[]).filter(x=>x.code===code&&x.status==='δημοσιευμένο')
+  .sort((a,b)=>b.version-a.version)[0]||null;
+const legalAccepted=d=>!!d&&(D.lacc||[]).some(a=>a.document_id===d.id&&a.person_id===ME.person_id);
+
+/* Πολύ μικρή απόδοση markdown — μόνο ό,τι χρησιμοποιούν τα δύο κείμενα.
+   Δεν φέρνουμε βιβλιοθήκη για επτά κανόνες, και δεν εμπιστευόμαστε HTML από
+   τη βάση: ό,τι μπαίνει, μπαίνει περασμένο από esc(). */
+function legalHTML(md){
+  const rows=[];
+  String(md||'').split('\n').forEach(line=>{
+    const t=line.trim();
+    if(!t){rows.push('');return}
+    if(/^####\s/.test(t))     rows.push('<h5 style="margin:14px 0 4px;font-size:13.5px">'+esc(t.slice(5))+'</h5>');
+    else if(/^###\s/.test(t)) rows.push('<h4 style="margin:16px 0 5px;font-size:14.5px">'+esc(t.slice(4))+'</h4>');
+    else if(/^##\s/.test(t))  rows.push('<h3 style="margin:20px 0 6px;font-size:16px;letter-spacing:-.01em">'+esc(t.slice(3))+'</h3>');
+    else if(/^\|/.test(t))    rows.push('<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px">'
+        + t.split('|').filter(x=>x.trim()).map((c,i)=>`<span style="${i?'flex:1':'flex:0 0 34%;font-weight:500'}">${esc(c.trim())}</span>`).join('')+'</div>');
+    else if(/^-\s/.test(t))   rows.push('<div style="display:flex;gap:8px;margin:4px 0 4px 4px;font-size:13.5px;line-height:1.65"><span class="dim">·</span><span>'+esc(t.slice(2))+'</span></div>');
+    else                      rows.push('<p style="margin:8px 0;font-size:13.5px;line-height:1.7">'+esc(t)+'</p>');
+  });
+  return rows.join('');
+}
+V.terms=()=>{
+  const d=legalLive('ΟΡΟΙ');
+  if(!d){ $('view').innerHTML=`<div class="uc"><div class="ico">${ic('book',26)}</div>
+      <h3>Δεν υπάρχουν δημοσιευμένοι όροι</h3></div>`; return }
+  const mine=(D.lacc||[]).filter(a=>a.person_id===ME.person_id&&a.code==='ΟΡΟΙ')
+    .sort((a,b)=>String(b.accepted_at).localeCompare(String(a.accepted_at)));
+  const old=(D.legal||[]).filter(x=>x.code==='ΟΡΟΙ'&&x.id!==d.id).sort((a,b)=>b.version-a.version);
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div><b style="font-size:15px">${esc(d.title)}</b>
+        <div class="dim" style="font-size:12.5px">Έκδοση ${d.version}${d.effective_on?' · σε ισχύ από '+fdate(d.effective_on):''}</div></div>
+      <span class="sp"></span>
+      ${legalAccepted(d)
+        ? `<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">Την αποδέχτηκες${
+            mine[0]?' · '+fdate(mine[0].accepted_at):''}</span>`
+        : `<button class="btn p" id="tAcc">Αποδοχή</button>`}
+    </div>
+    <div class="card pad">${legalHTML(d.body)}</div>
+    ${mine.length>1?`<div class="card pad" style="margin-top:12px">
+      <b style="font-size:14px">Το ιστορικό σου</b>
+      ${mine.map(a=>`<div class="kv" style="font-size:13px;padding:4px 0"><span>Έκδοση ${a.version}</span>
+        <span class="dim">${fdate(a.accepted_at)}</span></div>`).join('')}</div>`:''}
+    ${old.length?`<div class="card pad" style="margin-top:12px">
+      <b style="font-size:14px">Προηγούμενες εκδόσεις</b>
+      <div class="dim" style="font-size:12.5px;margin-top:3px">Καμία δεν σβήνεται — πρέπει να μπορείς να δεις τι ίσχυε όταν το αποδέχτηκες.</div>
+      ${old.map(o=>`<div class="kv" style="font-size:13px;padding:4px 0">
+        <span>Έκδοση ${o.version} <span class="dim">· ${esc(o.status)}</span></span>
+        <a href="#" class="lold" data-id="${o.id}">Άνοιγμα</a></div>`).join('')}</div>`:''}`;
+  const b=$('tAcc'); if(b)b.onclick=()=>legalAcceptFlow(()=>V.terms());
+  document.querySelectorAll('.lold').forEach(a=>a.onclick=e=>{e.preventDefault();
+    const o=(D.legal||[]).find(x=>x.id===a.dataset.id);
+    if(o)$('view').innerHTML=`<div class="card pad"><b>Έκδοση ${o.version} — ${esc(o.status)}</b></div>
+      <div class="card pad" style="margin-top:10px">${legalHTML(o.body)}</div>`});
+};
+/* Η Πολιτική: ΠΡΟΣΧΕΔΙΟ, μόνο για τον Α.Σ., ΧΩΡΙΣ κουμπί αποδοχής. */
+V.privacy=()=>{
+  const d=legalDoc('ΑΠΟΡΡΗΤΟ');
+  if(!d){ $('view').innerHTML='<div class="uc"><h3>Δεν έχει καταχωρηθεί</h3></div>'; return }
+  const live=d.status==='δημοσιευμένο';
+  $('view').innerHTML=`
+    ${live?'':`<div class="card pad" style="margin-bottom:14px;border-color:var(--warn)">
+      <b style="color:var(--warn)">ΠΡΟΣΧΕΔΙΟ — δεν έχει δημοσιευτεί</b>
+      <div class="muted" style="font-size:13px;margin-top:5px;line-height:1.65">
+        Το κείμενο υπόσχεται δικαίωμα διαγραφής. Δεν δημοσιεύεται πριν υπάρξει
+        τρόπος να ασκηθεί — μια υπόσχεση που δεν μπορεί να τηρηθεί είναι χειρότερη
+        από ένα κείμενο που λείπει. Η δημοσίευση είναι <b>κλειδωμένη στη βάση</b>,
+        όχι απλώς αποφευγμένη στην οθόνη.</div>
+      <div class="dim" style="font-size:12.5px;margin-top:8px">
+        Ξεκλειδώνει όταν υπάρξουν τα οκτώ της §8 των Αποφάσεων Διατήρησης — και αφαιρεθούν
+        οι δύο σημάνσεις [ΠΡΟΣ ΥΛΟΠΟΙΗΣΗ] από το κείμενο.</div></div>`}
+    <div class="card pad" style="margin-bottom:14px">
+      <b style="font-size:15px">${esc(d.title)}</b>
+      <div class="dim" style="font-size:12.5px">Έκδοση ${d.version} · ${esc(d.status)}</div>
+      <div class="dim" style="font-size:12.5px;margin-top:6px">Δεν ζητείται αποδοχή. Είναι ενημέρωση, όχι συμφωνία.</div></div>
+    ${d.editorial_note?`<div class="card pad" style="margin-bottom:14px">
+      <b style="font-size:14px">Σημειώσεις σύνταξης <span class="dim" style="font-weight:400">· δεν φαίνονται σε χρήστη</span></b>
+      <div style="margin-top:6px">${legalHTML(d.editorial_note)}</div></div>`:''}
+    <div class="card pad">${legalHTML(d.body)}</div>`;
+};
+/* Η αποδοχή γράφεται στη ΒΑΣΗ με μία κλήση: πρόσωπο, έκδοση, χρόνος μαζί. */
+async function legalAcceptFlow(after){
+  const {data,error}=await sb.rpc('legal_accept',{p_code:'ΟΡΟΙ'});
+  if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+  const d=legalLive('ΟΡΟΙ');
+  (D.lacc=D.lacc||[]).push({id:'tmp'+Math.random(), person_id:ME.person_id,
+    document_id:d.id, code:'ΟΡΟΙ', version:d.version, accepted_at:new Date().toISOString()});
+  saveCache(); toast('Καταγράφηκε'); after&&after();
+}
+/* ΠΥΛΗ ΠΡΩΤΗΣ ΣΥΝΔΕΣΗΣ. Δεν κλείνει με Esc ούτε με κλικ έξω: είναι όρος, όχι
+   ειδοποίηση. Η μόνη έξοδος χωρίς αποδοχή είναι η αποσύνδεση — γιατί «δεν
+   συμφωνώ» πρέπει να είναι πραγματική επιλογή, με το έντυπο ως εναλλακτική. */
+function legalGate(){
+  const d=legalLive('ΟΡΟΙ');
+  if(!d || !d.needs_accept || !ME.person_id || legalAccepted(d)) return;
+  /* Νέα έκδοση: 30 μέρες προειδοποίηση πριν γίνει υποχρεωτική. Μέχρι τότε
+     ενημερώνει και αφήνει να συνεχίσεις. */
+  const soft = d.notice_from && (new Date() < new Date(new Date(d.notice_from).getTime()+30*864e5));
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:14px';
+  ov.innerHTML=`<div class="card" style="max-width:760px;width:100%;max-height:92vh;display:flex;flex-direction:column">
+    <div class="pad" style="border-bottom:1px solid var(--line)">
+      <b style="font-size:15px">${esc(d.title)}</b>
+      <div class="dim" style="font-size:12.5px">Έκδοση ${d.version}${d.effective_on?' · σε ισχύ από '+fdate(d.effective_on):''}</div>
+      <div class="muted" style="font-size:13px;margin-top:6px;line-height:1.6">
+        ${soft?'Άλλαξαν οι όροι. Έχεις 30 ημέρες να τους διαβάσεις — μετά θα ζητηθεί αποδοχή.'
+              :'Διάβασέ τους πριν συνεχίσεις. Αν δεν συμφωνείς, κάθε διαδικασία του Συστήματος παραμένει διαθέσιμη σε έντυπη μορφή.'}</div></div>
+    <div style="overflow:auto;padding:12px 16px;flex:1">${legalHTML(d.body)}</div>
+    <div class="pad" style="border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn p" id="lgOk">Αποδέχομαι</button>
+      ${soft?'<button class="btn gh" id="lgLater">Αργότερα</button>':'<button class="btn gh" id="lgOut">Δεν συμφωνώ — αποσύνδεση</button>'}
+      <span class="sp"></span>
+      <span class="dim" style="font-size:11.5px;align-self:center">Καταγράφεται ποιος, ποια έκδοση, πότε.</span></div></div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#lgOk').onclick=async()=>{ await legalAcceptFlow(); ov.remove() };
+  const later=ov.querySelector('#lgLater'); if(later)later.onclick=()=>ov.remove();
+  const out=ov.querySelector('#lgOut'); if(out)out.onclick=()=>{ ov.remove(); const l=$('logout'); if(l)l.click() };
+}
+
 /* ══ ΧΑΡΤΙΑ ΟΧΗΜΑΤΩΝ ═════════════════════════════════════════════════════
    ΜΟΤ, ασφάλεια και άδεια κυκλοφορίας ΔΕΝ ανήκουν στον άνθρωπο. Όταν πουληθεί
    το αυτοκίνητο φεύγουν μαζί του· όταν το οδηγεί άλλος εξακολουθούν να
@@ -13471,6 +13618,30 @@ V.progKA=()=>progScreen('Κοινότητα',
 V.progress=()=>V.progOP();          // παλιοί σύνδεσμοι δεν σπάνε
 
 $('gver').textContent='build '+BUILD;
+/* Οι Όροι στη σελίδα σύνδεσης: ο χρήστης ΔΕΝ είναι ακόμη συνδεδεμένος, οπότε
+   δεν υπάρχουν φορτωμένα δεδομένα. Τα ζητάμε απευθείας — η πολιτική ld_read
+   επιτρέπει την ανάγνωση του δημοσιευμένου κειμένου. */
+(function(){
+  const a=$('loginTerms'); if(!a)return;
+  a.onclick=async e=>{
+    e.preventDefault();
+    const {data,error}=await sb.from('legal_documents').select('*')
+      .eq('code','ΟΡΟΙ').eq('status','δημοσιευμένο').order('version',{ascending:false}).limit(1);
+    const d=data&&data[0];
+    if(error||!d)return alert('Οι όροι δεν φορτώθηκαν. Ζήτησέ τους στο as@76.life.');
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:14px';
+    ov.innerHTML=`<div class="card" style="max-width:760px;width:100%;max-height:92vh;display:flex;flex-direction:column">
+      <div class="pad" style="border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center">
+        <b style="font-size:15px">${esc(d.title)}</b>
+        <span class="dim" style="font-size:12.5px">Έκδοση ${d.version}</span>
+        <span class="sp"></span><button class="btn gh sm" id="ltX">Κλείσιμο</button></div>
+      <div style="overflow:auto;padding:12px 16px">${legalHTML(d.body)}</div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#ltX').onclick=()=>ov.remove();
+    ov.onclick=ev=>{if(ev.target===ov)ov.remove()};
+  };
+})();
 boot();
 </script>
 
