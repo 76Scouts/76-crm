@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-01 23:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-01 23:24'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6363,6 +6363,19 @@ const ACC_STEP={'χωρίς email':0,'έχει email — χωρίς κωδικό
 const ACC_PEND=['εκδόθηκε — δεν δόθηκε'];
 const ACC_COL=['bad','warn','warn','warn','ok'];
 let ACCQ='', ACCF='', ACCALL=false;
+/* ΚΑΘΑΡΙΣΜΟΣ ΠΡΟΣΚΛΗΣΕΩΝ. Τρέχει μόνος του κάθε βράδυ (pg_cron, 03:17), αλλά
+   υπάρχει και κουμπί: μια διαγραφή που δεν μπορείς να δεις ή να προκαλέσεις
+   δύσκολα την εμπιστεύεσαι. Το κουμπί λέει ΠΟΣΕΣ έσβησε. */
+async function purgeInvites(){
+  if(!confirm('Να σβηστούν οι προσκλήσεις που έχουν πάψει να χρησιμεύουν;\n\n'
+    +'Σβήνονται μόνο χρησιμοποιημένες, ακυρωμένες ή ληγμένες, και μόνο αν έχουν\n'
+    +'περάσει 90 ημέρες από την τελευταία έκδοση κωδικού προς το πρόσωπο.'))return;
+  const {data,error}=await sb.rpc('purge_invitations');
+  if(error)return toast('Σφάλμα: '+error.message);
+  const n=(data&&data[0]&&data[0].diagrafikan)||0;
+  toast(n?n+' προσκλήσεις σβήστηκαν':'Καμία δεν είχε ωριμάσει για διαγραφή');
+  if(n){ await loadAll(); V.accounts() }
+}
 V.accounts=()=>{
   /* Γονέας βαθμοφόρου δεν χρειάζεται λογαριασμό — ο βαθμοφόρος μπαίνει μόνος του.
      Μένουν στη βάση, αλλά δεν μετριούνται ως έλλειψη. */
@@ -6441,7 +6454,14 @@ V.accounts=()=>{
             :'<span class="dim" style="font-size:11.5px">θέλει email</span>'}</td></tr>`}).join('')}
       </tbody></table></div>
     <div class="card pad"><div class="dim" style="font-size:12px">
-      ${shown.length} από ${rows.length}. «Νέος» ακυρώνει τον προηγούμενο κωδικό — ο παλιός παύει να δουλεύει αμέσως.</div></div>`;
+      ${shown.length} από ${rows.length}. «Νέος» ακυρώνει τον προηγούμενο κωδικό — ο παλιός παύει να δουλεύει αμέσως.</div></div>
+    <div class="card pad" style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:230px">
+        <b style="font-size:13.5px">Καθαρισμός προσκλήσεων</b>
+        <div class="dim" style="font-size:12px;margin-top:3px;line-height:1.55">
+          Η πρόσκληση ισχύει <b>60 ημέρες</b>. Η γραμμή της σβήνεται <b>90 ημέρες</b> μετά
+          την τελευταία έκδοση κωδικού — αυτόματα κάθε βράδυ. Το κουμπί το τρέχει τώρα.</div></div>
+      <button class="btn sm" id="accPurge">Καθαρισμός τώρα</button></div>`;
 
   /* Ο κωδικός που κάθεται εκδομένος είναι δική μας εκκρεμότητα, όχι του παραλήπτη.
      Το «Το έδωσα» καταγράφει ΓΕΓΟΝΟΣ: ποιος και πότε. */
@@ -6458,6 +6478,7 @@ V.accounts=()=>{
   });
   document.querySelectorAll('[data-accf]').forEach(b=>b.onclick=()=>{
     ACCF=(ACCF===b.dataset.accf)?'':b.dataset.accf; V.accounts()});
+  const pg=$('accPurge'); if(pg)pg.onclick=()=>purgeInvites();
   const al=$('accAll'); if(al)al.onclick=()=>{ACCF='';V.accounts()};
   const tg=$('accToggle'); if(tg)tg.onclick=()=>{ACCALL=!ACCALL;V.accounts()};
   const i=$('accq'); if(i){let t1; i.oninput=e=>{ACCQ=e.target.value;
