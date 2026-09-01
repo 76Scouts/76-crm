@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-01 23:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-01 23:13'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -9545,7 +9545,8 @@ function legalFooter(){
   const showPriv = privLive || isAdminUI();
   const t=legalLive('ΟΡΟΙ');
   f.innerHTML=`
-    ${t?`<button class="lbtn" id="fTerms">Όροι Χρήσης</button>`:''}
+    ${t?`<button class="lbtn" id="fTerms" title="${legalAccepted(t)?'Τους αποδέχτηκες':'Δεν τους έχεις αποδεχτεί'}">Όροι Χρήσης${
+        legalAccepted(t)?' ✓':''}</button>`:''}
     ${t&&showPriv&&priv?' · ':''}
     ${showPriv&&priv?`<button class="lbtn" id="fPriv">Πολιτική Απορρήτου${privLive?'':' (προσχέδιο)'}</button>`:''}`;
   const a=$('fTerms'); if(a)a.onclick=()=>legalOpen('ΟΡΟΙ');
@@ -9563,9 +9564,22 @@ async function legalAcceptFlow(after){
 /* ΠΥΛΗ ΠΡΩΤΗΣ ΣΥΝΔΕΣΗΣ. Δεν κλείνει με Esc ούτε με κλικ έξω: είναι όρος, όχι
    ειδοποίηση. Η μόνη έξοδος χωρίς αποδοχή είναι η αποσύνδεση — γιατί «δεν
    συμφωνώ» πρέπει να είναι πραγματική επιλογή, με το έντυπο ως εναλλακτική. */
-function legalGate(){
+async function legalGate(){
   const d=legalLive('ΟΡΟΙ');
   if(!d || !d.needs_accept || !ME.person_id || legalAccepted(d)) return;
+  /* ΔΕΥΤΕΡΟΣ ΕΛΕΓΧΟΣ ΠΡΙΝ ΕΝΟΧΛΗΣΟΥΜΕ. Ο τοπικός πίνακας αποδοχών μπορεί να
+     μην έχει φορτώσει — δίκτυο, χρονικό όριο, άδεια μνήμη. Χωρίς αυτόν τον
+     έλεγχο, μια αποτυχία φόρτωσης θα ξαναζητούσε αποδοχή από κάποιον που την
+     έχει ήδη δώσει. Ρωτάμε τη βάση· αν πει «ναι», σωπαίνουμε. */
+  try{
+    const {data}=await sb.from('legal_acceptances').select('id')
+      .eq('person_id',ME.person_id).eq('document_id',d.id).limit(1);
+    if(data&&data.length){
+      (D.lacc=D.lacc||[]).push({id:data[0].id, person_id:ME.person_id,
+        document_id:d.id, code:'ΟΡΟΙ', version:d.version});
+      saveCache(); legalFooter(); return;
+    }
+  }catch(e){ /* αν δεν απαντήσει η βάση, συνεχίζουμε και ρωτάμε */ }
   /* Νέα έκδοση: 30 μέρες προειδοποίηση πριν γίνει υποχρεωτική. Μέχρι τότε
      ενημερώνει και αφήνει να συνεχίσεις. */
   const soft = d.notice_from && (new Date() < new Date(new Date(d.notice_from).getTime()+30*864e5));
@@ -9585,7 +9599,9 @@ function legalGate(){
       <span class="sp"></span>
       <span class="dim" style="font-size:11.5px;align-self:center">Καταγράφεται ποιος, ποια έκδοση, πότε.</span></div></div>`;
   document.body.appendChild(ov);
-  ov.querySelector('#lgOk').onclick=async()=>{ await legalAcceptFlow(); ov.remove() };
+  /* Μετά την αποδοχή το υποσέλιδο ξαναγράφεται, ώστε να δείχνει αμέσως τη
+     νέα κατάσταση χωρίς ανανέωση σελίδας. */
+  ov.querySelector('#lgOk').onclick=async()=>{ await legalAcceptFlow(()=>legalFooter()); ov.remove() };
   const later=ov.querySelector('#lgLater'); if(later)later.onclick=()=>ov.remove();
   const out=ov.querySelector('#lgOut'); if(out)out.onclick=()=>{ ov.remove(); const l=$('logout'); if(l)l.click() };
 }
