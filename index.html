@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-02 07:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-02 10:15'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -9660,12 +9660,29 @@ const VP_KIND={'ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ':'Ασφάλεια οχήμα�
    μαθαίνει να το αγνοείς — και τότε δεν ακούγεται όταν πρέπει.
 
    Η κυβερνητική προθεσμία ΑΛΛΑΖΕΙ κάθε χρόνο· ζει σε πίνακα, όχι σε κώδικα. */
-const RT_PERIODS=[[12,'12 μήνες',11,31],[9,'9 μήνες',8,30],[6,'6 μήνες',5,30],[3,'3 μήνες',2,31]];
-function rtPeriodEnd(year, months){
-  const p=RT_PERIODS.find(x=>x[0]===months)||RT_PERIODS[0];
-  return year+'-'+String(p[2]+1).padStart(2,'0')+'-'+String(p[3]).padStart(2,'0');
+/* ΤΙ ΚΡΑΤΑΜΕ: την ΠΡΟΘΕΣΜΙΑ ΑΝΑΝΕΩΣΗΣ, όχι το τέλος της περιόδου.
+   Η ερώτηση που μας ενδιαφέρει είναι μία: «είναι νόμιμο αυτό το όχημα την
+   ημέρα της δράσης;» Η απάντηση είναι η κυβερνητική προθεσμία — 11 Μαρτίου —
+   γιατί μέχρι τότε κυκλοφορεί νόμιμα ακόμη κι αν δεν έχει ανανεωθεί.
+
+   Η ημερομηνία ΑΛΛΑΖΕΙ με απόφαση της κυβέρνησης. Ζει σε πίνακα
+   (road_tax_deadline): μία γραμμή τον χρόνο. Αν δεν την ξέρουμε ακόμη,
+   προτείνουμε 11 Μαρτίου — και τη διορθώνεις όταν ανακοινωθεί. */
+function rtDeadline(year){
+  const r=(D.rtd||[]).find(x=>x.year===year);
+  return (r&&r.renew_by) || (year+'-03-11');
 }
-/* Ίδιος κανόνας με τη βάση (road_tax_grace) — αν αποκλίνουν, ψεύδεται η οθόνη. */
+/* Η επόμενη προθεσμία από σήμερα: αν δεν έχει περάσει η φετινή, αυτή· αλλιώς
+   του χρόνου. Έτσι τον Ιανουάριο προτείνει τον Μάρτιο που έρχεται. */
+function rtNextDeadline(today){
+  const t=today?new Date(today+'T00:00:00'):new Date(), y=t.getFullYear();
+  const d=rtDeadline(y);
+  return (new Date(d+'T23:59:59')>=t) ? d : rtDeadline(y+1);
+}
+/* ΔΙΧΤΥ, όχι κανόνας. Αν κάποιος γράψει το πραγματικό τέλος της περιόδου
+   (31/12 ή τέλος τριμήνου) αντί για την προθεσμία, το όχημα δεν είναι
+   παράνομο την επομένη: υπάρχει περιθώριο ~70 ημερών. Ίδιος κανόνας με τη
+   βάση (road_tax_grace) — αν αποκλίνουν, ψεύδεται η οθόνη. */
 function rtGrace(exp){
   if(!exp)return null;
   const d=new Date(exp+'T00:00:00');
@@ -9744,19 +9761,11 @@ V.vpapers=()=>{
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Ημ. έκδοσης</label>
               <input type="date" class="vpiss" data-id="${x.id}" value="${esc(h.issued_on||'')}"></span>
-            ${x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'?`
-            <span style="display:flex;flex-direction:column;gap:2px">
-              <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Περίοδος</label>
-              <span style="display:flex;gap:4px">
-                <select class="vpyear" data-id="${x.id}" style="max-width:82px">
-                  ${[0,1,-1,-2].map(o=>{const y=new Date().getFullYear()+o;
-                    return `<option value="${y}">${y}</option>`}).join('')}</select>
-                <select class="vpmon" data-id="${x.id}" style="max-width:104px">
-                  ${RT_PERIODS.map(p=>`<option value="${p[0]}">${p[1]}</option>`).join('')}</select></span></span>`:''}
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης${x.ocr_expires?' · OCR':''}</label>
-              <input type="date" class="vpdate" data-id="${x.id}" value="${esc(x.ocr_expires||'')}"
-                     title="${x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'?'Συμπληρώνεται από την περίοδο. Η άδεια λήγει σε τέλος τριμήνου, με περίοδο χάριτος ~70 ημερών μετά.':''}"></span>
+              <input type="date" class="vpdate" data-id="${x.id}"
+                     value="${esc(x.ocr_expires || (x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'?rtNextDeadline():'') )}"
+                     title="${x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'?'Προθεσμία ανανέωσης — μέχρι τότε κυκλοφορεί νόμιμα. Άλλαξέ τη αν το χαρτί λέει άλλη.':''}"></span>
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Όχημα</label>
               <select class="vpsel" data-id="${x.id}">
@@ -9772,6 +9781,19 @@ V.vpapers=()=>{
     :`<div class="card pad" style="margin-bottom:14px">
         <b>Κάθε χαρτί έχει όχημα</b>
         <div class="muted" style="font-size:13px;margin-top:4px">Δεν έμεινε τίποτα αδέσποτο.</div></div>`}
+
+    <div class="card pad" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:250px">
+        <b style="font-size:13.5px">Προθεσμία ανανέωσης αδειών</b>
+        <div class="dim" style="font-size:12px;margin-top:3px;line-height:1.55">
+          Η κυβέρνηση ορίζει κάθε χρόνο μέχρι πότε ανανεώνονται χωρίς πρόστιμο.
+          Αυτή η ημερομηνία μπαίνει από μόνη της στις νέες άδειες. Αν αλλάξει, άλλαξέ τη εδώ.</div></div>
+      <span style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap">
+        ${[0,1].map(o=>{const y=new Date().getFullYear()+o;
+          return `<span style="display:flex;flex-direction:column;gap:2px">
+            <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">${y}</label>
+            <input type="date" class="rtdd" data-year="${y}" value="${esc(rtDeadline(y))}"></span>`}).join('')}
+      </span></div>
 
     <div class="sec"><h3>Τα οχήματά μας</h3></div>
     ${done.length?done.map(({v,ins,pap})=>{
@@ -9806,18 +9828,18 @@ V.vpapers=()=>{
       :'<div class="dim" style="font-size:13px">Κανένα όχημα καταχωρημένο.</div>'}`;
 
   const re=()=>V.vpapers();
-  /* Η περίοδος γεμίζει τη λήξη — και δείχνει αμέσως ως πότε είναι νόμιμο,
-     ώστε να μη χρειάζεται να το υπολογίσει κανείς με το μυαλό. */
-  const rtSync=id=>{
-    const y=document.querySelector('.vpyear[data-id="'+id+'"]');
-    const m=document.querySelector('.vpmon[data-id="'+id+'"]');
-    const d=document.querySelector('.vpdate[data-id="'+id+'"]');
-    if(!y||!m||!d)return;
-    d.value=rtPeriodEnd(+y.value, +m.value);
-    const g=rtGrace(d.value);
-    toast('Λήγει '+fdate(d.value)+(g?' · ανανέωση χωρίς επιβάρυνση έως '+fdate(g):''));
-  };
-  document.querySelectorAll('.vpyear,.vpmon').forEach(el=>el.onchange=()=>rtSync(el.dataset.id));
+  /* Η προθεσμία είναι κυβερνητικό γεγονός, όχι δική μας εκτίμηση — γι' αυτό
+     αποθηκεύεται με πηγή και ημερομηνία καταχώρησης. */
+  document.querySelectorAll('.rtdd').forEach(el=>el.onchange=async()=>{
+    const y=+el.dataset.year, v=el.value;
+    if(!v)return;
+    const {error}=await sb.from('road_tax_deadline')
+      .upsert({year:y, renew_by:v, source:'καταχωρήθηκε στο e76'},{onConflict:'year'});
+    if(error)return toast('Σφάλμα: '+error.message);
+    const r=(D.rtd||[]).find(x=>x.year===y);
+    if(r)r.renew_by=v; else (D.rtd=D.rtd||[]).push({year:y,renew_by:v});
+    saveCache(); toast('Προθεσμία '+y+': '+fdate(v)); re();
+  });
   document.querySelectorAll('.vpopen').forEach(a=>a.onclick=e=>{
     e.preventDefault();e.stopPropagation();docOpen(a.dataset.path)});
   document.querySelectorAll('.vpedit').forEach(a=>a.onclick=e=>{
