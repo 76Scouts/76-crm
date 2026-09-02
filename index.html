@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-01 23:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-02 07:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1508,10 +1508,11 @@ async function loadAll(){
     sb.from('cert_documents').select('*').limit(4000),
     sb.from('vehicle_doc_sides').select('*').limit(2000),
     sb.from('legal_documents').select('*').order('version',{ascending:false}),
-    sb.from('legal_acceptances').select('*').limit(2000)
+    sb.from('legal_acceptances').select('*').limit(2000),
+    sb.from('road_tax_deadline').select('*').order('year')
       // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1553,7 +1554,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -9307,9 +9308,13 @@ V.rollover=()=>{
    κλείνει 11 Μαρτίου — ίδιο 2025 και 2026. Μετά την προθεσμία επιβάλλεται
    €10 συν 10% των τελών. Δεν το ανακαλύπτουμε από τα δεδομένα: είναι νόμος,
    και το λέμε ρητά ώστε να μη χαθεί σε καμιά «λήξη σε Χ μέρες». */
-function roadTaxWindow(d){
+function roadTaxWindow(d, rows){
   const t=d?new Date(d):new Date(), y=t.getFullYear();
-  const open=new Date(y,0,7), close=new Date(y,2,11,23,59,59);
+  /* Οι ημερομηνίες έρχονται από τον πίνακα road_tax_deadline — αλλάζουν κάθε
+     χρόνο με απόφαση της κυβέρνησης. Ο κώδικας κρατά μόνο το εφεδρικό. */
+  const r=(rows||(typeof D!=='undefined'&&D.rtd)||[]).find(x=>x.year===y);
+  const open=r&&r.opens_on?new Date(r.opens_on+'T00:00:00'):new Date(y,0,7);
+  const close=r&&r.renew_by?new Date(r.renew_by+'T23:59:59'):new Date(y,2,11,23,59,59);
   const inside = t>=open && t<=close;
   const days = Math.ceil((close-t)/864e5);
   if(t<open) return {open:false, sev:'info',
@@ -9338,10 +9343,13 @@ function issuesBody(){
        μέρες» ανά όχημα — είναι μία ημερομηνία που αφορά ΟΛΟ τον στόλο. */
     {t:'Άδειες κυκλοφορίας — προθεσμία 11 Μαρτίου',
      w:roadTaxWindow().msg, s:roadTaxWindow().sev, goto:'vpapers',
+     /* Μέσα στο παράθυρο ανανέωσης, «ληγμένη» δεν σημαίνει παράνομη — σημαίνει
+        ότι πρέπει να ανανεωθεί ΤΩΡΑ. Κρίνουμε με την περίοδο χάριτος. */
      l:roadTaxWindow().open?(D.veh||[]).filter(v=>{
          const p=(D.vp||[]).filter(x=>x.vehicle_id===v.id&&x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ')
            .sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
-         return !p||!p.expires_on||new Date(p.expires_on)<new Date();
+         if(!p||!p.expires_on)return true;
+         return new Date(p.expires_on)<new Date();      // λήγει φέτος → θέλει ανανέωση
        }).map(v=>({id:v.owner_id,first_name:v.plate,last_name:'',section:null})):[]},
     {t:'Οδηγοί με ανασφάλιστο όχημα',w:'Το όχημα που δηλώνουν δεν έχει ασφάλεια σε ισχύ.',s:'bad',
      l:[...new Set((D.vl||[]).filter(l=>{const i=(D.vi||[]).filter(x=>x.vehicle_id===l.vehicle_id)
@@ -9457,11 +9465,17 @@ function issuesBody(){
      · άδεια / ασφάλεια / ΜΟΤ     → τυπώνει ΛΗΞΗ, δεν βγαίνει από πουθενά
    Ζητώντας λάθος πεδίο, ο χρήστης γράφει σωστή ημερομηνία σε λάθος θέση —
    και μετά το σύστημα λέει «σε ισχύ» κάτι που έχει λήξει.                */
+/* ΤΟ toISOString() ΜΕΤΑΤΡΕΠΕΙ ΣΕ UTC. Στην Κύπρο (UTC+2/+3) μια ημερομηνία
+   φτιαγμένη σε τοπικά μεσάνυχτα γυρίζει ΜΙΑ ΜΕΡΑ ΠΙΣΩ όταν τυπωθεί έτσι.
+   Σε ημερομηνία λήξης πιστοποιητικού ή άδειας, μια μέρα είναι η διαφορά
+   ανάμεσα στο «ισχύει» και στο «έληξε». Μορφοποιούμε τοπικά. */
+const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
+                  +'-'+String(d.getDate()).padStart(2,'0');
 function addMonths(iso,m){
   const d=new Date(iso+'T00:00:00'); const day=d.getDate();
   d.setMonth(d.getMonth()+m);
   if(d.getDate()<day) d.setDate(0);          // 31 Ιαν + 1 μήνα = 28/29 Φεβ
-  return d.toISOString().slice(0,10);
+  return isoLocal(d);
 }
 /* ══ ΝΟΜΙΚΑ ΚΕΙΜΕΝΑ ═══════════════════════════════════════════════════════
    ΔΥΟ ΚΕΙΜΕΝΑ, ΔΙΑΦΟΡΕΤΙΚΗ ΜΕΤΑΧΕΙΡΙΣΗ — και η διαφορά δεν είναι τυπική.
@@ -9636,6 +9650,32 @@ async function legalGate(){
    Το OCR διάβασε πινακίδα και λήξη από κάθε χαρτί. ΠΡΟΤΕΙΝΕΙ· δεν αποφασίζει.
    Ένα λάθος εδώ σημαίνει «ασφαλισμένο» αυτοκίνητο που δεν είναι.          */
 const VP_KIND={'ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ':'Ασφάλεια οχήματος','ΜΟΤ':'ΜΟΤ','ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ':'Άδεια κυκλοφορίας'};
+
+/* ══ ΑΔΕΙΑ ΚΥΚΛΟΦΟΡΙΑΣ — ΔΥΟ ΗΜΕΡΟΜΗΝΙΕΣ ══════════════════════════════════
+   Η άδεια βγαίνει για 3, 6, 9 ή 12 μήνες και λήγει σε τέλος τριμήνου. Μετά
+   υπάρχει περίοδος χάριτος ~70 ημερών για ανανέωση χωρίς επιβάρυνση.
+
+   Αν κρατούσαμε μόνο τη λήξη, κάθε Ιανουάριο ΟΛΟΣ ο στόλος θα έδειχνε κόκκινος
+   ενώ είναι απολύτως νόμιμος. Σύστημα που φωνάζει «κίνδυνος» χωρίς λόγο σε
+   μαθαίνει να το αγνοείς — και τότε δεν ακούγεται όταν πρέπει.
+
+   Η κυβερνητική προθεσμία ΑΛΛΑΖΕΙ κάθε χρόνο· ζει σε πίνακα, όχι σε κώδικα. */
+const RT_PERIODS=[[12,'12 μήνες',11,31],[9,'9 μήνες',8,30],[6,'6 μήνες',5,30],[3,'3 μήνες',2,31]];
+function rtPeriodEnd(year, months){
+  const p=RT_PERIODS.find(x=>x[0]===months)||RT_PERIODS[0];
+  return year+'-'+String(p[2]+1).padStart(2,'0')+'-'+String(p[3]).padStart(2,'0');
+}
+/* Ίδιος κανόνας με τη βάση (road_tax_grace) — αν αποκλίνουν, ψεύδεται η οθόνη. */
+function rtGrace(exp){
+  if(!exp)return null;
+  const d=new Date(exp+'T00:00:00');
+  if(d.getMonth()===11 && d.getDate()===31){
+    const r=(D.rtd||[]).find(x=>x.year===d.getFullYear()+1);
+    if(r&&r.renew_by)return r.renew_by;
+  }
+  const g=new Date(d.getFullYear(), d.getMonth(), d.getDate()+70);
+  return isoLocal(g);
+}
 V.vpapers=()=>{
   const inb=(D.vpi||[]).filter(x=>!x.resolved_at);
   const byP={}; inb.forEach(x=>(byP[x.person_id]=byP[x.person_id]||[]).push(x));
@@ -9704,10 +9744,19 @@ V.vpapers=()=>{
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Ημ. έκδοσης</label>
               <input type="date" class="vpiss" data-id="${x.id}" value="${esc(h.issued_on||'')}"></span>
+            ${x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'?`
+            <span style="display:flex;flex-direction:column;gap:2px">
+              <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Περίοδος</label>
+              <span style="display:flex;gap:4px">
+                <select class="vpyear" data-id="${x.id}" style="max-width:82px">
+                  ${[0,1,-1,-2].map(o=>{const y=new Date().getFullYear()+o;
+                    return `<option value="${y}">${y}</option>`}).join('')}</select>
+                <select class="vpmon" data-id="${x.id}" style="max-width:104px">
+                  ${RT_PERIODS.map(p=>`<option value="${p[0]}">${p[1]}</option>`).join('')}</select></span></span>`:''}
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης${x.ocr_expires?' · OCR':''}</label>
               <input type="date" class="vpdate" data-id="${x.id}" value="${esc(x.ocr_expires||'')}"
-                     title="${x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'?'Για 12μηνη άδεια: 31 Δεκεμβρίου της χρονιάς που πλήρωσες':''}"></span>
+                     title="${x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'?'Συμπληρώνεται από την περίοδο. Η άδεια λήγει σε τέλος τριμήνου, με περίοδο χάριτος ~70 ημερών μετά.':''}"></span>
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">Όχημα</label>
               <select class="vpsel" data-id="${x.id}">
@@ -9729,10 +9778,17 @@ V.vpapers=()=>{
       const mot=pap.filter(x=>x.kind==='ΜΟΤ').sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
       const rt =pap.filter(x=>x.kind==='ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ').sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
       const own=D.bh.find(b=>b.id===v.owner_id);
-      const chip=(lbl,row)=>{
+      const chip=(lbl,row,isRT)=>{
         if(!row)return `<span class="pill" style="font-size:11px">${lbl}: <span class="dim">—</span></span>`;
         if(!row.expires_on)return `<span class="pill" style="font-size:11px;background:var(--warnbg);border-color:transparent;color:var(--warn)">${lbl}: χωρίς λήξη</span>`;
         const dd=Math.round((new Date(row.expires_on)-new Date())/864e5);
+        /* Η άδεια κυκλοφορίας δεν γίνεται παράνομη τη μέρα που λήγει: έχει
+           περίοδο χάριτος. Κόκκινο μόνο αφού περάσει ΚΑΙ αυτή. */
+        if(isRT && dd<0){
+          const g=rtGrace(row.expires_on);
+          if(g && new Date(g)>=new Date())
+            return `<span class="pill" style="font-size:11px;background:var(--warnbg);border-color:transparent;color:var(--warn)" title="Έληξε ${fdate(row.expires_on)} — ανανέωση χωρίς επιβάρυνση έως ${fdate(g)}">${lbl}: ανανέωση έως ${fdate(g)}</span>`;
+        }
         const c=dd<0?['badbg','bad']:dd<=60?['warnbg','warn']:['okbg','ok'];
         return `<span class="pill" style="font-size:11px;background:var(--${c[0]});border-color:transparent;color:var(--${c[1]})">${lbl}: ${fdate(row.expires_on)}</span>`};
       return `<div class="card pad" style="margin-bottom:7px">
@@ -9741,7 +9797,7 @@ V.vpapers=()=>{
           ${v.make?`<span class="dim" style="font-size:12.5px">${esc(v.make)} ${esc(v.model||'')}</span>`:''}
           <span class="dim" style="font-size:12.5px">${own?pn(own):'—'}</span>
           <span class="sp"></span>
-          ${chip('Ασφάλεια',ins)}${chip('ΜΟΤ',mot)}${chip('Άδεια',rt)}</div>
+          ${chip('Ασφάλεια',ins)}${chip('ΜΟΤ',mot)}${chip('Άδεια',rt,true)}</div>
         ${(ins||mot||rt)?`<div class="dim" style="font-size:11.5px;margin-top:6px;display:flex;gap:12px;flex-wrap:wrap">
           ${ins?`<span>Ασφάλεια: ${fileLine('ΑΣΦΑΛΕΙΑ',ins.id,(D.doc||[]).find(d=>d.id===ins.document_id))}</span>`:''}
           ${mot?`<span>ΜΟΤ: ${fileLine('ΧΑΡΤΙ',mot.id,(D.doc||[]).find(d=>d.id===mot.document_id))}</span>`:''}
@@ -9750,6 +9806,18 @@ V.vpapers=()=>{
       :'<div class="dim" style="font-size:13px">Κανένα όχημα καταχωρημένο.</div>'}`;
 
   const re=()=>V.vpapers();
+  /* Η περίοδος γεμίζει τη λήξη — και δείχνει αμέσως ως πότε είναι νόμιμο,
+     ώστε να μη χρειάζεται να το υπολογίσει κανείς με το μυαλό. */
+  const rtSync=id=>{
+    const y=document.querySelector('.vpyear[data-id="'+id+'"]');
+    const m=document.querySelector('.vpmon[data-id="'+id+'"]');
+    const d=document.querySelector('.vpdate[data-id="'+id+'"]');
+    if(!y||!m||!d)return;
+    d.value=rtPeriodEnd(+y.value, +m.value);
+    const g=rtGrace(d.value);
+    toast('Λήγει '+fdate(d.value)+(g?' · ανανέωση χωρίς επιβάρυνση έως '+fdate(g):''));
+  };
+  document.querySelectorAll('.vpyear,.vpmon').forEach(el=>el.onchange=()=>rtSync(el.dataset.id));
   document.querySelectorAll('.vpopen').forEach(a=>a.onclick=e=>{
     e.preventDefault();e.stopPropagation();docOpen(a.dataset.path)});
   document.querySelectorAll('.vpedit').forEach(a=>a.onclick=e=>{
