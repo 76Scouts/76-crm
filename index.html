@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-03 23:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-03 23:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -9531,6 +9531,14 @@ function issuesBody(){
      l:mem.filter(p=>secOf(p)==='Κοινότητα'&&!(p.email&&/@/.test(p.email)))},
     {t:'Χωρίς διεύθυνση',w:'',s:'info',l:act.filter(p=>!p.home_address)},
     {t:'Μέλη χωρίς υποομάδα',w:'Δεν εμφανίζονται σε εξάδα/ενωμοτία/όμιλο.',s:'info',l:mem.filter(p=>!(myOf(p)||{}).group_name)},
+    /* Χωρίς είδος δράσης και χωρίς θέμα, οι μετρήσιμες απαιτήσεις
+       («1 κατασκήνωση», «3 μηνιαία θέματα») βγάζουν πάντα μηδέν. Ο κανόνας
+       δουλεύει· τα δεδομένα λείπουν — και αυτό δεν φαίνεται πουθενά αλλού. */
+    {t:'Δράσεις χωρίς είδος',w:'Χωρίς «Κατασκήνωση/Διήμερο/Μονοήμερο» δεν μετριούνται οι συμμετοχές.',s:'warn',
+     goto:'cal', l:(D.ev||[]).filter(e=>!e.type).map(e=>({id:e.id,first_name:e.title||'—',last_name:'',section:e.section||null}))},
+    {t:'Συγκεντρώσεις Αγέλης χωρίς μηνιαίο θέμα',w:'Χωρίς θέμα δεν μετριούνται τα «τόσα μηνιαία θέματα».',s:'info',
+     goto:'attend', l:(D.ss||[]).filter(s=>s.section==='Αγέλη'&&!s.theme)
+       .map(s=>({id:s.id,first_name:fdate(s.session_date),last_name:'',section:'Αγέλη'}))},
    ]}];
   const tot=I.reduce((s,g)=>s+g.items.reduce((x,i)=>x+((i.pairs||i.l||[]).length),0),0);
   const crit=I[0].items.filter(i=>i.s==='bad').reduce((s,i)=>s+(i.l||[]).length,0)+dups.length;
@@ -11909,6 +11917,11 @@ function markBody(){
       </div>
       <div id="mNewBox" style="display:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);display:none;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="date" id="mDate" style="max-width:180px"><input id="mTitle" placeholder="Τίτλος (προαιρετικά)" style="max-width:230px">
+        <!-- ΜΗΝΙΑΙΟ ΘΕΜΑ. Οι συγκεντρώσεις του ίδιου θέματος γράφουν το ΙΔΙΟ
+             κείμενο — έτσι μετριούνται ως ΕΝΑ θέμα, όχι ως τρεις παρουσίες. -->
+        <input id="mTheme" placeholder="Μηνιαίο θέμα (Αγέλη)" list="mThemes" style="max-width:230px">
+        <datalist id="mThemes">${[...new Set((D.ss||[]).map(x=>x.theme).filter(Boolean))]
+          .sort().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
         <button class="btn p sm" id="mCreate">Δημιουργία</button></div></div>
     <div id="mBody"></div>`;
   let STATE={},SES=null;
@@ -11961,10 +11974,18 @@ function markBody(){
     }
     banner();
     btn.textContent='Αποθήκευση'; btn.disabled=false;};
-  $('mNew').onclick=()=>{const b=$('mNewBox');b.style.display=b.style.display==='flex'?'none':'flex';$('mDate').value=new Date().toISOString().slice(0,10)};
+  $('mNew').onclick=()=>{const b=$('mNewBox');b.style.display=b.style.display==='flex'?'none':'flex';$('mDate').value=isoLocal(new Date());
+    /* Προτείνει το θέμα της τελευταίας συγκέντρωσης του τμήματος: το μηνιαίο
+       θέμα κρατά εβδομάδες, δεν το ξαναγράφεις κάθε φορά. */
+    const last=(D.ss||[]).filter(x=>x.section===$('mSec').value&&x.theme)
+      .sort((a,b)=>String(b.session_date).localeCompare(String(a.session_date)))[0];
+    if($('mTheme')&&last)$('mTheme').value=last.theme||'';};
   $('mCreate').onclick=async()=>{
     const d=$('mDate').value, sec=$('mSec').value; if(!d)return toast('Βάλε ημερομηνία');
-    const {data,error}=await sb.from('sessions').insert({session_date:d,session_type:'Συγκέντρωση',section:sec,title:$('mTitle').value||('Συγκέντρωση '+sec),scout_year:YEAR,status:'πραγματοποιήθηκε'}).select().single();
+    const {data,error}=await sb.from('sessions').insert({session_date:d,session_type:'Συγκέντρωση',
+      section:sec,title:$('mTitle').value||('Συγκέντρωση '+sec),
+      theme:($('mTheme')&&$('mTheme').value.trim())||null,
+      scout_year:YEAR,status:'πραγματοποιήθηκε'}).select().single();
     if(error)return toast('Σφάλμα: '+error.message);
     D.ss.push(data); $('mNewBox').style.display='none'; $('mTitle').value=''; fill();
     setTimeout(()=>{$('mSes').value=data.id;load()},20); toast('Δημιουργήθηκε');};
