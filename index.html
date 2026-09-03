@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-02 10:15'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-03 13:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2820,6 +2820,10 @@ function certsHTML(p){
           ${/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes||'')?'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">προς επιβεβαίωση</span>':''}
           ${c.confirmed_on?'':'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)" title="Το δήλωσε ο ίδιος. Δεν μετράει για καταλληλότητα μέχρι να το επιβεβαιώσεις.">δηλώθηκε — δεν μετράει</span>'}
           <span class="sp"></span>${certChip(c)}
+          ${(D.cd||[]).some(x=>x.cert_id===c.id)||c.document_id?''
+            :`<label class="btn gh sm" style="cursor:pointer" title="Επισύναψε το χαρτί">📎<input type="file"
+                class="pcattach" data-id="${c.id}" style="display:none"
+                accept=".pdf,.png,.jpg,.jpeg,.heic"></label>`}
           ${c.confirmed_on?'':`<button class="btn p sm pcok" data-id="${c.id}" title="Είδα το χαρτί — ισχύει">Επιβεβαίωση</button>`}
           <button class="btn gh sm pcdel" data-id="${c.id}" title="Διαγραφή">✕</button></div>
         <div class="dim" style="font-size:11.5px">${c.notes&&/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes)?esc(c.notes.split('—')[0].trim())+' · ':''}${c.issued_on?'έκδοση '+fdate(c.issued_on):''}${c.number?' · αρ. '+esc(c.number):''}
@@ -2860,6 +2864,27 @@ function wireCerts(p,after){
     const c=(D.pc||[]).find(x=>x.id===b.dataset.id);
     if(c){c.confirmed_on=today; c.confirmed_by=ME.person_id}
     saveCache(); toast('Επιβεβαιώθηκε'); after&&after();});
+  /* ΕΠΙΣΥΝΑΨΗ ΣΕ ΥΠΑΡΧΟΝ ΠΙΣΤΟΠΟΙΗΤΙΚΟ. Έλειπε: το αρχείο μπορούσε να μπει
+     μόνο τη στιγμή της καταχώρησης. Ό,τι ήρθε από εισαγωγή ή γράφτηκε με το
+     χέρι έμενε για πάντα χωρίς απόδειξη. */
+  document.querySelectorAll('.pcattach').forEach(inp=>inp.onchange=async()=>{
+    let f=inp.files&&inp.files[0]; if(!f)return;
+    const c=(D.pc||[]).find(x=>x.id===inp.dataset.id); if(!c)return;
+    const t=ctype(c.type_code);
+    try{
+      if(/^image\//.test(f.type)&&typeof scanToFile==='function') f=await scanToFile(f,t.code.toLowerCase());
+      if(!f){inp.value='';return}
+      const d=await docUpload(f,{person_id:c.person_id, kind:t.name, title:t.name});
+      /* Ποινικού χαρακτήρα: κλειδώνεται αμέσως, δεν περιμένει καθάρισμα μετά. */
+      if(c.type_code==='Ν91') await sb.from('documents').update({restricted:true}).eq('id',d.id);
+      await sb.from('person_certificates').update({document_id:d.id}).eq('id',c.id);
+      await sb.from('cert_documents').insert({cert_id:c.id, document_id:d.id, seq:1});
+      c.document_id=d.id;
+      (D.cd=D.cd||[]).push({id:'tmp'+Math.random(), cert_id:c.id, document_id:d.id, seq:1, label:null});
+      saveCache(); toast('Επισυνάφθηκε'); after&&after();
+    }catch(e){ toast('Σφάλμα: '+(e.message||e)) }
+    finally{ inp.value='' }
+  });
   document.querySelectorAll('.pcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή πιστοποιητικού;'))return;
     await sb.from('person_certificates').delete().eq('id',b.dataset.id);
