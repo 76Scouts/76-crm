@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-03 14:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-03 14:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6756,9 +6756,10 @@ function progressBody(){
     b.disabled=true;
     if(cur){
       if(!confirm('Να αφαιρεθεί η απαίτηση; Θα σβηστούν και οι υπογραφές της.')){b.disabled=false;return}
-      await sb.from('progress_signature').delete().eq('target','ΑΠΑΙΤΗΣΗ').eq('target_id',cur.id);
-      const {error}=await sb.from('member_requirement').delete().eq('id',cur.id);
-      if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
+      /* Η αφαίρεση κρίνεται στη ΒΑΣΗ: Α.Ο.Π. ή ο βαθμοφόρος που την πέρασε
+         στην Ομάδα, Α.Κ.Α. στην Κοινότητα, Α.Α.Λ. στην Αγέλη. */
+      const {data,error}=await sb.rpc('progress_revoke',{p_id:cur.id});
+      if(error||(data&&data.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
       D.mreq=D.mreq.filter(x=>x.id!==cur.id);
       D.psig=(D.psig||[]).filter(x=>!(x.target==='ΑΠΑΙΤΗΣΗ'&&x.target_id===cur.id));
     }else{
@@ -6882,7 +6883,18 @@ function passBody(){
       ${PSMODE==='kane'
         ? `<select id="psYear" style="max-width:130px">${years.map(y=>`<option${y===PSYEAR?' selected':''}>${y}</option>`).join('')}</select>
            <span class="dim" style="font-size:11.5px">χωρίς ακριβή ημερομηνία</span>`
-        : `<input id="psDate" type="date" value="${new Date().toISOString().slice(0,10)}" style="max-width:150px">`}
+        : `<input id="psDate" type="date" value="${isoLocal(new Date())}" style="max-width:150px">`}
+      <!-- ΠΟΙΟΣ ΤΗΝ ΠΕΡΑΣΕ. Το αίτημα χωρίς αυτό δεν είναι αίτημα, είναι ευχή:
+           κανείς δεν ξέρει ποιον να ρωτήσει αν αμφισβητηθεί. Στην Ομάδα το
+           απαιτεί και η βάση. -->
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px">
+        <span class="dim">Πέρασε από:</span>
+        <select id="psExam" style="max-width:180px;font-size:12px">
+          <option value="">— διάλεξε —</option>
+          ${D.bh.filter(x=>x.kind==='Βαθμοφόρος'&&x.status==='Ενεργός')
+              .sort((a,b)=>nm(a).localeCompare(nm(b),'el'))
+              .map(x=>`<option value="${x.id}"${ME.person_id===x.id?' selected':''}>${esc(nm(x))}</option>`).join('')}
+        </select></label>
       <span class="sp"></span>
       ${who?`<button class="btn p sm" id="psSave">${PSMODE==='ask'?'Υποβολή':'Πέρασμα'} <span id="psN">0</span></button>`:''}
     </div>`
@@ -6918,8 +6930,12 @@ function passBody(){
     if(!ids.length)return toast('Δεν τσέκαρες τίποτα');
     let res;
     if(PSMODE==='ask'){
+      const exam=$('psExam')?$('psExam').value:null;
+      const dt=$('psDate')?$('psDate').value:null;
+      if(!dt)   return toast('Βάλε την ημερομηνία που πέρασε η απαίτηση.');
+      if(!exam) return toast('Διάλεξε ποιος βαθμοφόρος την πέρασε.');
       const rows=ids.map(rid=>({subject_id:who.id,requested_by:ME.person_id,target_kind:'απαίτηση',
-        requirement_id:rid,done_on:$('psDate')?$('psDate').value:null}));
+        requirement_id:rid, done_on:dt, signed_by:exam, status:'υποβλήθηκε'}));
       const {error}=await sb.from('progress_request').insert(rows);
       if(error)return toast('Σφάλμα: '+error.message);
       toast(ids.length+' υποβλήθηκαν'); PSSEL.clear(); await reloadProgress(); return route(ROUTE);
