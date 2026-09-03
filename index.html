@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-03 14:36'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-03 23:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6784,10 +6784,23 @@ function progressBody(){
    καταχωρούν τα ίδια τα παιδιά · «ΚΑΝΕ» για όσα υπογράφτηκαν και δεν γράφτηκαν ποτέ. */
 
 let PGEXAM=null;
+/* Το ΚΑΝΕ είναι το βιβλίο ΤΗΣ ΟΜΑΔΑΣ. Στην Αγέλη το παιδί κρατά βιβλιάριο,
+   στην Κοινότητα το Η.Κ.Α.Δ.Ε. Λέγαμε «ΚΑΝΕ» και στα τρία — και ο Α.Α.Λ.
+   έψαχνε βιβλίο που δεν κρατά κανείς. */
+const BOOK={'Αγέλη':'το βιβλιάριο','Ομάδα':'το ΚΑΝΕ','Κοινότητα':'το Η.Κ.Α.Δ.Ε.'};
+const bookOf=sec=>BOOK[sec]||'το βιβλίο';
+let PSSESS=null;
 let PSMODE='now', PSWHO=null, PSSTAGE=null, PSYEAR=null, PSSEL=new Set();
 const pol=sec=>(D.ppol||[]).find(p=>p.section===sec)||{grant_by:'βαθμοφόροι'};
 const psKids=()=>D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&secOf(p))
                      .sort((a,b)=>(secOf(a)||'').localeCompare(secOf(b)||'','el')||nm(a).localeCompare(nm(b),'el'));
+/* Συγκεντρώσεις με ΠΑΡΟΝΤΕΣ. Χωρίς παρουσίες δεν έχει νόημα — δεν ξέρουμε
+   σε ποιον να δώσουμε. */
+const psSessions=()=>(D.ss||[]).map(x=>({...x,
+    parontes:(D.att||[]).filter(a=>a.session_id===x.id&&a.status==='Παρών').length}))
+  .filter(x=>x.parontes>0)
+  .sort((a,b)=>String(b.session_date).localeCompare(String(a.session_date)))
+  .slice(0,60);
 const psStages=sec=>(D.pcat||[]).filter(x=>x.section===sec&&x.item_kind==='στάδιο'&&x.ordinal<50)
                      .sort((a,b)=>a.ordinal-b.ordinal);
 const psReqs=st=>(D.rc2||[]).filter(r=>r.stage_catalog_id===st.id&&r.item_kind!=='απαίτηση πτυχίου'&&r.active!==false)
@@ -6810,13 +6823,15 @@ function passBody(){
       ${kid?`<button class="btn sm${PSMODE==='ask'?' p':''}" data-m="ask">Ζητώ πέρασμα</button>`
            :`<button class="btn sm${PSMODE==='now'?' p':''}" data-m="now">Τώρα</button>
              <button class="btn sm${PSMODE==='queue'?' p':''}" data-m="queue">Ουρά${q?' · '+q:''}</button>
-             <button class="btn sm${PSMODE==='kane'?' p':''}" data-m="kane">Από ΚΑΝΕ</button>`}
+             <button class="btn sm${PSMODE==='sess'?' p':''}" data-m="sess">Από συγκέντρωση</button>
+             <button class="btn sm${PSMODE==='kane'?' p':''}" data-m="kane">Από ${esc(bookOf(secOf(who||{})||'Ομάδα'))}</button>`}
     </div>
     <div class="muted" style="margin-top:8px;font-size:12.5px;line-height:1.65">${
       PSMODE==='now'  ? 'Το παιδί μπροστά σου. Τσέκαρε και αποθήκευσε — <b>δεν υπάρχει δεύτερο έντυπο</b>.'
-    : PSMODE==='queue'? 'Όταν έχεις γραμμή, καταχωρούν <b>τα ίδια τα παιδιά</b> ή ο Ενωμοτάρχης τους όσο περιμένουν. Εσύ επιβεβαιώνεις — έχεις ήδη υπογράψει το ΚΑΝΕ.'
-    : PSMODE==='kane' ? 'Για όσα υπογράφτηκαν στο ΚΑΝΕ και δεν καταγράφηκαν ποτέ. Διάλεξε <b>χρονιά</b>, όχι ημερομηνία — δεν την ξέρουμε και δεν την επινοούμε.'
-    :                   'Δήλωσε τι πέρασες. Πάει στον βαθμοφόρο που σου υπέγραψε το ΚΑΝΕ, για επιβεβαίωση.'}</div></div>`;
+    : PSMODE==='queue'? 'Όταν έχεις γραμμή, καταχωρούν <b>τα ίδια τα παιδιά</b> ή ο Ενωμοτάρχης τους όσο περιμένουν. Εσύ επιβεβαιώνεις — έχεις ήδη υπογράψει.'
+    : PSMODE==='sess' ? 'Διάλεξε <b>συγκέντρωση ή δράση</b> και τι πέρασαν. Παίρνουν <b>όσοι ήταν παρόντες</b>, με την ημερομηνία της ίδιας της συγκέντρωσης. Οι απόντες δεν παίρνουν τίποτα.'
+    : PSMODE==='kane' ? 'Για όσα υπογράφτηκαν σε '+esc(bookOf(secOf(who||{})||'Ομάδα'))+' και δεν καταγράφηκαν ποτέ. Διάλεξε <b>χρονιά</b>, όχι ημερομηνία — δεν την ξέρουμε και δεν την επινοούμε.'
+    :                   'Δήλωσε τι πέρασες. Πάει στον βαθμοφόρο που σου υπέγραψε, για επιβεβαίωση.'}</div></div>`;
 
   if(PSMODE==='queue'){
     const rows=psQueue();
@@ -6867,7 +6882,9 @@ function passBody(){
   /* ── Τώρα / ΚΑΝΕ / Ζητώ: ίδια οθόνη, διαφορετική κατάληξη ── */
   const kids=psKids();
   const who=PSWHO?D.bh.find(b=>b.id===PSWHO):null;
-  const sec=who?secOf(who):null;
+  const sess=PSSESS?(D.ss||[]).find(x=>x.id===PSSESS):null;
+  /* Στο «Από συγκέντρωση» το τμήμα το ορίζει η ΣΥΓΚΕΝΤΡΩΣΗ, όχι το παιδί. */
+  const sec=PSMODE==='sess' ? (sess?sess.section:null) : (who?secOf(who):null);
   const stages=sec?psStages(sec):[];
   if(stages.length&&(!PSSTAGE||!stages.some(s=>s.id===PSSTAGE)))PSSTAGE=stages[0].id;
   const st=stages.find(s=>s.id===PSSTAGE);
@@ -6877,10 +6894,15 @@ function passBody(){
 
   $('view').innerHTML=head+`
     <div class="card pad" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      ${kid?`<b>${esc(nm(who||{first_name:'',last_name:''}))}</b>`
+      ${PSMODE==='sess'
+        ? `<select id="psSess" style="max-width:340px"><option value="">— διάλεξε συγκέντρωση ή δράση —</option>
+            ${psSessions().map(x=>`<option value="${x.id}"${x.id===PSSESS?' selected':''}>${
+              fdate(x.session_date)} · ${esc(x.section||'')}${x.title?' · '+esc(x.title):''} · ${x.parontes} παρόντες</option>`).join('')}</select>`
+        : kid?`<b>${esc(nm(who||{first_name:'',last_name:''}))}</b>`
            :`<select id="psWho" style="max-width:280px"><option value="">— διάλεξε παιδί —</option>
               ${kids.map(p=>`<option value="${p.id}"${p.id===PSWHO?' selected':''}>${esc(nm(p))} · ${esc(secOf(p))}</option>`).join('')}</select>`}
-      ${PSMODE==='kane'
+      ${PSMODE==='sess' ? `<span class="dim" style="font-size:11.5px">η ημερομηνία είναι της συγκέντρωσης</span>`
+       : PSMODE==='kane'
         ? `<select id="psYear" style="max-width:130px">${years.map(y=>`<option${y===PSYEAR?' selected':''}>${y}</option>`).join('')}</select>
            <span class="dim" style="font-size:11.5px">χωρίς ακριβή ημερομηνία</span>`
         : `<input id="psDate" type="date" value="${isoLocal(new Date())}" style="max-width:150px">`}
@@ -6896,7 +6918,8 @@ function passBody(){
               .map(x=>`<option value="${x.id}"${ME.person_id===x.id?' selected':''}>${esc(nm(x))}</option>`).join('')}
         </select></label>
       <span class="sp"></span>
-      ${who?`<button class="btn p sm" id="psSave">${PSMODE==='ask'?'Υποβολή':'Πέρασμα'} <span id="psN">0</span></button>`:''}
+      ${(who||(PSMODE==='sess'&&sess))?`<button class="btn p sm" id="psSave">${
+         PSMODE==='ask'?'Υποβολή':PSMODE==='sess'?'Πέρασμα σε όλους':'Πέρασμα'} <span id="psN">0</span></button>`:''}
     </div>`
    +(who?`
     <div class="card pad" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">
@@ -6913,11 +6936,14 @@ function passBody(){
           ${d?`<div class="dim" style="font-size:11px">✓ ${d.date_approx?esc(d.scout_year||''):fdate(d.date)}${d.via&&d.via!=='ατομικά'?' · '+esc(d.via):''}</div>`:''}
           ${pend?'<div style="font-size:11px;color:var(--warn)">⏳ υποβλήθηκε, περιμένει επιβεβαίωση</div>':''}
         </span></label>`}).join('')||'<div class="pad dim">Καμία απαίτηση.</div>'}</div>`
-    :'<div class="uc"><h3>Διάλεξε παιδί</h3><p>Μετά τσέκαρε ό,τι πέρασε.</p></div>');
+    : PSMODE==='sess'
+        ? '<div class="uc"><h3>Διάλεξε συγκέντρωση</h3><p>Μετά τσέκαρε τι πέρασαν όσοι ήταν εκεί.</p></div>'
+        : '<div class="uc"><h3>Διάλεξε παιδί</h3><p>Μετά τσέκαρε ό,τι πέρασε.</p></div>');
 
   document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{PSMODE=b.dataset.m;PSSEL.clear();route(ROUTE)});
   document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{PSSTAGE=b.dataset.st;route(ROUTE)});
   if($('psWho'))$('psWho').onchange=e=>{PSWHO=e.target.value||null;PSSEL.clear();PSSTAGE=null;route(ROUTE)};
+  if($('psSess'))$('psSess').onchange=e=>{PSSESS=e.target.value||null;PSSEL.clear();PSSTAGE=null;route(ROUTE)};
   if($('psYear'))$('psYear').onchange=e=>{PSYEAR=e.target.value};
   const count=()=>{const n=[...document.querySelectorAll('.psr:checked:not(:disabled)')].length;
                    if($('psN'))$('psN').textContent=n?'('+n+')':''};
@@ -6939,6 +6965,14 @@ function passBody(){
       const {error}=await sb.from('progress_request').insert(rows);
       if(error)return toast('Σφάλμα: '+error.message);
       toast(ids.length+' υποβλήθηκαν'); PSSEL.clear(); await reloadProgress(); return route(ROUTE);
+    }
+    if(PSMODE==='sess'){
+      const exam=$('psExam')?$('psExam').value:null;
+      const {data,error}=await sb.rpc('grant_from_session',
+        {p_session:PSSESS, p_reqs:ids, p_examiner:exam||null});
+      if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+      toast(`${data.parontes} παρόντες · ${data.perasan} πέρασαν${data.itan_idi?' · '+data.itan_idi+' ήταν ήδη':''}`);
+      PSSEL.clear(); await reloadProgress(); return route(ROUTE);
     }
     if(PSMODE==='kane'){
       ({data:res}=await sb.rpc('grant_from_kane',{p_person:who.id,p_reqs:ids,p_year:PSYEAR,p_date:null}));
