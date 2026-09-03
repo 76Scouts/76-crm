@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-03 23:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-03 23:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -9396,6 +9396,17 @@ V.rollover=()=>{
 
   document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{S.step=+b.dataset.st;save();V.rollover()});
   document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>route(b.dataset.goto));
+  /* Το είδος γράφεται αμέσως — μία επιλογή, μία εγγραφή. Καμία «αποθήκευση». */
+  document.querySelectorAll('.evtype').forEach(sel=>sel.onchange=async()=>{
+    if(!sel.value)return;
+    const nights={'Διήμερο':1,'Τριήμερο':2,'Κατασκήνωση':7,'Μονοήμερο':0}[sel.value];
+    const patch={type:sel.value}; if(nights!==undefined)patch.nights=nights;
+    const {error}=await sb.from('events').update(patch).eq('id',sel.dataset.e);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const e=(D.ev||[]).find(x=>x.id===sel.dataset.e);
+    if(e)Object.assign(e,patch);
+    saveCache(); sel.closest('div').style.opacity=.4; toast('Μπήκε: '+sel.value);
+  });
   const kp=$('roKeep'); if(kp)kp.onchange=()=>{S.keepGroups=kp.checked;save();V.rollover()};
   document.querySelectorAll('[data-grad]').forEach(b=>b.onclick=()=>{S.gradYears=b.dataset.grad;save();V.rollover()});
 
@@ -9534,8 +9545,10 @@ function issuesBody(){
     /* Χωρίς είδος δράσης και χωρίς θέμα, οι μετρήσιμες απαιτήσεις
        («1 κατασκήνωση», «3 μηνιαία θέματα») βγάζουν πάντα μηδέν. Ο κανόνας
        δουλεύει· τα δεδομένα λείπουν — και αυτό δεν φαίνεται πουθενά αλλού. */
+    /* Εδώ δεν αρκεί λίστα ονομάτων: το είδος μπαίνει ΕΠΙ ΤΟΠΟΥ, με επιλογή.
+       Αν έπρεπε να ανοίξεις 102 δράσεις μία-μία, δεν θα το έκανες ποτέ. */
     {t:'Δράσεις χωρίς είδος',w:'Χωρίς «Κατασκήνωση/Διήμερο/Μονοήμερο» δεν μετριούνται οι συμμετοχές.',s:'warn',
-     goto:'cal', l:(D.ev||[]).filter(e=>!e.type).map(e=>({id:e.id,first_name:e.title||'—',last_name:'',section:e.section||null}))},
+     rows:(D.ev||[]).filter(e=>!e.type).sort((a,b)=>String(a.event_date).localeCompare(String(b.event_date)))},
     {t:'Συγκεντρώσεις Αγέλης χωρίς μηνιαίο θέμα',w:'Χωρίς θέμα δεν μετριούνται τα «τόσα μηνιαία θέματα».',s:'info',
      goto:'attend', l:(D.ss||[]).filter(s=>s.section==='Αγέλη'&&!s.theme)
        .map(s=>({id:s.id,first_name:fdate(s.session_date),last_name:'',section:'Αγέλη'}))},
@@ -9580,7 +9593,14 @@ function issuesBody(){
               ${it.w?`<span class="dim" style="display:block;font-size:12px">${esc(it.w)}</span>`:''}</span>
             <span class="pill" style="color:${col};border-color:${col}">${n}</span><span class="dim">▾</span></button>
           <div id="${id}_b" style="display:none;padding:0 16px 13px">
-            ${it.pairs?it.pairs.slice(0,30).map(pr=>`<div style="padding:6px 0;border-top:1px solid var(--line);font-size:13.5px">
+            ${it.rows?it.rows.slice(0,200).map(e=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--line)">
+                <span class="dim" style="font-size:11.5px;min-width:82px;font-variant-numeric:tabular-nums">${fdate(e.event_date)}</span>
+                <span style="flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.title||'—')}</span>
+                <select class="evtype" data-e="${e.id}" style="max-width:150px;font-size:12px">
+                  <option value="">— είδος —</option>
+                  ${MOLA_KIND.map(k=>`<option value="${esc(k[1])}">${esc(k[1])}</option>`).join('')}
+                </select></div>`).join('')
+              :it.pairs?it.pairs.slice(0,30).map(pr=>`<div style="padding:6px 0;border-top:1px solid var(--line);font-size:13.5px">
                 <span class="pn" data-p="${pr.a.id}">${pn(pr.a)}</span> <span class="dim">↔</span> <span class="pn" data-p="${pr.b.id}">${pn(pr.b)}</span>
                 <span class="dim" style="font-size:11.5px"> · ${pr.sig.map(esc).join(' · ')}</span></div>`).join('')
               :it.l.slice(0,60).map(x=>`<span class="pill" style="margin:3px 3px 0 0"><span class="pn" data-p="${x.id}">${pn(x)}</span>${x.section?`<span class="dim">${esc(x.section)}</span>`:''}</span>`).join('')}
@@ -9591,6 +9611,17 @@ function issuesBody(){
     ${!tot?`<div class="uc"><div class="ico">${ic('check',26)}</div><h3>Καμία εκκρεμότητα</h3><p>Το μητρώο είναι πλήρες.</p></div>`:''}`;
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const d=$(b.dataset.x+'_b');d.style.display=d.style.display==='none'?'block':'none'});
   document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>route(b.dataset.goto));
+  /* Το είδος γράφεται αμέσως — μία επιλογή, μία εγγραφή. Καμία «αποθήκευση». */
+  document.querySelectorAll('.evtype').forEach(sel=>sel.onchange=async()=>{
+    if(!sel.value)return;
+    const nights={'Διήμερο':1,'Τριήμερο':2,'Κατασκήνωση':7,'Μονοήμερο':0}[sel.value];
+    const patch={type:sel.value}; if(nights!==undefined)patch.nights=nights;
+    const {error}=await sb.from('events').update(patch).eq('id',sel.dataset.e);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const e=(D.ev||[]).find(x=>x.id===sel.dataset.e);
+    if(e)Object.assign(e,patch);
+    saveCache(); sel.closest('div').style.opacity=.4; toast('Μπήκε: '+sel.value);
+  });
   /* Η απόφαση γίνεται στη ΒΑΣΗ (identity_review_decide): γράφει την τιμή ΚΑΙ
      κλείνει την εγγραφή σε μία πράξη, ώστε να μη μείνει ποτέ μισοτελειωμένη. */
   const idDecide=async(id,ok,btn)=>{
