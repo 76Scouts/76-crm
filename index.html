@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-03 13:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-03 13:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1509,10 +1509,11 @@ async function loadAll(){
     sb.from('vehicle_doc_sides').select('*').limit(2000),
     sb.from('legal_documents').select('*').order('version',{ascending:false}),
     sb.from('legal_acceptances').select('*').limit(2000),
-    sb.from('road_tax_deadline').select('*').order('year')
+    sb.from('road_tax_deadline').select('*').order('year'),
+    sb.from('v_warrant_conflicts').select('*').limit(500)
       // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1554,7 +1555,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; D.wcon=r[76]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -9400,6 +9401,15 @@ function issuesBody(){
     {t:'Χωρίς εγγραφή '+YEAR,w:'Δεν εμφανίζονται στον Κατάλογο Εγγραφών Κλιμακίου.',s:'warn',l:noReg},
     {t:'Χωρίς Αριθμό Μητρώου',w:'Δεν συνδέονται με το escouts ούτε κάνουν login με Α.Μ.',s:'warn',l:act.filter(p=>!p.registry_no)},
     {t:'Βαθμοφόροι χωρίς ενεργή εντολή',w:'Ούτε Εντολή Διοίκησης ούτε Ανάθεση σε ισχύ.',s:'warn',l:led.filter(p=>['none','expired'].includes(warrantOf(p.id).k))},
+    /* Ένα κλιμάκιο τη φορά — το ανώτερο. Όποιος υπηρετεί ως Έφορος δεν κρατά
+       ταυτόχρονα εντολή Συστήματος: θα μετρούσε δύο φορές στα επιτελεία και
+       θα φαινόταν βαθμοφόρος τμήματος που δεν είναι. */
+    {t:'Εντολές σε δύο κλιμάκια ταυτόχρονα',
+     w:'Ισχύει το ανώτερο κλιμάκιο. Κάποια από τις δύο πρέπει να κλείσει.',s:'bad',
+     l:[...new Set((D.wcon||[]).map(x=>x.person_id))].map(id=>D.bh.find(p=>p.id===id)).filter(Boolean)},
+    {t:'Εντολές με λήξη πριν την έναρξη',w:'Λάθος ημερομηνίες — δεν μετρούν σωστά στην υπηρεσία.',s:'bad',
+     l:[...new Set((D.sh||[]).filter(h=>h.start_date&&h.end_date&&h.start_date>h.end_date).map(h=>h.person_id))]
+        .map(id=>D.bh.find(p=>p.id===id)).filter(Boolean)},
     {t:'Βαθμοφόροι χωρίς εκπαίδευση',w:'Ούτε Προκαταρκτική. Δεν μπορεί να εκδοθεί εντολή.',s:'warn',l:led.filter(p=>trainLevel(p.id)===0)},
    ]},
    {g:'Στοιχεία επικοινωνίας',items:[
