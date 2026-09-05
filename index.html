@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-05 18:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-05 22:34'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2885,7 +2885,7 @@ function certsHTML(p){
                «έκδοση» και «αρ.». Κανείς δεν κατάλαβε ότι το χαρτί ανοίγει. */
             return all.length
               ?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">${all.map((r,ix)=>
-                  `<a href="#" class="btn gh sm docopen" data-path="${esc(r.f.path)}">👁 ${
+                  `<a href="#" class="btn gh sm certview" data-cert="${c.id}" data-ix="${ix}">👁 ${
                     esc(r.cd.label || (all.length>1?'όψη '+(ix+1):'Δες το χαρτί'))}</a>`).join('')}</div>`
               :'<div class="dim" style="font-size:11px;margin-top:4px">Χωρίς συνημμένο χαρτί</div>'})()}
       </div>`}).join(''):'<div class="dim" style="font-size:13px">Κανένα καταχωρημένο</div>'}
@@ -2996,6 +2996,95 @@ async function docOpen(path){
   if(w){ try{w.opener=null}catch(e){} w.location.replace(data.signedUrl); }
   else window.open(data.signedUrl,'_blank','noopener');
 }
+
+/* ══ ΠΡΟΕΠΙΣΚΟΠΗΣΗ ΧΑΡΤΙΟΥ ══════════════════════════════════════════════
+   Η επιβεβαίωση πιστοποιητικού είναι «κοιτάζω και κρίνω», και γινόταν με
+   άνοιγμα νέας καρτέλας: έχανες τη θέση σου στην ουρά, γύριζες πίσω, έψαχνες
+   πού ήσουν. Για είκοσι χαρτιά στη σειρά αυτό είναι είκοσι φορές.
+
+   Εδώ το χαρτί ανοίγει ΜΕΣΑ στο παράθυρο. Νέα καρτέλα και κατέβασμα μένουν —
+   ως ΕΠΙΛΟΓΗ, όχι ως ο μόνος δρόμος: το A4 με ψιλά γράμματα θέλει ζουμ, και
+   κάποιες φορές θες το αρχείο στα χέρια σου.
+
+   Δέχεται είτε μία διαδρομή είτε λίστα όψεων — μπρος/πίσω με τα βελάκια,
+   γιατί η άδεια οδήγησης έχει δύο πλευρές και κρίνονται μαζί.        */
+async function docPreview(list,ix){
+  const items=(Array.isArray(list)?list:[{path:list}]).filter(x=>x&&x.path);
+  if(!items.length)return toast('Δεν υπάρχει συνημμένο αρχείο.');
+  let i=Math.max(0,Math.min(ix||0,items.length-1));
+
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:960;display:flex;align-items:center;justify-content:center;padding:14px';
+  const key=e=>{
+    if(e.key==='Escape')close();
+    else if(e.key==='ArrowRight'&&i<items.length-1){i++;show()}
+    else if(e.key==='ArrowLeft'&&i>0){i--;show()}
+  };
+  function close(){document.removeEventListener('keydown',key);ov.remove()}
+  ov.onclick=e=>{if(e.target===ov)close()};
+  document.addEventListener('keydown',key);
+  document.body.appendChild(ov);
+
+  /* Ο σύνδεσμος ζει 5 λεπτά. Με «download» ο διακομιστής στέλνει
+     Content-Disposition, ώστε το αρχείο να κατεβαίνει με το όνομά του
+     αντί να ανοίγει στον φυλλομετρητή. */
+  async function sign(p,dl){
+    const {data,error}=await sb.storage.from('e76')
+      .createSignedUrl(p,300,dl?{download:dl}:undefined);
+    if(error||!data)throw new Error((error&&error.message)||'άγνωστο σφάλμα');
+    return data.signedUrl;
+  }
+
+  async function show(){
+    const it=items[i], name=String(it.path).split('/').pop();
+    const pdf=/\.pdf$/i.test(it.path);
+    ov.innerHTML=`<div class="card" style="max-width:900px;width:100%;max-height:94vh;display:flex;flex-direction:column">
+      <div class="pad" style="border-bottom:1px solid var(--line);display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:140px"><b style="font-size:14.5px">${esc(it.label||name)}</b>
+          ${items.length>1?`<div class="dim" style="font-size:12px">όψη ${i+1} από ${items.length}</div>`:''}</div>
+        ${items.length>1?`<button class="btn gh sm" id="dpPrev"${i?'':' disabled'}>‹</button>
+          <button class="btn gh sm" id="dpNext"${i<items.length-1?'':' disabled'}>›</button>`:''}
+        <button class="btn gh sm" id="dpTab" title="Άνοιγμα σε νέα καρτέλα — για ζουμ">Νέα καρτέλα ↗</button>
+        <button class="btn gh sm" id="dpDl" title="Αποθήκευση στη συσκευή">Κατέβασμα ↓</button>
+        <button class="btn gh sm" id="dpX" title="Κλείσιμο (Esc)">✕</button></div>
+      <div id="dpBody" style="flex:1;overflow:auto;background:#0d1116;display:flex;align-items:center;justify-content:center;min-height:220px">
+        <span style="color:#8d95a1;font-size:13px">Φόρτωση…</span></div></div>`;
+    $('dpX').onclick=close;
+    if(items.length>1){
+      const pv=$('dpPrev'), nx=$('dpNext');
+      if(pv)pv.onclick=()=>{if(i>0){i--;show()}};
+      if(nx)nx.onclick=()=>{if(i<items.length-1){i++;show()}};
+    }
+    let url;
+    try{ url=await sign(it.path) }
+    catch(e){
+      $('dpBody').innerHTML=`<span style="color:#f2cdc7;font-size:13px;padding:22px;text-align:center">Δεν άνοιξε: ${esc(e.message)}</span>`;
+      return;
+    }
+    $('dpBody').innerHTML = pdf
+      ? `<iframe src="${esc(url)}#toolbar=0" style="width:100%;height:72vh;border:0;background:#fff"></iframe>`
+      : `<img src="${esc(url)}" alt="${esc(it.label||name)}" style="max-width:100%;max-height:78vh;display:block">`;
+    /* Η διεύθυνση έχει ήδη υπογραφεί — το window.open γίνεται μέσα στο κλικ
+       και δεν το κόβει ο αποκλεισμός αναδυόμενων. */
+    $('dpTab').onclick=()=>window.open(url,'_blank','noopener');
+    $('dpDl').onclick=async()=>{
+      try{
+        const d=await sign(it.path,name);
+        const a=document.createElement('a'); a.href=d; a.download=name;
+        document.body.appendChild(a); a.click(); a.remove();
+      }catch(e){ toast('Δεν κατέβηκε: '+e.message) }
+    };
+  }
+  show();
+}
+/* Όλες οι όψεις ενός πιστοποιητικού, με τα ονόματα που τους δόθηκαν. */
+function certSides(c){
+  const ds=(D.cd||[]).filter(x=>x.cert_id===c.id).sort((a,b)=>(a.seq||0)-(b.seq||0))
+    .map(x=>({cd:x,f:(D.doc||[]).find(y=>y.id===x.document_id)})).filter(x=>x.f);
+  if(ds.length)return ds.map((r,ix)=>({path:r.f.path,label:r.cd.label||('όψη '+(ix+1))}));
+  const d=(D.doc||[]).find(x=>x.id===c.document_id);
+  return d?[{path:d.path,label:d.title||'το χαρτί'}]:[];
+}
 async function docUpload(file,meta){
   const safe=file.name.replace(/[^\w.\-]+/g,'_');
   const path=`${meta.person_id?'people/'+meta.person_id:'events/'+meta.event_id}/${Date.now()}_${safe}`;
@@ -3094,7 +3183,12 @@ function filesHTML(list,ctx){
     <div class="dim" style="font-size:11.5px;margin-top:7px">Ιδιωτικός χώρος — τα αρχεία ανοίγουν με προσωρινό σύνδεσμο 2 λεπτών.</div></div>`;
 }
 function wireFiles(ctx,after){
-  document.querySelectorAll('.docopen').forEach(a=>a.onclick=e=>{e.preventDefault();docOpen(a.dataset.path)});
+  /* Προεπισκόπηση μέσα στο παράθυρο. Το docOpen (νέα καρτέλα κατευθείαν)
+     μένει διαθέσιμο ως κουμπί ΜΕΣΑ στην προεπισκόπηση. */
+  document.querySelectorAll('.docopen').forEach(a=>a.onclick=e=>{e.preventDefault();docPreview(a.dataset.path)});
+  document.querySelectorAll('.certview').forEach(a=>a.onclick=e=>{e.preventDefault();
+    const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
+    if(c)docPreview(certSides(c),+a.dataset.ix||0);});
   document.querySelectorAll('.docedit').forEach(b=>b.onclick=()=>{
     const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(d)docEdit(d, after);
   });
@@ -10231,12 +10325,12 @@ V.certq=()=>{
                     .map(x=>({cd:x, f:(D.doc||[]).find(y=>y.id===x.document_id)}))
                     .filter(x=>x.f);
                   if(!rows.length) return d
-                    ? `<a href="#" class="qdocopen" data-path="${esc(d.path)}">📄 δες το αρχείο</a>`
+                    ? `<a href="#" class="qdocopen" data-cert="${c.id}" data-ix="0">📄 δες το αρχείο</a>`
                     : 'χωρίς αρχείο';
                   return rows.map((r,ix)=>{
                     const nm=r.cd.label || (rows.length>1?'όψη '+(ix+1):'δες το αρχείο');
                     return `<span style="white-space:nowrap">`
-                      +`<a href="#" class="qdocopen" data-path="${esc(r.f.path)}">📄 ${esc(nm)}</a>`
+                      +`<a href="#" class="qdocopen" data-cert="${c.id}" data-ix="${ix}">📄 ${esc(nm)}</a>`
                       +(isImg(r.f.path)?`<a href="#" class="qdocedit" data-id="${r.f.id}" title="Σάρωση — σύρε τις τέσσερις γωνίες" style="margin-left:3px">✂</a>`:'')
                       +(r.f.original_path?`<a href="#" class="qdocrev" data-id="${r.f.id}" title="Διορθωμένο — επαναφορά πρωτοτύπου" style="margin-left:2px">↺</a>`:'')
                       +(rows.length>1?`<a href="#" class="cdname" data-id="${r.cd.id}" title="Δώσε όνομα σε αυτή την όψη" style="margin-left:3px">✎</a>`
@@ -10385,8 +10479,12 @@ V.certq=()=>{
     const {error}=await sb.from('person_certificates').delete().eq('id',b.dataset.id);
     if(error)return toast('Σφάλμα: '+error.message);
     D.pc=(D.pc||[]).filter(x=>x.id!==b.dataset.id); saveCache(); V.certq();});
+  /* Στην ουρά επιβεβαίωσης η προεπισκόπηση μετράει διπλά: κρίνεις είκοσι
+     χαρτιά στη σειρά και δεν θέλεις να χάνεις τη θέση σου σε κάθε ένα. */
   document.querySelectorAll('.qdocopen').forEach(a=>a.onclick=e=>{
-    e.preventDefault();e.stopPropagation();docOpen(a.dataset.path)});
+    e.preventDefault();e.stopPropagation();
+    const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
+    if(c)docPreview(certSides(c),+a.dataset.ix||0);});
 };
 
 /* Πιθανές διπλοεγγραφές: ίδιο ονοματεπώνυμο χωρίς τόνους, ανεξάρτητα σειράς.
