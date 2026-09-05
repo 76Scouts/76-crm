@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-05 22:34'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-05 23:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1503,7 +1503,9 @@ async function loadAll(){
     sb.from('identity_review').select('*').is('decision',null)
       .order('created_at',{ascending:false}).limit(200),
     sb.from('vehicle_papers').select('*').limit(1000),
-    sb.from('vehicle_paper_inbox').select('*').is('resolved_at',null).limit(500),
+    /* Και τα απορριφθέντα: μια απόρριψη που δεν φαίνεται πουθενά είναι
+       εξαφάνιση. Ίδια θέση στον πίνακα φόρτωσης — μόνο το φίλτρο άλλαξε. */
+    sb.from('vehicle_paper_inbox').select('*').or('resolved_at.is.null,declined_at.not.is.null').limit(500),
     sb.from('cert_ocr_hint').select('*').limit(2000),
     sb.from('cert_documents').select('*').limit(4000),
     sb.from('vehicle_doc_sides').select('*').limit(2000),
@@ -2758,16 +2760,31 @@ function vehHTML(p){
         <span class="dim" style="font-size:11.5px">Αν η πινακίδα υπάρχει ήδη, συνδέεται το ίδιο όχημα — έτσι αδέλφια ή ζευγάρι μοιράζονται ένα αυτοκίνητο με μία ασφάλεια.</span>
       </div></details></div>`;
 }
+/* ══ ΠΙΝΑΚΙΔΑ ══════════════════════════════════════════════════════════════
+   «TKK 076» και «TKK076» είναι το ΙΔΙΟ όχημα. Στη βάση υπήρχαν και τα δύο
+   σχήματα (δώδεκα με κενό, ένα χωρίς) και η αναζήτηση συγκρίνει κείμενο:
+   πληκτρολογούσες τη μία μορφή και σου έφτιαχνε δεύτερο όχημα.
+
+   Οι κυπριακές πινακίδες είναι λατινικές, αλλά το ελληνικό πληκτρολόγιο
+   δίνει «Τ» που ΜΟΙΑΖΕΙ με «T» και δεν είναι. Διπλώνουμε τα ομόγραφα προς
+   τα λατινικά — αλλιώς δύο πινακίδες που φαίνονται ίδιες δεν ταιριάζουν ποτέ. */
+const PLATE_GR2LAT={'Α':'A','Β':'B','Ε':'E','Ζ':'Z','Η':'H','Ι':'I','Κ':'K','Μ':'M',
+  'Ν':'N','Ο':'O','Ρ':'P','Τ':'T','Χ':'X','Υ':'Y'};
+const plateKey=s=>String(s||'').toUpperCase().replace(/[\s.\-_]/g,'')
+  .replace(/[ΑΒΕΖΗΙΚΜΝΟΡΤΧΥ]/g,c=>PLATE_GR2LAT[c]||c);
+/* Για αποθήκευση και εμφάνιση: γράμματα, κενό, ψηφία — μία μορφή για όλους. */
+const platePretty=s=>{const k=plateKey(s),m=k.match(/^([A-Z]+)(\d+)$/);return m?m[1]+' '+m[2]:k};
+
 function wireVeh(p,after){
   document.querySelectorAll('.vldel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Αποσύνδεση οχήματος από το άτομο;'))return;
     await sb.from('vehicle_links').delete().eq('id',b.dataset.id);
     D.vl=(D.vl||[]).filter(x=>x.id!==b.dataset.id); saveCache(); after&&after();});
   const ad=$('vhAdd'); if(ad)ad.onclick=async()=>{
-    const plate=($('vhPlate').value||'').trim().toUpperCase(); if(!plate)return toast('Βάλε πινακίδα');
+    const plate=platePretty($('vhPlate').value); if(!plate)return toast('Βάλε πινακίδα');
     ad.disabled=true;
     try{
-      let v=(D.veh||[]).find(x=>x.plate.toUpperCase()===plate);
+      let v=(D.veh||[]).find(x=>plateKey(x.plate)===plateKey(plate));
       if(!v){const {data,error}=await sb.from('vehicles').insert({plate}).select().single();
         if(error)throw error; v=data; D.veh=(D.veh||[]); D.veh.push(v);}
       const {data:l,error:e2}=await sb.from('vehicle_links').insert({vehicle_id:v.id,person_id:p.id,relation:$('vhRel').value}).select().single();
@@ -9016,15 +9033,25 @@ V.me=()=>{
             ${x.confirmed_on?'':'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Το δήλωσες εσύ. Μετράει για καταλληλότητα μόλις το επιβεβαιώσει ο Α.Σ.">εκκρεμεί επιβεβαίωση</span>'}
             ${x.document_id?'<span class="pill">📎 αρχείο</span>':'<span class="pill" title="Δεν έχει ανέβει έγγραφο — μόνο ημερομηνία">χωρίς αρχείο</span>'}
           </div>`}).join('')})()}
-      <div class="grow" style="margin-top:12px">
+      ${/* Στη ΔΙΚΗ ΣΟΥ καρτέλα δεν «προσθέτεις πιστοποιητικό» — στέλνεις το
+            χαρτί σου για έλεγχο. Ο pc_self_guard μηδενίζει το confirmed_on
+            ό,τι κι αν είσαι, οπότε το κουμπί «Προσθήκη» υποσχόταν κάτι που
+            δεν γινόταν. Και το αρχείο ήταν τελευταίο και προαιρετικό, ενώ
+            είναι όλη η ουσία: χωρίς χαρτί δεν έχει τι να ελεγχθεί. */''}
+      <div style="margin-top:14px;padding:12px;border:1px dashed var(--line2);border-radius:var(--rs)">
+        <label style="display:block"><b style="font-size:13.5px">Το χαρτί σου</b>
+          <input type="file" id="cF" accept="application/pdf,image/*" style="margin-top:5px"></label>
+        <div class="dim" style="font-size:11.5px;margin-top:4px">Φωτογραφία ή PDF. Χωρίς αυτό η καταχώρηση μένει «χωρίς αρχείο» και δεν μπορεί να επιβεβαιωθεί.</div>
+      </div>
+      <div class="grow" style="margin-top:10px">
         <label>Τι<select id="cT">${(D.ct||[]).sort((a,b)=>(a.seq||0)-(b.seq||0)).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')}</select></label>
         <label>Λεπτομέρεια<input id="cL" placeholder="π.χ. κατηγορία B"></label>
         <label>Εκδόθηκε<input type="date" id="cI"></label>
         <label>Λήγει<input type="date" id="cE"></label>
-        <label>Αρχείο<input type="file" id="cF" accept="application/pdf,image/*"></label>
       </div>
-      <button class="btn" id="cAdd">Προσθήκη πιστοποιητικού</button>
+      <button class="btn p" id="cAdd">Ανέβασμα για έλεγχο</button>
       <span class="dim" id="cMsg" style="margin-left:10px;font-size:12.5px"></span>
+      <div class="dim" style="font-size:11.5px;margin-top:6px">Πάει στον Α.Σ. για επιβεβαίωση. Μέχρι τότε φαίνεται ως <b>εκκρεμεί</b> και δεν μετράει για καταλληλότητα.</div>
     </div>
 
     <div class="sec"><h3>Τα οχήματά μου</h3></div>
@@ -9067,24 +9094,36 @@ V.me=()=>{
   const ca=$('cAdd'); if(ca)ca.onclick=async()=>{
     const type=$('cT').value, lab=$('cL').value.trim(), iss=$('cI').value, exp=$('cE').value, f=$('cF').files[0];
     if(!exp&&!iss)return cm('Βάλε τουλάχιστον μία ημερομηνία.');
+    /* Επιτρέπεται χωρίς χαρτί — υπάρχουν περιπτώσεις που ξέρεις την ημερομηνία
+       και το χαρτί έρχεται μετά. Αλλά το λέμε καθαρά, γιατί χωρίς αυτό δεν
+       μπορεί να επιβεβαιωθεί ποτέ. */
+    if(!f&&!confirm('Χωρίς αρχείο δεν μπορεί να επιβεβαιωθεί — θα μείνει σε εκκρεμότητα.\n\nΝα συνεχίσω;'))return;
     ca.disabled=true; cm('Ανεβάζω…');
-    let docId=null;
+    let docId=null, newDoc=null;
     if(f){ const path=`certs/${p.id}/${Date.now()}_${f.name.replace(/[^\w.\-]/g,'_')}`;
       const up=await sb.storage.from('e76').upload(path,f,{upsert:false});
       if(up.error){ca.disabled=false;return cm('Το αρχείο δεν ανέβηκε: '+up.error.message)}
       const {data:dd,error:de}=await sb.from('documents').insert({person_id:p.id,kind:type,title:lab||type,
-        path,mime:f.type,size_bytes:f.size,issued_on:iss||null,expires_on:exp||null}).select('id').single();
+        path,mime:f.type,size_bytes:f.size,issued_on:iss||null,expires_on:exp||null}).select().single();
       if(de){ca.disabled=false;return cm('Σφάλμα εγγράφου: '+de.message)}
-      docId=dd.id; }
-    const {error}=await sb.from('person_certificates').insert({person_id:p.id,type_code:type,label:lab||null,
-      issued_on:iss||null,expires_on:exp||null,document_id:docId,source:'self'});
+      docId=dd.id; newDoc=dd; }
+    const {data:row,error}=await sb.from('person_certificates').insert({person_id:p.id,type_code:type,label:lab||null,
+      issued_on:iss||null,expires_on:exp||null,document_id:docId,source:'self'}).select().single();
     if(error){ca.disabled=false;return cm('Σφάλμα: '+error.message)}
-    await loadAll(); route('me');
+    /* Τοπικό μπάλωμα αντί για loadAll(): μία καταχώρηση δεν δικαιολογεί να
+       ξανακατεβεί ολόκληρη η βάση. */
+    if(newDoc)D.doc=[...(D.doc||[]),newDoc];
+    if(row)D.pc=[...(D.pc||[]),row];
+    saveCache(); V.me();
+    toast('Ανέβηκε — περιμένει έλεγχο από τον Α.Σ.');
   };
   const vm=t=>{const e=$('vMsg'); if(e)e.textContent=t};
   const va=$('vAdd'); if(va)va.onclick=async()=>{
-    const plate=($('vP').value||'').trim().toUpperCase();
+    const plate=platePretty($('vP').value);
     if(!plate)return vm('Βάλε αριθμό εγγραφής.');
+    /* Πριν φτιάξεις δεύτερο όχημα, δες αν υπάρχει ήδη με άλλο σχήμα γραφής. */
+    const dup=(D.veh||[]).find(x=>plateKey(x.plate)===plateKey(plate));
+    if(dup)return vm('Υπάρχει ήδη όχημα «'+dup.plate+'» — είναι το ίδιο.');
     va.disabled=true; vm('…');
     const {data:v,error}=await sb.from('vehicles').insert({plate,make:$('vM').value.trim()||null,
       model:$('vD').value.trim()||null,seats:parseInt($('vS').value)||null,
@@ -10033,7 +10072,9 @@ function rtGrace(exp){
   return isoLocal(g);
 }
 V.vpapers=()=>{
-  const inb=(D.vpi||[]).filter(x=>!x.resolved_at);
+  const inb=(D.vpi||[]).filter(x=>!x.resolved_at&&!x.declined_at);
+  const dec=(D.vpi||[]).filter(x=>x.declined_at)
+    .sort((a,b)=>String(b.declined_at).localeCompare(String(a.declined_at)));
   const byP={}; inb.forEach(x=>(byP[x.person_id]=byP[x.person_id]||[]).push(x));
   const ord=Object.keys(byP).map(id=>({p:D.bh.find(b=>b.id===id),xs:byP[id],
       veh:(D.veh||[]).filter(v=>v.owner_id===id)}))
@@ -10110,16 +10151,32 @@ V.vpapers=()=>{
               <select class="vpsel" data-id="${x.id}">
                 <option value="">— διάλεξε —</option>
                 ${veh.map(v=>`<option value="${v.id}"${
-                  x.ocr_plate&&v.plate.replace(/\s/g,'')===x.ocr_plate.replace(/\s/g,'')?' selected':''
+                  x.ocr_plate&&plateKey(v.plate)===plateKey(x.ocr_plate)?' selected':''
                   }>${esc(v.plate)}</option>`).join('')}
                 <option value="NEW">＋ Νέο όχημα…</option></select></span>
             <span style="display:flex;gap:5px">
-              <button class="btn p sm vpok" data-id="${x.id}">Ανάθεση</button></span>
+              <button class="btn p sm vpok" data-id="${x.id}">Ανάθεση</button>
+              <button class="btn gh sm vpno" data-id="${x.id}" title="Δεν κάνει — θολό, παλιό, λάθος όχημα">Απόρριψη</button></span>
           </div>`}).join('')}
       </div></div>`).join('')}`
     :`<div class="card pad" style="margin-bottom:14px">
         <b>Κάθε χαρτί έχει όχημα</b>
         <div class="muted" style="font-size:13px;margin-top:4px">Δεν έμεινε τίποτα αδέσποτο.</div></div>`}
+
+    ${dec.length?`<details class="card pad" style="margin-bottom:14px">
+      <summary style="cursor:pointer;font-size:13.5px"><b>Απορρίφθηκαν</b>
+        <span class="dim" style="font-weight:400"> · ${dec.length}</span></summary>
+      <div class="muted" style="font-size:12.5px;margin:7px 0 9px;line-height:1.55">
+        Δεν σβήστηκαν. Το αρχείο μένει στα έγγραφα του ατόμου και η απόρριψη
+        κρατά τον λόγο — ώστε να ξέρεις τι να ζητήσεις ξανά.</div>
+      ${dec.map(x=>{const pp=D.bh.find(b=>b.id===x.person_id);
+        return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--line)">
+          <b style="font-size:13px;flex:1;min-width:150px">${esc(pp?nm(pp):'—')}
+            <span class="dim" style="font-weight:400">· ${esc(x.kind||'')}</span></b>
+          <span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">${esc(x.decline_reason||'—')}</span>
+          <span class="dim" style="font-size:11.5px">${x.declined_at?fdate(x.declined_at):''}</span>
+          <button class="btn gh sm vpundo" data-id="${x.id}" title="Επαναφορά στην ουρά">↺</button>
+        </div>`}).join('')}</details>`:''}
 
     <div class="card pad" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <div style="flex:1;min-width:250px">
@@ -10227,6 +10284,38 @@ V.vpapers=()=>{
     saveCache(); toast('Ενώθηκαν'); re();
   });
 
+  /* ΑΠΟΡΡΙΨΗ ΜΕ ΛΟΓΟ. Πριν, ένα θολό χαρτί μπορούσε μόνο να σβηστεί: κανείς
+     δεν μάθαινε γιατί και το ξανανέβαζε. Ο λόγος είναι ΥΠΟΧΡΕΩΤΙΚΟΣ — η βάση
+     τον απαιτεί κι αυτή. Το αρχείο μένει στα έγγραφα του ατόμου. */
+  document.querySelectorAll('.vpno').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.id;
+    const why=prompt('Γιατί δεν γίνεται δεκτό;\n\n'
+      +'1 = Δυσανάγνωστο / θολό\n'
+      +'2 = Παλιό — έχει λήξει\n'
+      +'3 = Λάθος όχημα\n'
+      +'4 = Λάθος είδος εγγράφου\n'
+      +'5 = Διπλό — υπάρχει ήδη\n\n'
+      +'Γράψε αριθμό ή δικό σου κείμενο:');
+    if(why===null)return;
+    const P={'1':'Δυσανάγνωστο / θολό','2':'Παλιό — έχει λήξει','3':'Λάθος όχημα',
+             '4':'Λάθος είδος εγγράφου','5':'Διπλό — υπάρχει ήδη'};
+    const reason=(P[why.trim()]||why).trim();
+    if(!reason)return toast('Η απόρριψη θέλει λόγο.');
+    b.disabled=true;
+    const {error}=await sb.rpc('vehicle_paper_decline',{p_id:id,p_reason:reason});
+    if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
+    D.vpi=(D.vpi||[]).map(x=>x.id===id
+      ?Object.assign({},x,{declined_at:new Date().toISOString(),decline_reason:reason,resolved_at:'now'}):x);
+    saveCache(); toast('Απορρίφθηκε — ο λόγος καταγράφηκε'); V.vpapers();
+  });
+  document.querySelectorAll('.vpundo').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.id;
+    const {error}=await sb.rpc('vehicle_paper_undecline',{p_id:id});
+    if(error)return toast('Σφάλμα: '+error.message);
+    D.vpi=(D.vpi||[]).map(x=>x.id===id
+      ?Object.assign({},x,{declined_at:null,decline_reason:null,resolved_at:null}):x);
+    saveCache(); toast('Επέστρεψε στην ουρά'); V.vpapers();
+  });
   document.querySelectorAll('.vpok').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id;
     const sel=document.querySelector('.vpsel[data-id="'+id+'"]');
