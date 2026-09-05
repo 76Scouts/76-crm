@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-05 16:28'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-05 16:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6843,6 +6843,11 @@ let PGEXAM=null;
    έψαχνε βιβλίο που δεν κρατά κανείς. */
 const BOOK={'Αγέλη':'το βιβλιάριο','Ομάδα':'το ΚΑΝΕ','Κοινότητα':'το Η.Κ.Α.Δ.Ε.'};
 const bookOf=sec=>BOOK[sec]||'το βιβλίο';
+/* Κάθε τμήμα λέει αλλιώς την υποομάδα του. Ο κανόνας ήταν γραμμένος inline σε
+   μία οθόνη· εδώ γίνεται μία πηγή, γιατί τον θέλουν πλέον δύο. */
+const SUBG={'Αγέλη':['Εξάδα','εξάδες'],'Ομάδα':['Ενωμοτία','ενωμοτίες'],'Κοινότητα':['Όμιλος','όμιλοι']};
+const subgOf=sec=>(SUBG[sec]||['Υποομάδα','υποομάδες'])[0];
+const subgPl=sec=>(SUBG[sec]||['Υποομάδα','υποομάδες'])[1];
 let PSSESS=null;
 let PSMODE='now', PSWHO=null, PSSTAGE=null, PSYEAR=null, PSSEL=new Set();
 const pol=sec=>(D.ppol||[]).find(p=>p.section===sec)||{grant_by:'βαθμοφόροι'};
@@ -7280,7 +7285,7 @@ V.groups=()=>{
   const inG=n=>kids.filter(p=>(myOf(p)||{}).group_name===n).sort(sortByName);
   const none=kids.filter(p=>!(myOf(p)||{}).group_name).sort(sortByName);
   const chip=s=>`<button class="btn sm${SGSEC===s?' p':' gh'}" data-sg="${s}">${s}</button>`;
-  const kindOf=SGSEC==='Αγέλη'?'Εξάδα':SGSEC==='Ομάδα'?'Ενωμοτία':'Όμιλος';
+  const kindOf=subgOf(SGSEC);
   const card=g=>{const list=inG(g.name);
     return `<div class="ccard">
       <div class="chead"><span class="dot" style="background:${g.colour||SC[SGSEC]}"></span>
@@ -12175,14 +12180,28 @@ V.members=()=>{
       <select id="fgr" style="max-width:150px"><option value="">Όλες οι τάξεις</option></select>
       <span class="sp"></span><span class="pill" id="cnt"></span></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Υποομάδα</th><th class="hide-s">Α.Μ.</th><th class="hide-s">Τάξη</th><th>Γονέας</th></tr></thead><tbody id="tb"></tbody></table></div>`;
-  const grps=[...new Set(list.map(p=>(myOf(p)||{}).group_name).filter(Boolean))].sort();
-  $('fgrp').innerHTML='<option value="">Όλες οι υποομάδες</option>'+grps.map(g=>`<option>${esc(g)}</option>`).join('');
   /* Η εξάδα δεν είναι ο μόνος τρόπος να κοιτάς ένα τμήμα: για τη μετάβαση
      χρονιάς και για τα «ποιοι φεύγουν» μετράει η ΤΑΞΗ. Η σειρά έρχεται από το
-     GRADES (σχολική), όχι αλφαβητικά — «Α΄ Γυμν.» δεν πάει πριν το «Ε΄ Δημ.» */
-  const grades=GRADES.filter(g=>list.some(p=>gradeOf(p)===g));
-  $('fgr').innerHTML='<option value="">Όλες οι τάξεις</option>'
-    +grades.map(g=>`<option>${esc(g)}</option>`).join('');
+     GRADES (σχολική), όχι αλφαβητικά — «Α΄ Γυμν.» δεν πάει πριν το «Ε΄ Δημ.»
+
+     Τα δύο πτυσσόμενα ΑΚΟΛΟΥΘΟΥΝ το τμήμα. Με «Αγέλη» επιλεγμένη δεν έχει
+     νόημα να προσφέρονται όμιλοι Κοινότητας ή Β΄ Λυκείου: είναι επιλογές που
+     επιστρέφουν πάντα κενό. Ξαναχτίζονται σε κάθε αλλαγή τμήματος, κρατώντας
+     την τρέχουσα επιλογή αν εξακολουθεί να στέκει. */
+  const fill=()=>{
+    const sec=$('fsec').value;
+    const base=list.filter(p=>!sec||secOf(p)===sec);
+    const put=(id,vals,label)=>{
+      const el=$(id), cur=el.value;
+      el.innerHTML=`<option value="">${esc(label)}</option>`
+        +vals.map(v=>`<option>${esc(v)}</option>`).join('');
+      el.value=vals.includes(cur)?cur:'';
+      el.disabled=!vals.length;
+    };
+    put('fgrp',[...new Set(base.map(p=>(myOf(p)||{}).group_name).filter(Boolean))].sort(),
+        sec?'Όλες οι '+subgPl(sec):'Όλες οι υποομάδες');
+    put('fgr',GRADES.filter(g=>base.some(p=>gradeOf(p)===g)),'Όλες οι τάξεις');
+  };
   const draw=()=>{
     const q=nameKey($('fq').value),s=$('fsec').value,g=$('fgrp').value,gr=$('fgr').value;
     const r=list.filter(p=>(!s||secOf(p)===s)&&(!g||(myOf(p)||{}).group_name===g)
@@ -12194,8 +12213,11 @@ V.members=()=>{
       return `<tr data-sec="${esc(secOf(p)||'')}" data-grp="${esc(y.group_name||'')}"><td>${statusBar(p)}</td><td>${pnm(p)}</td><td class="hide-s">${esc(y.group_name||'—')}</td><td class="hide-s dim">${esc(p.registry_no||'—')}</td><td class="hide-s dim">${esc(gradeOf(p)||'—')}</td>
         <td>${pn?esc(pn)+(ph?` <a href="tel:${esc(ph)}" class="dim">${fphone(ph)}</a>`:''):'<span class="dim">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="6" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα — δοκίμασε λιγότερα γράμματα ή σβήσε το φίλτρο</td></tr>';
   };
-  ['fq','fsec','fgrp','fgr'].forEach(id=>{$(id).addEventListener('input',draw);$(id).addEventListener('change',draw)});
-  draw(); makeSortable();
+  /* Το τμήμα ΞΑΝΑΧΤΙΖΕΙ τα άλλα δύο πριν σχεδιάσει — αλλιώς ο πίνακας θα
+     φιλτραριζόταν με επιλογή που μόλις έπαψε να υπάρχει. */
+  $('fsec').addEventListener('change',()=>{fill();draw()});
+  ['fq','fgrp','fgr'].forEach(id=>{$(id).addEventListener('input',draw);$(id).addEventListener('change',draw)});
+  fill(); draw(); makeSortable();
 };
 
 V.leaders=()=>{
