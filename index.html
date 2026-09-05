@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-05 09:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-05 16:28'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2857,14 +2857,20 @@ function certsHTML(p){
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <b style="font-weight:500;font-size:13.5px">${esc(ctype(c.type_code).name)}</b>
           ${c.label?`<span class="pill" style="font-size:11px">${esc(c.label)}</span>`:''}
-          ${/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes||'')?'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">προς επιβεβαίωση</span>':''}
-          ${c.confirmed_on?'':'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)" title="Το δήλωσε ο ίδιος. Δεν μετράει για καταλληλότητα μέχρι να το επιβεβαιώσεις.">δηλώθηκε — δεν μετράει</span>'}
+          ${/* ΚΑΤΑΣΤΑΣΗ, όχι εντολή. Έδειχνε κουμπί «Επιβεβαίωση» σε ΚΑΘΕ χρήστη:
+                ο βαθμοφόρος το πατούσε στο δικό του χαρτί και δεν γινόταν
+                τίποτα — ο pc_self_guard μηδενίζει το confirmed_on για κάθε
+                μη-διαχειριστή. Κουμπί που δουλεύει στα ψέματα είναι χειρότερο
+                από σφάλμα. Τώρα όλοι βλέπουν σήμα· ενεργεί μόνο ο Α.Σ. */''}
+          ${c.confirmed_on
+            ?`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)" title="Ελέγχθηκε από τον Α.Σ. στις ${esc(fdate(c.confirmed_on))} — μετράει για καταλληλότητα.">✓ Επιβεβαιώθηκε</span>`
+            :`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)" title="Ανέβηκε και περιμένει έλεγχο από τον Α.Σ. Μέχρι τότε δεν μετράει για καταλληλότητα.">⏳ Εκκρεμεί επιβεβαίωση</span>`}
           <span class="sp"></span>${certChip(c)}
           ${(D.cd||[]).some(x=>x.cert_id===c.id)||c.document_id?''
             :`<label class="btn gh sm" style="cursor:pointer" title="Επισύναψε το χαρτί">📎<input type="file"
                 class="pcattach" data-id="${c.id}" style="display:none"
                 accept=".pdf,.png,.jpg,.jpeg,.heic"></label>`}
-          ${c.confirmed_on?'':`<button class="btn p sm pcok" data-id="${c.id}" title="Είδα το χαρτί — ισχύει">Επιβεβαίωση</button>`}
+          ${(!c.confirmed_on&&ME.role==='admin')?`<button class="btn p sm pcok" data-id="${c.id}" title="Είδα το χαρτί — ισχύει">Επιβεβαίωση</button>`:''}
           <button class="btn gh sm pcdel" data-id="${c.id}" title="Διαγραφή">✕</button></div>
         <div class="dim" style="font-size:11.5px">${c.notes&&/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes)?esc(c.notes.split('—')[0].trim())+' · ':''}${c.issued_on?'έκδοση '+fdate(c.issued_on):''}${c.number?' · αρ. '+esc(c.number):''}</div>
         ${(()=>{const t=ctype(c.type_code)||{};
@@ -6863,6 +6869,11 @@ function passBody(){
   const kid=psIamKid();
   if(kid&&PSMODE==='now')PSMODE='ask';
   if(kid&&!PSWHO)PSWHO=ME.person_id;
+  /* Το «who» δηλωνόταν 70 γραμμές πιο κάτω, αλλά διαβαζόταν εδώ πάνω στα
+     κουμπιά — temporal dead zone, και η οθόνη πέθαινε ολόκληρη με
+     «Cannot access 'who' before initialization». Ό,τι διαβάζεται πρώτο,
+     δηλώνεται πρώτο. */
+  const who=PSWHO?D.bh.find(b=>b.id===PSWHO):null;
   const q=psQueue().length;
 
   const head=`<div class="card pad" style="margin-bottom:14px">
@@ -6929,7 +6940,6 @@ function passBody(){
 
   /* ── Τώρα / ΚΑΝΕ / Ζητώ: ίδια οθόνη, διαφορετική κατάληξη ── */
   const kids=psKids();
-  const who=PSWHO?D.bh.find(b=>b.id===PSWHO):null;
   const sess=PSSESS?(D.ss||[]).find(x=>x.id===PSSESS):null;
   /* Στο «Από συγκέντρωση» το τμήμα το ορίζει η ΣΥΓΚΕΝΤΡΩΣΗ, όχι το παιδί. */
   const sec=PSMODE==='sess' ? (sess?sess.section:null) : (who?secOf(who):null);
@@ -12162,20 +12172,29 @@ V.members=()=>{
       <input id="fq" placeholder="Αναζήτηση…" style="max-width:230px">
       <select id="fsec" style="max-width:160px"><option value="">Όλα τα τμήματα</option>${MEMSECS().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
       <select id="fgrp" style="max-width:170px"><option value="">Όλες οι υποομάδες</option></select>
+      <select id="fgr" style="max-width:150px"><option value="">Όλες οι τάξεις</option></select>
       <span class="sp"></span><span class="pill" id="cnt"></span></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Υποομάδα</th><th class="hide-s">Α.Μ.</th><th class="hide-s">Τάξη</th><th>Γονέας</th></tr></thead><tbody id="tb"></tbody></table></div>`;
   const grps=[...new Set(list.map(p=>(myOf(p)||{}).group_name).filter(Boolean))].sort();
   $('fgrp').innerHTML='<option value="">Όλες οι υποομάδες</option>'+grps.map(g=>`<option>${esc(g)}</option>`).join('');
+  /* Η εξάδα δεν είναι ο μόνος τρόπος να κοιτάς ένα τμήμα: για τη μετάβαση
+     χρονιάς και για τα «ποιοι φεύγουν» μετράει η ΤΑΞΗ. Η σειρά έρχεται από το
+     GRADES (σχολική), όχι αλφαβητικά — «Α΄ Γυμν.» δεν πάει πριν το «Ε΄ Δημ.» */
+  const grades=GRADES.filter(g=>list.some(p=>gradeOf(p)===g));
+  $('fgr').innerHTML='<option value="">Όλες οι τάξεις</option>'
+    +grades.map(g=>`<option>${esc(g)}</option>`).join('');
   const draw=()=>{
-    const q=nameKey($('fq').value),s=$('fsec').value,g=$('fgrp').value;
-    const r=list.filter(p=>(!s||secOf(p)===s)&&(!g||(myOf(p)||{}).group_name===g)&&(!q||nameKey(nm(p)+' '+(p.nickname||'')+' '+(p.scout_name||'')).includes(q)||(p.registry_no||'').includes(q)));
+    const q=nameKey($('fq').value),s=$('fsec').value,g=$('fgrp').value,gr=$('fgr').value;
+    const r=list.filter(p=>(!s||secOf(p)===s)&&(!g||(myOf(p)||{}).group_name===g)
+      &&(!gr||gradeOf(p)===gr)
+      &&(!q||nameKey(nm(p)+' '+(p.nickname||'')+' '+(p.scout_name||'')).includes(q)||(p.registry_no||'').includes(q)));
     $('cnt').textContent=r.length+' μέλη';
     $('tb').innerHTML=r.map(p=>{const y=myOf(p)||{},gu=gOf(p.registry_no)||{};
       const pn=gu.father_name||gu.mother_name||'', ph=gu.father_mobile||gu.mother_mobile||'';
       return `<tr data-sec="${esc(secOf(p)||'')}" data-grp="${esc(y.group_name||'')}"><td>${statusBar(p)}</td><td>${pnm(p)}</td><td class="hide-s">${esc(y.group_name||'—')}</td><td class="hide-s dim">${esc(p.registry_no||'—')}</td><td class="hide-s dim">${esc(gradeOf(p)||'—')}</td>
         <td>${pn?esc(pn)+(ph?` <a href="tel:${esc(ph)}" class="dim">${fphone(ph)}</a>`:''):'<span class="dim">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="6" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα — δοκίμασε λιγότερα γράμματα ή σβήσε το φίλτρο</td></tr>';
   };
-  ['fq','fsec','fgrp'].forEach(id=>{$(id).addEventListener('input',draw);$(id).addEventListener('change',draw)});
+  ['fq','fsec','fgrp','fgr'].forEach(id=>{$(id).addEventListener('input',draw);$(id).addEventListener('change',draw)});
   draw(); makeSortable();
 };
 
