@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-04 00:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-05 09:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2528,8 +2528,11 @@ function warrantOf(id, yr){
 }
 const RING={entoli:'#22c55e',anathesi:'#eab308',expired:'#ef4444',none:null};
 const RINGTXT={entoli:'ενεργή Εντολή Διοίκησης',anathesi:'ενεργή Ανάθεση Καθηκόντων',expired:'έληξε',none:'δεν έχει αιτηθεί'};
-const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6'};
-const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντομα',expired:'Ν.91(Ι) έληξε',none:'χωρίς Ν.91(Ι)'};
+const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6',na:'#c7ced6'};
+/* «na» = δεν του αναλογεί ακόμη. Ο ανήλικος του Δικτύου δεν είναι ελλιπής
+   φάκελος — δεν δικαιούται καν να βγάλει Ν.91(Ι). Ξεχωριστή κατάσταση, ώστε
+   τα «χωρίς Ν.91(Ι)» (k==='none') να μην τον μετρούν. */
+const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντομα',expired:'Ν.91(Ι) έληξε',none:'χωρίς Ν.91(Ι)',na:'Ν.91(Ι) — δεν απαιτείται ακόμη (ανήλικος)'};
 const TRC=['#e74c3c','#f4c20d','#27ae60'];
 const TRTXT=['χωρίς εκπαίδευση','Προκαταρκτική','Βασική'];
 /* ══ Ο ΚΥΚΛΟΣ ΤΗΣ ΔΙΑΡΘΡΩΣΗΣ ══════════════════════════════════════════════
@@ -2780,6 +2783,21 @@ const ctype=c=>(D.ct||[]).find(t=>t.code===c)||{name:c};
    όμως όντως βγάζει Πρώτες Βοήθειες και Ναυαγοσωστική. Ο κανόνας ζει στη βάση
    (certificate_types.holder_kinds/holder_sections)· εδώ απλώς δεν προσφέρουμε
    ό,τι θα απορριφθεί. */
+/* Πληροί το ηλικιακό όριο του τύπου; Ο κανόνας ζει στη βάση
+   (certificate_types.min_age_years). Άγνωστη ημερομηνία γέννησης μετράει σαν
+   «ναι»: το επικίνδυνο λάθος είναι να ΜΗΝ ζητήσεις το Ν.91(Ι) από κάποιον που
+   το χρειάζεται, όχι να το ζητήσεις από κάποιον που δεν το χρειάζεται. */
+function ageMeets(id,code){
+  const t=(D.ct||[]).find(x=>x.code===code)||{};
+  if(!t.min_age_years)return true;
+  const s=(D.sen||[]).find(x=>x.person_id===id);
+  if(!s||!s.dob)return true;
+  const a=agey(s.dob);
+  /* Χαλασμένη ημερομηνία δίνει NaN, και «NaN >= 18» είναι false — που θα
+     έκρυβε το Ν.91(Ι) από ενήλικα. Ό,τι δεν είναι λογική ηλικία μετράει
+     σαν ενήλικας. */
+  return !(a>=1)||a>=t.min_age_years;
+}
 function certTypesFor(p){
   const sec=secOf(p)||p.section;
   return (D.ct||[]).slice().sort((a,b)=>(a.seq||99)-(b.seq||99)).filter(t=>{
@@ -2787,19 +2805,35 @@ function certTypesFor(p){
     if(!kinds.includes(p.kind||''))return false;
     if(t.holder_sections&&(p.kind||'')!=='Βαθμοφόρος'
        &&!t.holder_sections.includes(sec))return false;
+    if(!ageMeets(p.id,t.code))return false;
     return true;
   });
 }
 function certRows(id){return (D.pc||[]).filter(x=>x.person_id===id)
   .sort((a,b)=>((ctype(a.type_code).seq||99)-(ctype(b.type_code).seq||99))||((a.expires_on||'')<(b.expires_on||'')?1:-1));}
+/* ΠΟΤΕ λήγει ΚΑΙ σε πόσο — όχι το ένα ή το άλλο.
+   Έδειχνε «Σε ισχύ ως 12 Μαρτίου 2027» χωρίς να λέει πόσο μένει, και
+   «Λήγει σε 40 μέρες» χωρίς να λέει πότε. Ο βαθμοφόρος χρειάζεται και τα δύο:
+   η ημερομηνία μπαίνει στο ημερολόγιο, οι μέρες λένε αν τρέχεις.
+   Το T12:00 δεν είναι διακόσμηση: χωρίς αυτό η μεσάνυχτη-UTC ανάλυση χάνει
+   μία μέρα στην Κύπρο (UTC+2/+3) και το «λήγει σήμερα» γίνεται «έληξε χθες». */
+const plDay=n=>Math.abs(n)===1?'μέρα':'μέρες';
 function certChip(c){
   if(!c.expires_on)return '<span class="pill">χωρίς λήξη</span>';
-  const d=Math.round((new Date(c.expires_on)-new Date())/864e5);
-  const st=d<0?['badbg','bad','Έληξε '+fdate(c.expires_on)]
-    :d<=(TH.certWarnDays||90)?['warnbg','warn',`Λήγει σε ${d} μέρες`]
-    :['okbg','ok','Σε ισχύ ως '+fdate(c.expires_on)];
+  const d=Math.round((new Date(c.expires_on+'T12:00:00')-new Date())/864e5);
+  const w=fdate(c.expires_on);
+  const st=d<0?['badbg','bad',`Έληξε ${w} · πριν ${Math.abs(d)} ${plDay(d)}`]
+    :d===0?['badbg','bad',`Λήγει ΣΗΜΕΡΑ · ${w}`]
+    :d<=(TH.certWarnDays||90)?['warnbg','warn',`Λήγει ${w} · σε ${d} ${plDay(d)}`]
+    :['okbg','ok',`Σε ισχύ ως ${w} · ${d} ${plDay(d)}`];
   return `<span class="pill" style="background:var(--${st[0]});border-color:transparent;color:var(--${st[1]})">${st[2]}</span>`;
 }
+/* «Πόσο κρατά ένα καινούριο;» — η απάντηση ήταν στη βάση (validity_months) και
+   δεν την έβλεπε κανείς. Χωρίς αυτήν, ο βαθμοφόρος δεν ξέρει αν το χαρτί που
+   θα βγάλει τον καλύπτει για δύο χρόνια ή για τρία. */
+const validTxt=m=>!m?'':(m%12===0
+  ? (m/12===1?'έναν χρόνο':(m/12)+' χρόνια')
+  : m+' μήνες');
 /* συνολική κατάσταση Ν.91(Ι) από τον νέο πίνακα, με πίσω-συμβατότητα */
 function certState(id){
   /* Ίδιος κανόνας με το certOn: αδήλωτο από τον Α.Σ. = ισχυρισμός, όχι απόδειξη.
@@ -2807,6 +2841,10 @@ function certState(id){
   const c=(D.pc||[]).filter(x=>x.person_id===id&&x.type_code==='Ν91'&&x.confirmed_on)
     .sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
   const exp=c?c.expires_on:((D.cert||[]).find(x=>x.person_id===id)||{}).sexoxarto_expiry;
+  /* Χωρίς χαρτί — αλλά το χρωστά; Ο ανήλικος όχι: το Ν.91(Ι) βγαίνει σε
+     ενήλικες. Άγνωστη γέννηση μετράει σαν ενήλικας, γιατί το να ΜΗΝ ζητήσεις
+     το χαρτί από κάποιον που ίσως το χρειάζεται είναι το επικίνδυνο λάθος. */
+  if(!exp&&!ageMeets(id,'Ν91'))return {k:'na',d:null};
   if(!exp)return {k:'none',d:null};
   const d=Math.round((new Date(exp)-new Date())/864e5);
   return {k:d<0?'expired':d<=(TH.certWarnDays||90)?'soon':'ok', d, exp};
@@ -2828,12 +2866,22 @@ function certsHTML(p){
                 accept=".pdf,.png,.jpg,.jpeg,.heic"></label>`}
           ${c.confirmed_on?'':`<button class="btn p sm pcok" data-id="${c.id}" title="Είδα το χαρτί — ισχύει">Επιβεβαίωση</button>`}
           <button class="btn gh sm pcdel" data-id="${c.id}" title="Διαγραφή">✕</button></div>
-        <div class="dim" style="font-size:11.5px">${c.notes&&/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes)?esc(c.notes.split('—')[0].trim())+' · ':''}${c.issued_on?'έκδοση '+fdate(c.issued_on):''}${c.number?' · αρ. '+esc(c.number):''}
-          ${(()=>{const ds=(D.cd||[]).filter(x=>x.cert_id===c.id).sort((a,b)=>(a.seq||0)-(b.seq||0))
+        <div class="dim" style="font-size:11.5px">${c.notes&&/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes)?esc(c.notes.split('—')[0].trim())+' · ':''}${c.issued_on?'έκδοση '+fdate(c.issued_on):''}${c.number?' · αρ. '+esc(c.number):''}</div>
+        ${(()=>{const t=ctype(c.type_code)||{};
+          return t.validity_months
+            ?`<div class="dim" style="font-size:11px">Ένα νέο ισχύει <b>${validTxt(t.validity_months)}</b>${
+                t.date_basis==='έκδοση'?' από την ημερομηνία έκδοσης':''} — βγάλ' το πριν λήξει το τωρινό.</div>`
+            :''})()}
+        ${(()=>{const ds=(D.cd||[]).filter(x=>x.cert_id===c.id).sort((a,b)=>(a.seq||0)-(b.seq||0))
               .map(x=>({cd:x,f:(D.doc||[]).find(y=>y.id===x.document_id)})).filter(x=>x.f);
             const all=ds.length?ds:(d?[{cd:{},f:d}]:[]);
-            return all.map((r,ix)=>` · <a href="#" class="docopen" data-path="${esc(r.f.path)}">${
-              esc(r.cd.label || (all.length>1?'όψη '+(ix+1):(r.f.title||'αρχείο')))}</a>`).join('')})()}</div>
+            /* Ο σύνδεσμος ήταν χαμένος μέσα στη γκρίζα γραμμή, ανάμεσα σε
+               «έκδοση» και «αρ.». Κανείς δεν κατάλαβε ότι το χαρτί ανοίγει. */
+            return all.length
+              ?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">${all.map((r,ix)=>
+                  `<a href="#" class="btn gh sm docopen" data-path="${esc(r.f.path)}">👁 ${
+                    esc(r.cd.label || (all.length>1?'όψη '+(ix+1):'Δες το χαρτί'))}</a>`).join('')}</div>`
+              :'<div class="dim" style="font-size:11px;margin-top:4px">Χωρίς συνημμένο χαρτί</div>'})()}
       </div>`}).join(''):'<div class="dim" style="font-size:13px">Κανένα καταχωρημένο</div>'}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Νέο πιστοποιητικό</summary>
       <div style="display:grid;gap:7px;margin-top:9px">
