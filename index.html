@@ -1012,7 +1012,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-05 23:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-07 11:07'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1424,7 +1424,7 @@ async function pageAll(table, cols, step=1000, cap=50000){
 }
 async function loadAll(){
   const q=[
-    pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,photo_path,scout_name,nickname,same_as,home_phone,home_address'),
+    pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address'),
     sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
     sb.from('sessions').select('id,session_date,section,scout_year,status,title').order('session_date').limit(500),
     // Το PostgREST κόβει στις 1000 όσο μεγάλο κι αν είναι το limit — χρειάζεται σελιδοποίηση
@@ -1513,10 +1513,16 @@ async function loadAll(){
     sb.from('legal_acceptances').select('*').limit(2000),
     sb.from('road_tax_deadline').select('*').order('year'),
     sb.from('v_warrant_conflicts').select('*').limit(500),
-    sb.from('v_progress_signatures').select('*').limit(20000)
+    sb.from('v_progress_signatures').select('*').limit(20000),
+    /* ΤΕΛΕΥΤΑΙΟ — ο πίνακας φόρτωσης είναι θετικός· ό,τι μπει στη μέση
+       μετακινεί όλα τα επόμενα και η εφαρμογή διαβάζει λάθος δεδομένα.
+       Η φωτογραφία ΕΦΥΓΕ από τον badgeholders: το RLS είναι ανά γραμμή, όχι
+       ανά στήλη — όσο καθόταν εκεί, όποιος έβλεπε το πρόσωπο έπαιρνε και τη
+       φωτογραφία. Τώρα, αν δεν τη δικαιούσαι, δεν έρχεται ούτε η διαδρομή. */
+    sb.from('person_photo').select('person_id,path')
       // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1558,7 +1564,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; D.wcon=r[76]?.data||[]; D.psig=r[77]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; D.wcon=r[76]?.data||[]; D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -1582,7 +1588,7 @@ async function loadAll(){
     DIAG=r.map((x,i)=>({t:names[i]||('#'+i),n:(x&&x.data)?x.data.length:null,e:x&&x.error?(x.error.message||String(x.error)):null}));
     if(LOADED&&ROUTE)route(ROUTE); });
   saveCache(); qFlush();
-  ensurePhotos((D.bh||[]).map(x=>x.photo_path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
+  ensurePhotos((D.pph||[]).map(x=>x.path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
   /* Η πύλη των Όρων ΜΕΤΑ τη φόρτωση: χρειάζεται ME.person_id και τα κείμενα. */
   try{ legalFooter(); legalGate() }catch(e){ console.warn('legal:',e) }
   const yrs=[...new Set([...D.my.map(x=>x.scout_year),...(D.sh||[]).map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
@@ -2331,7 +2337,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')drw.classList.remove
 document.addEventListener('click',e=>{const t=e.target.closest('[data-p]');if(t){e.preventDefault();openProfile(t.dataset.p)}});
 async function openProfile(id){
   const p=D.bh.find(x=>x.id===id); if(!p)return;
-  if(p.photo_path&&!/^https?:/.test(p.photo_path)&&!PHOTO.has(p.photo_path))await ensurePhotos([p.photo_path]);
+  {const _pp=photoOf(p); if(_pp&&!/^https?:/.test(_pp)&&!PHOTO.has(_pp))await ensurePhotos([_pp]);}
   const y=myOf(p)||{}, gu=gOf(p.registry_no)||{}, c=D.cert.find(x=>x.person_id===p.id)||{}, sn=(D.sen||[]).find(x=>x.person_id===p.id)||{};
   const sec=secOf(p), isMem=(p.kind||'')==='Μέλος';
   const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR).sort((a,b)=>a.session_date<b.session_date?-1:1);
@@ -2407,7 +2413,20 @@ async function openProfile(id){
     <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">Η καρτέλα προόδου έρχεται μετά την αναθεώρηση του μοντέλου.</div></div>`;
   drw.classList.add('on');
   wireFiles({person_id:p.id},()=>openProfile(p.id));
-  const ab=$('avaBtn'); if(ab)ab.onclick=()=>{const i=document.createElement('input');i.type='file';i.accept='image/*';
+  const ab=$('avaBtn'); if(ab)ab.onclick=()=>{
+    /* Αν υπάρχει ήδη φωτογραφία, η πρώτη επιλογή είναι η ΑΦΑΙΡΕΣΗ, όχι η
+       αντικατάσταση: το «θέλω να φύγει» δεν πρέπει να είναι πιο δύσκολο από
+       το «θέλω να μπει». */
+    if(photoOf(p) && confirm('Υπάρχει ήδη φωτογραφία.\n\nOK = αφαίρεση · Άκυρο = αντικατάσταση'))
+      return photoRemove(p,()=>openProfile(p.id));
+    if(!photoConsentOk(p.id))
+      return toast('Λείπει η συγκατάθεση «Φωτογραφία στην καρτέλα» (στοιχείο 5).');
+    alert('Απλή φωτογραφία προσώπου — όπως σε ταυτότητα.\n\n'
+      +'ΟΧΙ κομμένη από φωτογραφία δράσης: εκεί υπάρχουν και άλλα παιδιά, και '
+      +'η περικοπή δεν σβήνει το ότι τραβήχτηκαν.\n\n'
+      +'Φαίνεται μόνο στην οθόνη, μόνο στους βαθμοφόρους του τμήματος. '
+      +'Δεν εκτυπώνεται και δεν εξάγεται πουθενά.');
+    const i=document.createElement('input');i.type='file';i.accept='image/*';
     i.onchange=()=>{if(i.files[0])photoUpload(p,i.files[0],()=>openProfile(p.id))};i.click()};
   wireCerts(p,()=>openProfile(p.id));
   if(!isMem)wireVeh(p,()=>openProfile(p.id));
@@ -2691,32 +2710,57 @@ const PHOTO=new Map();
 async function ensurePhotos(paths){
   const need=[...new Set(paths.filter(x=>x&&!/^https?:/.test(x)&&!PHOTO.has(x)))];
   if(!need.length)return;
-  try{const {data}=await sb.storage.from('e76').createSignedUrls(need,3600);
+  try{const {data}=await sb.storage.from('e76').createSignedUrls(need,600);
     (data||[]).forEach(d=>{if(d.signedUrl)PHOTO.set(d.path,d.signedUrl)});
   }catch(e){}
 }
 const initialsOf=p=>((p.first_name||' ')[0]+(p.last_name||' ')[0]).toUpperCase();
+/* Αν η πολιτική δεν σου δίνει τη γραμμή, εδώ δεν υπάρχει τίποτα να δείξεις —
+   και βλέπεις αρχικά, όπως κάθε άλλος που δεν τη δικαιούται. Καμία διαφορά
+   ανάμεσα σε «δεν έχει φωτογραφία» και «δεν τη βλέπεις»: το δεύτερο δεν
+   πρέπει να είναι διακριτό, αλλιώς η ίδια η απουσία γίνεται πληροφορία. */
+const photoOf=p=>((D.pph||[]).find(x=>x.person_id===(p&&p.id))||{}).path||'';
 function avatar(p,size,editable){
-  const s=size||34, pp=p.photo_path||'';
+  const s=size||34, pp=photoOf(p);
   const url=/^https?:/.test(pp)?pp:(pp?PHOTO.get(pp):null);
   const inner=url?`<img class="ava" src="${url}" width="${s}" height="${s}" alt="">`
     :`<span class="avaph" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.36)}px">${esc(initialsOf(p))}</span>`;
   return editable?`<span class="avawrap" id="avaBtn" title="Αλλαγή φωτογραφίας">${inner}<span class="avaedit">✎</span></span>`:inner;
 }
+/* Υπάρχει ενεργή συγκατάθεση 5; Ο έλεγχος είναι ΚΑΙ στη βάση — εδώ μπαίνει
+   μόνο για να πει τον λόγο με ανθρώπινα λόγια αντί για σφάλμα πολιτικής. */
+const photoConsentOk=pid=>(D.cons||[]).some(c=>c.person_id===pid
+  && c.code==='FOTO_KARTELAS' && c.granted && !c.revoked_at);
 async function photoUpload(p,file,after){
   if(!/^image\//.test(file.type))return toast('Μόνο εικόνα');
   if(file.size>8*1024*1024)return toast('Μέγιστο 8 MB');
+  /* Χωρίς συγκατάθεση δεν ανεβαίνει τίποτα. Η νομική βάση είναι η
+     συγκατάθεση — όχι το ότι βολεύει. */
+  if(!photoConsentOk(p.id))
+    return toast('Λείπει η συγκατάθεση «Φωτογραφία στην καρτέλα» (στοιχείο 5). Χωρίς αυτήν δεν ανεβαίνει φωτογραφία.');
   const path=`people/${p.id}/photo_${Date.now()}_${file.name.replace(/[^\w.\-]+/g,'_')}`;
   try{
     const up=await sb.storage.from('e76').upload(path,file,{upsert:false});
     if(up.error)throw up.error;
-    const old=p.photo_path;
-    const {error}=await sb.from('badgeholders').update({photo_path:path}).eq('id',p.id);
+    const old=photoOf(p);
+    const {error}=await sb.from('person_photo')
+      .upsert({person_id:p.id,path,uploaded_by:ME.person_id||null},{onConflict:'person_id'});
     if(error)throw error;
-    p.photo_path=path; PHOTO.delete(path); await ensurePhotos([path]);
+    D.pph=[...(D.pph||[]).filter(x=>x.person_id!==p.id),{person_id:p.id,path}];
+    PHOTO.delete(path); await ensurePhotos([path]);
     if(old)sb.storage.from('e76').remove([old]).catch(()=>{});
     saveCache(); toast('Η φωτογραφία ενημερώθηκε'); after&&after();
   }catch(e){toast('Σφάλμα: '+(e.message||e))}
+}
+/* Αφαίρεση: το αρχείο φεύγει από το storage, όχι μόνο η αναφορά του. */
+async function photoRemove(p,after){
+  const old=photoOf(p); if(!old)return;
+  if(!confirm('Αφαίρεση φωτογραφίας;\n\nΤο αρχείο διαγράφεται — δεν μένει αντίγραφο.'))return;
+  const {error}=await sb.from('person_photo').delete().eq('person_id',p.id);
+  if(error)return toast('Σφάλμα: '+error.message);
+  await sb.storage.from('e76').remove([old]).catch(()=>{});
+  D.pph=(D.pph||[]).filter(x=>x.person_id!==p.id);
+  PHOTO.delete(old); saveCache(); toast('Αφαιρέθηκε'); after&&after();
 }
 
 /* ── Οχήματα & ασφάλειες ── */
