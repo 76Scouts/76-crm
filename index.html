@@ -1034,7 +1034,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-07 13:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-07 19:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -5546,12 +5546,12 @@ function accessBody(){
     <div class="sec"><h3>Αυξημένα δικαιώματα</h3><span class="n">πάνω από τον ρόλο</span></div>
     <div class="card pad">
       ${(()=>{const g=(D.gr||[]).filter(x=>!x.revoked_at&&x.valid_to>=new Date().toISOString().slice(0,10));
-        if(!g.length)return '<div class="dim" style="font-size:12.5px">Κανείς — ο καθένας έχει ό,τι του δίνει ο ρόλος του. <button class="btn sm" data-go="grants" style="margin-left:8px">Δώσε παραχώρηση</button></div>';
+        if(!g.length)return '<div class="dim" style="font-size:12.5px">Κανείς — ο καθένας έχει ό,τι του δίνει ο ρόλος του. <button class="btn sm" data-go="access" data-vtabgo="grants" style="margin-left:8px">Δώσε παραχώρηση</button></div>';
         return g.map(x=>{const p=D.bh.find(b=>b.id===x.person_id);
           return `<div style="padding:5px 0;border-bottom:1px solid var(--line)">
             ${p?pnm(p):'—'} <span class="dim">· ${esc(capT(x.capability))} ${x.can_write?'(γράφει)':'(βλέπει)'}
             · ${esc(x.scope_value||'ΟΛΑ')} · ως ${fdate(x.valid_to)}</span></div>`}).join('')
-          +'<button class="btn sm" data-go="grants" style="margin-top:10px">Διαχείριση παραχωρήσεων</button>'})()}
+          +'<button class="btn sm" data-go="access" data-vtabgo="grants" style="margin-top:10px">Διαχείριση παραχωρήσεων</button>'})()}
     </div>
 
     <div class="sec"><h3>Τι βλέπει ο καθένας</h3></div>
@@ -12582,8 +12582,11 @@ V.dash=()=>{
   <div class="sec"><h3>Χρειάζονται εσένα</h3><span class="n">σήμερα</span></div>
   <div class="tiles">
     <button class="tile ${risk.length?'bad':''}" data-go="attend" data-tab="risk"><div class="k">${ic('alert',14)}Κίνδυνος διαρροής</div><div class="v">${risk.length}</div><div class="s">${risk.length?'παιδιά που λείπουν συστηματικά':'κανένα — όλα καλά'}</div></button>
-    <button class="tile ${(expd||nocert)?'bad':(soon?'warn':'')}" data-go="certs"><div class="k">${ic('shield',14)}<span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Πιστοποιητικά Ν.91(Ι)</span></div><div class="v">${expd+soon}</div><div class="s">${expd?expd+' ληγμένα · ':''}${soon} λήγουν σε 90 μέρες</div></button>
-    <button class="tile ${nocert?'warn':''}" data-go="certs"><div class="k">${ic('alert',14)}Χωρίς πιστοποιητικό</div><div class="v">${nocert}</div><div class="s">βαθμοφόροι χωρίς καταχώρηση</div></button>
+    ${/* Και τα δύο έδειχναν σε «certs» — οθόνη που ΔΕΝ ΥΠΑΡΧΕΙ. Το route()
+          έβρισκε κενό και δεν γινόταν τίποτα: πατούσες και έμενες εκεί.
+          Πάνε στους Βαθμοφόρους, με το φίλτρο Ν.91(Ι) ήδη επιλεγμένο. */''}
+    <button class="tile ${(expd||nocert)?'bad':(soon?'warn':'')}" data-go="leaders" data-chip="cert:${expd?'bad':'warn'}"><div class="k">${ic('shield',14)}<span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Πιστοποιητικά Ν.91(Ι)</span></div><div class="v">${expd+soon}</div><div class="s">${expd?expd+' ληγμένα · ':''}${soon} λήγουν σε 90 μέρες</div></button>
+    <button class="tile ${nocert?'warn':''}" data-go="leaders" data-chip="cert:none"><div class="k">${ic('alert',14)}Χωρίς πιστοποιητικό</div><div class="v">${nocert}</div><div class="s">βαθμοφόροι χωρίς καταχώρηση</div></button>
     <button class="tile act" data-go="guardians"><div class="k">${ic('msg',14)}Επικοινωνία γονέων</div><div class="v">${D.gu.length}</div><div class="s">έτοιμες λίστες ανά τμήμα</div></button>
   </div>
   ${bdayHTML()}
@@ -12604,26 +12607,48 @@ V.dash=()=>{
 };
 function bdayHTML(){
   const m=new Date().getMonth(), today=new Date().getDate();
+  /* Ο φακός υπολογίζεται ΜΙΑ φορά, έξω από τον βρόχο, για να μπορεί να
+     γραφτεί και στον τίτλο. Αλλιώς ο πίνακας ψεύδεται σιωπηλά: βλέπεις
+     «Γενέθλια Σεπτεμβρίου» με ένα όνομα και νομίζεις ότι ένα υπάρχει,
+     ενώ απλώς κοιτάς ένα τμήμα. */
+  const ms=scopeSec();
   const list=(D.sen||[]).map(s=>{if(!s.dob)return null;const d=new Date(s.dob);if(d.getMonth()!==m)return null;
       const p=D.bh.find(x=>x.id===s.person_id); if(!p||p.status!=='Ενεργός')return null;
       if((p.kind||'')==='Μέλος'&&!inYear(p))return null;
       /* Τα γενέθλια ενός Λυκόπουλου δεν αφορούν τον Αρχηγό Κοινότητας. Ο
          καθένας βλέπει το τμήμα του — συν το Αρχηγείο, που το αφορά όλους. */
       if(isPar(p))return null;
-      const ms=scopeSec();
       if(ms && secOf(p)!==ms && !(isLed(p)&&(p.section==='Σύστημα'||p.category==='ΑΣ')))return null;
       if(!ms && !inScope(p))return null;
       const turns=new Date().getFullYear()-d.getFullYear();
       return {p,day:d.getDate(),age:turns}}).filter(Boolean).sort((a,b)=>a.day-b.day);
   if(!list.length)return '';
-  return `<div class="sec"><h3>Γενέθλια ${MON[m]}</h3><span class="n">${list.length}</span></div>
+  const lens = ms ? ` · μόνο ${esc(ms)}` : (VIEWAS&&VIEWAS.pid ? ' · θέαση ως άλλος' : '');
+  return `<div class="sec"><h3>Γενέθλια ${MON[m]}${lens}</h3><span class="n">${list.length}</span></div>
     <div class="card pad" style="display:flex;flex-wrap:wrap;gap:8px">${list.map(b=>
       `<span class="pill" style="${b.day===today?'background:var(--accbg);border-color:var(--accln);color:var(--acc)':''}" >
         ${sdot(secOf(b.p))}<span class="pn" data-p="${b.p.id}">${pn(b.p)}</span>
         <span class="dim">${String(b.day).padStart(2,'0')}/${String(m+1).padStart(2,'0')}${b.age?' · '+b.age+' χρ.':''}${b.day===today?' · σήμερα':''}</span></span>`).join('')}</div>`;
 }
 function avgAtt(){const ids=new Set(D.ss.filter(s=>s.scout_year===YEAR).map(s=>s.id));const a=D.att.filter(x=>ids.has(x.session_id));return a.length?Math.round(100*a.filter(x=>x.status==='Παρών').length/a.length):0}
-function bindTiles(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const s=b.dataset.sec,t=b.dataset.tab;route(b.dataset.go);if(s)setTimeout(()=>{const f=$('fsec');if(f){f.value=s;f.dispatchEvent(new Event('change'))}},30);if(t==='risk')setTimeout(()=>$('tabRisk')?.click(),30)})}
+function bindTiles(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
+  const s=b.dataset.sec, t=b.dataset.tab, ch=b.dataset.chip;
+  /* Πλακίδιο που δείχνει σε ανύπαρκτη οθόνη ΔΕΝ πρέπει να αποτυγχάνει σιωπηλά:
+     ο χρήστης πατά, δεν γίνεται τίποτα, και νομίζει ότι χάλασε η εφαρμογή. */
+  if(!V[b.dataset.go]){ toast('Η οθόνη «'+b.dataset.go+'» δεν υπάρχει.'); return }
+  route(b.dataset.go);
+  if(s)setTimeout(()=>{const f=$('fsec');if(f){f.value=s;f.dispatchEvent(new Event('change'))}},30);
+  if(t==='risk')setTimeout(()=>$('tabRisk')?.click(),30);
+  /* Οι «Παραχωρήσεις» είναι ΚΑΡΤΕΛΑ μέσα στο «Ρόλοι & πρόσβαση», όχι οθόνη:
+     το SUBTAB θυμάται ποια καρτέλα ήταν ανοιχτή, οπότε τη λέμε πριν το route. */
+  const vt=b.dataset.vtabgo;
+  if(vt){ SUBTAB[b.dataset.go]=vt;
+    try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){}
+    route(b.dataset.go); }
+  /* «cert:bad» → πάτα το τσιπάκι φίλτρου που ήδη υπάρχει στην οθόνη. */
+  if(ch)setTimeout(()=>{const [k,v]=ch.split(':');
+    const c=document.querySelector(`.chipf[data-k="${k}"][data-v="${v}"]`); if(c)c.click()},60);
+})}
 
 V.members=()=>{
   const list=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&inScope(p)).sort(sortByName);
