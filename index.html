@@ -1016,7 +1016,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-07 12:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-07 12:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -9077,7 +9077,13 @@ function staffDraft(years){
 };
 
 /* ── Προσωπικές όψεις ── */
-const meRec=()=>(ME.person_id&&D.bh.find(p=>p.id===ME.person_id))||ME.rec||null;
+/* Στην «Προβολή ως» άλλαζε ο ΡΟΛΟΣ αλλά όχι το ΠΡΟΣΩΠΟ: άνοιγες τον Ψάλτη
+   και έβλεπες τη δική σου καρτέλα, γιατί η meRec() κοιτούσε πάντα το ME.
+   Εδώ, και μόνο εδώ, κρίνεται «ποιανού είναι αυτή η οθόνη».
+   Τα ΔΙΚΑΙΩΜΑΤΑ δεν αλλάζουν — τα κρίνει η βάση, όχι αυτή η γραμμή· και
+   καμία εγγραφή δεν περνά από εδώ (οι εγγραφές χρησιμοποιούν ME.person_id). */
+const meRec=()=>((VIEWAS&&VIEWAS.pid&&D.bh.find(p=>p.id===VIEWAS.pid))
+  ||(ME.person_id&&D.bh.find(p=>p.id===ME.person_id))||ME.rec||null);
 V.me=()=>{
   const p=meRec();
   if(!p)return $('view').innerHTML=`<div class="uc"><h3>Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα</h3><p>Ζήτα από τον Α.Σ. να συνδέσει το email σου με το μητρώο.</p></div>`;
@@ -13253,7 +13259,13 @@ V.viewas=()=>{
       ${VIEWAS?`<div class="pill" style="margin-top:9px;background:var(--accbg);color:var(--acc);border-color:transparent">
         Τώρα βλέπεις ως <b>${esc(VIEWAS.t)}</b></div>`:''}
     </div>
-    <div class="cgrid" id="vagrid">${pool.slice(0,400).map(p=>{
+    <div class="cgrid" id="vagrid">${(()=>{
+      /* ΦΙΛΤΡΑΡΕ ΠΡΩΤΑ, ΚΟΨΕ ΜΕΤΑ. Πριν κόβαμε στις 400 και μετά φιλτράραμε
+         το DOM: με 672 ενεργούς, ο «Σωτήρης Δημητρίου» ήταν αλφαβητικά έξω
+         από το όριο και δεν βρισκόταν ΠΟΤΕ, όσο σωστά κι αν τον έγραφες. */
+      const q=(VAQ||'').trim();
+      const hit=q.length>=2?pool.filter(p=>personMatch(p,q)):pool;
+      return hit.slice(0,400)})().map(p=>{
       const ps=buildPersonas(p);
       const sub=[secOf(p),(myOf(p)||{}).group_name].filter(Boolean).join(' · ');
       return `<div class="ccard" data-vaopen="${p.id}" style="cursor:pointer">
@@ -13272,12 +13284,12 @@ V.viewas=()=>{
      το re-render στη μέση της σύνθεσης έσπαγε τη λέξη — «Στ΄άθης». Φιλτράρουμε
      επιτόπου, όπως όλες οι άλλες λίστες. */
   const i=$('vaq');
-  const filt=()=>{const q=(i.value||'').trim(); VAQ=q; let n=0;
-    document.querySelectorAll('#vagrid > .ccard').forEach(c=>{
-      const p=D.bh.find(x=>x.id===c.dataset.vaopen);
-      const ok=!q||q.length<2||(p&&personMatch(p,q));
-      c.style.display=ok?'':'none'; if(ok)n++;});};
-  if(i){ i.oninput=filt; filt(); }
+  /* Το re-render στη μέση της σύνθεσης έσπαγε τους ελληνικούς τόνους, γι'
+     αυτό περιμένουμε να σταματήσει το πληκτρολόγιο πριν ξαναχτίσουμε. */
+  let vaT=null;
+  if(i){ i.oninput=()=>{ VAQ=i.value;
+    clearTimeout(vaT); vaT=setTimeout(()=>{const at=i.selectionStart; V.viewas();
+      const j=$('vaq'); if(j){j.focus(); try{j.setSelectionRange(at,at)}catch(e){}}},260); }; }
   const stop=$('vaStop'); if(stop)stop.onclick=()=>setViewAs('');
   document.querySelectorAll('[data-vaopen]').forEach(c=>c.onclick=e=>{
     if(e.target.closest('input'))return; vaPanel(c.dataset.vaopen)});
