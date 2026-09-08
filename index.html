@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 17:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 17:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6820,6 +6820,38 @@ V.accounts=()=>{
   const tile=(lab,val,sub,cls,f)=>`<button class="tile ${cls||''}" data-accf="${esc(f||'')}">
     <div class="k">${lab}</div><div class="v">${val}</div><div class="s">${sub}</div></button>`;
 
+  /* Η ΓΡΑΜΜΗ ΞΕΡΕΙ ΝΑ ΞΑΝΑΓΡΑΦΕΤΑΙ ΜΟΝΗ ΤΗΣ.
+     Πριν, κάθε «Νέος κωδικός» έκανε loadAll() + route(): ξανακατέβαινε ΟΛΗ η
+     βάση και η οθόνη πεταγόταν στην κορυφή. Σε λίστα 566 ανθρώπων αυτό είναι
+     τιμωρία για μια κίνηση που αφορά ΕΝΑΝ. */
+  const accRow=r=>{const st=step(r.katastasi), c=ACC_COL[st];
+    return `<tr data-accrow="${r.id}"><td><input type="checkbox" class="accsel" value="${r.id}"${r.email?"":" disabled title=\"χωρίς email\""} style="width:auto"></td><td><span class="pn" data-p="${r.id}"><b>${esc(r.onoma)}</b></span>
+            <div class="dim" style="font-size:11.5px">${esc(r.idiotita)}${
+              r.idiotita==='Γονέας'
+                ? (secOfAcc(r).length?' · '+secOfAcc(r).map(x=>esc(x)).join(', '):(r.tmima?' · '+esc(r.tmima):''))
+                : (r.tmima?' · '+esc(r.tmima):'')
+            }${r.paidia?' · '+r.paidia+' παιδιά':''}</div></td>
+          <td class="hide-s dim" style="font-size:12px">${esc(r.email||'—')}</td>
+          <td><span class="pill" style="background:var(--${c}bg);color:var(--${c});border-color:transparent">${esc(r.katastasi)}</span></td>
+          ${/* Ο κωδικός χωρίς την ΙΣΤΟΡΙΑ του δεν λέει τίποτα: «έχει νούμερο»
+                δεν σημαίνει «τον πήρε». Το «εκδόθηκε, ΔΕΝ στάλθηκε» είναι
+                δική μας εκκρεμότητα και πρέπει να φωνάζει. */''}
+          <td style="white-space:nowrap">${(()=>{
+            if(st>=4)return '<span class="dim">—</span>';
+            const pk=r.kodikos
+              ?`<code style="font-size:14px;letter-spacing:.09em"><b>${esc(r.kodikos)}</b></code>
+                <div class="dim" style="font-size:10.5px">ως ${fdate(r.lixi_kodikou)}</div>`:'';
+            const txt = st===0 ? '<span style="color:var(--bad)">δεν μπορεί — χωρίς email</span>'
+                     : st===1 ? '<span class="dim">δεν εκδόθηκε κωδικός</span>'
+                     : st===2 ? '<span style="color:var(--bad)"><b>εκδόθηκε, ΔΕΝ στάλθηκε</b></span>'
+                     : `<span style="color:var(--warn)">${esc(r.katastasi)}</span>`;
+            return pk+`<div style="font-size:11px">${txt}</div>`})()}</td>
+          <td style="white-space:nowrap">
+            ${r.katastasi==='εκδόθηκε — δεν δόθηκε'
+              ?`<button class="btn sm" data-gave="${r.id}" title="Τον έδωσα τυπωμένο ή προφορικά">Το έδωσα</button> `:''}
+            ${r.email
+            ?`<button class="btn sm" data-newinv="${r.id}" data-em="${esc(r.email)}">${r.kodikos?'Νέος':'Κωδικός'}</button>`
+            :'<span class="dim" style="font-size:11.5px">θέλει email</span>'}</td></tr>`};
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
       <b>Λογαριασμοί</b>
@@ -6870,36 +6902,21 @@ V.accounts=()=>{
       <div id="accMailMsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>
     </div>
 
+    <div class="card pad" id="accSelBar" style="display:none;background:var(--accbg);border-color:var(--accln)">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <b id="accSelN" style="font-size:13.5px"></b>
+        <span class="sp"></span>
+        <button class="btn p sm" id="accBulkNew">Έκδοση κωδικών</button>
+        <button class="btn sm" id="accSelNone">Καθαρισμός επιλογής</button></div>
+      <div class="dim" style="font-size:12px;margin-top:6px">Εκδίδει νέο κωδικό σε καθέναν ξεχωριστά.
+        <b>Όποιος έχει ήδη κωδικό, τον χάνει</b> — ο παλιός παύει να δουλεύει αμέσως.
+        Όσοι δεν έχουν email δεν επιλέγονται.</div>
+      <div id="accBulkMsg" class="dim" style="font-size:12.5px;margin-top:6px"></div></div>
+
     <div class="card" style="overflow:auto"><table>
-      <thead><tr><th>Πρόσωπο</th><th class="hide-s">Email</th><th>Κατάσταση</th><th>Κωδικός</th><th></th></tr></thead>
-      <tbody>${shown.slice(0,400).map(r=>{const st=step(r.katastasi), c=ACC_COL[st];
-        return `<tr><td><span class="pn" data-p="${r.id}"><b>${esc(r.onoma)}</b></span>
-            <div class="dim" style="font-size:11.5px">${esc(r.idiotita)}${
-              r.idiotita==='Γονέας'
-                ? (secOfAcc(r).length?' · '+secOfAcc(r).map(x=>esc(x)).join(', '):(r.tmima?' · '+esc(r.tmima):''))
-                : (r.tmima?' · '+esc(r.tmima):'')
-            }${r.paidia?' · '+r.paidia+' παιδιά':''}</div></td>
-          <td class="hide-s dim" style="font-size:12px">${esc(r.email||'—')}</td>
-          <td><span class="pill" style="background:var(--${c}bg);color:var(--${c});border-color:transparent">${esc(r.katastasi)}</span></td>
-          ${/* Ο κωδικός χωρίς την ΙΣΤΟΡΙΑ του δεν λέει τίποτα: «έχει νούμερο»
-                δεν σημαίνει «τον πήρε». Το «εκδόθηκε, ΔΕΝ στάλθηκε» είναι
-                δική μας εκκρεμότητα και πρέπει να φωνάζει. */''}
-          <td style="white-space:nowrap">${(()=>{
-            if(st>=4)return '<span class="dim">—</span>';
-            const pk=r.kodikos
-              ?`<code style="font-size:14px;letter-spacing:.09em"><b>${esc(r.kodikos)}</b></code>
-                <div class="dim" style="font-size:10.5px">ως ${fdate(r.lixi_kodikou)}</div>`:'';
-            const txt = st===0 ? '<span style="color:var(--bad)">δεν μπορεί — χωρίς email</span>'
-                     : st===1 ? '<span class="dim">δεν εκδόθηκε κωδικός</span>'
-                     : st===2 ? '<span style="color:var(--bad)"><b>εκδόθηκε, ΔΕΝ στάλθηκε</b></span>'
-                     : `<span style="color:var(--warn)">${esc(r.katastasi)}</span>`;
-            return pk+`<div style="font-size:11px">${txt}</div>`})()}</td>
-          <td style="white-space:nowrap">
-            ${r.katastasi==='εκδόθηκε — δεν δόθηκε'
-              ?`<button class="btn sm" data-gave="${r.id}" title="Τον έδωσα τυπωμένο ή προφορικά">Το έδωσα</button> `:''}
-            ${r.email
-            ?`<button class="btn sm" data-newinv="${r.id}" data-em="${esc(r.email)}">${r.kodikos?'Νέος':'Κωδικός'}</button>`
-            :'<span class="dim" style="font-size:11.5px">θέλει email</span>'}</td></tr>`}).join('')}
+      <thead><tr><th style="width:30px"><input type="checkbox" id="accAllSel" title="Επιλογή όλων" style="width:auto"></th>
+        <th>Πρόσωπο</th><th class="hide-s">Email</th><th>Κατάσταση</th><th>Κωδικός</th><th></th></tr></thead>
+      <tbody>${shown.slice(0,400).map(r=>accRow(r)).join('')}
       </tbody></table></div>
     <div class="card pad"><div class="dim" style="font-size:12px">
       ${shown.length} από ${rows.length}. «Νέος» ακυρώνει τον προηγούμενο κωδικό — ο παλιός παύει να δουλεύει αμέσως.</div></div>
@@ -6911,19 +6928,88 @@ V.accounts=()=>{
           την τελευταία έκδοση κωδικού — αυτόματα κάθε βράδυ. Το κουμπί το τρέχει τώρα.</div></div>
       <button class="btn sm" id="accPurge">Καθαρισμός τώρα</button></div>`;
 
-  /* Ο κωδικός που κάθεται εκδομένος είναι δική μας εκκρεμότητα, όχι του παραλήπτη.
-     Το «Το έδωσα» καταγράφει ΓΕΓΟΝΟΣ: ποιος και πότε. */
-  document.querySelectorAll('[data-gave]').forEach(b=>b.onclick=async()=>{
-    b.disabled=true;
-    const {data,error}=await sb.rpc('mark_invite_delivered',
-      {p_person:b.dataset.gave,p_how:'στο χέρι'});
-    if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
-    if(data&&data.error){b.disabled=false;return toast(data.error)}
-    toast('Καταγράφηκε ότι δόθηκε');
-    const {data:acc}=await sb.from('v_accounts').select('*');
-    if(acc){D.ac=acc; saveCache()}
-    V.accounts();
-  });
+  /* ΑΝΑΝΕΩΣΗ ΜΙΑΣ ΓΡΑΜΜΗΣ. Κατεβάζει ΜΟΝΟ αυτό το πρόσωπο και αντικαθιστά το
+     <tr> του. Η θέση της σελίδας, τα φίλτρα και οι επιλογές μένουν ακέραια. */
+  async function accPatch(id){
+    const {data,error}=await sb.from('v_accounts').select('*').eq('id',id).maybeSingle();
+    if(error||!data)return;
+    const ix=(D.ac||[]).findIndex(x=>x.id===id);
+    if(ix>=0)D.ac[ix]=data; else (D.ac=D.ac||[]).push(data);
+    saveCache();
+    const tr=document.querySelector(`tr[data-accrow="${id}"]`);
+    if(!tr)return;
+    const sel=tr.querySelector('.accsel'), was=sel&&sel.checked;
+    tr.outerHTML=accRow(data);
+    const nw=document.querySelector(`tr[data-accrow="${id}"]`);
+    if(nw){ const s2=nw.querySelector('.accsel'); if(s2&&was)s2.checked=true; accBindRow(nw) }
+  }
+  /* Τα κουμπιά δένονται ΑΝΑ ΓΡΑΜΜΗ, ώστε η ξαναγραμμένη γραμμή να ξαναζωντανεύει
+     χωρίς να ξαναδεθεί ολόκληρη η οθόνη. */
+  function accBindRow(root){
+    root.querySelectorAll('[data-gave]').forEach(b=>b.onclick=async()=>{
+      b.disabled=true;
+      const {data,error}=await sb.rpc('mark_invite_delivered',
+        {p_person:b.dataset.gave,p_how:'στο χέρι'});
+      if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
+      if(data&&data.error){b.disabled=false;return toast(data.error)}
+      toast('Καταγράφηκε ότι δόθηκε');
+      await accPatch(b.dataset.gave);
+    });
+    root.querySelectorAll('[data-newinv]').forEach(b=>b.onclick=async()=>{
+      b.disabled=true;
+      const {data,error}=await sb.rpc('make_invite',
+        {p_person:b.dataset.newinv,p_email:b.dataset.em,p_purpose:'γονέας'});
+      if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
+      toast('Νέος κωδικός: '+data);
+      await accPatch(b.dataset.newinv);
+    });
+    /* Το όνομα ΔΕΝ δένεται εδώ: υπάρχει καθολικός listener στο [data-p]
+       (γρ. 2386). Δεύτερη σύνδεση θα άνοιγε την καρτέλα δύο φορές. */
+  }
+  accBindRow(document);
+
+  /* ΜΑΖΙΚΗ ΕΚΔΟΣΗ. Ένα-ένα αίτημα, όχι μαζικό: η make_invite γράφει ιστορικό
+     ανά πρόσωπο και θέλουμε να ξέρουμε ΠΟΙΟΣ απέτυχε, όχι «απέτυχε κάτι».
+     Η γραμμή του καθενός ανανεώνεται μόλις τελειώσει — βλέπεις πρόοδο. */
+  const selAll=()=>[...document.querySelectorAll('.accsel:checked')].map(x=>x.value);
+  function accSelSync(){
+    const n=selAll().length, bar=$('accSelBar');
+    if(bar){bar.style.display=n?'':'none'; const t=$('accSelN');
+      if(t)t.textContent=n+(n===1?' επιλεγμένος':' επιλεγμένοι')}
+    const a=$('accAllSel');
+    if(a){const boxes=[...document.querySelectorAll('.accsel:not([disabled])')];
+      a.checked=boxes.length>0&&boxes.every(x=>x.checked);
+      a.indeterminate=n>0&&!a.checked}
+  }
+  document.querySelectorAll('.accsel').forEach(x=>x.onchange=accSelSync);
+  const asel=$('accAllSel');
+  if(asel)asel.onchange=()=>{
+    document.querySelectorAll('.accsel:not([disabled])').forEach(x=>x.checked=asel.checked);
+    accSelSync()};
+  const snone=$('accSelNone');
+  if(snone)snone.onclick=()=>{document.querySelectorAll('.accsel').forEach(x=>x.checked=false);accSelSync()};
+  const bulk=$('accBulkNew');
+  if(bulk)bulk.onclick=async()=>{
+    const ids=selAll(); if(!ids.length)return;
+    const who=ids.map(id=>(D.ac||[]).find(x=>x.id===id)).filter(Boolean);
+    const meKod=who.filter(r=>r.kodikos).length;
+    if(!confirm(`Έκδοση νέου κωδικού σε ${ids.length} ${ids.length===1?'άτομο':'άτομα'}.`
+      +(meKod?`\n\nΟι ${meKod} που έχουν ήδη κωδικό θα τον ΧΑΣΟΥΝ — ο παλιός παύει να δουλεύει.`:'')
+      +'\n\nΝα προχωρήσω;'))return;
+    bulk.disabled=true;
+    const msg=$('accBulkMsg'); let ok=0; const bad=[];
+    for(const r of who){
+      if(msg)msg.textContent=`${ok+bad.length+1} από ${who.length}…`;
+      const {error}=await sb.rpc('make_invite',{p_person:r.id,p_email:r.email,p_purpose:'γονέας'});
+      if(error)bad.push(r.onoma+' — '+error.message); else{ok++; await accPatch(r.id)}
+    }
+    bulk.disabled=false;
+    if(msg)msg.innerHTML=`Εκδόθηκαν <b>${ok}</b>.`
+      +(bad.length?` <span style="color:var(--bad)">Απέτυχαν ${bad.length}:</span> ${bad.map(esc).join(' · ')}`:'');
+    toast(`Εκδόθηκαν ${ok} κωδικοί${bad.length?', '+bad.length+' απέτυχαν':''}`);
+    accSelSync();
+  };
+  accSelSync();
   document.querySelectorAll('[data-accf]').forEach(b=>b.onclick=()=>{
     ACCF=(ACCF===b.dataset.accf)?'':b.dataset.accf; V.accounts()});
   const pg=$('accPurge'); if(pg)pg.onclick=()=>purgeInvites();
@@ -6993,12 +7079,7 @@ V.accounts=()=>{
     shown.forEach(r=>rr.push([r.onoma,r.idiotita,r.tmima||'',r.email||'',r.katastasi,
       r.kodikos||'',r.lixi_kodikou||'',r.paidia||0]));
     exportRows(rr,'Λογαριασμοί','76-logariasmoi')};
-  document.querySelectorAll('[data-newinv]').forEach(b=>b.onclick=async()=>{
-    b.disabled=true;
-    const {data,error}=await sb.rpc('make_invite',{p_person:b.dataset.newinv,p_email:b.dataset.em,p_purpose:'γονέας'});
-    if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
-    await loadAll(); route('accounts'); toast('Νέος κωδικός: '+data);
-  });
+
 };
 
 /* ══ ΠΤΥΧΙΑ & ΔΑΦΝΕΣ ══ */
