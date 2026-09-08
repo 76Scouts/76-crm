@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 16:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 17:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6763,7 +6763,7 @@ const ACC_STEP={'χωρίς email':0,'έχει email — χωρίς κωδικό
 /* Ο κωδικός που κάθεται εκδομένος δεν βοηθά κανέναν — είναι εκκρεμότητα, όχι πρόοδος. */
 const ACC_PEND=['εκδόθηκε — δεν δόθηκε'];
 const ACC_COL=['bad','warn','warn','warn','ok'];
-let ACCQ='', ACCF='', ACCALL=false;
+let ACCQ='', ACCF='', ACCALL=false, ACCID='', ACCSEC='', ACCHAS='';
 /* ΚΑΘΑΡΙΣΜΟΣ ΠΡΟΣΚΛΗΣΕΩΝ. Τρέχει μόνος του κάθε βράδυ (pg_cron, 03:17), αλλά
    υπάρχει και κουμπί: μια διαγραφή που δεν μπορείς να δεις ή να προκαλέσεις
    δύσκολα την εμπιστεύεσαι. Το κουμπί λέει ΠΟΣΕΣ έσβησε. */
@@ -6786,8 +6786,34 @@ V.accounts=()=>{
   const rows=ACCALL?all:all.filter(r=>r.xreiazetai!==false);
   const q=nameKey(ACCQ);
   const accf=ACCF?ACCF.split('|'):null;
+
+  /* Ο ΚΛΑΔΟΣ ΤΟΥ ΓΟΝΙΟΥ ΔΕΝ ΥΠΑΡΧΕΙ — ΒΓΑΙΝΕΙ ΑΠΟ ΤΑ ΠΑΙΔΙΑ ΤΟΥ.
+     Στη v_accounts κάθε γονέας έχει tmima='Γονείς', που είναι σωστό ως
+     ιδιότητα και άχρηστο ως φίλτρο: «στείλε κωδικούς στους γονείς της Αγέλης»
+     δεν απαντιέται. Το χτίζουμε από τα care_links — ένας γονέας μπορεί να
+     ανήκει σε ΔΥΟ κλάδους ταυτόχρονα (παιδί στην Αγέλη, παιδί στην Ομάδα),
+     γι' αυτό σύνολο και όχι μία τιμή. */
+  const secOfAcc=(()=>{
+    const m={};
+    (D.cl||[]).filter(l=>!l.valid_to).forEach(l=>{
+      const kid=(D.bh||[]).find(x=>x.id===l.member_id); if(!kid)return;
+      const sec=secOf(kid); if(!sec)return;
+      (m[l.carer_id]=m[l.carer_id]||new Set()).add(sec);
+    });
+    return r=>{
+      if(r.idiotita==='Γονέας')return m[r.id]?[...m[r.id]]:[];
+      return r.tmima?[r.tmima]:[];
+    };
+  })();
+
   const shown=rows.filter(r=>(!q||nameKey(r.onoma+' '+(r.email||'')).includes(q))
-                          &&(!accf||accf.includes(r.katastasi)));
+                          &&(!accf||accf.includes(r.katastasi))
+                          &&(!ACCID||r.idiotita===ACCID)
+                          &&(!ACCSEC||secOfAcc(r).includes(ACCSEC))
+                          /* «Με λογαριασμό» = πάτησε το κατώφλι 4: έφτιαξε λογαριασμό.
+                             Ό,τι είναι κάτω από αυτό ΔΕΝ μπορεί να μπει, όσους
+                             κωδικούς κι αν του στείλαμε. */
+                          &&(!ACCHAS||(ACCHAS==='me'?step(r.katastasi)>=4:step(r.katastasi)<4)));
   const by={}; rows.forEach(r=>{by[r.katastasi]=(by[r.katastasi]||0)+1});
   const step=s=>ACC_STEP[s]||0;
 
@@ -6815,6 +6841,14 @@ V.accounts=()=>{
 
     <div class="grow" style="margin-top:12px">
       <label style="flex:2">Αναζήτηση<input id="accq" value="${esc(ACCQ)}" placeholder="όνομα ή email"></label>
+      <label style="max-width:170px">Ιδιότητα<select id="accid"><option value="">Όλες</option>
+        ${['Βαθμοφόρος','Μέλος','Γονέας'].map(x=>`<option${x===ACCID?' selected':''}>${x}</option>`).join('')}</select></label>
+      <label style="max-width:170px">Κλάδος<select id="accsec"><option value="">Όλοι</option>
+        ${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'].map(x=>`<option${x===ACCSEC?' selected':''}>${x}</option>`).join('')}</select></label>
+      <label style="max-width:190px">Λογαριασμός<select id="acchas">
+        <option value="">Όλοι</option>
+        <option value="me"${ACCHAS==='me'?' selected':''}>Με λογαριασμό</option>
+        <option value="xoris"${ACCHAS==='xoris'?' selected':''}>Χωρίς λογαριασμό</option></select></label>
       ${ACCF?`<label style="max-width:230px">&nbsp;<button class="btn sm" id="accAll">Όλοι (${rows.length})</button></label>`:''}
       <label style="max-width:150px">&nbsp;<button class="btn sm" id="accExp">Εξαγωγή</button></label>
       <label style="max-width:210px">&nbsp;<button class="btn sm p" id="accMail">Αποστολή κωδικών με email</button></label>
@@ -6840,13 +6874,26 @@ V.accounts=()=>{
       <thead><tr><th>Πρόσωπο</th><th class="hide-s">Email</th><th>Κατάσταση</th><th>Κωδικός</th><th></th></tr></thead>
       <tbody>${shown.slice(0,400).map(r=>{const st=step(r.katastasi), c=ACC_COL[st];
         return `<tr><td><span class="pn" data-p="${r.id}"><b>${esc(r.onoma)}</b></span>
-            <div class="dim" style="font-size:11.5px">${esc(r.idiotita)}${r.tmima?' · '+esc(r.tmima):''}${r.paidia?' · '+r.paidia+' παιδιά':''}</div></td>
+            <div class="dim" style="font-size:11.5px">${esc(r.idiotita)}${
+              r.idiotita==='Γονέας'
+                ? (secOfAcc(r).length?' · '+secOfAcc(r).map(x=>esc(x)).join(', '):(r.tmima?' · '+esc(r.tmima):''))
+                : (r.tmima?' · '+esc(r.tmima):'')
+            }${r.paidia?' · '+r.paidia+' παιδιά':''}</div></td>
           <td class="hide-s dim" style="font-size:12px">${esc(r.email||'—')}</td>
           <td><span class="pill" style="background:var(--${c}bg);color:var(--${c});border-color:transparent">${esc(r.katastasi)}</span></td>
-          <td style="white-space:nowrap">${r.kodikos
-            ?`<code style="font-size:14px;letter-spacing:.09em"><b>${esc(r.kodikos)}</b></code>
-              <div class="dim" style="font-size:10.5px">ως ${fdate(r.lixi_kodikou)}</div>`
-            :'<span class="dim">—</span>'}</td>
+          ${/* Ο κωδικός χωρίς την ΙΣΤΟΡΙΑ του δεν λέει τίποτα: «έχει νούμερο»
+                δεν σημαίνει «τον πήρε». Το «εκδόθηκε, ΔΕΝ στάλθηκε» είναι
+                δική μας εκκρεμότητα και πρέπει να φωνάζει. */''}
+          <td style="white-space:nowrap">${(()=>{
+            if(st>=4)return '<span class="dim">—</span>';
+            const pk=r.kodikos
+              ?`<code style="font-size:14px;letter-spacing:.09em"><b>${esc(r.kodikos)}</b></code>
+                <div class="dim" style="font-size:10.5px">ως ${fdate(r.lixi_kodikou)}</div>`:'';
+            const txt = st===0 ? '<span style="color:var(--bad)">δεν μπορεί — χωρίς email</span>'
+                     : st===1 ? '<span class="dim">δεν εκδόθηκε κωδικός</span>'
+                     : st===2 ? '<span style="color:var(--bad)"><b>εκδόθηκε, ΔΕΝ στάλθηκε</b></span>'
+                     : `<span style="color:var(--warn)">${esc(r.katastasi)}</span>`;
+            return pk+`<div style="font-size:11px">${txt}</div>`})()}</td>
           <td style="white-space:nowrap">
             ${r.katastasi==='εκδόθηκε — δεν δόθηκε'
               ?`<button class="btn sm" data-gave="${r.id}" title="Τον έδωσα τυπωμένο ή προφορικά">Το έδωσα</button> `:''}
@@ -6881,6 +6928,9 @@ V.accounts=()=>{
     ACCF=(ACCF===b.dataset.accf)?'':b.dataset.accf; V.accounts()});
   const pg=$('accPurge'); if(pg)pg.onclick=()=>purgeInvites();
   const al=$('accAll'); if(al)al.onclick=()=>{ACCF='';V.accounts()};
+  const idf=$('accid'); if(idf)idf.onchange=e=>{ACCID=e.target.value;V.accounts()};
+  const sef=$('accsec'); if(sef)sef.onchange=e=>{ACCSEC=e.target.value;V.accounts()};
+  const hf=$('acchas'); if(hf)hf.onchange=e=>{ACCHAS=e.target.value;V.accounts()};
   const tg=$('accToggle'); if(tg)tg.onclick=()=>{ACCALL=!ACCALL;V.accounts()};
   const i=$('accq'); if(i){let t1; i.oninput=e=>{ACCQ=e.target.value;
     clearTimeout(t1); t1=setTimeout(()=>{V.accounts();
