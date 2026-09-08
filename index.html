@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 12:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 14:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -3079,9 +3079,9 @@ function wireCerts(p,after){
     finally{ inp.value='' }
   });
   document.querySelectorAll('.pcdel').forEach(b=>b.onclick=async()=>{
-    if(!confirm('Διαγραφή πιστοποιητικού;'))return;
-    await sb.from('person_certificates').delete().eq('id',b.dataset.id);
-    D.pc=(D.pc||[]).filter(x=>x.id!==b.dataset.id); saveCache(); after&&after();});
+    if(!confirm('Διαγραφή πιστοποιητικού — μαζί και το αρχείο του;'))return;
+    try{ await certPurge(b.dataset.id); after&&after() }
+    catch(e){ toast('Δεν διαγράφηκε: '+(e.message||e)) }});
   let pending=null;
   const pf=$('pcFile'); if(pf)pf.onchange=()=>{pending=pf.files&&pf.files[0];$('pcFileName').textContent=pending?pending.name:''};
   /* Ποιο πεδίο είναι ΤΟ ΖΗΤΟΥΜΕΝΟ το λέει ο τύπος: σε άδεια/ασφάλεια/ΜΟΤ
@@ -3266,6 +3266,29 @@ function certSides(c){
   if(ds.length)return ds.map((r,ix)=>({path:r.f.path,label:r.cd.label||('όψη '+(ix+1))}));
   const d=(D.doc||[]).find(x=>x.id===c.document_id);
   return d?[{path:d.path,label:d.title||'το χαρτί'}]:[];
+}
+/* ══ ΔΙΑΓΡΑΦΗ ΠΙΣΤΟΠΟΙΗΤΙΚΟΥ — ΜΕ ΤΟ ΧΑΡΤΙ ΤΟΥ ══════════════════════════
+   Η παλιά διαγραφή έσβηνε ΜΟΝΟ τη γραμμή. Το σαρωμένο σεξόχαρτο έμενε στο
+   Storage για πάντα: αόρατο στην εφαρμογή, ζωντανό στον δίσκο. Ακριβώς αυτό
+   που δεν επιτρέπει η ελαχιστοποίηση δεδομένων — «σβήστηκε» χωρίς να σβηστεί.
+   Σειρά: πρώτα τα αρχεία, μετά οι εγγραφές. Αν αποτύχει το Storage δεν
+   σταματάμε (μπορεί να μην υπάρχει πια), αλλά το γράφουμε στην κονσόλα. */
+async function certPurge(certId){
+  const c=(D.pc||[]).find(x=>x.id===certId); if(!c)return;
+  const sides=(D.cd||[]).filter(x=>x.cert_id===certId);
+  const docIds=[...new Set([...sides.map(x=>x.document_id), c.document_id].filter(Boolean))];
+  const paths=docIds.map(id=>((D.doc||[]).find(y=>y.id===id)||{}).path).filter(Boolean);
+  if(paths.length){
+    const {error}=await sb.storage.from('e76').remove(paths);
+    if(error)console.warn('certPurge: το αρχείο δεν σβήστηκε από το Storage', error);
+  }
+  const {error:e1}=await sb.from('person_certificates').delete().eq('id',certId);
+  if(e1)throw e1;
+  if(docIds.length)await sb.from('documents').delete().in('id',docIds);
+  D.pc=(D.pc||[]).filter(x=>x.id!==certId);
+  D.cd=(D.cd||[]).filter(x=>x.cert_id!==certId);
+  D.doc=(D.doc||[]).filter(x=>!docIds.includes(x.id));
+  saveCache();
 }
 async function docUpload(file,meta){
   const safe=file.name.replace(/[^\w.\-]+/g,'_');
@@ -9222,7 +9245,17 @@ V.me=()=>{
             <b style="font-size:13.5px;flex:1;min-width:170px">${esc(ct(x.type_code))}${x.label?` <span class="dim">${esc(x.label)}</span>`:''}</b>
             <span class="pill"${k?` style="background:var(--${k}bg);color:var(--${k});border-color:transparent"`:''}>${esc(t)}</span>
             ${x.confirmed_on?'':'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Το δήλωσες εσύ. Μετράει για καταλληλότητα μόλις το επιβεβαιώσει ο Α.Σ.">εκκρεμεί επιβεβαίωση</span>'}
-            ${x.document_id?'<span class="pill">📎 αρχείο</span>':'<span class="pill" title="Δεν έχει ανέβει έγγραφο — μόνο ημερομηνία">χωρίς αρχείο</span>'}
+            ${/* ΗΤΑΝ ΨΕΥΤΙΚΟ ΚΟΥΜΠΙ. Το «📎 αρχείο» έμοιαζε πατητό και δεν ήταν:
+                  στη ΔΙΚΗ σου καρτέλα δεν μπορούσες να δεις το δικό σου χαρτί.
+                  Στην καρτέλα που βλέπει ο Α.Σ. το κουμπί υπήρχε από την αρχή. */''}
+            ${certSides(x).length
+              ?`<a href="#" class="btn gh sm certview" data-cert="${x.id}" data-ix="0">👁 Δες το χαρτί</a>`
+              :'<span class="pill" title="Δεν ανέβηκε ποτέ αρχείο — μόνο η ημερομηνία, από την εισαγωγή του e-Scouts">χωρίς αρχείο</span>'}
+            ${/* Το δικό σου χαρτί το σβήνεις εσύ — διπλοπέρασμα, λάθος τύπος,
+                  λάθος φωτογραφία. Αν το έχει ήδη επιβεβαιώσει ο Α.Σ., η
+                  διαγραφή παίρνει μαζί και τον έλεγχό του, οπότε το λέμε. */''}
+            <button class="btn gh sm mycertdel" data-id="${x.id}"
+              data-ok="${x.confirmed_on?'1':''}" title="Διαγραφή">✕</button>
           </div>`}).join('')})()}
       ${/* Στη ΔΙΚΗ ΣΟΥ καρτέλα δεν «προσθέτεις πιστοποιητικό» — στέλνεις το
             χαρτί σου για έλεγχο. Ο pc_self_guard μηδενίζει το confirmed_on
@@ -9282,6 +9315,16 @@ V.me=()=>{
     ${meTabs(p)}`;
 
   const cm=t=>{const e=$('cMsg'); if(e)e.textContent=t};
+  document.querySelectorAll('.certview').forEach(a=>a.onclick=e=>{e.preventDefault();
+    const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
+    if(c)docPreview(certSides(c),+a.dataset.ix||0)});
+  document.querySelectorAll('.mycertdel').forEach(b=>b.onclick=async()=>{
+    const msg=b.dataset.ok
+      ? 'Αυτό το πιστοποιητικό το έχει ΗΔΗ επιβεβαιώσει ο Α.Σ.\n\nΑν το σβήσεις, φεύγει και ο έλεγχός του και θα χρειαστεί να το ξανανεβάσεις από την αρχή.\n\nΝα το σβήσω;'
+      : 'Διαγραφή του πιστοποιητικού και του αρχείου του;';
+    if(!confirm(msg))return;
+    try{ await certPurge(b.dataset.id); toast('Διαγράφηκε.'); V.me() }
+    catch(e){ toast('Δεν διαγράφηκε: '+(e.message||e)) }});
   const ca=$('cAdd'); if(ca)ca.onclick=async()=>{
     const type=$('cT').value, lab=$('cL').value.trim(), iss=$('cI').value, exp=$('cE').value, f=$('cF').files[0];
     if(!exp&&!iss)return cm('Βάλε τουλάχιστον μία ημερομηνία.');
