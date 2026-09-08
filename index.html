@@ -891,6 +891,7 @@ const NAV=[
    {id:'honours',t:'Τιμητικές διακρίσεις',i:'award',s:'live'}]},
 
  {g:'Εγγραφές', d:'Ποιος μπαίνει, ποιος πλήρωσε, τι τυπώνεται', items:[
+   {id:'waitlist',t:'Λίστα αναμονής',i:'users',s:'live'},
    {id:'desk',t:'Τραπέζι εγγραφών',i:'check',s:'live'},
    {id:'intake',t:'Νέα μέλη & Α.Μ.',i:'user',s:'live'},
    {id:'reg',t:'Εγγραφές & εισπράξεις',i:'card',s:'live'},
@@ -1034,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 11:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 12:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1547,10 +1548,17 @@ async function loadAll(){
        δεν υπάρχει αντίγραφο στα Απεσταλμένα του Α.Σ. — το αρχείο ζει εδώ,
        δεμένο με το πρόσωπο. Χωρίς σώμα και χωρίς κωδικό: το μήνυμα βγαίνει
        από πρότυπο, και ο κωδικός δεν έχει λόγο να ζει δεύτερη φορά. */
-    sb.from('email_log').select('*').order('sent_at',{ascending:false}).limit(5000)
+    sb.from('email_log').select('*').order('sent_at',{ascending:false}).limit(5000),
+    /* Λίστα αναμονής. Δεν είναι μέλη — γι' αυτό ζει σε δικό της πίνακα και
+       όχι στους badgeholders. Το RLS τη δίνει μόνο στον Α.Σ.· για όλους τους
+       άλλους γυρίζει άδεια, χωρίς σφάλμα. */
+    sb.from('waitlist').select('*').order('submitted_on',{ascending:false}),
+    /* Το ιστορικό δηλώσεων τάξης. Μία γραμμή ανά «αυτή η τάξη, αυτή τη χρονιά,
+       από αυτή την πηγή» — γιατί ο έλεγχος γίνεται πάντα ανατρέχοντας. */
+    sb.from('waitlist_class').select('*')
       // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1592,7 +1600,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; D.wcon=r[76]?.data||[]; D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.elog=r[80]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; D.wcon=r[76]?.data||[]; D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.elog=r[80]?.data||[]; D.wl=r[81]?.data||[]; D.wlc=r[82]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -2092,7 +2100,7 @@ const MODES=[
   {k:'sat', t:'Συγκέντρωση', i:'check', d:'Σάββατο απόγευμα — παρουσίες, πρόγραμμα, ιατρικά',
    nav:['attend','cal','members','medical','guardians','progAL','progOP','progKA','groups']},
   {k:'reg', t:'Περίοδος εγγραφών', i:'book', d:'Τραπέζι, Α.Μ., εισπράξεις, κωδικοί',
-   nav:['desk','intake','reg','fees','enroll','esimport','mails','year','members','forms','accounts']},
+   nav:['waitlist','desk','intake','reg','fees','enroll','esimport','mails','year','members','forms','accounts']},
   {k:'camp',t:'Δράση ή κατασκήνωση', i:'flag', d:'Ετοιμότητα, φάκελοι, επαφές έκτακτης ανάγκης',
    nav:['events','medical','guardians','members','groups','enroll','cal']},
   {k:'adm', t:'Διοικητικά', i:'shield', d:'Εντολές, ρόλοι, μεταγραφές, λήξεις',
@@ -13666,6 +13674,258 @@ function deskKidsBody(){
       ${letterfoot()}</div>`);
   });
 }
+/* ══ ΛΙΣΤΑ ΑΝΑΜΟΝΗΣ ═══════════════════════════════════════════════════════
+   Μία φόρμα Smartespot ανά προσκοπική χρονιά. Οι υποβολές κάθονταν εκεί και
+   κανείς δεν τις έβλεπε μαζί — ούτε πόσα παιδιά περιμένουν, ούτε πότε
+   χωράνε.
+
+   ΔΕΝ ΕΙΝΑΙ ΜΕΛΗ. Δεν έχουν Α.Μ., δεν έχουν ιατρικό, και ο γονιός συναίνεσε
+   ΜΟΝΟ σε επικοινωνία. Γι' αυτό ζουν σε δικό τους πίνακα: όποιος δεν έρθει
+   ποτέ σβήνεται με μία γραμμή, όχι ξεμπλέκοντας care_links και consents.
+
+   Η ΑΞΙΑ ΕΙΝΑΙ Η ΧΡΟΝΙΑ, ΟΧΙ Ο ΑΡΙΘΜΟΣ. Ένα παιδί στην Α΄ Δημοτικού δεν
+   είναι «σε αναμονή» — είναι Αγέλη του 2028-29. Η ομαδοποίηση κατά χρονιά
+   εισόδου είναι όλη η εικόνα του μέλλοντος. */
+/* Η ΤΑΞΗ ΤΟΥ ΠΑΙΔΙΟΥ ΔΕΝ ΕΙΝΑΙ ΣΤΗΛΗ — ΠΡΟΚΥΠΤΕΙ.
+   Η φόρμα του 2025-26 κατέγραψε «Β΄ Δημοτικού». Σήμερα το παιδί είναι στη Γ΄.
+   Αν δείχναμε τη γραμμένη τάξη ως έχει, ο πίνακας θα γερνούσε σιωπηλά και κάθε
+   Σεπτέμβριο θα έλεγε ψέματα για όλους.
+
+   ΔΥΟ ΠΗΓΕΣ, ΜΕ ΣΕΙΡΑ:
+   1) Ο ΓΟΝΙΟΣ. Αν δήλωσε τάξη, τη ΜΕΤΑΦΕΡΟΥΜΕ μπροστά όσες χρονιές πέρασαν.
+      Ο γονιός ξέρει σε ποια τάξη είναι το παιδί του· εμείς μαντεύουμε.
+   2) Η ΗΜΕΡΟΜΗΝΙΑ ΓΕΝΝΗΣΗΣ, μόνο όταν δεν δήλωσε τάξη — δηλαδή στα «ακόμη
+      δεν πάει Δημοτικό», που είναι και τα μόνα που δεν μεταφέρονται.
+
+   ΚΑΝΟΝΑΣ ΚΥΠΡΟΥ (η εφεδρεία): Α΄ Δημοτικού τον Σεπτέμβριο του έτους γέννησης
+   +6 (γέννηση Ιαν-Αυγ) ή +7 (Σεπ-Δεκ). Ελέγχθηκε σε 60 δηλώσεις με τάξη:
+   συμφωνεί στις 58. Οι δύο διαφωνίες κρατούν ό,τι είπε ο γονιός και το λένε. */
+const WLGR=['Α΄ Δημ.','Β΄ Δημ.','Γ΄ Δημ.','Δ΄ Δημ.','Ε΄ Δημ.','Στ΄ Δημ.',
+            'Α΄ Γυμν.','Β΄ Γυμν.','Γ΄ Γυμν.','Α΄ Λυκ.','Β΄ Λυκ.','Γ΄ Λυκ.'];
+/* Το «A'» της φόρμας είναι λατινικό A, το «B'» λατινικό B. Αν το ξεχάσεις,
+   δύο ολόκληρες τάξεις πέφτουν σιωπηλά στο «άγνωστη». */
+const WLDECL={'Ακόμη δεν πάει Δημοτικό':0,'ΠΙΟ ΜΙΚΡΟΙ':0,
+  /* Οι σύντομες μορφές είναι του χειρόγραφου αρχείου (ένα φύλλο ανά τάξη). */
+  'Α΄ Δημ.':1,'Β΄ Δημ.':2,'Γ΄ Δημ.':3,'Δ΄ Δημ.':4,'Ε΄ Δημ.':5,'Στ΄ Δημ.':6,
+  'Α΄ Γυμν.':7,'Β΄ Γυμν.':8,'Γ΄ Γυμν.':9,'Α΄ Λυκ.':10,'Β΄ Λυκ.':11,'Γ΄ Λυκ.':12,
+  "A' Τάξη Δημοτικού":1,"Α' Τάξη Δημοτικού":1,"B' Τάξη Δημοτικού":2,"Β' Τάξη Δημοτικού":2,
+  "Γ' Τάξη Δημοτικού":3,"Δ' Τάξη Δημοτικού":4,"Ε' Τάξη Δημοτικού":5,"Στ' Τάξη Δημοτικού":6,
+  "A' Τάξη Γυμνασίου":7,"Α' Τάξη Γυμνασίου":7,"B' Τάξη Γυμνασίου":8,"Β' Τάξη Γυμνασίου":8,
+  "Γ' Τάξη Γυμνασίου":9,"A' Τάξη Λυκείου":10,"Α' Τάξη Λυκείου":10,
+  "B' Τάξη Λυκείου":11,"Β' Τάξη Λυκείου":11,"Γ' Τάξη Λυκείου":12};
+function wlDobGrade(dob){
+  if(!dob)return null;
+  const d=new Date(dob+'T12:00:00'); if(isNaN(d))return null;
+  const startA=d.getFullYear()+(d.getMonth()<=7?6:7);   // getMonth: 0=Ιαν, 7=Αυγ
+  return Number(String(curScoutYear()).slice(0,4))-startA+1;
+}
+/* Γυρίζει {g, src} — η πηγή ταξιδεύει μαζί με τον αριθμό, γιατί «Γ΄ Δημοτικού»
+   που το είπε ο γονιός και «Γ΄ Δημοτικού» που το μάντεψε ο κώδικας δεν είναι
+   το ίδιο πράγμα όταν πρέπει να πάρεις τηλέφωνο. */
+/* Ποια δήλωση μετράει όταν υπάρχουν πολλές: η ΠΙΟ ΠΡΟΣΦΑΤΗ χρονιά· και μέσα
+   στην ίδια χρονιά, το χέρι πάνω από το χειρόγραφο και το χειρόγραφο πάνω από
+   τη φόρμα. Το χειρόγραφο έχει περάσει από μάτι· η φόρμα είναι ό,τι
+   πληκτρολόγησε ο γονιός στο κινητό του. */
+const WLRANK=o=>/χέρι/.test(o||'')?3:/χειρόγραφο/.test(o||'')?2:1;
+function wlDecl(r){
+  const hist=(D.wlc||[]).filter(x=>x.waitlist_id===r.id);
+  if(hist.length){
+    return hist.slice().sort((a,b)=>
+      String(b.class_year).localeCompare(String(a.class_year)) || (WLRANK(b.origin)-WLRANK(a.origin)))[0];
+  }
+  /* Εφεδρεία για εγγραφή χωρίς ιστορικό: ό,τι κουβαλά η ίδια η γραμμή. */
+  return r.school_class?{class_year:r.class_year||r.scout_year, school_class:r.school_class, origin:'—'}:null;
+}
+function wlG(r){
+  const now=Number(String(curScoutYear()).slice(0,4));
+  const d0=wlDecl(r);
+  const dec=d0?WLDECL[String(d0.school_class||'').trim()]:undefined;
+  const dob=wlDobGrade(r.dob);
+  if(dec!==undefined&&dec!==null){
+    /* Η τάξη ανήκει σε ΧΡΟΝΙΑ. Το class_year λέει σε ποια — για τις φόρμες
+       είναι η χρονιά της αίτησης, για το χειρόγραφο αρχείο το 2026-27. Χωρίς
+       αυτό, τάξη γραμμένη το 2024 θα μεταφερόταν σαν να γράφτηκε φέτος. */
+    const roll=now-Number(String(d0.class_year||'').slice(0,4));
+    return {g:dec+roll, src:'δήλωση', dob, decl:d0, roll};
+  }
+  return {g:dob, src:dob===null?null:'υπολογισμός', dob};
+}
+const wlGrade=r=>wlG(r).g;
+const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
+let WLY='', WLED=null;
+V.waitlist=()=>{
+  const rows=(D.wl||[]).slice();
+  if(!rows.length){
+    $('view').innerHTML=`<div class="uc"><div class="ico">${ic('users',26)}</div>
+      <h3>Καμία εγγραφή στη λίστα αναμονής</h3>
+      <p>Είτε δεν έχει υποβληθεί τίποτα, είτε δεν έχεις δικαίωμα να τη δεις —
+         τη λίστα τη βλέπει μόνο ο Αρχηγός Συστήματος.</p></div>`;return}
+
+  const years=[...new Set(rows.map(r=>r.scout_year))].sort().reverse();
+  const list=rows.filter(r=>!WLY||r.scout_year===WLY);
+  const open=list.filter(r=>r.outcome==='Αναμονή');
+  const joined=list.filter(r=>r.outcome==='Έγινε μέλος');
+  const gone=list.filter(r=>['Αποσύρθηκε','Δεν απάντησε','Διπλοεγγραφή'].includes(r.outcome));
+  const ready=open.filter(r=>(wlGrade(r)||0)>=3);
+  const later=open.filter(r=>(wlGrade(r)||0)<3);
+
+  const age=d=>{if(!d)return '';const b=new Date(d+'T12:00:00'),t=new Date();
+    let a=t.getFullYear()-b.getFullYear();
+    if(t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()))a--;
+    return a+' χρ.'};
+  const OUT=['Αναμονή','Έγινε μέλος','Αποσύρθηκε','Δεν απάντησε','Διπλοεγγραφή'];
+  const SECS=['Αγέλη','Ομάδα','Κοινότητα'];
+
+  /* Η γραμμή επεξεργασίας ανοίγει ΚΑΤΩ από την εγγραφή, όχι σε παράθυρο:
+     διορθώνεις κοιτώντας τα διπλανά παιδιά, που είναι και ο λόγος που
+     κατάλαβες ότι κάτι δεν πάει καλά. */
+  const edit=r=>`<tr><td colspan="5" style="background:var(--bg)">
+    <div class="grow">
+      <label>Επίθετο<input data-f="last_name" value="${esc(r.last_name||'')}"></label>
+      <label>Όνομα<input data-f="first_name" value="${esc(r.first_name||'')}"></label>
+      <label style="max-width:130px">Φύλο<select data-f="gender">
+        ${['','Αγόρι','Κορίτσι'].map(g=>`<option${g===(r.gender||'')?' selected':''}>${g}</option>`).join('')}</select></label>
+      <label style="max-width:170px">Ημ. γέννησης<input type="date" data-f="dob" value="${esc(r.dob||'')}"></label>
+      <label style="max-width:150px">Τμήμα<select data-f="section"><option value=""></option>
+        ${SECS.map(x=>`<option${x===r.section?' selected':''}>${x}</option>`).join('')}</select></label>
+    </div>
+    <div class="grow">
+      <label style="max-width:200px">Τάξη ${esc(curScoutYear())}<select data-wlcls="${r.id}"><option value="">— χωρίς αλλαγή —</option>
+        ${['ΠΙΟ ΜΙΚΡΟΙ',...WLGR].map(x=>`<option>${x}</option>`).join('')}</select></label>
+      <label style="max-width:200px">Φτάνει στη Γ΄ Δημοτικού<input data-f="eligible_year_declared" value="${esc(r.eligible_year_declared||'')}" placeholder="π.χ. 2029-30"></label>
+      <label style="flex:2">&nbsp;<div class="dim" style="font-size:11.5px;padding-top:7px">Η νέα τάξη <b>προστίθεται</b> στο ιστορικό ως δήλωση «χέρι» —
+        δεν σβήνει ό,τι είπε η φόρμα. Η χρονιά της Γ΄ στέκεται μόνη της.</div></label>
+    </div>
+    <div class="grow">
+      <label>Αιτητής<input data-f="applicant_name" value="${esc(r.applicant_name||'')}"></label>
+      <label>Email<input data-f="applicant_email" value="${esc(r.applicant_email||'')}"></label>
+      <label style="max-width:170px">Τηλέφωνο<input data-f="applicant_phone" value="${esc(r.applicant_phone||'')}"></label>
+    </div>
+    <div class="grow">
+      <label style="flex:2">Ποιος τον έφερε<input data-f="referred_by" value="${esc(r.referred_by||'')}" placeholder="π.χ. αδελφός Χ, συνάδελφος Υ"></label>
+      <label style="flex:2">Τι έγινε πέρσι<input data-f="last_year_note" value="${esc(r.last_year_note||'')}"></label>
+    </div>
+    <div class="grow"><label style="flex:3">Σημείωση<input data-f="note" value="${esc(r.note||'')}"></label>
+      <label style="max-width:150px">&nbsp;<button class="btn p sm" data-wlsave="${r.id}">Αποθήκευση</button></label>
+      <label style="max-width:110px">&nbsp;<button class="btn sm gh" data-wlcancel="1">Άκυρο</button></label></div>
+    <div class="dim" style="font-size:11.5px;margin-top:4px">Η τάξη βγαίνει από τη <b>δηλωμένη τάξη</b> (μεταφερμένη μπροστά)·
+      αν δεν υπάρχει, από την ημερομηνία γέννησης. Όταν οι δύο διαφωνούν κρατάμε τη δηλωμένη
+      και το γράφουμε με ⚠ — δεν διορθώνεται σιωπηλά.</div></td></tr>`;
+
+  const row=r=>{const gi=wlG(r), g=gi.g;
+    return `<tr>
+    <td><b>${esc(r.last_name)} ${esc(r.first_name)}</b>
+      <div class="dim" style="font-size:11.5px">${esc(wlClass(g))}${gi.src?' <span title="'+(gi.src==='δήλωση'?'όπως το δήλωσε ο γονιός, μεταφερμένο μπροστά':'από την ημερομηνία γέννησης')+'">('+gi.src+')</span>':''}${r.dob?' · '+fdate(r.dob)+' · '+age(r.dob):' · χωρίς ημ. γέννησης'}${r.gender?' · '+esc(r.gender):''}</div>
+      ${(()=>{const h=(D.wlc||[]).filter(x=>x.waitlist_id===r.id)
+          .sort((a,b)=>String(a.class_year).localeCompare(String(b.class_year))||(WLRANK(a.origin)-WLRANK(b.origin)));
+        if(!h.length)return '';
+        /* Το ίχνος, όχι το συμπέρασμα: «τότε έλεγε Α΄, άρα φέτος Β΄». */
+        return `<div class="dim" style="font-size:11px">${h.map(x=>
+          `${esc(x.class_year)}: <b>${esc(x.school_class)}</b> <span style="opacity:.7">${esc(x.origin)}</span>`).join(' → ')}</div>`})()}
+      ${r.eligible_year_declared?`<div class="dim" style="font-size:11px">Γ΄ Δημοτικού: <b>${esc(r.eligible_year_declared)}</b> (δηλωμένο)</div>`:''}
+      ${r.flag?`<div style="font-size:11.5px;color:var(--warn)">⚠ ${esc(r.flag)}</div>`:''}
+      ${r.last_year_note?`<div class="dim" style="font-size:11.5px">${esc(r.last_year_note)}</div>`:''}
+      ${r.note?`<div class="dim" style="font-size:11.5px">${esc(r.note)}</div>`:''}</td>
+    <td style="white-space:nowrap">${r.section?sdot(r.section)+esc(r.section):'<span class="dim">—</span>'}
+      <div class="dim" style="font-size:11.5px">δήλωσε: ${esc(r.school_class||'—')}</div></td>
+    <td>${esc(r.applicant_name||'—')}
+      <div class="dim" style="font-size:11.5px">${r.applicant_phone?fphone(r.applicant_phone):''}${r.applicant_email?' · '+esc(r.applicant_email):''}</div>
+      ${r.referred_by?`<div class="dim" style="font-size:11.5px">${ic('users',11)} ${esc(r.referred_by)}</div>`:''}</td>
+    <td class="hide-s dim" style="font-size:12px;white-space:nowrap">${r.submitted_on?fdate(String(r.submitted_on).slice(0,10)):'—'}
+      <div style="font-size:11px">${esc(r.scout_year)}</div></td>
+    <td style="white-space:nowrap"><select data-wlo="${r.id}" style="min-width:125px">${OUT.map(o=>
+        `<option${o===r.outcome?' selected':''}>${o}</option>`).join('')}</select>
+      <button class="btn sm gh" data-wledit="${r.id}" title="Επεξεργασία">✎</button></td></tr>`
+    + (WLED===r.id?edit(r):'')};
+
+  /* Ομαδοποίηση κατά ΦΕΤΙΝΗ τάξη — έτσι βλέπεις «πέντε παιδιά στη Γ΄», που
+     είναι και η ερώτηση όταν σκέφτεσαι πόσους χωράει η Αγέλη. */
+  const groups={};
+  const src = list;
+  src.forEach(r=>{const g=wlGrade(r);(groups[g===null?99:g]=groups[g===null?99:g]||[]).push(r)});
+  const ord=Object.keys(groups).map(Number).sort((a,b)=>a-b);
+
+  const table=l=>`<div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Παιδί</th><th>Τμήμα</th><th>Αιτητής</th><th class="hide-s">Υποβλήθηκε</th><th>Έκβαση</th></tr></thead>
+      <tbody>${l.map(row).join('')}</tbody></table></div>`;
+
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Λίστα αναμονής</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Παιδιά που ζήτησαν θέση και <b>δεν είναι μέλη</b>.
+        Δεν έχουν Α.Μ. και δεν μετρούν πουθενά αλλού — ο γονιός συναίνεσε μόνο σε επικοινωνία.
+        Τη λίστα τη βλέπει μόνο ο Αρχηγός Συστήματος.</div>
+      <div class="dim" style="font-size:12.5px;margin-top:6px">Χωρισμένα κατά <b>φετινή τάξη (${esc(curScoutYear())})</b>,
+        υπολογισμένη από την ημερομηνία γέννησης — όχι από ό,τι γράφτηκε στη φόρμα της χρονιάς της.</div></div>
+
+    <div class="tiles">
+      <div class="tile ${ready.length?'warn':''}" style="cursor:default"><div class="k">Έχουν την ηλικία</div>
+        <div class="v">${ready.length}</div><div class="s">Γ΄ Δημοτικού και πάνω</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Περιμένουν να μεγαλώσουν</div>
+        <div class="v">${later.length}</div><div class="s">κάτω από Γ΄ Δημοτικού</div></div>
+      <div class="tile ok" style="cursor:default"><div class="k">Έγιναν μέλη</div>
+        <div class="v">${joined.length}</div><div class="s">από τη λίστα</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Έκλεισαν</div>
+        <div class="v">${gone.length}</div><div class="s">αποσύρθηκαν ή δεν απάντησαν</div></div>
+    </div>
+
+    <div class="grow" style="margin-top:12px">
+      <label style="max-width:200px">Χρονιά φόρμας<select id="wly"><option value="">Όλες</option>
+        ${years.map(y=>`<option${y===WLY?' selected':''}>${esc(y)}</option>`).join('')}</select></label>
+      <label style="max-width:150px">&nbsp;<button class="btn sm" id="wlExp">Εξαγωγή</button></label>
+    </div>
+
+    ${ord.map(g=>{const l=groups[g], w=g>=3&&g<=12;
+      return `<div class="sec"><h3>${esc(wlClass(g===99?null:g))}</h3><span class="n">${l.length}</span></div>
+        ${w?'':`<div class="dim" style="font-size:12.5px;margin:-4px 0 8px">Δεν έχει ακόμη την τάξη για την Αγέλη του 76ου (ξεκινά από Γ΄ Δημοτικού).</div>`}
+        ${table(l)}`}).join('')}`;
+
+  const ys=$('wly'); if(ys)ys.onchange=e=>{WLY=e.target.value;WLED=null;route('waitlist')};
+  document.querySelectorAll('[data-wledit]').forEach(b=>b.onclick=()=>{
+    WLED = WLED===b.dataset.wledit ? null : b.dataset.wledit; route('waitlist')});
+  document.querySelectorAll('[data-wlcancel]').forEach(b=>b.onclick=()=>{WLED=null;route('waitlist')});
+  document.querySelectorAll('[data-wlo]').forEach(s=>s.onchange=async e=>{
+    await wlSave(s.dataset.wlo,{outcome:e.target.value})});
+  document.querySelectorAll('[data-wlsave]').forEach(b=>b.onclick=async()=>{
+    const tr=b.closest('td'), patch={};
+    tr.querySelectorAll('[data-f]').forEach(i=>{
+      let v=i.value; if(v==='')v=null; patch[i.dataset.f]=v});
+    const cs=tr.querySelector('[data-wlcls]'), cls=cs&&cs.value;
+    WLED=null;
+    if(cls){
+      /* ΠΡΟΣΘΗΚΗ, όχι αντικατάσταση. Ο έλεγχος «τι έλεγε τότε» πρέπει να
+         δουλεύει και μετά από δέκα διορθώσεις. */
+      const row={waitlist_id:b.dataset.wlsave, class_year:curScoutYear(), school_class:cls, origin:'χέρι'};
+      const {error}=await sb.from('waitlist_class').upsert(row,{onConflict:'waitlist_id,class_year,origin'});
+      if(error)toast('Η τάξη δεν αποθηκεύτηκε: '+error.message);
+      else{const ex=(D.wlc||[]).find(x=>x.waitlist_id===row.waitlist_id&&x.class_year===row.class_year&&x.origin==='χέρι');
+        if(ex)ex.school_class=cls; else (D.wlc=D.wlc||[]).push(row)}
+    }
+    await wlSave(b.dataset.wlsave,patch)});
+  const ex=$('wlExp'); if(ex)ex.onclick=()=>{
+    const R=[['Χρονιά','Επίθετο','Όνομα','Φύλο','Ημ. γέννησης','Φετινή τάξη','Πηγή τάξης','Δήλωσε','Χρονιά δήλωσης',
+              'Τμήμα','Αιτητής','Τηλέφωνο','Email','Ποιος τον έφερε','Τι έγινε πέρσι','Καμπανάκι','Έκβαση','Σημείωση','Προέλευση']];
+    list.forEach(r=>{const gi=wlG(r);
+      R.push([r.scout_year,r.last_name,r.first_name,r.gender||'',r.dob||'',
+        wlClass(gi.g),gi.src||'',r.school_class||'',r.class_year||'',r.section||'',r.applicant_name||'',
+        r.applicant_phone||'',r.applicant_email||'',r.referred_by||'',r.last_year_note||'',r.flag||'',
+        r.outcome,r.note||'',r.source||''])});
+    exportRows(R,'lista-anamonis'+(WLY?'-'+WLY:''),'Λίστα Αναμονής'+(WLY?' '+WLY:''));
+  };
+};
+/* Μία πόρτα για κάθε γράψιμο: αν αλλάξει η έκβαση, κρατά ΠΟΙΟΣ και ΠΟΤΕ. */
+async function wlSave(id,patch){
+  const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
+  if(patch.outcome&&patch.outcome!==r.outcome){
+    patch.outcome_at=new Date().toISOString();
+    patch.outcome_by=(meRec()||{}).id||null;
+  }
+  const {error}=await sb.from('waitlist').update(patch).eq('id',id);
+  if(error){toast('Δεν αποθηκεύτηκε: '+error.message);return}
+  Object.assign(r,patch);
+  toast('Αποθηκεύτηκε.'); route('waitlist');
+}
+
 V.desk=()=>tabView('desk',[
   {k:'fam', t:'Οικογένειες',   i:'home',  fn:deskBody,     d:'παιδί, γονείς, κωδικός γονέα'},
   {k:'kid', t:'Κωδικοί μελών', i:'users', fn:deskKidsBody, d:'δικός τους λογαριασμός, 14+'}]);
