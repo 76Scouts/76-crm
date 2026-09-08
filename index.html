@@ -1034,7 +1034,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-07 22:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 11:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -3198,9 +3198,23 @@ async function docPreview(list,ix){
     }
     /* Το PDF κρατά τη ΔΙΚΗ ΤΟΥ γραμμή εργαλείων — της είχαμε περάσει παράμετρο
        που την έκρυβε, και μαζί της έφευγε το ζουμ του φυλλομετρητή. Για την
-       εικόνα το ζουμ το χτίζουμε εμείς. */
-    $('dpBody').innerHTML = pdf
-      ? `<iframe src="${esc(url)}" style="width:100%;height:72vh;border:0;background:#fff"></iframe>`
+       εικόνα το ζουμ το χτίζουμε εμείς.
+
+       ΤΟ «#view=Fit» ΕΙΝΑΙ Η ΟΥΣΙΑ. Χωρίς αυτό ο φυλλομετρητής ανοίγει το PDF
+       στο δικό του «Automatic Zoom»: ταιριάζει το ΠΛΑΤΟΣ, η σελίδα βγαίνει
+       ψηλότερη από το πλαίσιο, και σε αφήνει στη μέση της — βλέπεις το κέντρο
+       του ΠΑΡΑΘΥΡΟΥ, όχι το κέντρο του ΧΑΡΤΙΟΥ. Ο Α.Σ. άνοιγε το Ν.91(Ι) και
+       έβλεπε τον θυρεό μεγεθυμένο με κομμένο το υπουργείο δεξιά. Το «Fit» λέει
+       «ολόκληρη η σελίδα μέσα στο πλαίσιο» — μετά ζουμάρει ο ίδιος αν θέλει.
+       Είναι θραύσμα (#), δεν φεύγει στον διακομιστή, άρα δεν χαλά την υπογραφή.
+
+       Το align-items:center του dpBody κεντράρει — αλλά έτσι το iframe δεν
+       τεντώνεται και έμενε κολλημένο στα 72vh με κενό γύρω του. Για PDF το
+       γυρίζουμε σε stretch ώστε να πιάσει όλο το ύψος της κάρτας. */
+    const body=$('dpBody');
+    body.style.alignItems = pdf?'stretch':'center';
+    body.innerHTML = pdf
+      ? `<iframe src="${esc(url)}#view=Fit" style="width:100%;height:100%;min-height:78vh;border:0;background:#fff"></iframe>`
       : `<img id="dpImg" src="${esc(url)}" alt="${esc(it.label||name)}" style="display:block;max-width:100%;max-height:78vh">`;
     if(!pdf){
       /* Κάποιες σαρώσεις έρχονται τεράστιες και το «ταίριασμα» κόβει τις
