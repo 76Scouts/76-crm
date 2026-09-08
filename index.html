@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 14:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 16:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -13795,7 +13795,7 @@ function wlG(r){
 }
 const wlGrade=r=>wlG(r).g;
 const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
-let WLY='', WLED=null;
+let WLY='', WLED=null, WLSORT='anamoni';
 V.waitlist=()=>{
   const rows=(D.wl||[]).slice();
   if(!rows.length){
@@ -13875,7 +13875,10 @@ V.waitlist=()=>{
       <div class="dim" style="font-size:11.5px">${r.applicant_phone?fphone(r.applicant_phone):''}${r.applicant_email?' · '+esc(r.applicant_email):''}</div>
       ${r.referred_by?`<div class="dim" style="font-size:11.5px">${ic('users',11)} ${esc(r.referred_by)}</div>`:''}</td>
     <td class="hide-s dim" style="font-size:12px;white-space:nowrap">${r.submitted_on?fdate(String(r.submitted_on).slice(0,10)):'—'}
-      <div style="font-size:11px">${esc(r.scout_year)}</div></td>
+      <div style="font-size:11px">${esc(r.scout_year)}${(()=>{
+        if(!r.submitted_on)return '';
+        const m=Math.round((new Date()-new Date(r.submitted_on))/2628000000);
+        return m>=12?` · <b>${Math.floor(m/12)} ${Math.floor(m/12)===1?'χρόνο':'χρόνια'}</b>`:(m>0?` · ${m} μήνες`:'')})()}</div></td>
     <td style="white-space:nowrap"><select data-wlo="${r.id}" style="min-width:125px">${OUT.map(o=>
         `<option${o===r.outcome?' selected':''}>${o}</option>`).join('')}</select>
       <button class="btn sm gh" data-wledit="${r.id}" title="Επεξεργασία">✎</button></td></tr>`
@@ -13884,8 +13887,34 @@ V.waitlist=()=>{
   /* Ομαδοποίηση κατά ΦΕΤΙΝΗ τάξη — έτσι βλέπεις «πέντε παιδιά στη Γ΄», που
      είναι και η ερώτηση όταν σκέφτεσαι πόσους χωράει η Αγέλη. */
   const groups={};
-  const src = list;
+  /* ΠΡΟΕΠΙΛΟΓΗ: ΣΕΙΡΑ ΚΛΗΣΕΩΝ, ΟΧΙ ΑΛΦΑΒΗΤΙΚΗ. Πρώτος όποιος περιμένει
+     ΠΕΡΙΣΣΟΤΕΡΟ — είναι και το δίκαιο και το πρακτικό: ο γονιός που έκανε
+     αίτηση πριν δύο χρόνια είναι αυτός που θα ρωτήσει «με ξεχάσατε;».
+     Αλλά η προεπιλογή δεν είναι κανόνας: μερικές φορές ψάχνεις όνομα, και
+     τότε η αλφαβητική είναι η μόνη χρήσιμη. */
+  const D_=x=>String(x||'').trim();
+  const WLSORTS={
+    anamoni:['Σειρά αναμονής (παλαιότερη αίτηση πρώτα)', (a,b)=>
+      D_(a.scout_year).localeCompare(D_(b.scout_year)) ||
+      (a.submitted_on||'9999').localeCompare(b.submitted_on||'9999')],
+    neoteri:['Πρόσφατη αίτηση πρώτα', (a,b)=>
+      D_(b.scout_year).localeCompare(D_(a.scout_year)) ||
+      (b.submitted_on||'').localeCompare(a.submitted_on||'')],
+    onoma:['Αλφαβητικά', (a,b)=>
+      nameKey(a.last_name+' '+a.first_name).localeCompare(nameKey(b.last_name+' '+b.first_name),'el')],
+    ilikia:['Μεγαλύτερο παιδί πρώτα', (a,b)=>(a.dob||'9999').localeCompare(b.dob||'9999')],
+    mikroteros:['Μικρότερο παιδί πρώτα', (a,b)=>(b.dob||'').localeCompare(a.dob||'')],
+  };
+  const src = list.slice().sort((WLSORTS[WLSORT]||WLSORTS.anamoni)[1]);
   src.forEach(r=>{const g=wlGrade(r);(groups[g===null?99:g]=groups[g===null?99:g]||[]).push(r)});
+
+  /* ΤΙ ΑΠΕΔΩΣΕ ΚΑΘΕ ΧΡΟΝΙΑ. Χωρίς αυτό η λίστα είναι σωρός ονομάτων: δεν
+     ξέρεις αν αξίζει να τηλεφωνείς, ούτε ποια χρονιά έμεινε ανοιχτή. */
+  const YRS={};
+  rows.forEach(r=>{const y=r.scout_year||'—'; const o=(YRS[y]=YRS[y]||{n:0,m:0,w:0,x:0,ready:0});
+    o.n++; if(r.outcome==='Έγινε μέλος')o.m++;
+    else if(r.outcome==='Αναμονή'){o.w++; const g=wlGrade(r); if(g>=3&&g<=5)o.ready++}
+    else o.x++});
   const ord=Object.keys(groups).map(Number).sort((a,b)=>a-b);
 
   const table=l=>`<div class="card" style="overflow:auto"><table>
@@ -13912,9 +13941,26 @@ V.waitlist=()=>{
         <div class="v">${gone.length}</div><div class="s">αποσύρθηκαν ή δεν απάντησαν</div></div>
     </div>
 
+    <div class="sec" style="margin-top:14px"><h3>Τι απέδωσε κάθε χρονιά</h3></div>
+    <div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Χρονιά αίτησης</th><th>Μπήκαν</th><th>Ήρθαν</th><th>Ποσοστό</th>
+        <th>Περιμένουν</th><th>Έχουν την ηλικία</th><th>Έκλεισαν</th></tr></thead>
+      <tbody>${Object.keys(YRS).sort().map(y=>{const o=YRS[y];
+        return `<tr><td><b>${esc(y)}</b></td><td>${o.n}</td>
+          <td style="color:var(--ok)"><b>${o.m}</b></td>
+          <td class="dim">${o.n?Math.round(100*o.m/o.n)+'%':'—'}</td>
+          <td>${o.w}</td>
+          <td>${o.ready?`<b style="color:var(--warn)">${o.ready}</b>`:'0'}</td>
+          <td class="dim">${o.x}</td></tr>`}).join('')}</tbody></table>
+      <div class="dim" style="font-size:12px;margin-top:7px">«Έχουν την ηλικία» = Γ΄ ως Ε΄ Δημοτικού, δηλαδή
+        μπορούν να μπουν στην Αγέλη <b>τώρα</b>. Αυτούς παίρνεις τηλέφωνο πρώτους,
+        και μέσα σε κάθε τάξη με τη σειρά που έκαναν αίτηση.</div></div>
+
     <div class="grow" style="margin-top:12px">
       <label style="max-width:200px">Χρονιά φόρμας<select id="wly"><option value="">Όλες</option>
         ${years.map(y=>`<option${y===WLY?' selected':''}>${esc(y)}</option>`).join('')}</select></label>
+      <label style="max-width:280px">Σειρά<select id="wlsort">${Object.entries(WLSORTS)
+        .map(([k,[t]])=>`<option value="${k}"${k===WLSORT?' selected':''}>${esc(t)}</option>`).join('')}</select></label>
       <label style="max-width:150px">&nbsp;<button class="btn sm" id="wlExp">Εξαγωγή</button></label>
     </div>
 
@@ -13924,6 +13970,7 @@ V.waitlist=()=>{
         ${table(l)}`}).join('')}`;
 
   const ys=$('wly'); if(ys)ys.onchange=e=>{WLY=e.target.value;WLED=null;route('waitlist')};
+  const so=$('wlsort'); if(so)so.onchange=e=>{WLSORT=e.target.value;WLED=null;route('waitlist')};
   document.querySelectorAll('[data-wledit]').forEach(b=>b.onclick=()=>{
     WLED = WLED===b.dataset.wledit ? null : b.dataset.wledit; route('waitlist')});
   document.querySelectorAll('[data-wlcancel]').forEach(b=>b.onclick=()=>{WLED=null;route('waitlist')});
