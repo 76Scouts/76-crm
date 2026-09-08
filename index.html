@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 18:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 22:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -9873,8 +9873,10 @@ const SA_COL={'δηλώθηκε':'', 'στάλθηκε':'warn', 'έγινε δε
               'την πέρασε':'ok', 'δεν έγινε δεκτός':'bad', 'ακυρώθηκε':'bad'};
 const schoolsAhead=()=>(D.ev||[])
   .filter(e=>e.type==='Σχολή'&&!e.hidden&&e.scout_year===YEAR)
-  .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||''));
-const myApp=eid=>(D.sapp||[]).find(a=>a.event_id===eid&&a.person_id===ME.person_id);
+  /* Οι σχολές χωρίς ημερομηνία (τις ανακοινώνει η Γ.Ε.) πάνε ΤΕΛΕΥΤΑΙΕΣ.
+     Το κενό string ταξινομείται πρώτο και θα τις έβαζε πριν από τον Οκτώβριο. */
+  .sort((a,b)=>(a.event_date||'9999').localeCompare(b.event_date||'9999'));
+const myApp=eid=>(D.sapp||[]).find(a=>a.event_id===eid&&a.person_id===mePid());
 
 function schoolsBlock(){
   const ups=schoolsAhead(); if(!ups.length)return '';
@@ -9885,13 +9887,32 @@ function schoolsBlock(){
     <div style="margin-top:10px">${ups.map(e=>{
       /* Ό,τι έχει ήδη περάσει δεν προσφέρεται ξανά: η ταύτιση γίνεται στον
          τίτλο, γιατί ο κωδικός σχολής δίνεται αφού έρθει η βεβαίωση. */
-      const done=(D.tr||[]).some(t=>t.person_id===ME.person_id
+      const done=(D.tr||[]).some(t=>t.person_id===mePid()
         && nameKey(t.type||'')===nameKey(e.title||''));
       if(done)return '';
       const a=myApp(e.id);
       return `<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding:8px 0">
         <span style="flex:1 1 200px"><b style="font-weight:500;font-size:13.5px">${esc(e.title)}</b>
-          <div class="dim" style="font-size:11.5px">${fdate(e.event_date)}${e.place?' · '+esc(e.place):''}</div></span>
+          ${(()=>{
+            /* ΔΥΟ ΜΕΡΗ, ΔΥΟ ΔΙΑΣΤΗΜΑΤΑ. Η σχολή Δ.Δ. γίνεται σε δύο
+               σαββατοκύριακα με δύο μήνες κενό — ένα «από…ως» θα έλεγε ότι
+               κρατά δύο μήνες. */
+            const per=(a,b)=>!a?'':fdate(a)+(b&&b!==a?' – '+fdate(b):'');
+            const A=per(e.event_date,e.end_date), B=per(e.date_b,e.end_date_b);
+            const when = A ? (B?`<b>Α΄ μέρος</b> ${A} · <b>Β΄ μέρος</b> ${B}`:A)
+                           : '<span style="color:var(--warn)">αναμένεται ημερομηνία από τη Γ.Ε.</span>';
+            return `<div class="dim" style="font-size:11.5px">${when}${e.place?' · '+esc(e.place):''}</div>`})()}
+          ${(()=>{
+            if(!e.prereq)return '';
+            /* Η προϋπόθεση δεν είναι διακοσμητική: την ΕΛΕΓΧΟΥΜΕ. Αλλά δεν
+               μπλοκάρουμε — μπορεί να την έχει από αλλού ή να τη βγάλει πριν
+               τη σχολή. Ο άνθρωπος αποφασίζει, το πρόγραμμα προειδοποιεί. */
+            const rx=(()=>{try{return new RegExp(e.prereq_match||'','i')}catch(_){return null}})();
+            const has=rx&&(D.tr||[]).some(t=>t.person_id===mePid()&&rx.test((t.type||'')+' '+(t.code||'')));
+            return has
+              ? `<div class="dim" style="font-size:11px;color:var(--ok)">✓ ${esc(e.prereq)}</div>`
+              : `<div style="font-size:11px;color:var(--warn)">⚠ ${esc(e.prereq)} — δεν το βρήκα στις εκπαιδεύσεις σου</div>`})()}
+        </span>
         ${a?`<span class="pill"${SA_COL[a.status]?` style="background:var(--${SA_COL[a.status]}bg);color:var(--${SA_COL[a.status]});border-color:transparent"`:''}>${esc(a.status)}</span>
              ${a.status==='δηλώθηκε'?`<button class="btn gh sm sawd" data-id="${a.id}">Ανάκληση</button>`:''}`
            :`<button class="btn sm p sadec" data-e="${e.id}">Δηλώνω συμμετοχή</button>`}
