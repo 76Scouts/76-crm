@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 17:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 18:28'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6797,6 +6797,23 @@ V.accounts=()=>{
      δεν απαντιέται. Το χτίζουμε από τα care_links — ένας γονέας μπορεί να
      ανήκει σε ΔΥΟ κλάδους ταυτόχρονα (παιδί στην Αγέλη, παιδί στην Ομάδα),
      γι' αυτό σύνολο και όχι μία τιμή. */
+  /* Ο Α.Μ. ΠΟΥ ΘΑ ΤΟΥ ΖΗΤΗΘΕΙ ΣΤΗΝ ΕΞΑΡΓΥΡΩΣΗ.
+     Ο γονέας ΔΕΝ έχει δικό του Α.Μ. — δίνει του παιδιού του. Γι' αυτό «πολλοί
+     δεν τον έχουν»: δεν τους λείπει, δεν υπάρχει. Δείχνουμε ό,τι θα δουλέψει:
+     τον δικό του αν έχει, αλλιώς των παιδιών του. */
+  const amOf=(()=>{
+    const kids={};
+    (D.cl||[]).filter(l=>!l.valid_to).forEach(l=>{
+      const kid=(D.bh||[]).find(x=>x.id===l.member_id);
+      if(kid&&kid.registry_no)(kids[l.carer_id]=kids[l.carer_id]||[]).push(kid.registry_no);
+    });
+    return r=>{
+      const me=(D.bh||[]).find(x=>x.id===r.id);
+      if(me&&me.registry_no)return [me.registry_no];
+      return kids[r.id]?[...new Set(kids[r.id])]:[];
+    };
+  })();
+
   const secOfAcc=(()=>{
     const m={};
     (D.cl||[]).filter(l=>!l.valid_to).forEach(l=>{
@@ -6834,7 +6851,12 @@ V.accounts=()=>{
               r.idiotita==='Γονέας'
                 ? (secOfAcc(r).length?' · '+secOfAcc(r).map(x=>esc(x)).join(', '):(r.tmima?' · '+esc(r.tmima):''))
                 : (r.tmima?' · '+esc(r.tmima):'')
-            }${r.paidia?' · '+r.paidia+' παιδιά':''}</div></td>
+            }${r.paidia?' · '+r.paidia+' παιδιά':''}</div>
+            ${(()=>{const am=amOf(r);
+              return am.length
+                ?`<div class="dim" style="font-size:11.5px">Α.Μ. <b>${am.map(esc).join(' / ')}</b>${
+                    (D.bh||[]).some(x=>x.id===r.id&&x.registry_no)?'':' <span style="opacity:.75">(του παιδιού)</span>'}</div>`
+                :'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent;font-size:10.5px">χωρίς Α.Μ. — δεν θα μπορεί να εξαργυρώσει</span>'})()}</td>
           <td class="hide-s dim" style="font-size:12px">${esc(r.email||'—')}</td>
           <td><span class="pill" style="background:var(--${c}bg);color:var(--${c});border-color:transparent">${esc(r.katastasi)}</span></td>
           ${/* Ο κωδικός χωρίς την ΙΣΤΟΡΙΑ του δεν λέει τίποτα: «έχει νούμερο»
@@ -7077,7 +7099,10 @@ V.accounts=()=>{
           <input type="checkbox" class="amx" value="${r.id}"${done(r)?'':' checked'} style="width:auto;margin-right:7px">
           <span style="flex:1">${esc(r.onoma)}</span>
           ${done(r)?`<span class="pill" style="font-size:10.5px;background:var(--okbg);color:var(--ok);border-color:transparent">${r.katastasi==='στάλθηκε με email'?'στάλθηκε ήδη':'δόθηκε ήδη'}</span>`:''}
-          <span class="dim" style="font-size:11.5px">${esc(r.email)}</span></label>`).join('')
+          <span class="dim" style="font-size:11.5px">${esc(r.email)}</span>
+          ${(()=>{const am=amOf(r); return am.length
+            ?`<span class="dim" style="font-size:11px;margin-left:7px">Α.Μ. ${am.map(esc).join('/')}</span>`
+            :'<span class="pill" style="font-size:10px;background:var(--warnbg);color:var(--warn);border-color:transparent;margin-left:7px">χωρίς Α.Μ.</span>'})()}</label>`).join('')
         +(nNew?'':'<div class="dim" style="font-size:12.5px;margin-top:8px">Όλοι όσοι φαίνονται τον έχουν ήδη πάρει. Τσέκαρε κάποιον μόνο αν θέλεις να ξανασταλεί.</div>')
       :'<div class="dim" style="font-size:13px">Κανείς από τους εμφανιζόμενους δεν έχει ενεργό κωδικό <b>και</b> email.</div>';
     box.scrollIntoView({behavior:'smooth',block:'center'});
@@ -7112,8 +7137,9 @@ V.accounts=()=>{
   };
 
   const ex=$('accExp'); if(ex)ex.onclick=()=>{
-    const rr=[['Όνομα','Ιδιότητα','Τμήμα','Email','Κατάσταση','Κωδικός','Λήξη κωδικού','Παιδιά']];
-    shown.forEach(r=>rr.push([r.onoma,r.idiotita,r.tmima||'',r.email||'',r.katastasi,
+    const rr=[['Όνομα','Ιδιότητα','Τμήμα','Κλάδος παιδιού','Α.Μ.','Email','Κατάσταση','Κωδικός','Λήξη κωδικού','Παιδιά']];
+    accLive().shown.forEach(r=>rr.push([r.onoma,r.idiotita,r.tmima||'',secOfAcc(r).join(' / '),
+      amOf(r).join(' / '),r.email||'',r.katastasi,
       r.kodikos||'',r.lixi_kodikou||'',r.paidia||0]));
     exportRows(rr,'Λογαριασμοί','76-logariasmoi')};
 
@@ -10871,10 +10897,51 @@ V.certq=()=>{
   const ord=Object.keys(byP).map(id=>({p:D.bh.find(b=>b.id===id),cs:byP[id]}))
     .filter(x=>x.p).sort((a,b)=>nm(a.p).localeCompare(nm(b.p),'el'));
 
+  /* ΤΑ ΞΕΧΑΣΜΕΝΑ ΤΗΣ ΜΕΤΑΚΟΜΙΣΗΣ.
+     Τα χαρτιά οχήματος πήγαν στο όχημα (vehicle_insurance / vehicle_papers).
+     Κάποια όμως έμειναν κολλημένα στο ΠΡΟΣΩΠΟ. Η οθόνη τα έκοβε, ο μετρητής
+     του μενού τα μετρούσε — «3» δίπλα σε άδεια οθόνη. Χειρότερο: ήταν το
+     ΜΟΝΟ ίχνος τους. Η Γεωργάκη έχει εδώ ασφάλεια ως το 2027 ενώ στις λήξεις
+     φαίνεται ανασφάλιστη από το 2025. Δεν τα κρύβουμε — τα δείχνουμε. */
+  const orfana=(D.pc||[]).filter(c=>!c.confirmed_on&&VEH_TYPES.includes(c.type_code))
+    .map(c=>({c, p:D.bh.find(b=>b.id===c.person_id)})).filter(x=>x.p)
+    .sort((a,b)=>nm(a.p).localeCompare(nm(b.p),'el'));
+
+  /* Δύο κλάδοι εξόδου (άδεια οθόνη / κανονική) — μία συνάρτηση δεσίματος.
+     Αλλιώς ο ένας κλάδος θα ξεχνιόταν στην επόμενη αλλαγή. */
+  function bindOrfana(){
+    document.querySelectorAll('.qorfview').forEach(a=>a.onclick=e=>{e.preventDefault();
+      const c=(D.pc||[]).find(x=>x.id===a.dataset.cert); if(c)docPreview(certSides(c),0)});
+    document.querySelectorAll('.qorfdel').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Διαγραφή του χαρτιού από το πρόσωπο — μαζί και το αρχείο του;\n\nΚάν΄ το ΜΟΝΟ αφού το καταχωρήσεις στο όχημα.'))return;
+      try{ await certPurge(b.dataset.id); toast('Διαγράφηκε.'); V.certq() }
+      catch(e){ toast('Δεν διαγράφηκε: '+(e.message||e)) }});
+  }
+  const orfanaHTML = orfana.length?`
+    <div class="sec"><h3>Χαρτιά οχήματος κολλημένα σε πρόσωπο</h3><span class="n">${orfana.length}</span></div>
+    <div class="card pad" style="border-left:3px solid var(--warn)">
+      <div class="dim" style="font-size:12.5px;margin-bottom:9px">Αυτά ανήκουν σε <b>όχημα</b>, όχι σε άνθρωπο —
+        έμειναν πίσω όταν μεταφέρθηκαν τα υπόλοιπα. Δεν μετρούν πουθενά όσο κάθονται εδώ.
+        Άνοιξε το χαρτί, δες σε ποιο όχημα ανήκει, και καταχώρησέ το από τα
+        <b>Χαρτιά οχημάτων</b> — μετά σβήσε το από εδώ.</div>
+      ${orfana.map(({c,p})=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+        <b style="font-size:13.5px;min-width:150px">${pnm(p)}</b>
+        <span class="pill" style="font-size:11px">${esc(ctype(c.type_code).name)}</span>
+        <span class="dim" style="font-size:12px">${c.issued_on||c.expires_on
+          ? (c.issued_on?'έκδοση '+fdate(c.issued_on):'')+(c.expires_on?' · λήγει '+fdate(c.expires_on):'')
+          : '<span style="color:var(--warn)">χωρίς ημερομηνίες — μόνο το αρχείο ξέρει</span>'}</span>
+        <span class="sp"></span>
+        ${certSides(c).length?`<a href="#" class="btn gh sm qorfview" data-cert="${c.id}">👁 Δες το χαρτί</a>`:''}
+        <button class="btn gh sm qorfdel" data-id="${c.id}" title="Σβήσε το από το πρόσωπο">✕</button>
+      </div>`).join('')}
+      <div style="margin-top:10px"><button class="btn sm" data-go="vpapers">Χαρτιά οχημάτων →</button></div>
+    </div>`:'';
+
   if(!pend.length){
-    $('view').innerHTML=`<div class="uc"><div class="ico">${ic('check',26)}</div>
+    $('view').innerHTML=`<div class="uc" style="padding-bottom:6px"><div class="ico">${ic('check',26)}</div>
       <h3>Τίποτα δεν περιμένει</h3>
-      <p>Κάθε πιστοποιητικό στο μητρώο το έχει δει άνθρωπος.</p></div>`;
+      <p>Κάθε πιστοποιητικό προσώπου στο μητρώο το έχει δει άνθρωπος.</p></div>${orfanaHTML}`;
+    bindTiles(); bindOrfana();
     return;
   }
 
@@ -10891,6 +10958,7 @@ V.certq=()=>{
           που τυπώνει, και δέξου το. Μέχρι τότε <b>δεν μετράει</b> για καταλληλότητα σε δράση.
           Η επιβεβαίωση γράφει το όνομά σου και τη σημερινή ημερομηνία.</span></div></div>
 
+    ${orfanaHTML}
     ${ord.map(({p,cs})=>`<div class="card" style="margin-bottom:9px">
       <div class="pad" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-bottom:4px">
         <b style="font-size:14px">${pn(p)}</b>
@@ -11115,6 +11183,7 @@ V.certq=()=>{
     }
     saveCache(); toast('Μπήκε πρώτη'); V.certq();
   });
+  bindOrfana();
   document.querySelectorAll('.qcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή αυτής της καταχώρησης; Το αρχείο μένει στα έγγραφα του ατόμου.'))return;
     const {error}=await sb.from('person_certificates').delete().eq('id',b.dataset.id);
