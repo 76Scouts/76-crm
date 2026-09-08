@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 00:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 00:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2443,17 +2443,31 @@ async function openProfile(id){
       ${p.nickname?kv('Γνωστός/ή ως',esc(p.nickname)):''}
       ${p.scout_name?kv('Προσκοπικό όνομα','<b>'+esc(p.scout_name)+'</b>'):''}
       ${(()=>{
-        /* Η ΙΔΙΟΤΗΤΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ kind, ΟΧΙ ΑΠΟ ΤΟ «ό,τι δεν είναι μέλος».
-           Ο παλιός κώδικας είχε δύο κλάδους — μέλος ή βαθμοφόρος — οπότε κάθε
-           γονιός έπεφτε στο «Βαθμοφόρος». Τρεις ιδιότητες υπάρχουν, τρεις
-           γράφονται· και ο γονιός που είναι ΚΑΙ βαθμοφόρος τις παίρνει και τις
-           δύο, γιατί είναι αλήθεια και οι δύο. */
+        /* ══ ΙΔΙΟΤΗΤΑ ≠ ΑΞΙΩΜΑ ══════════════════════════════════════════════
+           ΙΔΙΟΤΗΤΑ = τι ΕΙΝΑΙ ο άνθρωπος: Βαθμοφόρος, Μέλος, Γονέας. Μπορεί
+           να είναι περισσότερα από ένα ταυτόχρονα — ο αρχηγός Αγέλης που έχει
+           και παιδί στην Ομάδα είναι και τα δύο, και δεν διαλέγουμε εμείς.
+           ΑΞΙΩΜΑ = τι ΚΑΝΕΙ: «Αρχηγός Αγέλης Λυκοπούλων», «Υπαρχηγός Ομάδας».
+
+           Η οθόνη τα είχε ενωμένα σε ένα πεδίο, κι έτσι ο αρχηγός τμήματος
+           «έχανε» την ιδιότητά του — έγραφε ΑΑΛ εκεί που έπρεπε να λέει
+           Βαθμοφόρος. Χώρια πράγματα, χώρια γραμμές.
+
+           Η ιδιότητα ΔΕΝ βγαίνει μόνο από το kind: το «Γονέας» το ξέρει ο
+           πίνακας κηδεμονίας, όχι το πεδίο — 28 βαθμοφόροι είχαν μπει ως
+           γονείς και το αντίστροφο συμβαίνει εξίσου. */
         const k=p.kind||'Βαθμοφόρος';
-        const led=ledLabel(p,true);
-        const t = k==='Μέλος'  ? (y.role||'Μέλος')
-                : k==='Γονέας' ? ('Γονέας'+(led?' · '+led:''))
-                : (led||'Βαθμοφόρος');
-        return kv('Ιδιότητα',esc(t))})()}
+        const hat=(D.ph||[]).find(h=>h.person_id===p.id&&!h.valid_to&&h.role_code);
+        const rc=hat&&(D.rc||[]).find(r=>r.code===hat.role_code);
+        const kinds=[k];
+        if(k!=='Γονέας'&&(D.cl||[]).some(c=>c.carer_id===p.id))kinds.push('Γονέας');
+        if(k==='Γονέας'&&rc&&rc.holder_kind==='Βαθμοφόρος')kinds.push('Βαθμοφόρος');
+        /* Ο πλήρης τίτλος από τον κατάλογο ρόλων — όχι η συντομογραφία.
+           «ΑΑΛ» είναι για τη λίστα· στην καρτέλα χωράει ολόκληρο. */
+        const axioma = rc ? rc.title : (isMem ? (y.role||'') : ledLabel(p,true));
+        return kv('Ιδιότητα',esc(kinds.join(' · ')))
+             + (axioma?kv('Αξίωμα',esc(axioma)
+                 +(rc&&rc.short&&rc.short!==rc.title?` <span class="dim">(${esc(rc.short)})</span>`:'')):'')})()}
       ${kv('Τάξη',esc(y.grade||''))}
       ${kv('Ημ. γέννησης',sn.dob?fdate(sn.dob)+(agey(sn.dob)?` <span class="dim">(${agey(sn.dob)} ετών)</span>`:''):'')}
       ${kv('Τηλέφωνο',p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'')}
@@ -3228,8 +3242,12 @@ async function docPreview(list,ix){
        φούσκωνε πιο ψηλά από το ορατό, και ο φυλλομετρητής «ταίριαζε» τη σελίδα
        σε πλαίσιο που ΔΕΝ έβλεπες — γι' αυτό έμοιαζε μεγεθυμένη και ξεκέντρωτη,
        και ίσιωνε μόνο αν σμίκρυνες ΟΛΗ τη σελίδα. Σταθερό ύψος για PDF. */
-    ov.innerHTML=`<div class="card" style="max-width:900px;width:100%;${pdf?'height':'max-height'}:94vh;display:flex;flex-direction:column">
-      <div class="pad" style="border-bottom:1px solid var(--line);display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+    /* 94vh ΜΕΣΑ ΣΕ ΓΟΝΕΑ ΜΕ padding:14px ΔΕΝ ΧΩΡΑΕΙ: 94vh + 28px > η οθόνη.
+       Με align-items:center το ξεχείλισμα κόβεται ΚΑΙ ΑΠΟ ΤΙΣ ΔΥΟ μεριές και
+       δεν κυλά — γι' αυτό έβλεπε μόνο το πάνω μέρος. Αφαιρούμε το padding
+       από τον υπολογισμό αντί να το μαντεύουμε. */
+    ov.innerHTML=`<div class="card" style="max-width:900px;width:100%;height:calc(100vh - 28px);display:flex;flex-direction:column;overflow:hidden">
+      <div class="pad" style="flex:0 0 auto;border-bottom:1px solid var(--line);display:flex;gap:7px;align-items:center;flex-wrap:wrap">
         <div style="flex:1;min-width:140px"><b style="font-size:14.5px">${esc(it.label||name)}</b>
           ${items.length>1?`<div class="dim" style="font-size:12px">όψη ${i+1} από ${items.length}</div>`:''}</div>
         ${items.length>1?`<button class="btn gh sm" id="dpPrev"${i?'':' disabled'}>‹</button>
@@ -3240,7 +3258,10 @@ async function docPreview(list,ix){
         <button class="btn gh sm" id="dpTab" title="Άνοιγμα σε νέα καρτέλα">Νέα καρτέλα ↗</button>
         <button class="btn gh sm" id="dpDl" title="Αποθήκευση στη συσκευή">Κατέβασμα ↓</button>
         <button class="btn gh sm" id="dpX" title="Κλείσιμο (Esc)">✕</button></div>
-      <div id="dpBody" style="flex:1;min-height:0;overflow:${pdf?'hidden':'auto'};background:#0d1116;display:flex;align-items:center;justify-content:center">
+      ${/* ΚΕΝΤΡΑΡΙΣΜΑ ΜΕ margin:auto, ΟΧΙ ΜΕ align-items:center. Το δεύτερο
+           κόβει το ξεχείλισμα και από τις δύο πλευρές: όταν ζουμάρεις, το
+           πάνω μέρος της εικόνας γίνεται απρόσιτο — δεν κυλά πουθενά. */''}
+      <div id="dpBody" style="flex:1 1 auto;min-height:0;overflow:${pdf?'hidden':'auto'};background:#0d1116;display:flex">
         <span style="color:#8d95a1;font-size:13px">Φόρτωση…</span></div></div>`;
     $('dpX').onclick=close;
     if(items.length>1){
@@ -3273,14 +3294,19 @@ async function docPreview(list,ix){
     body.style.alignItems = pdf?'stretch':'center';
     body.innerHTML = pdf
       ? `<iframe src="${esc(url)}#view=Fit" style="width:100%;height:100%;border:0;background:#fff"></iframe>`
-      : `<img id="dpImg" src="${esc(url)}" alt="${esc(it.label||name)}" style="display:block;max-width:100%;max-height:100%">`;
+      : `<img id="dpImg" src="${esc(url)}" alt="${esc(it.label||name)}" style="display:block;margin:auto;max-width:100%;max-height:100%">`;
     if(!pdf){
       /* Κάποιες σαρώσεις έρχονται τεράστιες και το «ταίριασμα» κόβει τις
          ημερομηνίες. Ζουμ με κουμπιά, με + − 0, και με Ctrl+ροδέλα· όταν
          μεγαλώσει, το πλαίσιο κυλά. */
       const img=$('dpImg'); let z=0;                 // 0 = ταίριασμα
       const draw=()=>{
-        if(!z){ img.style.maxWidth='100%'; img.style.maxHeight='78vh'; img.style.width='auto'; }
+        /* ΤΟ 78vh ΗΤΑΝ Η ΑΙΤΙΑ. Το img.onload=draw ξαναέγραφε maxHeight:78vh
+           πάνω από το 100% — και το 78% ΤΗΣ ΟΘΟΝΗΣ είναι ψηλότερο από το
+           σώμα του παραθύρου (94vh μείον η γραμμή εργαλείων). Η εικόνα
+           ξεχείλιζε, το «Ταίριασμα» έδειχνε μεγεθυμένο, και η ίδια η γραμμή
+           με το + − έβγαινε εκτός οθόνης. ΤΟ ΣΩΜΑ ΕΙΝΑΙ Η ΑΥΘΕΝΤΙΑ: 100%. */
+        if(!z){ img.style.maxWidth='100%'; img.style.maxHeight='100%'; img.style.width='auto'; }
         else  { img.style.maxWidth='none'; img.style.maxHeight='none';
                 img.style.width=(img.naturalWidth*z)+'px'; }
         const f=$('dpFit'); if(f)f.textContent=z?Math.round(z*100)+'%':'Ταίριασμα';
@@ -14298,7 +14324,7 @@ let WLY='', WLED=null, WLSORT='anamoni', WLCLS='', WLST='open';
    «Αναμονή» και δεν το κυνηγά κανείς. Γι' αυτό και λήγει (WL_STALE). */
 const WL_OUT=['Αναμονή','Ενδιαφέρεται','Έγινε μέλος','Δεν ενδιαφέρεται','Δεν απάντησε','Διπλοεγγραφή'];
 const WL_OPEN=['Αναμονή','Ενδιαφέρεται'];
-const WL_KIND=[['Κλήση','☎'],['SMS','✉']];
+const WL_KIND=[['Κλήση'],['SMS']];
 const WL_STALE=30;   // μέρες· μετά, το «είπε ναι» γίνεται εκκρεμότητα
 
 const wlCts=r=>(D.wlct||[]).filter(x=>x.waitlist_id===r.id).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
@@ -14415,11 +14441,17 @@ V.waitlist=()=>{
     <td style="white-space:nowrap">
       <!-- ΕΠΑΦΗ ΠΑΝΩ, ΕΚΒΑΣΗ ΚΑΤΩ. Πρώτα «τι έκανα», μετά «τι είπε» —
            με αυτή τη σειρά γίνονται και στην πραγματικότητα. -->
-      <div style="display:flex;gap:4px;margin-bottom:5px">${WL_KIND.map(([k,ico])=>{
-        const c=wlCt(r,k), last=c[0];
-        return `<button class="btn sm ${c.length?'':'gh'}" data-wlct="${r.id}" data-k="${k}"
-          style="${c.length?'background:var(--accbg);color:var(--acc);border-color:var(--accln)':''}"
-          title="${c.length?k+' × '+c.length+' · τελευταία '+fdate(last.at)+' — κλικ για ακόμη μία':'Καταγραφή: '+k}">${ico}${c.length>1?' '+c.length:''}</button>`}).join('')}
+      ${/* ΛΕΞΕΙΣ, ΟΧΙ ΣΥΜΒΟΛΑ. Το ☎ και το ✉ έβγαιναν λεπτά γκρίζα γλυφικά
+           χωρίς περίγραμμα — δεν φαινόταν καν ότι πατιούνται. Δύο μικρά
+           κουμπιά με όνομα και μετρητή: «Κλήση 2» λέει και τι είναι και
+           πόσες φορές έγινε, χωρίς να χρειάζεται να ακουμπήσεις τίποτα. */''}
+      <div style="display:flex;gap:5px;margin-bottom:6px">${WL_KIND.map(([k])=>{
+        const c=wlCt(r,k), on=c.length>0;
+        return `<button class="btn sm" data-wlct="${r.id}" data-k="${k}"
+          style="font-size:11.5px;padding:3px 9px;border-radius:999px;${on
+            ?'background:var(--accbg);color:var(--acc);border:1px solid var(--accln);font-weight:600'
+            :'background:transparent;color:var(--ink2);border:1px dashed var(--line)'}"
+          title="${on?k+' × '+c.length+' · τελευταία '+fdate(c[0].at)+' — πάτα για ακόμη μία':'Δεν έχει γίνει — πάτα για να καταγράψεις '+k.toLowerCase()}">${esc(k)}${on&&c.length>1?' '+c.length:''}${on?' ✓':''}</button>`}).join('')}
         ${wlCts(r).length?`<span class="dim" style="font-size:11px;align-self:center">${fdate(wlCts(r)[0].at)}</span>`:''}</div>
       <select data-wlo="${r.id}" style="min-width:135px">${OUT.map(o=>
         `<option${o===r.outcome?' selected':''}>${o}</option>`).join('')}</select>
