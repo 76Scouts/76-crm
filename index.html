@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 00:34'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 00:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2442,7 +2442,18 @@ async function openProfile(id){
     <div class="dsec"><h4>Στοιχεία</h4>
       ${p.nickname?kv('Γνωστός/ή ως',esc(p.nickname)):''}
       ${p.scout_name?kv('Προσκοπικό όνομα','<b>'+esc(p.scout_name)+'</b>'):''}
-      ${kv('Ιδιότητα',esc(isMem?(y.role||'Μέλος'):(ledLabel(p,true)||'Βαθμοφόρος')))}
+      ${(()=>{
+        /* Η ΙΔΙΟΤΗΤΑ ΒΓΑΙΝΕΙ ΑΠΟ ΤΟ kind, ΟΧΙ ΑΠΟ ΤΟ «ό,τι δεν είναι μέλος».
+           Ο παλιός κώδικας είχε δύο κλάδους — μέλος ή βαθμοφόρος — οπότε κάθε
+           γονιός έπεφτε στο «Βαθμοφόρος». Τρεις ιδιότητες υπάρχουν, τρεις
+           γράφονται· και ο γονιός που είναι ΚΑΙ βαθμοφόρος τις παίρνει και τις
+           δύο, γιατί είναι αλήθεια και οι δύο. */
+        const k=p.kind||'Βαθμοφόρος';
+        const led=ledLabel(p,true);
+        const t = k==='Μέλος'  ? (y.role||'Μέλος')
+                : k==='Γονέας' ? ('Γονέας'+(led?' · '+led:''))
+                : (led||'Βαθμοφόρος');
+        return kv('Ιδιότητα',esc(t))})()}
       ${kv('Τάξη',esc(y.grade||''))}
       ${kv('Ημ. γέννησης',sn.dob?fdate(sn.dob)+(agey(sn.dob)?` <span class="dim">(${agey(sn.dob)} ετών)</span>`:''):'')}
       ${kv('Τηλέφωνο',p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'')}
@@ -3212,7 +3223,12 @@ async function docPreview(list,ix){
     const it=items[i], name=String(it.path).split('/').pop();
     const pdf=/\.pdf$/i.test(it.path);
     zoomKey=null;
-    ov.innerHTML=`<div class="card" style="max-width:900px;width:100%;max-height:94vh;display:flex;flex-direction:column">
+    /* ΤΟ PDF ΘΕΛΕΙ ΥΨΟΣ ΠΟΥ ΝΑ ΕΙΝΑΙ ΑΡΙΘΜΟΣ. Με max-height το ύψος της κάρτας
+       εξαρτιόταν από το περιεχόμενο· το iframe έλεγε min-height:78vh, το σώμα
+       φούσκωνε πιο ψηλά από το ορατό, και ο φυλλομετρητής «ταίριαζε» τη σελίδα
+       σε πλαίσιο που ΔΕΝ έβλεπες — γι' αυτό έμοιαζε μεγεθυμένη και ξεκέντρωτη,
+       και ίσιωνε μόνο αν σμίκρυνες ΟΛΗ τη σελίδα. Σταθερό ύψος για PDF. */
+    ov.innerHTML=`<div class="card" style="max-width:900px;width:100%;${pdf?'height':'max-height'}:94vh;display:flex;flex-direction:column">
       <div class="pad" style="border-bottom:1px solid var(--line);display:flex;gap:7px;align-items:center;flex-wrap:wrap">
         <div style="flex:1;min-width:140px"><b style="font-size:14.5px">${esc(it.label||name)}</b>
           ${items.length>1?`<div class="dim" style="font-size:12px">όψη ${i+1} από ${items.length}</div>`:''}</div>
@@ -3224,7 +3240,7 @@ async function docPreview(list,ix){
         <button class="btn gh sm" id="dpTab" title="Άνοιγμα σε νέα καρτέλα">Νέα καρτέλα ↗</button>
         <button class="btn gh sm" id="dpDl" title="Αποθήκευση στη συσκευή">Κατέβασμα ↓</button>
         <button class="btn gh sm" id="dpX" title="Κλείσιμο (Esc)">✕</button></div>
-      <div id="dpBody" style="flex:1;overflow:auto;background:#0d1116;display:flex;align-items:center;justify-content:center;min-height:220px">
+      <div id="dpBody" style="flex:1;min-height:0;overflow:${pdf?'hidden':'auto'};background:#0d1116;display:flex;align-items:center;justify-content:center">
         <span style="color:#8d95a1;font-size:13px">Φόρτωση…</span></div></div>`;
     $('dpX').onclick=close;
     if(items.length>1){
@@ -3256,8 +3272,8 @@ async function docPreview(list,ix){
     const body=$('dpBody');
     body.style.alignItems = pdf?'stretch':'center';
     body.innerHTML = pdf
-      ? `<iframe src="${esc(url)}#view=Fit" style="width:100%;height:100%;min-height:78vh;border:0;background:#fff"></iframe>`
-      : `<img id="dpImg" src="${esc(url)}" alt="${esc(it.label||name)}" style="display:block;max-width:100%;max-height:78vh">`;
+      ? `<iframe src="${esc(url)}#view=Fit" style="width:100%;height:100%;border:0;background:#fff"></iframe>`
+      : `<img id="dpImg" src="${esc(url)}" alt="${esc(it.label||name)}" style="display:block;max-width:100%;max-height:100%">`;
     if(!pdf){
       /* Κάποιες σαρώσεις έρχονται τεράστιες και το «ταίριασμα» κόβει τις
          ημερομηνίες. Ζουμ με κουμπιά, με + − 0, και με Ctrl+ροδέλα· όταν
@@ -6880,7 +6896,8 @@ V.accounts=()=>{
      βάση και η οθόνη πεταγόταν στην κορυφή. Σε λίστα 566 ανθρώπων αυτό είναι
      τιμωρία για μια κίνηση που αφορά ΕΝΑΝ. */
   const accRow=r=>{const st=step(r.katastasi), c=ACC_COL[st];
-    return `<tr data-accrow="${r.id}"><td><input type="checkbox" class="accsel" value="${r.id}"${r.email?"":" disabled title=\"χωρίς email\""} style="width:auto"></td><td><span class="pn" data-p="${r.id}"><b>${esc(r.onoma)}</b></span>
+    return `<tr data-accrow="${r.id}"><td><input type="checkbox" class="accsel" value="${r.id}"${
+      st>=4?" disabled title=\"έχει ήδη λογαριασμό\"":r.email?"":" disabled title=\"χωρίς email\""} style="width:auto"></td><td><span class="pn" data-p="${r.id}"><b>${esc(r.onoma)}</b></span>
             <div class="dim" style="font-size:11.5px">${esc(r.idiotita)}${
               r.idiotita==='Γονέας'
                 ? (secOfAcc(r).length?' · '+secOfAcc(r).map(x=>esc(x)).join(', '):(r.tmima?' · '+esc(r.tmima):''))
@@ -6909,7 +6926,15 @@ V.accounts=()=>{
           <td style="white-space:nowrap">
             ${r.katastasi==='εκδόθηκε — δεν δόθηκε'
               ?`<button class="btn sm" data-gave="${r.id}" title="Τον έδωσα τυπωμένο ή προφορικά">Το έδωσα</button> `:''}
-            ${r.email
+            ${/* ΟΠΟΙΟΣ ΕΧΕΙ ΛΟΓΑΡΙΑΣΜΟ ΔΕΝ ΠΑΙΡΝΕΙ ΚΩΔΙΚΟ. Ο κωδικός είναι
+                  εισιτήριο ΠΡΩΤΗΣ εισόδου· σε κάποιον που μπήκε ήδη δεν κάνει
+                  τίποτα χρήσιμο και μόνο μπερδεύει — δύο κατά λάθος κλικ
+                  έβγαλαν δύο κωδικούς στον Αντρέα Καφετζιή που έχει λογαριασμό
+                  από τις 05 Σεπτεμβρίου. Το ίδιο το make_invite πλέον αρνείται:
+                  αυτό εδώ είναι η ευγένεια, ο φύλακας είναι στη βάση. */''}
+            ${st>=4
+            ?'<span class="dim" style="font-size:11.5px" title="Ο κωδικός είναι μόνο για την πρώτη είσοδο — αν ξέχασε το συνθηματικό, επαναφορά">έχει λογαριασμό</span>'
+            :r.email
             ?`<button class="btn sm" data-newinv="${r.id}" data-em="${esc(r.email)}">${r.kodikos?'Νέος':'Κωδικός'}</button>`
             :'<span class="dim" style="font-size:11.5px">θέλει email</span>'}</td></tr>`};
   $('view').innerHTML=`
@@ -11056,6 +11081,46 @@ V.vpapers=()=>{
    γράψεις, και «Ασφάλεια οχήματος» χωρίς όχημα δεν σημαίνει τίποτα. Έχουν
    δική τους οθόνη, όπου διαλέγεις όχημα. */
 const VEH_TYPES=['ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ','ΜΟΤ','ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'];
+
+/* ══ ΜΕΤΑΦΟΡΑ, ΟΧΙ ΞΑΝΑΠΕΡΑΣΜΑ ════════════════════════════════════════════
+   Η προηγούμενη οδηγία έλεγε «καταχώρησέ το από τα Χαρτιά οχημάτων και μετά
+   σβήσε το». Δηλαδή: κοίτα το χαρτί, γράψε ξανά τις ημερομηνίες, ξανανέβασε
+   το αρχείο. Δεν το κάνει κανείς — γι' αυτό η ασφάλεια της Γεωργάκη κάθεται
+   εδώ από τον Ιούνιο ενώ στις λήξεις φαίνεται ανασφάλιστη.
+   ΤΟ ΑΡΧΕΙΟ ΔΕΝ ΑΓΓΙΖΕΤΑΙ: αλλάζει ιδιοκτήτη η εγγραφή, όχι το έγγραφο.
+   Γι' αυτό ΔΕΝ καλείται εδώ το certPurge — θα έσβηνε το ίδιο το αρχείο που
+   μόλις έδεσε στο όχημα. */
+async function certToVehicle(certId, vehId){
+  if(!vehId)return toast('Διάλεξε πρώτα όχημα.');
+  const c=(D.pc||[]).find(x=>x.id===certId); if(!c)return;
+  const v=(D.veh||[]).find(x=>x.id===vehId); if(!v)return;
+  const p=(D.bh||[]).find(x=>x.id===c.person_id)||{};
+  const t=ctype(c.type_code).name;
+  if(!confirm(`Μεταφορά «${t}» από ${nm(p)} στο όχημα ${v.plate};\n\n`
+    +`Οι ημερομηνίες και το αρχείο πάνε μαζί. Το χαρτί φεύγει από το πρόσωπο.`))return;
+
+  const base={vehicle_id:vehId, issued_on:c.issued_on||null, expires_on:c.expires_on||null,
+              document_id:c.document_id||null, source:'από πρόσωπο', notes:c.notes||null};
+  let ins;
+  if(c.type_code==='ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'){
+    /* Ο κάτοχος του συμβολαίου είναι πληροφορία που ΥΠΑΡΧΕΙ εδώ και χάνεται
+       αλλού: το χαρτί ήταν καρφωμένο πάνω του. */
+    ins=await sb.from('vehicle_insurance').insert({...base, holder_name:nm(p)}).select().single();
+    if(!ins.error)(D.vi=D.vi||[]).push(ins.data);
+  }else{
+    ins=await sb.from('vehicle_papers').insert({...base,
+      kind:c.type_code==='ΜΟΤ'?'ΜΟΤ':'Άδεια κυκλοφορίας'}).select().single();
+    if(!ins.error)(D.vp=D.vp||[]).push(ins.data);
+  }
+  if(ins.error)return toast('Δεν μεταφέρθηκε: '+ins.error.message);
+
+  /* Πρώτα οι σύνδεσμοι όψεων (αν υπάρχουν), μετά η εγγραφή. Ποτέ το έγγραφο. */
+  await sb.from('cert_documents').delete().eq('cert_id',certId);
+  const del=await sb.from('person_certificates').delete().eq('id',certId);
+  if(del.error)return toast('Μπήκε στο όχημα, αλλά δεν έφυγε από το πρόσωπο: '+del.error.message);
+  D.pc=(D.pc||[]).filter(x=>x.id!==certId); saveCache();
+  toast('Μεταφέρθηκε στο '+v.plate); V.certq();
+}
 V.certq=()=>{
   const pend=(D.pc||[]).filter(c=>!c.confirmed_on&&!VEH_TYPES.includes(c.type_code));
   const byP={}; pend.forEach(c=>(byP[c.person_id]=byP[c.person_id]||[]).push(c));
@@ -11075,6 +11140,9 @@ V.certq=()=>{
   /* Δύο κλάδοι εξόδου (άδεια οθόνη / κανονική) — μία συνάρτηση δεσίματος.
      Αλλιώς ο ένας κλάδος θα ξεχνιόταν στην επόμενη αλλαγή. */
   function bindOrfana(){
+    document.querySelectorAll('.qorfmove').forEach(b=>b.onclick=()=>{
+      const sel=document.querySelector('[data-orfveh="'+b.dataset.id+'"]');
+      certToVehicle(b.dataset.id, sel&&sel.value)});
     document.querySelectorAll('.qorfview').forEach(a=>a.onclick=e=>{e.preventDefault();
       const c=(D.pc||[]).find(x=>x.id===a.dataset.cert); if(c)docPreview(certSides(c),0)});
     document.querySelectorAll('.qorfdel').forEach(b=>b.onclick=async()=>{
@@ -11087,9 +11155,16 @@ V.certq=()=>{
     <div class="card pad" style="border-left:3px solid var(--warn)">
       <div class="dim" style="font-size:12.5px;margin-bottom:9px">Αυτά ανήκουν σε <b>όχημα</b>, όχι σε άνθρωπο —
         έμειναν πίσω όταν μεταφέρθηκαν τα υπόλοιπα. Δεν μετρούν πουθενά όσο κάθονται εδώ.
-        Άνοιξε το χαρτί, δες σε ποιο όχημα ανήκει, και καταχώρησέ το από τα
-        <b>Χαρτιά οχημάτων</b> — μετά σβήσε το από εδώ.</div>
-      ${orfana.map(({c,p})=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+        <b>Διάλεξε όχημα και πάτα «Μετάφερε»</b> — το χαρτί, οι ημερομηνίες και το αρχείο
+        πάνε μαζί. Δεν ξαναπερνιέται τίποτα με το χέρι.</div>
+      ${orfana.map(({c,p})=>{
+        /* ΤΑ ΔΙΚΑ ΤΟΥ ΟΧΗΜΑΤΑ ΠΡΩΤΑ. Η Γεωργάκη έχει δύο — δεν μαντεύουμε·
+           αλλά ούτε την αναγκάζουμε να ψάξει σε δεκαέξι πινακίδες. */
+        const mine=(D.veh||[]).filter(v=>v.owner_id===p.id);
+        const rest=(D.veh||[]).filter(v=>v.owner_id!==p.id)
+          .sort((a,b)=>String(a.plate).localeCompare(String(b.plate)));
+        const opt=v=>`<option value="${v.id}">${esc(v.plate)}${v.make?' — '+esc(v.make)+(v.model?' '+esc(v.model):''):''}</option>`;
+        return `<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
         <b style="font-size:13.5px;min-width:150px">${pnm(p)}</b>
         <span class="pill" style="font-size:11px">${esc(ctype(c.type_code).name)}</span>
         <span class="dim" style="font-size:12px">${c.issued_on||c.expires_on
@@ -11097,15 +11172,26 @@ V.certq=()=>{
           : '<span style="color:var(--warn)">χωρίς ημερομηνίες — μόνο το αρχείο ξέρει</span>'}</span>
         <span class="sp"></span>
         ${certSides(c).length?`<a href="#" class="btn gh sm qorfview" data-cert="${c.id}">👁 Δες το χαρτί</a>`:''}
+        <select data-orfveh="${c.id}" style="max-width:210px;font-size:12px">
+          <option value="">— διάλεξε όχημα —</option>
+          ${mine.length?`<optgroup label="Δικά του/της">${mine.map(opt).join('')}</optgroup>`:''}
+          ${rest.length?`<optgroup label="Υπόλοιπα">${rest.map(opt).join('')}</optgroup>`:''}
+        </select>
+        <button class="btn p sm qorfmove" data-id="${c.id}">Μετάφερε</button>
         <button class="btn gh sm qorfdel" data-id="${c.id}" title="Σβήσε το από το πρόσωπο">✕</button>
-      </div>`).join('')}
+      </div>`}).join('')}
       <div style="margin-top:10px"><button class="btn sm" data-go="vpapers">Χαρτιά οχημάτων →</button></div>
     </div>`:'';
 
   if(!pend.length){
+    /* «Τίποτα δεν περιμένει» ΠΑΝΩ ΑΠΟ ΕΝΑΝ ΠΙΝΑΚΑ ΜΕ ΕΚΚΡΕΜΟΤΗΤΕΣ είναι ψέμα —
+       και εξηγεί το «3 δίπλα στον τίτλο χωρίς τίποτα να εγκρίνω»: ο μετρητής
+       μετρούσε και τα χαρτιά οχήματος, η επικεφαλίδα όχι. */
     $('view').innerHTML=`<div class="uc" style="padding-bottom:6px"><div class="ico">${ic('check',26)}</div>
-      <h3>Τίποτα δεν περιμένει</h3>
-      <p>Κάθε πιστοποιητικό προσώπου στο μητρώο το έχει δει άνθρωπος.</p></div>${orfanaHTML}`;
+      <h3>${orfana.length?'Κανένα πιστοποιητικό προσώπου δεν περιμένει':'Τίποτα δεν περιμένει'}</h3>
+      <p>${orfana.length
+        ? `Ο αριθμός στο μενού (<b>${orfana.length}</b>) είναι τα χαρτιά οχήματος πιο κάτω — ανήκουν σε όχημα, όχι σε άνθρωπο.`
+        : 'Κάθε πιστοποιητικό προσώπου στο μητρώο το έχει δει άνθρωπος.'}</p></div>${orfanaHTML}`;
     bindTiles(); bindOrfana();
     return;
   }
