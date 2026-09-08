@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 17:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 17:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6762,7 +6762,11 @@ const ACC_STEP={'χωρίς email':0,'έχει email — χωρίς κωδικό
   'χρησιμοποίησε τον κωδικό':4,'έφτιαξε λογαριασμό — χωρίς συνθηματικό':4,'ενεργός':5};
 /* Ο κωδικός που κάθεται εκδομένος δεν βοηθά κανέναν — είναι εκκρεμότητα, όχι πρόοδος. */
 const ACC_PEND=['εκδόθηκε — δεν δόθηκε'];
-const ACC_COL=['bad','warn','warn','warn','ok'];
+/* ΕΞΙ σκαλιά, όχι πέντε. Το ACC_STEP φτάνει ως το 5 (ενεργός) — ο πίνακας
+   σταματούσε στο 4, οπότε ο ΕΝΕΡΓΟΣ έπαιρνε ACC_COL[5]=undefined και έβγαινε
+   άχρωμος. Πράσινο δικαιούται μόνο όποιος μπορεί ΟΝΤΩΣ να μπει: το
+   «έφτιαξε λογαριασμό — χωρίς συνθηματικό» είναι μισοτελειωμένο, άρα κίτρινο. */
+const ACC_COL=['bad','warn','warn','warn','warn','ok'];
 let ACCQ='', ACCF='', ACCALL=false, ACCID='', ACCSEC='', ACCHAS='';
 /* ΚΑΘΑΡΙΣΜΟΣ ΠΡΟΣΚΛΗΣΕΩΝ. Τρέχει μόνος του κάθε βράδυ (pg_cron, 03:17), αλλά
    υπάρχει και κουμπί: μια διαγραφή που δεν μπορείς να δεις ή να προκαλέσεις
@@ -6817,8 +6821,8 @@ V.accounts=()=>{
   const by={}; rows.forEach(r=>{by[r.katastasi]=(by[r.katastasi]||0)+1});
   const step=s=>ACC_STEP[s]||0;
 
-  const tile=(lab,val,sub,cls,f)=>`<button class="tile ${cls||''}" data-accf="${esc(f||'')}">
-    <div class="k">${lab}</div><div class="v">${val}</div><div class="s">${sub}</div></button>`;
+  const tile=(lab,val,sub,cls,f,key)=>`<button class="tile ${cls||''}" data-accf="${esc(f||'')}">
+    <div class="k">${lab}</div><div class="v" data-acctv="${key||''}">${val}</div><div class="s">${sub}</div></button>`;
 
   /* Η ΓΡΑΜΜΗ ΞΕΡΕΙ ΝΑ ΞΑΝΑΓΡΑΦΕΤΑΙ ΜΟΝΗ ΤΗΣ.
      Πριν, κάθε «Νέος κωδικός» έκανε loadAll() + route(): ξανακατέβαινε ΟΛΗ η
@@ -6864,11 +6868,11 @@ V.accounts=()=>{
         </div>`:''}</div>
 
     <div class="tiles">
-      ${tile('Ενεργοί',by['ενεργός']||0,'έχουν συνθηματικό','ok','ενεργός')}
-      ${tile('Εκδόθηκε, δεν δόθηκε',(by['εκδόθηκε — δεν δόθηκε']||0),'κάθεται — στείλ΄ τον','bad','εκδόθηκε — δεν δόθηκε')}
-      ${tile('Στάλθηκε',((by['στάλθηκε με email']||0)+(by['δόθηκε στο χέρι']||0)),'δεν τον χρησιμοποίησαν ακόμη','warn','στάλθηκε με email|δόθηκε στο χέρι')}
-      ${tile('Έχουν email',(by['έχει email — χωρίς κωδικό']||0),'δεν πήραν κωδικό','','έχει email — χωρίς κωδικό')}
-      ${tile('Χωρίς email',(by['χωρίς email']||0),'δεν μπορούν να μπουν','bad','χωρίς email')}
+      ${tile('Ενεργοί',by['ενεργός']||0,'έχουν συνθηματικό','ok','ενεργός','energoi')}
+      ${tile('Εκδόθηκε, δεν δόθηκε',(by['εκδόθηκε — δεν δόθηκε']||0),'κάθεται — στείλ΄ τον','bad','εκδόθηκε — δεν δόθηκε','ekdothike')}
+      ${tile('Στάλθηκε',((by['στάλθηκε με email']||0)+(by['δόθηκε στο χέρι']||0)),'δεν τον χρησιμοποίησαν ακόμη','warn','στάλθηκε με email|δόθηκε στο χέρι','stalthike')}
+      ${tile('Έχουν email',(by['έχει email — χωρίς κωδικό']||0),'δεν πήραν κωδικό','','έχει email — χωρίς κωδικό','email')}
+      ${tile('Χωρίς email',(by['χωρίς email']||0),'δεν μπορούν να μπουν','bad','χωρίς email','noemail')}
     </div>
 
     <div class="grow" style="margin-top:12px">
@@ -6919,7 +6923,7 @@ V.accounts=()=>{
       <tbody>${shown.slice(0,400).map(r=>accRow(r)).join('')}
       </tbody></table></div>
     <div class="card pad"><div class="dim" style="font-size:12px">
-      ${shown.length} από ${rows.length}. «Νέος» ακυρώνει τον προηγούμενο κωδικό — ο παλιός παύει να δουλεύει αμέσως.</div></div>
+      <span id="accFoot">${shown.length} από ${rows.length}</span>. «Νέος» ακυρώνει τον προηγούμενο κωδικό — ο παλιός παύει να δουλεύει αμέσως.</div></div>
     <div class="card pad" style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <div style="flex:1;min-width:230px">
         <b style="font-size:13.5px">Καθαρισμός προσκλήσεων</b>
@@ -6930,6 +6934,34 @@ V.accounts=()=>{
 
   /* ΑΝΑΝΕΩΣΗ ΜΙΑΣ ΓΡΑΜΜΗΣ. Κατεβάζει ΜΟΝΟ αυτό το πρόσωπο και αντικαθιστά το
      <tr> του. Η θέση της σελίδας, τα φίλτρα και οι επιλογές μένουν ακέραια. */
+  /* ΤΟ «shown» ΕΙΝΑΙ ΣΤΙΓΜΙΟΤΥΠΟ ΤΗΣ ΣΤΙΓΜΗΣ ΤΟΥ RENDER.
+     Μόλις οι γραμμές άρχισαν να ενημερώνονται μόνες τους, ό,τι διάβαζε το
+     «shown» άρχισε να λέει ψέματα: τα πλακίδια έμεναν στο παλιό νούμερο και ο
+     διάλογος αποστολής έδειχνε ποιος είχε κωδικό ΠΡΙΝ, όχι τώρα.
+     Όποιος χρειάζεται αλήθεια, τη ζητά τη στιγμή που τη χρειάζεται. */
+  function accLive(){
+    const all2=(D.ac||[]).slice().sort((a,b)=>
+      (ACC_STEP[a.katastasi]||0)-(ACC_STEP[b.katastasi]||0) || (a.onoma||'').localeCompare(b.onoma||'','el'));
+    const rows2=ACCALL?all2:all2.filter(r=>r.xreiazetai!==false);
+    const q2=nameKey(ACCQ), f2=ACCF?ACCF.split('|'):null;
+    return {rows:rows2, shown:rows2.filter(r=>(!q2||nameKey(r.onoma+' '+(r.email||'')).includes(q2))
+      &&(!f2||f2.includes(r.katastasi))
+      &&(!ACCID||r.idiotita===ACCID)
+      &&(!ACCSEC||secOfAcc(r).includes(ACCSEC))
+      &&(!ACCHAS||(ACCHAS==='me'?step(r.katastasi)>=4:step(r.katastasi)<4)))};
+  }
+  /* Οι μετρητές ξαναγράφονται ΧΩΡΙΣ να ξαναζωγραφιστεί η οθόνη. Πλακίδιο που
+     λέει «1» ενώ από κάτω φαίνονται έντεκα είναι χειρότερο από καθόλου πλακίδιο. */
+  function accCounts(){
+    const L=accLive(), by2={}; L.rows.forEach(r=>{by2[r.katastasi]=(by2[r.katastasi]||0)+1});
+    const put=(k,v)=>{const el=document.querySelector(`[data-acctv="${k}"]`); if(el)el.textContent=v};
+    put('energoi', by2['ενεργός']||0);
+    put('ekdothike', by2['εκδόθηκε — δεν δόθηκε']||0);
+    put('stalthike', (by2['στάλθηκε με email']||0)+(by2['δόθηκε στο χέρι']||0));
+    put('email', by2['έχει email — χωρίς κωδικό']||0);
+    put('noemail', by2['χωρίς email']||0);
+    const f=$('accFoot'); if(f)f.textContent=`${L.shown.length} από ${L.rows.length}`;
+  }
   async function accPatch(id){
     const {data,error}=await sb.from('v_accounts').select('*').eq('id',id).maybeSingle();
     if(error||!data)return;
@@ -6941,7 +6973,9 @@ V.accounts=()=>{
     const sel=tr.querySelector('.accsel'), was=sel&&sel.checked;
     tr.outerHTML=accRow(data);
     const nw=document.querySelector(`tr[data-accrow="${id}"]`);
-    if(nw){ const s2=nw.querySelector('.accsel'); if(s2&&was)s2.checked=true; accBindRow(nw) }
+    if(nw){ const s2=nw.querySelector('.accsel'); if(s2&&was)s2.checked=true;
+      accBindRow(nw); s2&&(s2.onchange=accSelSync) }
+    accCounts();
   }
   /* Τα κουμπιά δένονται ΑΝΑ ΓΡΑΜΜΗ, ώστε η ξαναγραμμένη γραμμή να ξαναζωντανεύει
      χωρίς να ξαναδεθεί ολόκληρη η οθόνη. */
@@ -7032,7 +7066,10 @@ V.accounts=()=>{
     /* Όποιος τον πήρε ήδη εμφανίζεται ΞΕΤΣΕΚΑΡΙΣΜΕΝΟΣ και τελευταίος.
        Δεύτερη αποστολή επιτρέπεται — αλλά πρέπει να τη ζητήσεις, όχι να σου ξεφύγει. */
     const done=r=>r.katastasi==='στάλθηκε με email'||r.katastasi==='δόθηκε στο χέρι';
-    const targets=shown.filter(r=>r.kodikos&&r.email)
+    /* ΖΩΝΤΑΝΑ, όχι από το στιγμιότυπο: μόλις έβγαλες δέκα κωδικούς, αυτοί
+       ΠΡΕΠΕΙ να είναι εδώ. Και όποιος στο μεταξύ έφτιαξε λογαριασμό ΔΕΝ πρέπει
+       — γι' αυτό κόβουμε και όσους πέρασαν το κατώφλι 4. */
+    const targets=accLive().shown.filter(r=>r.kodikos&&r.email&&step(r.katastasi)<4)
       .sort((a,b)=>(done(a)?1:0)-(done(b)?1:0)||a.onoma.localeCompare(b.onoma,'el'));
     const nNew=targets.filter(r=>!done(r)).length;
     $('accMailList').innerHTML=targets.length
