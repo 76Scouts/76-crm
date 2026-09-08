@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-08 18:28'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-08 18:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1960,6 +1960,14 @@ const M76=(()=>{
    να έρχονται με τα δικά σου δικαιώματα. Δεν είναι πλαστοπροσωπία και δεν σου κρύβει
    τίποτα μόνιμα· γι' αυτό υπάρχει μόνιμη κόκκινη μπάρα όσο είναι ενεργό. */
 let VIEWAS=null;
+/* ΔΥΟ ΕΡΩΤΗΣΕΙΣ ΠΟΥ ΜΟΙΑΖΟΥΝ ΙΔΙΕΣ ΚΑΙ ΔΕΝ ΕΙΝΑΙ:
+     «ΠΟΙΟΝ ΚΟΙΤΑΖΩ;»  → mePid() · ακολουθεί τον φακό «Δες ως»
+     «ΠΟΙΟΣ ΕΝΕΡΓΕΙ;»   → ME.person_id · ΠΟΤΕ δεν ακολουθεί τον φακό
+   Οι εγγραφές, τα δικαιώματα και οι υπογραφές θέλουν το δεύτερο — αλλιώς θα
+   υπέγραφες ως άλλος. Ό,τι απλώς ΔΕΙΧΝΕΙ θέλει το πρώτο· τρεις οθόνες
+   (Τα έντυπά μου, Πρόοδος, Κ.Α.) ρωτούσαν λάθος και έδειχναν ΕΜΕΝΑ ενώ
+   ο φακός έλεγε άλλον. */
+function mePid(){ return (VIEWAS&&VIEWAS.pid) || ME.person_id || null }
 /* ΠΑΡΑΘΥΡΟ ΜΕΣΑ ΣΕ ΠΑΡΑΘΥΡΟ
    Το e76 είναι ΕΝΑ αρχείο — άρα μπορεί να φορτώσει τον εαυτό του σε πλαίσιο.
    Με «?as=<person>:<ρόλος>&pip=1» ξεκινά ήδη φορεμένο, χωρίς μενού και χωρίς
@@ -4376,7 +4384,7 @@ function hkadeBody(){
   const reqs=(D.rc2||[]).filter(r=>r.section==='Κοινότητα'&&r.active!==false)
     .sort((a,b)=>(a.stage_ordinal||0)-(b.stage_ordinal||0)||(a.ordinal||0)-(b.ordinal||0));
   const entry=(D.my||[]).find(y=>y.person_id===who.id);
-  const isMe=(ME.person_id===who.id);
+  const isMe=(mePid()===who.id);
 
   const row=r=>{
     const g=prog.find(x=>x.requirement_id===r.id);
@@ -4466,7 +4474,7 @@ async function openDeda(who, reqId){
   const anix=D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα');
   const evs=(D.ev||[]).slice().sort((a,b)=>(b.event_date||'').localeCompare(a.event_date||''));
   const sigs=kaSig(g.id);
-  const isMe=(ME.person_id===who.id);
+  const isMe=(mePid()===who.id);
 
   const stepBox=(n,body)=>`<div class="card pad" style="margin-bottom:10px;${g.deda<n?'opacity:.55':''}">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">
@@ -7381,12 +7389,12 @@ const psDone=(pid,rid)=>(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id
 const psPend=(pid,rid)=>(D.prq||[]).find(x=>x.subject_id===pid&&x.requirement_id===rid&&x.status==='υποβλήθηκε');
 const psQueue=()=>(D.prq||[]).filter(x=>x.status==='υποβλήθηκε');
 /* Είμαι μέλος; Τότε δεν «περνώ», ζητώ. */
-const psIamKid=()=>{const me=D.bh.find(b=>b.id===ME.person_id); return me&&isMem(me)};
+const psIamKid=()=>{const me=D.bh.find(b=>b.id===mePid()); return me&&isMem(me)};
 
 function passBody(){
   const kid=psIamKid();
   if(kid&&PSMODE==='now')PSMODE='ask';
-  if(kid&&!PSWHO)PSWHO=ME.person_id;
+  if(kid&&!PSWHO)PSWHO=mePid();
   /* Το «who» δηλωνόταν 70 γραμμές πιο κάτω, αλλά διαβαζόταν εδώ πάνω στα
      κουμπιά — temporal dead zone, και η οθόνη πέθαινε ολόκληρη με
      «Cannot access 'who' before initialization». Ό,τι διαβάζεται πρώτο,
@@ -7646,10 +7654,10 @@ const FST={'δεν έχει υποβληθεί':['bad','Δεν το έχεις �
            'εντάξει':['ok','Είναι ενημερωμένο']};
 let FORMS=null, FWHO=null;
 V.myforms=()=>{
-  const who = FWHO || ME.person_id;
+  const who = FWHO || mePid();
   const p = D.bh.find(b=>b.id===who);
   if(!p) return $('view').innerHTML='<div class="uc"><h3>Χωρίς καρτέλα</h3><p>Ο λογαριασμός σου δεν είναι δεμένος με πρόσωπο.</p></div>';
-  const mine = who===ME.person_id;
+  const mine = who===mePid();
   const led = ME.role==='admin' && D.bh.filter(b=>b.kind==='Βαθμοφόρος'&&b.status==='Ενεργός')
                                         .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
 
