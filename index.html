@@ -922,6 +922,9 @@ const NAV=[
       ΑΝΑΦΟΡΑ, ΟΧΙ ΠΥΛΗ ακόμη· δείχνει ποιος ΘΑ έχανε τα ευαίσθητα την ημέρα
       που θα ενεργοποιηθεί ο κανόνας. Τρέχει μία εβδομάδα πρώτα. */
    {id:'certq',t:'Πιστοποιητικά βαθμοφόρων',i:'shield',s:'live'},
+   /* «Αυτόματο» χωρίς οθόνη σημαίνει «δεν ξέρω τι έγινε» — και το πρώτο
+      παράπονο δεν έχει απάντηση. Η οθόνη μπαίνει ΠΡΙΝ ανάψει ο διακόπτης. */
+   {id:'reminders',t:'Υπενθυμίσεις',i:'mail',s:'live'},
    {id:'vpapers',t:'Χαρτιά οχημάτων',i:'car',s:'live'},
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'training',t:'Εκπαιδεύσεις',i:'book',s:'live'},
@@ -1033,6 +1036,7 @@ const SUBS={
  fimport:'Επικόλληση από εξαγωγή φόρμας — ιατρικά προηγούμενων ετών',
 
  certq:'Χαρτιά που περιμένουν να τα δεις — και η δοκιμή του Ν.91(Ι) ως προϋπόθεση',
+ reminders:'Τι φεύγει αυτόματα με email, σε ποιον, και τι έφυγε ήδη',
  myschools:'Δηλώνω ενδιαφέρον για τις σχολές της χρονιάς — δεν με γράφει, το βλέπει ο Α.Σ.',
  mycerts:'Τα χαρτιά μου: τι έχω, τι λήγει, και ανέβασμα νέου για έλεγχο',
  myveh:'Τα οχήματα που δήλωσα — και τα χαρτιά τους',
@@ -1059,7 +1063,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 22:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 23:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1582,10 +1586,13 @@ async function loadAll(){
     sb.from('waitlist_class').select('*'),
     /* Το ημερολόγιο επαφών. ΞΕΧΩΡΙΣΤΟΣ ΠΙΝΑΚΑΣ, όχι πεδίο «τον πήραμε»:
        τηλεφωνείς και τρεις φορές, και η ερώτηση είναι πάντα «πότε τελευταία». */
-    sb.from('waitlist_contact').select('*')
+    sb.from('waitlist_contact').select('*'),
+    /* Οι κανόνες υπενθύμισης και το τι έφυγε. */
+    sb.from('reminder_rules').select('*').order('seq'),
+    sb.from('reminder_log').select('*').order('created_at',{ascending:false}).limit(1500)
       // ΠΑΝΤΑ τελευταίο — ο πίνακας διαβάζεται με ΘΕΣΗ, όχι με όνομα
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc','wlct'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc','wlct','rr','rl'];
   const _t0=Date.now();
   const TMO=12000;
   /* Πυρήνας: χωρίς αυτά δεν ζωγραφίζεται τίποτα. Τα υπόλοιπα έρχονται από πίσω
@@ -1627,7 +1634,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; D.wcon=r[76]?.data||[]; D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.elog=r[80]?.data||[]; D.wl=r[81]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; D.wcon=r[76]?.data||[]; D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.elog=r[80]?.data||[]; D.wl=r[81]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.rr=r[84]?.data||[]; D.rl=r[85]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -11973,6 +11980,179 @@ function certqBody(){
     const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
     if(c)docPreview(certSides(c),+a.dataset.ix||0);});
 };
+
+/* ══ ΥΠΕΝΘΥΜΙΣΕΙΣ ═════════════════════════════════════════════════════════
+   ΤΡΕΙΣ ΕΡΩΤΗΣΕΙΣ, ΤΡΕΙΣ ΚΑΡΤΕΛΕΣ: «τι θα φύγει σήμερα» (δοκιμή πριν ανάψει
+   ο διακόπτης), «τι έφυγε» (γιατί το πρώτο παράπονο θέλει απάντηση), «με τι
+   κανόνες» (γιατί τα κείμενα και οι μέρες αλλάζουν χωρίς deploy).
+
+   ΤΙΠΟΤΑ ΔΕΝ ΦΕΥΓΕΙ ΑΚΟΜΗ: το reminders_enabled είναι false και όλοι οι
+   κανόνες ανενεργοί. Πρώτα βλέπεις τι θα έφευγε, μετά ανοίγεις έναν-έναν. */
+async function remDueBody(){
+  $('view').innerHTML='<div class="card pad dim">Υπολογισμός…</div>';
+  const on=(D.st||[]).find(x=>x.k==='reminders_enabled');
+  const live=on&&on.v===true;
+  const {data,error}=await sb.rpc('reminders_due');
+  if(error){$('view').innerHTML=`<div class="uc"><h3>Δεν υπολογίστηκε</h3><p>${esc(error.message)}</p></div>`;return}
+  const rows=(data||[]).map(d=>({...d, p:(D.bh||[]).find(b=>b.id===d.person_id),
+    r:(D.rr||[]).find(x=>x.code===d.rule_code)})).filter(x=>x.p);
+  /* ΕΝΑ EMAIL ΑΝΑ ΑΝΘΡΩΠΟ. Τέσσερις κανόνες × 106 άτομα σημαίνει ότι κάποιος
+     με τρία ληγμένα παίρνει τρία μηνύματα το ίδιο πρωί — και τα τρία τα
+     αγνοεί. Η οθόνη το δείχνει έτσι ΑΚΡΙΒΩΣ όπως θα φύγει. */
+  const byP={}; rows.forEach(x=>(byP[x.person_id]=byP[x.person_id]||{p:x.p,acc:x.has_account,items:[]}).items.push(x));
+  const people=Object.values(byP).sort((a,b)=>nm(a.p).localeCompare(nm(b.p),'el'));
+  const noMail=people.filter(x=>!x.p.email);
+  /* ΤΟ ΚΕΙΜΕΝΟ ΛΕΕΙ «ΜΠΕΣ ΣΤΟ e.76.life». Όποιος δεν έχει λογαριασμό δεν
+     μπορεί — και μια οδηγία που δεν εκτελείται είναι χειρότερη από καμία.
+     Δεν τους κόβουμε: τους μετράμε, ώστε ο Α.Σ. να αποφασίσει. */
+  const noAcc=people.filter(x=>!x.acc);
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px;border-left:3px solid var(--${live?'ok':'warn'})">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <b>${live?'Οι υπενθυμίσεις είναι ΑΝΟΙΧΤΕΣ':'Οι υπενθυμίσεις είναι ΚΛΕΙΣΤΕΣ'}</b>
+        <span class="pill" style="background:var(--${live?'ok':'warn'}bg);color:var(--${live?'ok':'warn'});border-color:transparent">
+          ${live?'φεύγουν κάθε πρωί':'δεν φεύγει τίποτα'}</span>
+        <span class="sp"></span>
+        <button class="btn ${live?'gh':'p'} sm" id="remToggle">${live?'Σταμάτησέ τες':'Άναψέ τες'}</button></div>
+      <div class="muted" style="margin-top:6px;font-size:13.5px">Αυτό είναι <b>δοκιμή</b>: ό,τι βλέπεις εδώ
+        είναι ακριβώς τι θα έφευγε σήμερα, ομαδοποιημένο <b>ένα email ανά άνθρωπο</b>.</div></div>
+
+    <div class="tiles">
+      <div class="tile ${people.length?'warn':''}" style="cursor:default"><div class="k">Email σήμερα</div>
+        <div class="v">${people.length}</div><div class="s">άνθρωποι</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Θέματα μέσα</div>
+        <div class="v">${rows.length}</div><div class="s">υπενθυμίσεις συνολικά</div></div>
+      <div class="tile ${noMail.length?'bad':''}" style="cursor:default"><div class="k">Χωρίς email</div>
+        <div class="v">${noMail.length}</div><div class="s">δεν θα λάβουν — πάρ' τους τηλέφωνο</div></div>
+      <div class="tile ${noAcc.length?'warn':''}" style="cursor:default"><div class="k">Θα κρατηθούν</div>
+        <div class="v">${noAcc.length}</div><div class="s">χωρίς λογαριασμό — φεύγουν μόλις τον φτιάξουν</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Ενεργοί κανόνες</div>
+        <div class="v">${(D.rr||[]).filter(r=>r.active).length}</div><div class="s">από ${(D.rr||[]).length}</div></div>
+    </div>
+
+    ${noAcc.length?`<div class="card pad" style="margin-top:12px;border-left:3px solid var(--warn)">
+      <b>${noAcc.length} από τους ${people.length} δεν έχουν λογαριασμό — δεν θα λάβουν τίποτα</b>
+      <div class="muted" style="font-size:13.5px;margin-top:5px">Το κείμενο τούς λέει «μπες στο e.76.life
+        και ανέβασε». Δεν μπορούν — και μήνυμα που κατηγορεί χωρίς να δίνει δρόμο δεν στέλνεται.
+        <b>Η υπενθύμιση δεν χάνεται:</b> κρατιέται και φεύγει <b>μόνη της</b> την επομένη
+        της ημέρας που θα φτιάξουν λογαριασμό.</div>
+      <div class="dim" style="font-size:12px;margin-top:5px">Δηλαδή: αν βγάλεις κωδικούς σήμερα και μπουν
+        αύριο, θα λάβουν μεθαύριο. Δεν χρειάζεται να κάνεις τίποτα άλλο.</div>
+      <div style="margin-top:9px"><button class="btn sm p" data-go="accounts">Έκδοση κωδικών →</button></div></div>`:''}
+
+    ${people.length?people.map(({p,items})=>`
+      <div class="card pad" style="margin-top:10px${p.email?'':';border-left:3px solid var(--bad)'}">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <b>${pn(p)}</b>
+          <span class="dim" style="font-size:12.5px">${p.email?esc(p.email):'<span style="color:var(--bad)">χωρίς email — δεν θα λάβει</span>'}</span>
+          ${items[0]&&!items[0].has_account?'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Χωρίς λογαριασμό — κρατιέται και φεύγει μόλις φτιάξει">κρατείται</span>':''}
+          <span class="sp"></span><span class="pill">${items.length} ${items.length===1?'θέμα':'θέματα'}</span></div>
+        <div style="margin-top:7px">${items.map(x=>`
+          <div style="padding:5px 0;border-top:1px solid var(--line);font-size:13px">
+            <b style="font-weight:500">${esc((x.r||{}).title||x.rule_code)}</b>
+            <span class="dim"> · ${esc(x.subject_txt||'')}</span>
+            <div class="dim" style="font-size:11.5px">ημερομηνία χαρτιού ${x.anchor?fdate(x.anchor):'—'}
+              · αφορμή ${fdate(x.due_on)}${x.step?` · ${x.step+1}η υπενθύμιση`:''}</div></div>`).join('')}</div>
+      </div>`).join('')
+      :`<div class="uc"><div class="ico">${ic('check',26)}</div><h3>Τίποτα για σήμερα</h3>
+        <p>${(D.rr||[]).some(r=>r.active)?'Κανένα χαρτί δεν φτάνει σήμερα σε ημερομηνία υπενθύμισης.'
+          :'Όλοι οι κανόνες είναι κλειστοί — άνοιξε όσους θέλεις από την καρτέλα «Κανόνες».'}</p></div>`}`;
+  const tg=$('remToggle'); if(tg)tg.onclick=async()=>{
+    if(!live&&!confirm(`Θα φύγουν ${people.length} email σήμερα το πρωί.\n\nΝα ανοίξω τις υπενθυμίσεις;`))return;
+    const {error}=await sb.from('app_settings').upsert({k:'reminders_enabled',v:!live});
+    if(error)return toast('Δεν άλλαξε: '+error.message);
+    await reload1('st'); toast(live?'Σταμάτησαν':'Άνοιξαν'); route('reminders')};
+}
+
+function remSentBody(){
+  const rows=(D.rl||[]).slice().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  const st=s=>({'στάλθηκε':'ok','χωρίς email':'bad','απέτυχε':'bad','παραλείφθηκε':'warn','εκκρεμεί':'warn','δοκιμή':''})[s]||'';
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Τι έφυγε</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Κάθε υπενθύμιση που δημιουργήθηκε ποτέ:
+        σε ποιον, για ποιο χαρτί, πότε, και αν έφτασε. Το κρατάμε γιατί το πρώτο
+        «δεν το έλαβα ποτέ» πρέπει να έχει απάντηση.</div></div>
+    ${rows.length?`${listBar('',false)}<div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Πότε</th><th>Σε ποιον</th><th>Τι</th><th class="hide-s">Για</th><th>Κατάσταση</th></tr></thead>
+      <tbody>${rows.slice(0,400).map(x=>{const p=(D.bh||[]).find(b=>b.id===x.person_id);
+        const r=(D.rr||[]).find(y=>y.code===x.rule_code);
+        return `<tr><td class="dim" style="white-space:nowrap;font-size:12.5px">${x.sent_at?fdate(String(x.sent_at).slice(0,10)):fdate(String(x.created_at).slice(0,10))}</td>
+          <td>${p?pnm(p):'<span class="dim">—</span>'}<div class="dim" style="font-size:11.5px">${esc(x.to_address||'')}</div></td>
+          <td style="font-size:13px">${esc((r||{}).title||x.rule_code)}</td>
+          <td class="hide-s dim" style="font-size:12px">${esc(x.subject_txt||'')}</td>
+          <td style="white-space:nowrap"><span class="pill"${st(x.status)?` style="background:var(--${st(x.status)}bg);color:var(--${st(x.status)});border-color:transparent"`:''}>${esc(x.status)}</span>
+            ${x.note?`<div class="dim" style="font-size:11px">${esc(x.note)}</div>`:''}</td></tr>`}).join('')}</tbody></table>
+      ${rows.length>400?`<div class="dim" style="font-size:12px;margin-top:7px">Δείχνω τις 400 πιο πρόσφατες από ${rows.length}.</div>`:''}</div>`
+     :`<div class="uc"><h3>Καμία υπενθύμιση ακόμη</h3><p>Μόλις ανοίξουν οι κανόνες και τρέξει το πρωινό πέρασμα, θα εμφανιστούν εδώ.</p></div>`}`;
+  wireVQ();
+}
+
+function remRulesBody(){
+  const rs=(D.rr||[]).slice().sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const when=r=>r.offset_days<0?`${-r.offset_days} μέρες ΠΡΙΝ τη λήξη`
+             :r.offset_days===0?'την ημέρα της λήξης'
+             :`${r.offset_days} ${r.offset_days===1?'μέρα':'μέρες'} ΜΕΤΑ τη λήξη`;
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Οι κανόνες</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Πότε φεύγει το καθένα και τι λέει.
+        Τα κείμενα ζουν <b>στη βάση</b>, όχι στον κώδικα — οι οδηγίες αλλάζουν όταν αλλάξει η
+        διαδικασία, χωρίς να περιμένεις έκδοση.</div></div>
+    ${rs.map(r=>`<div class="card pad" style="margin-bottom:9px${r.active?'':';opacity:.66'}">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b>${esc(r.title)}</b>
+        <span class="pill">${esc(when(r))}</span>
+        ${r.repeat_days?`<span class="pill">επανάληψη κάθε ${r.repeat_days} μέρες, ως ${r.max_sends} φορές</span>`
+                       :'<span class="pill">μία φορά</span>'}
+        <span class="sp"></span>
+        <button class="btn sm ${r.active?'gh':'p'}" data-remrule="${esc(r.code)}" data-on="${r.active?'1':''}">
+          ${r.active?'Ενεργός — κλείσ᾿ τον':'Κλειστός — άνοιξέ τον'}</button></div>
+      <div class="dim" style="font-size:12.5px;margin-top:7px;padding:9px;background:var(--bg);border-radius:var(--rs)">${r.body||''}</div>
+    </div>`).join('')}`;
+  document.querySelectorAll('[data-remrule]').forEach(b=>b.onclick=async()=>{
+    const on=!b.dataset.on;
+    const {error}=await sb.from('reminder_rules').update({active:on}).eq('code',b.dataset.remrule);
+    if(error)return toast('Δεν άλλαξε: '+error.message);
+    const r=(D.rr||[]).find(x=>x.code===b.dataset.remrule); if(r)r.active=on;
+    saveCache(); route('reminders');});
+}
+
+/* ΤΑ ΚΡΑΤΗΜΕΝΑ ΕΙΝΑΙ ΔΟΥΛΕΙΑ, ΟΧΙ ΑΡΧΕΙΟ. Κάθε γραμμή εδώ είναι ένας
+   άνθρωπος που δεν μπορεί να ενημερωθεί επειδή δεν του δώσαμε κωδικό. */
+async function remHeldBody(){
+  $('view').innerHTML='<div class="card pad dim">Φόρτωση…</div>';
+  const {data,error}=await sb.from('v_reminders_held').select('*');
+  if(error){$('view').innerHTML=`<div class="uc"><h3>Δεν διαβάστηκε</h3><p>${esc(error.message)}</p></div>`;return}
+  const rows=(data||[]).sort((a,b)=>String(a.palaiotero).localeCompare(String(b.palaiotero)));
+  const ids=rows.map(r=>r.person_id);
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Περιμένουν λογαριασμό</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Υπενθυμίσεις που <b>δεν στάλθηκαν</b>
+        επειδή ο παραλήπτης δεν μπορεί να μπει στο e76. Φεύγουν <b>μόνες τους</b> το επόμενο πρωί
+        μετά την πρώτη του είσοδο — δεν χρειάζεται να τις ξαναστείλεις.</div>
+      ${rows.length?`<div class="dim" style="font-size:12.5px;margin-top:6px">Ο γρηγορότερος δρόμος:
+        βγάλε τους κωδικό. <b>${rows.length}</b> ${rows.length===1?'άτομο περιμένει':'άτομα περιμένουν'}.</div>
+      <div style="margin-top:9px"><button class="btn p sm" data-go="accounts">Έκδοση κωδικών →</button></div>`:''}</div>
+    ${rows.length?`<div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Ποιος</th><th class="hide-s">Τμήμα</th><th>Τι περιμένει</th><th>Από πότε</th></tr></thead>
+      <tbody>${rows.map(r=>{const p=(D.bh||[]).find(b=>b.id===r.person_id);
+        const d=Math.round((new Date()-new Date(r.palaiotero))/864e5);
+        return `<tr><td>${p?pnm(p):esc(r.onoma)}<div class="dim" style="font-size:11.5px">${esc(r.email||'χωρίς email')}</div></td>
+          <td class="hide-s dim">${r.section?esc(r.section):'—'}</td>
+          <td style="font-size:13px">${esc(r.themata||'')}<span class="dim"> · ${r.posa}</span></td>
+          <td class="dim" style="white-space:nowrap;font-size:12.5px">${fdate(r.palaiotero)}
+            ${d>30?`<div style="color:var(--warn);font-size:11px">${d} μέρες</div>`:''}</td></tr>`}).join('')}</tbody></table></div>`
+     :`<div class="uc"><div class="ico">${ic('check',26)}</div><h3>Τίποτα κρατημένο</h3>
+       <p>Κάθε υπενθύμιση που δημιουργήθηκε βρήκε παραλήπτη με λογαριασμό.</p></div>`}`;
+}
+
+V.reminders=()=>tabView('reminders',[
+  {k:'due',  t:'Τι θα φύγει σήμερα', i:'alert', fn:remDueBody,   d:'δοκιμή — τίποτα δεν στέλνεται από εδώ'},
+  {k:'held', t:'Περιμένουν λογαριασμό', i:'lock', fn:remHeldBody, d:'κρατημένες — φεύγουν μόλις μπουν'},
+  {k:'sent', t:'Τι έφυγε',           i:'mail',  fn:remSentBody,  d:'το ιστορικό, με παραλήπτη και κατάσταση'},
+  {k:'rules',t:'Κανόνες & κείμενα',  i:'cog',   fn:remRulesBody, d:'πότε φεύγει το καθένα και τι λέει'}]);
 
 /* ══ ΜΙΑ ΟΘΟΝΗ ΓΙΑ ΤΑ ΧΑΡΤΙΑ ═══════════════════════════════════════════════
    Η αναφορά του Ν.91(Ι) καθόταν δίπλα στην «Επιβεβαίωση» σαν
