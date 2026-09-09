@@ -862,7 +862,9 @@ const NAV=[
       προθεσμία δεν κρύβεται σε καρτέλα μέσα σε άλλη οθόνη. Δείχνει το ΙΔΙΟ
       μπλοκ με την «Καρτέλα μου» και τις «Εκπαιδεύσεις»: μία αλήθεια, τρεις
       πόρτες — γιατί ο καθένας μπαίνει από αλλού. */
-   {id:'myschools',t:'Δηλώνω σχολή',i:'award',s:'live'},
+   {id:'myschools',t:'Αιτήσεις σχολών',i:'award',s:'live'},
+   {id:'mycerts',t:'Τα πιστοποιητικά μου',i:'shield',s:'live'},
+   {id:'myveh',t:'Τα οχήματά μου',i:'car',s:'live'},
    {id:'myatt',t:'Οι παρουσίες μου',i:'check',s:'live'},
    {id:'myforms',t:'Οι φόρμες μου',i:'book',s:'live'}]},
 
@@ -1022,6 +1024,8 @@ const SUBS={
  certq:'Χαρτιά που περιμένουν να τα δεις — μέχρι τότε δεν μετρούν σε δράση',
  n91:'Δοκιμή πριν την ενεργοποίηση: ποιος χάνει τα ευαίσθητα όταν γίνει προϋπόθεση',
  myschools:'Δηλώνω ενδιαφέρον για τις σχολές της χρονιάς — δεν με γράφει, το βλέπει ο Α.Σ.',
+ mycerts:'Τα χαρτιά μου: τι έχω, τι λήγει, και ανέβασμα νέου για έλεγχο',
+ myveh:'Τα οχήματα που δήλωσα — και τα χαρτιά τους',
  vpapers:'ΜΟΤ, ασφάλειες και άδειες κυκλοφορίας — ανά όχημα, όχι ανά άνθρωπο',
  warrants:'Εντολές Διοίκησης και Αναθέσεις Καθηκόντων',
  honours:'Εύφημες μνείες και μετάλλια — σχεδόν πάντα βαθμοφόρων',
@@ -1045,7 +1049,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 21:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 22:07'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1654,7 +1658,7 @@ let PERSONAS=[], PA=null;
    ΜΙΑ πηγή αλήθειας. Και το πραγματικό μενού και ο φακός «Δες ως» διαβάζουν
    από εδώ — αλλιώς ο φακός λέει ψέματα: σου δείχνει τις δικές σου οθόνες με
    λιγότερα κουμπιά, αντί για τις οθόνες του άλλου. */
-const NAV_SELF=['me','myatt','myforms'];          // ο καθένας, για τον εαυτό του
+const NAV_SELF=['me','mycerts','myatt','myforms'];   // ο καθένας, για τον εαυτό του
 /* Οι σχολές αφορούν ΜΟΝΟ βαθμοφόρους — δεν μπαίνουν στο NAV_SELF, που το
    κληρονομεί και το μέλος. */
 const NAV_MEMBER=[...NAV_SELF,'progKA','synod'];
@@ -1665,7 +1669,8 @@ const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
   'progAL','progOP','progKA','medical','enroll',
   /* Οι σχολές δηλώνονται εδώ. Χωρίς αυτή την οθόνη ο απλός βαθμοφόρος δεν
      έχει πού να πει «θέλω να πάω» — και η δήλωση είναι δική του πράξη. */
-  'training','me','myschools'];
+  /* Τα οχήματα ΜΟΝΟ σε βαθμοφόρους: το μέλος δεν μεταφέρει κανέναν. */
+  'training','me','mycerts','myschools','myveh'];
 /* Ο Αρχηγός τμήματος: τα παραπάνω, συν ό,τι υπογράφει ή ζητά. */
 /* Ο φάκελος δράσης ανήκει σε όποιον ΤΡΕΧΕΙ τη δράση: τηλέφωνα, πιστοποιητικά
    συνοδών, τοποθεσία. Ήταν μόνο του Α.Σ., που δεν είναι εκεί την ημέρα. */
@@ -9553,9 +9558,14 @@ function staffDraft(years){
    καμία εγγραφή δεν περνά από εδώ (οι εγγραφές χρησιμοποιούν ME.person_id). */
 const meRec=()=>((VIEWAS&&VIEWAS.pid&&D.bh.find(p=>p.id===VIEWAS.pid))
   ||(ME.person_id&&D.bh.find(p=>p.id===ME.person_id))||ME.rec||null);
-V.me=()=>{
+/* ══ ΕΝΑ ΕΡΓΟΣΤΑΣΙΟ, ΤΕΣΣΕΡΙΣ ΟΘΟΝΕΣ ══════════════════════════════════════
+   Τα πιστοποιητικά και τα οχήματα έγιναν δικά τους κουμπιά στο μενού, αλλά
+   ο κώδικας ΔΕΝ αντιγράφηκε: μία συνάρτηση χτίζει όλα τα κομμάτια και οι
+   οθόνες διαλέγουν ποιο θα δείξουν. Αντίγραφο θα σήμαινε ότι η διόρθωση σε
+   ένα σημείο θα ξεχνιόταν στο άλλο. */
+function mePieces(){
   const p=meRec();
-  if(!p)return $('view').innerHTML=`<div class="uc"><h3>Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα</h3><p>Ζήτα από τον Α.Σ. να συνδέσει το email σου με το μητρώο.</p></div>`;
+  if(!p)return null;
   const sd=p.scout_dates||{}, c=D.cert.find(x=>x.person_id===p.id)||{}, y=myOf(p)||{};
   const sec=secOf(p);
   const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR);
@@ -9593,7 +9603,7 @@ V.me=()=>{
     <div class="card pad">
       <div class="dim" style="font-size:12.5px;margin-bottom:10px">Ανέβασέ τα μόνος σου — σεξόχαρτο, πρώτες βοήθειες, άδεια οδήγησης.
         Ο Α.Σ. τα βλέπει· δεν χρειάζεται να του τα στείλεις.</div>
-      ${(()=>{const cs=(D.pc||[]).filter(x=>x.person_id===p.id)
+      ${(()=>{const cs=(D.pc||[]).filter(x=>x.person_id===p.id&&!VEH_TYPES.includes(x.type_code))
           .sort((a,b)=>(a.expires_on||'9999').localeCompare(b.expires_on||'9999'));
         const ct=c=>((D.ct||[]).find(t=>t.code===c)||{}).name||c;
         const st=e=>{ if(!e)return ['','χωρίς λήξη'];
@@ -9628,7 +9638,12 @@ V.me=()=>{
         <div class="dim" style="font-size:11.5px;margin-top:4px">Φωτογραφία ή PDF. Χωρίς αυτό η καταχώρηση μένει «χωρίς αρχείο» και δεν μπορεί να επιβεβαιωθεί.</div>
       </div>
       <div class="grow" style="margin-top:10px">
-        <label>Τι<select id="cT">${(D.ct||[]).sort((a,b)=>(a.seq||0)-(b.seq||0)).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')}</select></label>
+        ${/* ΤΑ ΧΑΡΤΙΑ ΤΟΥ ΟΧΗΜΑΤΟΣ ΔΕΝ ΕΙΝΑΙ ΔΙΚΑ ΣΟΥ ΧΑΡΤΙΑ. Ασφάλεια, άδεια
+             κυκλοφορίας και ΜΟΤ ανήκουν σε πινακίδα, όχι σε άνθρωπο: αλλάζεις
+             αυτοκίνητο και σε ακολουθούν λάθος. Ανεβαίνουν από «Τα οχήματά
+             μου», όπου διαλέγεις και σε ΠΟΙΟ όχημα. */''}
+        <label>Τι<select id="cT">${(D.ct||[]).filter(t=>!VEH_TYPES.includes(t.code))
+          .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')}</select></label>
         <label>Λεπτομέρεια<input id="cL" placeholder="π.χ. κατηγορία B"></label>
         <label>Εκδόθηκε<input type="date" id="cI"></label>
         <label>Λήγει<input type="date" id="cE"></label>
@@ -9661,6 +9676,32 @@ V.me=()=>{
             ${links.length?`<div class="dim" style="font-size:11.5px;margin-top:3px">${links.map(l=>{
               const q=D.bh.find(b=>b.id===l.person_id);
               return (q?esc(nm(q)):'—')+' · '+esc(l.relation||'οδηγός')+(l.valid_to?' ως '+fdate(l.valid_to):'')}).join(' | ')}</div>`:''}
+            ${/* ΤΟ ΤΙ ΧΩΡΑΕΙ ΚΑΙ ΤΙ ΣΕΡΝΕΙ ΕΙΝΑΙ ΕΠΙΧΕΙΡΗΣΙΑΚΟ. Ο αρχηγός που
+                  φορτώνει σκηνές ρωτά «ποιο έχει κοτσαδόρο;» — 12 από τα 16
+                  οχήματα δεν είχαν καν μάρκα. Η επεξεργασία είναι ΕΔΩ γιατί ο
+                  ιδιοκτήτης το ξέρει, όχι ο Α.Σ. */''}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:11.5px" class="dim">
+              ${v.body?`<span class="pill">${esc(v.body)}</span>`:''}
+              ${v.towbar?'<span class="pill">κοτσαδόρος</span>':''}
+              ${v.notes_capacity?`<span>${esc(v.notes_capacity)}</span>`:''}
+              <span class="sp"></span>
+              <button class="btn gh sm vedit" data-v="${v.id}">Στοιχεία οχήματος</button></div>
+            <div class="vedbox" data-v="${v.id}" style="display:none;margin-top:7px;padding:9px;background:var(--bg);border-radius:var(--rs)">
+              <div class="grow">
+                <label style="max-width:150px">Μάρκα<input data-vf="make" value="${esc(v.make||'')}"></label>
+                <label style="max-width:150px">Μοντέλο<input data-vf="model" value="${esc(v.model||'')}"></label>
+                <label style="max-width:110px">Θέσεις<input type="number" data-vf="seats" min="1" max="60" value="${v.seats||''}"></label>
+                <label style="max-width:160px">Αμάξωμα<select data-vf="body"><option value=""></option>
+                  ${['Επιβατικό','Βαν','Μονοκάμπινο','Διπλοκάμπινο','Φορτηγάκι','Άλλο']
+                    .map(b=>`<option${b===v.body?' selected':''}>${b}</option>`).join('')}</select></label>
+                <label style="max-width:150px">Κοτσαδόρος<select data-vf="towbar">
+                  <option value=""${v.towbar?'':' selected'}>όχι</option>
+                  <option value="1"${v.towbar?' selected':''}>ναι</option></select></label>
+              </div>
+              <div class="grow"><label style="flex:3">Τι χωράει<input data-vf="notes_capacity"
+                value="${esc(v.notes_capacity||'')}" placeholder="π.χ. μεγάλη κάσα, 2 σκηνές + κουζίνα"></label>
+                <label style="max-width:130px">&nbsp;<button class="btn p sm vsave" data-v="${v.id}">Αποθήκευση</button></label></div>
+            </div>
           </div>`}).join('')})()}
       <div class="grow" style="margin-top:12px">
         <label>Αριθμός<input id="vP" placeholder="ΚΑΑ 123" style="text-transform:uppercase"></label>
@@ -9670,13 +9711,40 @@ V.me=()=>{
       </div>
       <button class="btn" id="vAdd">Δήλωση οχήματος</button>
       <span class="dim" id="vMsg" style="margin-left:10px;font-size:12.5px"></span>
+    </div>
+
+    ${/* ══ ΤΑ ΧΑΡΤΙΑ ΤΟΥ ΟΧΗΜΑΤΟΣ ΑΝΕΒΑΙΝΟΥΝ ΑΠΟ ΕΔΩ ═══════════════════════
+         Ανήκουν σε πινακίδα, όχι σε άνθρωπο. Και ΔΙΑΛΕΓΕΙΣ ΟΧΗΜΑ ο ίδιος:
+         το OCR μαντεύει την πινακίδα, εσύ την ξέρεις. Πάει στην ίδια ουρά
+         που βλέπει ο Α.Σ. («Χαρτιά οχημάτων») — ένας δρόμος έγκρισης, όχι
+         δεύτερος για τους «προχωρημένους». */''}
+    <div class="sec"><h3>Ανέβασμα χαρτιού οχήματος</h3></div>
+    <div class="card pad">
+      <div class="dim" style="font-size:12.5px;margin-bottom:10px">Ασφάλεια, άδεια κυκλοφορίας ή ΜΟΤ.
+        Πάει στον Α.Σ. για έλεγχο και μετά μετράει για τις μεταφορές δράσης.</div>
+      <div style="padding:12px;border:1px dashed var(--line2);border-radius:var(--rs)">
+        <label style="display:block"><b style="font-size:13.5px">Το χαρτί</b>
+          <input type="file" id="vcF" accept="application/pdf,image/*" style="margin-top:5px"></label></div>
+      <div class="grow" style="margin-top:10px">
+        <label style="max-width:210px">Τι<select id="vcT">
+          ${['Ασφάλεια','Άδεια κυκλοφορίας','ΜΟΤ','Άλλο'].map(k=>`<option>${k}</option>`).join('')}</select></label>
+        <label style="max-width:240px">Ποιο όχημα<select id="vcV">
+          ${(D.veh||[]).filter(v=>v.owner_id===p.id||(D.vl||[]).some(l=>l.vehicle_id===v.id&&l.person_id===p.id))
+            .map(v=>`<option value="${v.id}">${esc(v.plate)}</option>`).join('')}
+          <option value="NEW">➕ Νέο όχημα…</option></select></label>
+        <label id="vcNewWrap" style="max-width:170px;display:none">Πινακίδα<input id="vcNew" placeholder="ΚΑΑ 123" style="text-transform:uppercase"></label>
+        <label style="max-width:160px">Λήγει<input type="date" id="vcE"></label>
+      </div>
+      <button class="btn p" id="vcAdd">Ανέβασμα για έλεγχο</button>
+      <span class="dim" id="vcMsg" style="margin-left:10px;font-size:12.5px"></span>
     </div>`;
 
   /* Η καλωδίωση ακολουθεί το περιεχόμενο: κάθε καρτέλα δένει ΤΑ ΔΙΚΑ ΤΗΣ
      κουμπιά όταν ζωγραφιστεί. Παλιά δένονταν όλα μαζί στο τέλος — τώρα τα
      μισά δεν υπάρχουν στην οθόνη τη στιγμή του δεσίματος. */
-  const meSchoolsDraw=()=>{const b=$('meSchools'); if(!b)return;
-    b.innerHTML=schoolsBlock(); wireSchools(meSchoolsDraw)};
+  /* Η δήλωση σχολής έφυγε από εδώ — έγινε δική της οθόνη («Αιτήσεις σχολών»),
+     γιατί είναι πράξη με προθεσμία και δεν πρέπει να θέλει δύο κλικ για να
+     τη βρεις. Η καρτέλα κρατά ΜΟΝΟ το τι έχεις ήδη περάσει. */
 
   const wireCert=()=>{
   const cm=t=>{const e=$('cMsg'); if(e)e.textContent=t};
@@ -9732,56 +9800,149 @@ V.me=()=>{
       owner_id:p.id,created_by:p.id}).select('id').single();
     if(error){va.disabled=false;return vm('Σφάλμα: '+error.message)}
     await sb.from('vehicle_links').insert({vehicle_id:v.id,person_id:p.id,relation:'Ιδιοκτήτης',valid_from:new Date().toISOString().slice(0,10)});
-    await loadAll(); route('me');
+    await loadAll(); route(ROUTE);
+  };
+
+  /* Επεξεργασία υπάρχοντος οχήματος — ένα κουτί τη φορά, τοπικά. */
+  document.querySelectorAll('.vedit').forEach(b=>b.onclick=()=>{
+    const box=document.querySelector(`.vedbox[data-v="${b.dataset.v}"]`);
+    if(box)box.style.display = box.style.display==='none' ? '' : 'none'});
+  document.querySelectorAll('.vsave').forEach(b=>b.onclick=async()=>{
+    const box=b.closest('.vedbox'), patch={};
+    box.querySelectorAll('[data-vf]').forEach(i=>{
+      const f=i.dataset.vf; let v=i.value.trim();
+      patch[f] = f==='towbar' ? !!v : f==='seats' ? (parseInt(v)||null) : (v||null)});
+    b.disabled=true;
+    const {error}=await sb.from('vehicles').update(patch).eq('id',b.dataset.v);
+    if(error){b.disabled=false;return toast('Δεν αποθηκεύτηκε: '+error.message)}
+    const v=(D.veh||[]).find(x=>x.id===b.dataset.v); if(v)Object.assign(v,patch);
+    saveCache(); toast('Αποθηκεύτηκε'); route(ROUTE);
+  });
+
+  /* Ανέβασμα χαρτιού οχήματος — ίδια ουρά με του Α.Σ. */
+  const vcm=t=>{const e=$('vcMsg'); if(e)e.textContent=t};
+  const vcv=$('vcV'); const vcw=$('vcNewWrap');
+  const vcToggle=()=>{if(vcw)vcw.style.display = (vcv&&vcv.value==='NEW')?'':'none'};
+  if(vcv){vcv.onchange=vcToggle; vcToggle()}
+  const vca=$('vcAdd'); if(vca)vca.onclick=async()=>{
+    const f=$('vcF').files[0], kind=$('vcT').value, exp=$('vcE').value;
+    if(!f)return vcm('Διάλεξε αρχείο — χωρίς χαρτί δεν υπάρχει τι να ελεγχθεί.');
+    let vid=vcv?vcv.value:'';
+    vca.disabled=true; vcm('Ανεβάζω…');
+    if(vid==='NEW'){
+      const plate=platePretty($('vcNew').value);
+      if(!plate){vca.disabled=false;return vcm('Βάλε πινακίδα για το νέο όχημα.')}
+      const dup=(D.veh||[]).find(x=>plateKey(x.plate)===plateKey(plate));
+      if(dup)vid=dup.id;
+      else{
+        const {data:nv,error:ne}=await sb.from('vehicles')
+          .insert({plate,owner_id:p.id,created_by:p.id}).select().single();
+        if(ne){vca.disabled=false;return vcm('Το όχημα δεν δημιουργήθηκε: '+ne.message)}
+        await sb.from('vehicle_links').insert({vehicle_id:nv.id,person_id:p.id,
+          relation:'Ιδιοκτήτης',valid_from:new Date().toISOString().slice(0,10)});
+        (D.veh=D.veh||[]).push(nv); vid=nv.id;
+      }
+    }
+    const path=`vehicles/${vid}/${Date.now()}_${f.name.replace(/[^\w.\-]/g,'_')}`;
+    const up=await sb.storage.from('e76').upload(path,f,{upsert:false});
+    if(up.error){vca.disabled=false;return vcm('Το αρχείο δεν ανέβηκε: '+up.error.message)}
+    const {data:dd,error:de}=await sb.from('documents').insert({person_id:p.id,kind,
+      title:kind,path,mime:f.type,size_bytes:f.size,expires_on:exp||null}).select().single();
+    if(de){vca.disabled=false;return vcm('Σφάλμα εγγράφου: '+de.message)}
+    /* ΜΙΑ ΟΥΡΑ. Το χαρτί μπαίνει στο vehicle_paper_inbox με το όχημα ΗΔΗ
+       διαλεγμένο — ο Α.Σ. επιβεβαιώνει, δεν μαντεύει πινακίδα από OCR. */
+    const {error}=await sb.from('vehicle_paper_inbox').insert({document_id:dd.id,
+      person_id:p.id, kind, vehicle_id:vid||null, ocr_expires:exp||null});
+    if(error){vca.disabled=false;return vcm('Δεν μπήκε στην ουρά: '+error.message)}
+    D.doc=[...(D.doc||[]),dd]; saveCache();
+    toast('Ανέβηκε — περιμένει έλεγχο από τον Α.Σ.');
+    await loadAll(); route(ROUTE);
   };
   };
 
-  /* Η σειρά είναι η σειρά που τα χρειάζεσαι: πρώτα «πού βρίσκομαι», μετά
-     «τι δηλώνω», μετά τα χαρτιά μου, και τελευταίο το ιστορικό — που το
-     κοιτάς μία φορά τον χρόνο, όχι κάθε Σάββατο. */
-  const tabs=[
-    {k:'over', t:'Επισκόπηση',    i:'user',   d:'τμήμα, παρουσίες, πορεία',
-      fn:box=>{box.innerHTML=overHTML}},
-    ...(isLed(p)?[{k:'sch', t:'Σχολές', i:'award', d:'δηλώνω συμμετοχή',
-      fn:box=>{box.innerHTML='<div id="meSchools">'+schoolsBlock()+'</div>';
-               wireSchools(meSchoolsDraw)}}]:[]),
-    {k:'cert', t:'Πιστοποιητικά', i:'shield', d:'τα χαρτιά μου και τι λήγει',
-      fn:box=>{box.innerHTML=certHTML; wireCert()}},
-    {k:'veh',  t:'Οχήματα',       i:'car',    d:'ό,τι δήλωσα για μεταφορά',
-      fn:box=>{box.innerHTML=vehHTML; wireVeh()}},
-    {k:'hist', t:'Ιστορικό',      i:'book',   d:'εκπαιδεύσεις, δράσεις, μεταβολές',
-      fn:box=>{box.innerHTML=meTabs(p)}},
-  ];
-  tabView('me', tabs, head);
+  return {p, head, overHTML, certHTML, vehHTML, wireCert, wireVeh};
+}
+const meGone=()=>$('view').innerHTML=`<div class="uc"><h3>Ο λογαριασμός δεν είναι συνδεδεμένος με καρτέλα</h3><p>Ζήτα από τον Α.Σ. να συνδέσει το email σου με το μητρώο.</p></div>`;
+
+/* Η καρτέλα μου κρατά ΜΟΝΟ ό,τι δεν είναι δουλειά από μόνο του: ποιος είμαι,
+   τι έχω περάσει, πού πήγα, τι υπέγραψα. Τα πιστοποιητικά, τα οχήματα και οι
+   αιτήσεις σχολών είναι ΠΡΑΞΕΙΣ — έχουν δικό τους κουμπί. */
+V.me=()=>{
+  const M=mePieces(); if(!M)return meGone();
+  const p=M.p;
+  tabView('me',[
+    {k:'over', t:'Επισκόπηση', i:'user', d:'τμήμα, παρουσίες, πορεία',
+      fn:box=>{box.innerHTML=M.overHTML}},
+    {k:'sch',  t:'Σχολές & Διακρίσεις', i:'award', d:'τι έχω περάσει και τι μου απονεμήθηκε',
+      fn:box=>{box.innerHTML=meLearnBox(p)}},
+    {k:'act',  t:'Ιστορικό δράσεων', i:'flag', d:'εκδρομές και κατασκηνώσεις',
+      fn:box=>{box.innerHTML=meActionsBox(p)}},
+    {k:'srv',  t:'Διοικητικές μεταβολές', i:'book', d:'εντολές, αναθέσεις, θητείες',
+      fn:box=>{box.innerHTML=meServiceBox(p)}},
+  ], M.head);
 };
+V.mycerts=()=>{const M=mePieces(); if(!M)return meGone();
+  $('view').innerHTML=M.head+M.certHTML; M.wireCert()};
+V.myveh=()=>{const M=mePieces(); if(!M)return meGone();
+  $('view').innerHTML=M.head+M.vehHTML; M.wireVeh()};
 
-/* Τι κουβαλά ο άνθρωπος: εκπαιδεύσεις, σχολές, δράσεις, διοικητικές μεταβολές, πρόοδος */
-function meTabs(p){
-  const tr=(D.tr||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const sh=(D.sh||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.start_date||'').localeCompare(a.start_date||''));
+/* ══ ΤΡΙΑ ΚΟΥΤΙΑ, ΤΡΕΙΣ ΕΡΩΤΗΣΕΙΣ ═════════════════════════════════════════
+   Ήταν ένα σεντόνι με τέσσερις ενότητες. Οι ερωτήσεις όμως είναι διαφορετικές
+   και τις κάνεις σε διαφορετικές στιγμές: «τι έχω περάσει» (όταν συμπληρώνεις
+   αίτηση σχολής), «πού πήγα» (όταν γράφεις απολογισμό), «τι υπέγραψα» (όταν
+   ψάχνεις εντολή). Χωριστά κουτιά, χωριστές καρτέλες. */
+const meBox=(title,n,inner)=>`<div class="sec" style="margin-top:0"><h3>${title}</h3><span class="n">${n}</span></div>
+  <div class="card pad">${n?inner:'<div class="dim" style="font-size:12.5px">— τίποτα καταγεγραμμένο —</div>'}</div>`;
+
+/* ΣΧΟΛΕΣ & ΔΙΑΚΡΙΣΕΙΣ — τι έχω περάσει.
+   ΟΛΕΣ οι εκπαιδεύσεις, όχι μόνο όσες λέγονται «σχολή»: το Safe from Harm,
+   οι Πρώτες Βοήθειες και τα σεμινάρια μετρούν εξίσου όταν συμπληρώνεις
+   αίτηση. Το ΕΠΙΠΕΔΟ (Προκαταρκτική/Βασική) μπαίνει πρώτο και ξεχωριστά:
+   δεν είναι σχολή που πήγες, είναι ό,τι σου αναγνωρίστηκε από αυτές. */
+function meLearnBox(p){
+  const tr=(D.tr||[]).filter(x=>x.person_id===p.id)
+    .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const ho=(D.ho||[]).filter(x=>x.person_id===p.id)
+    .sort((a,b)=>(b.award_date||'').localeCompare(a.award_date||''));
+  const lvl=tr.filter(t=>TR_BASIC.test(t.type||'')||TR_PRE.test(t.type||''));
+  const rest=tr.filter(t=>!lvl.includes(t));
+  return (lvl.length?`<div class="card pad" style="margin-bottom:10px">
+      <div class="dim" style="font-size:12px;margin-bottom:5px">Επίπεδο εκπαίδευσης</div>
+      ${lvl.map(t=>`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent;margin-right:5px">
+        ${esc(t.type||'')}${t.date?` <span class="dim">${fdate(t.date)}</span>`:''}</span>`).join('')}</div>`:'')
+   + meBox('Σχολές &amp; εκπαιδεύσεις που πέρασα', rest.length,
+      rest.map(t=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
+        <b style="font-size:13.5px;flex:1;min-width:160px">${esc(t.type||'')}${t.section?' · '+esc(t.section):''}</b>
+        <span class="dim" style="font-size:12.5px">${esc(t.code||'')} ${t.date?fdate(t.date):''} ${esc(t.body||'')}</span></div>`).join(''))
+   + meBox('Τιμητικές διακρίσεις', ho.length,
+      ho.map(h=>`<span class="pill" style="margin:3px 3px 0 0">${esc(h.title||h.code||'')}
+        <span class="dim">${h.award_date?fdate(h.award_date):''}</span></span>`).join(''))
+   + `<div class="dim" style="font-size:12px;margin-top:9px">Λείπει κάτι; Οι εκπαιδεύσεις έρχονται από τη Γ.Ε. —
+        πες το στον Α.Σ. για να το περάσει. Για <b>νέα</b> σχολή, πήγαινε στις «Αιτήσεις σχολών».</div>`;
+}
+
+/* ΙΣΤΟΡΙΚΟ ΔΡΑΣΕΩΝ — πού πήγα. */
+function meActionsBox(p){
   const pa=(D.pa||[]).filter(x=>x.person_id===p.id)
       .map(x=>({x,e:(D.ev||[]).find(e=>e.id===x.event_id)})).filter(x=>x.e)
       .sort((a,b)=>(b.e.event_date||'').localeCompare(a.e.event_date||''));
-  const ho=(D.ho||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.award_date||'').localeCompare(a.award_date||''));
-  const box=(title,n,inner)=>`<div class="sec"><h3>${title}</h3><span class="n">${n}</span></div>
-    <div class="card pad">${n?inner:'<div class="dim" style="font-size:12.5px">— τίποτα καταγεγραμμένο —</div>'}</div>`;
-  return box('Οι εκπαιδεύσεις μου',tr.length,
-      tr.map(t=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
-        <b style="font-size:13.5px;flex:1;min-width:160px">${esc(t.type||'')}${t.section?' · '+esc(t.section):''}</b>
-        <span class="dim" style="font-size:12.5px">${esc(t.code||'')} ${t.date?fdate(t.date):''} ${esc(t.body||'')}</span></div>`).join(''))
-   + box('Οι δράσεις μου',pa.length,
+  return meBox('Οι δράσεις μου', pa.length,
       pa.map(({x,e})=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
         <b style="font-size:13.5px;flex:1;min-width:160px">${esc(e.title||'')}</b>
-        <span class="dim" style="font-size:12.5px">${e.event_date?fdate(e.event_date):''}${e.place?' · '+esc(e.place):''}${x.is_staff?' · επιτελείο':''}</span></div>`).join(''))
-   + box('Οι διοικητικές μου μεταβολές',sh.length,
+        <span class="dim" style="font-size:12.5px">${e.event_date?fdate(e.event_date):''}${e.place?' · '+esc(e.place):''}${x.is_staff?' · επιτελείο':''}</span></div>`).join(''));
+}
+
+/* ΔΙΟΙΚΗΤΙΚΕΣ ΜΕΤΑΒΟΛΕΣ — τι υπέγραψα. */
+function meServiceBox(p){
+  const sh=(D.sh||[]).filter(x=>x.person_id===p.id)
+    .sort((a,b)=>(b.start_date||'').localeCompare(a.start_date||''));
+  return meBox('Οι διοικητικές μου μεταβολές', sh.length,
       sh.map(s=>`<div style="padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
         <b style="font-size:13.5px;flex:1;min-width:180px">${esc(s.appointment||s.role||'')}</b>
         <span class="dim" style="font-size:12.5px">${esc(s.warrant_type||'')}${s.appointment_no?' #'+esc(s.appointment_no):''}
-          ${s.start_date?fdate(s.start_date):''}${s.end_date?' → '+fdate(s.end_date):''}</span></div>`).join(''))
-   + box('Πτυχία & διακρίσεις',ho.length,
-      ho.map(h=>`<span class="pill" style="margin:3px 3px 0 0">${esc(h.title||'')}
-        <span class="dim">${h.award_date?fdate(h.award_date):''}</span></span>`).join(''));
+          ${s.start_date?fdate(s.start_date):''}${s.end_date?' → '+fdate(s.end_date):''}</span></div>`).join(''));
 }
+
 
 V.myatt=()=>{
   const p=meRec(); if(!p)return V.me();
