@@ -1060,7 +1060,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 22:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 22:28'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -10369,7 +10369,11 @@ function trainLevelBody(){
     return new Date(c.sexoxarto_expiry)>new Date()};
   const counts={2:0,1:0,0:0}; led.forEach(p=>counts[lvl(p.id).n]++);
   const ready=led.filter(p=>lvl(p.id).n===2&&cert(p.id)).length;
-  $('view').innerHTML=schoolsBlock()+`<div class="card pad noprint" style="margin-bottom:14px">
+  /* Η ΔΙΚΗ ΜΟΥ ΔΗΛΩΣΗ ΔΕΝ ΕΙΝΑΙ ΕΔΩ. Αυτή η οθόνη είναι εποπτεία: «ποιος
+     έχει τι» για 106 ανθρώπους. Το «θέλω να πάω εγώ» έχει δικό του κουμπί
+     («Αιτήσεις σχολών») — και το είχαμε και στις δύο μεριές, που σήμαινε ότι
+     ο Α.Σ. έβλεπε πρώτα τη δική του δήλωση πριν από τη δουλειά όλων. */
+  $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:14px">
       <b>Εκπαιδευτικό επίπεδο βαθμοφόρων</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Η Βασική μαζί με <span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Πιστοποιητικό Ν.91(Ι)</span> σε ισχύ είναι η προϋπόθεση για <b>Εντολή Διοίκησης</b>· η Προκαταρκτική αρκεί για <b>Ανάθεση Καθηκόντων</b>. Ο έλεγχος γίνεται εδώ ώστε να μην κολλήσει η αίτηση αργότερα.</div></div>
     <div class="tiles">
@@ -10390,7 +10394,7 @@ function trainLevelBody(){
           <td>${right}</td>
           <td class="hide-s dim">${t?esc((t.type||t.code||'').slice(0,34))+(t.date?' · '+fdate(t.date):''):'—'}</td></tr>`}).join('')}</tbody></table></div>`
     ;
-  wireVQ(); wireSchools(()=>route('training'));
+  wireVQ();
 }
 
 /* ══ ΠΟΙΟΙ ΠΑΝΕ ΠΟΥ ══════════════════════════════════════════════════════
@@ -10408,19 +10412,13 @@ function trainWhoBody(){
   const ups=schoolsAhead();
   const xoris=ups.filter(e=>!byE[e.id]);
 
-  /* ΠΡΩΤΑ ΟΙ ΔΗΛΩΣΕΙΣ, ΜΕΤΑ Η ΕΙΚΟΝΑ. Ο πίνακας που ΑΛΛΑΖΕΙΣ ήταν στο τέλος,
-     κάτω από πλακίδια και μια λίστα ανά σχολή — δηλαδή έπρεπε να κυλήσεις
-     ολόκληρη οθόνη για να κάνεις τη δουλειά. Ό,τι ζητά ενέργεια πάει πάνω·
-     ό,τι εξηγεί, από κάτω. */
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
       <b>Ποιοι πάνε πού</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px">Ο πίνακας των δηλώσεων είναι το πρώτο πράγμα:
-        από εκεί αλλάζεις κατάσταση. Πιο κάτω η ίδια πληροφορία <b>ανά σχολή</b> — αυτή στέλνεις στη Γ.Ε.</div></div>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Η ίδια πληροφορία με τις «Δηλώσεις»,
+        ομαδοποιημένη <b>ανά σχολή</b> — αυτό στέλνεις στη Γ.Ε.</div></div>
 
-    ${saAdminBlock()}
-
-    <div class="tiles" style="margin-top:14px">
+    <div class="tiles"
       <div class="tile" style="cursor:default"><div class="k">Σχολές με δηλώσεις</div>
         <div class="v">${groups.length}</div><div class="s">από ${ups.length} της χρονιάς</div></div>
       <div class="tile" style="cursor:default"><div class="k">Δηλώσεις</div>
@@ -10451,12 +10449,58 @@ function trainWhoBody(){
         `<span class="pill">${esc(e.title)} <span class="dim">${e.event_date?fdate(e.event_date):'—'}</span></span>`).join('')}</div>
         <div class="dim" style="font-size:12px;margin-top:7px">Καμία σχολή δεν είναι υποχρεωτική — αλλά αν κάποια
           σε ενδιαφέρει, κάποιος πρέπει να τη δηλώσει.</div></div>`:''}`;
+}
+
+/* ══ Η ΟΘΟΝΗ ΞΕΚΙΝΑ ΑΠΟ ΤΗ ΔΟΥΛΕΙΑ ═══════════════════════════════════════
+   Ο Α.Σ. ανοίγει τις «Εκπαιδεύσεις» για ΕΝΑΝ λόγο: κάποιος δήλωσε και πρέπει
+   να προωθηθεί στη Γ.Ε. Ό,τι άλλο — ποιος έχει Βασική, τι σχολές έχει η
+   χρονιά — είναι εποπτεία, και η εποπτεία δεν προηγείται της εκκρεμότητας. */
+function trainAppsBody(){
+  const rows=(D.sapp||[]).filter(a=>a.status!=='ακυρώθηκε')
+    .map(a=>({a, p:D.bh.find(b=>b.id===a.person_id), e:(D.ev||[]).find(x=>x.id===a.event_id)}))
+    .filter(x=>x.p&&x.e);
+  const open=rows.filter(x=>x.a.status==='δηλώθηκε').length;
+  const blk=saAdminBlock();
+  $('view').innerHTML = blk
+    ? `<div class="card pad" style="margin-bottom:14px">
+         <b>Δηλώσεις των βαθμοφόρων μου</b>
+         <div class="muted" style="margin-top:5px;font-size:13.5px">${open
+           ? `<b>${open}</b> ${open===1?'δήλωση περιμένει':'δηλώσεις περιμένουν'} εσένα — προώθησέ τες στη Γ.Ε. και γύρνα την κατάσταση.`
+           : 'Καμία ανοιχτή. Ό,τι έχει σταλεί ή περαστεί μένει εδώ για ιστορικό.'}</div></div>
+       ${blk}`
+    : `<div class="uc"><div class="ico">${ic('award',26)}</div>
+       <h3>Καμία δήλωση ακόμη</h3>
+       <p>Μόλις δηλώσει κάποιος βαθμοφόρος — από τις «Αιτήσεις σχολών» ή από την καρτέλα του —
+          θα εμφανιστεί εδώ για να τον προωθήσεις.</p></div>`;
   wireSaAdmin();
 }
 
+/* ΤΙ ΕΧΕΙ Η ΧΡΟΝΙΑ. Υπήρχε μόνο μέσα στο μπλοκ δήλωσης, δηλαδή ο Α.Σ. δεν
+   είχε πουθενά να δει «ποιες σχολές τρέχουν και πότε» χωρίς να δηλώσει. */
+function trainProgBody(){
+  const ups=schoolsAhead();
+  const cnt=e=>(D.sapp||[]).filter(a=>a.event_id===e.id&&a.status!=='ακυρώθηκε').length;
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Σχολές της χρονιάς ${esc(YEAR)}</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Ό,τι ανακοίνωσε η Γ.Ε. και πέρασε στο πρόγραμμα.
+        Οι σχολές είναι <b>γεγονότα του προγράμματος</b> — αν λείπει κάποια, προστίθεται εκεί.</div></div>
+    ${ups.length?`<div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Σχολή</th><th>Πότε</th><th class="hide-s">Προϋπόθεση</th><th>Δηλώσεις</th></tr></thead>
+      <tbody>${ups.map(e=>`<tr>
+        <td><b>${esc(e.title)}</b>${e.place?`<div class="dim" style="font-size:11.5px">${esc(e.place)}</div>`:''}</td>
+        <td class="dim" style="font-size:12.5px">${saWhen(e)}</td>
+        <td class="hide-s dim" style="font-size:12px">${e.prereq?esc(e.prereq):'—'}</td>
+        <td>${cnt(e)?`<b>${cnt(e)}</b>`:'<span class="dim">—</span>'}</td></tr>`).join('')}</tbody></table></div>`
+      :`<div class="uc"><h3>Καμία σχολή στο πρόγραμμα</h3>
+        <p>Μόλις περαστούν οι σχολές της Γ.Ε. στο πρόγραμμα χρονιάς, θα εμφανιστούν εδώ.</p></div>`}`;
+}
+
 V.training=()=>tabView('training',[
-  {k:'lvl', t:'Επίπεδο βαθμοφόρων', i:'award', fn:trainLevelBody, d:'ποιος έχει Βασική, ποιος Προκαταρκτική'},
-  {k:'who', t:'Ποιοι πάνε πού',     i:'users', fn:trainWhoBody,   d:'οι δηλώσεις ανά σχολή'}]);
+  {k:'app', t:'Δηλώσεις',           i:'alert', fn:trainAppsBody,  d:'ποιος δήλωσε και τι περιμένει εσένα'},
+  {k:'who', t:'Ποιοι πάνε πού',     i:'users', fn:trainWhoBody,   d:'οι δηλώσεις ανά σχολή — αυτό στέλνεις'},
+  {k:'prog',t:'Σχολές της χρονιάς', i:'book',  fn:trainProgBody,  d:'τι ανακοίνωσε η Γ.Ε. και πότε'},
+  {k:'lvl', t:'Επίπεδο βαθμοφόρων', i:'award', fn:trainLevelBody, d:'ποιος έχει Βασική, ποιος Προκαταρκτική'}]);
 
 /* Ο πίνακας του Α.Σ.: ποιος δήλωσε τι, και πού βρίσκεται. */
 function saAdminBlock(){
