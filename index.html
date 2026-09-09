@@ -1063,7 +1063,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 23:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-10 00:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -9994,7 +9994,7 @@ function meLearnBox(p){
     .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const ho=(D.ho||[]).filter(x=>x.person_id===p.id)
     .sort((a,b)=>(b.award_date||'').localeCompare(a.award_date||''));
-  const lvl=tr.filter(t=>TR_BASIC.test(t.type||'')||TR_PRE.test(t.type||''));
+  const lvl=tr.filter(t=>trLevel(t)>0);
   const rest=tr.filter(t=>!lvl.includes(t));
   return (lvl.length?`<div class="card pad" style="margin-bottom:10px">
       <div class="dim" style="font-size:12px;margin-bottom:5px">Επίπεδο εκπαίδευσης</div>
@@ -10298,7 +10298,21 @@ V.reg=()=>{
 };
 
 /* ── Εκπαιδεύσεις ── */
+/* ══ ΤΟ ΕΠΙΠΕΔΟ ΔΕΝ ΓΡΑΦΕΤΑΙ ΜΕ ΤΗ ΛΕΞΗ ══════════════════════════════════
+   Το /βασικ/ έψαχνε τη ΛΕΞΗ «Βασική» — αλλά το μητρώο γράφει «Σ.Β.Ε.Β.Λ.»,
+   «Σ.Β.Ε.Β.Π.», «Σ.Β.Ε.Β.Εφ-Α.Σ.». Αποτέλεσμα: **45 βαθμοφόροι** με Βασική
+   εμφανίζονταν ως «Καμία», και ο ίδιος ο Α.Σ. ανάμεσά τους. Το πλακίδιο
+   «Έτοιμοι για εντολή» έδειχνε ψέματα.
+   Ίδια ρίζα με το λάθος των σχολών: συντομογραφία ≠ λέξη. Ίδια λύση:
+   περνάμε από το saKey(), που κάνει «Σ.Β.Ε.Β.Λ.» → «ΣΒΕΒΛ».
+   ΤΟ ΚΕΙΜΕΝΟ ΜΕΝΕΙ ΩΣ ΕΦΕΔΡΕΙΑ: χειρόγραφες εγγραφές γράφουν «Βασική». */
 const TR_BASIC=/βασικ/i, TR_PRE=/προκαταρκτ/i;
+const trLevel=t=>{
+  const s=(t&&(t.type||t.code))||'', k=saKey(s);
+  if(/^ΣΒΕΒ/.test(k)||TR_BASIC.test(s)) return 2;   // Βασική
+  if(k==='ΣΠΕΒ'||TR_PRE.test(s))        return 1;   // Προκαταρκτική
+  return 0;
+};
 /* ══ ΣΧΟΛΕΣ ΤΟΥ ΠΡΟΓΡΑΜΜΑΤΟΣ ══════════════════════════════════════════════
    Η σχολή ΕΙΝΑΙ γεγονός του προγράμματος χρονιάς — δεν φτιάχνουμε δεύτερο
    κατάλογο. Η δήλωση κρέμεται από το γεγονός.
@@ -10436,8 +10450,8 @@ function wireSchools(after){
 function trainLevelBody(){
   const led=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName);
   const trOf=id=>(D.tr||[]).filter(t=>t.person_id===id).sort((a,b)=>(a.date||'')<(b.date||'')?1:-1);
-  const lvl=id=>{const t=trOf(id); if(t.some(x=>TR_BASIC.test(x.type||x.code||'')))return{t:'Βασική',c:'ok',n:2};
-    if(t.some(x=>TR_PRE.test(x.type||x.code||'')))return{t:'Προκαταρκτική',c:'warn',n:1}; return{t:'Καμία',c:'bad',n:0}};
+  const lvl=id=>{const n=Math.max(0,...trOf(id).map(trLevel));
+    return n===2?{t:'Βασική',c:'ok',n:2}:n===1?{t:'Προκαταρκτική',c:'warn',n:1}:{t:'Καμία',c:'bad',n:0}};
   const cert=id=>{const c=D.cert.find(x=>x.person_id===id); if(!c||!c.sexoxarto_expiry)return false;
     return new Date(c.sexoxarto_expiry)>new Date()};
   const counts={2:0,1:0,0:0}; led.forEach(p=>counts[lvl(p.id).n]++);
