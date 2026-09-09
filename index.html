@@ -918,10 +918,10 @@ const NAV=[
    /* Δική της οθόνη, όχι λίστα μέσα στις Εκκρεμότητες: η επιβεβαίωση είναι
       ΔΟΥΛΕΙΑ που κάθεσαι και την κάνεις — ανοίγεις χαρτιά, κρίνεις, δέχεσαι.
       Οι Εκκρεμότητες λένε ΤΙ λείπει· εδώ το κλείνεις. */
-   {id:'certq',t:'Επιβεβαίωση πιστοποιητικών',i:'shield',s:'live'},
-   /* ΑΝΑΦΟΡΑ, ΟΧΙ ΠΥΛΗ — ΑΚΟΜΗ. Δείχνει ποιος ΘΑ έχανε τα ευαίσθητα την
-      ημέρα που θα ενεργοποιηθεί ο κανόνας. Τρέχει μία εβδομάδα πρώτα. */
-   {id:'n91',t:'Ν.91(Ι) — ποιος θα έκλεινε',i:'lock',s:'live'},
+   /* Δύο καρτέλες μέσα: «Προς επιβεβαίωση» και η αναφορά του Ν.91(Ι) —
+      ΑΝΑΦΟΡΑ, ΟΧΙ ΠΥΛΗ ακόμη· δείχνει ποιος ΘΑ έχανε τα ευαίσθητα την ημέρα
+      που θα ενεργοποιηθεί ο κανόνας. Τρέχει μία εβδομάδα πρώτα. */
+   {id:'certq',t:'Πιστοποιητικά βαθμοφόρων',i:'shield',s:'live'},
    {id:'vpapers',t:'Χαρτιά οχημάτων',i:'car',s:'live'},
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'training',t:'Εκπαιδεύσεις',i:'book',s:'live'},
@@ -1032,8 +1032,7 @@ const SUBS={
  esimport:'Επικόλληση από e-Scouts — Α.Μ., τριπλότυπα, εντολές',
  fimport:'Επικόλληση από εξαγωγή φόρμας — ιατρικά προηγούμενων ετών',
 
- certq:'Χαρτιά που περιμένουν να τα δεις — μέχρι τότε δεν μετρούν σε δράση',
- n91:'Δοκιμή πριν την ενεργοποίηση: ποιος χάνει τα ευαίσθητα όταν γίνει προϋπόθεση',
+ certq:'Χαρτιά που περιμένουν να τα δεις — και η δοκιμή του Ν.91(Ι) ως προϋπόθεση',
  myschools:'Δηλώνω ενδιαφέρον για τις σχολές της χρονιάς — δεν με γράφει, το βλέπει ο Α.Σ.',
  mycerts:'Τα χαρτιά μου: τι έχω, τι λήγει, και ανέβασμα νέου για έλεγχο',
  myveh:'Τα οχήματα που δήλωσα — και τα χαρτιά τους',
@@ -1060,7 +1059,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 22:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 22:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2582,7 +2581,20 @@ async function openProfile(id){
         return `<i title="${fdate(s.session_date)}${st?' — '+st:''}" style="background:${st==='Παρών'?'var(--ok)':st==='Απών'?'#e8b4ad':'var(--line)'}"></i>`}).join('')}</div>
       <div class="dim" style="font-size:11.5px;margin-top:6px">κάθε τετράγωνο = μία συγκέντρωση, από Σεπτέμβριο</div></div>`:''}
 
-    ${(isLed(p)&&ME.role==='admin')?`<div class="dsec"><h4>Σχολές</h4>${schoolsBlock(p)}</div>`:''}
+    ${(()=>{
+      /* ΜΑΖΕΜΕΝΗ. Το μπλοκ δήλωσης είναι 8-10 σχολές με ημερομηνίες και
+         κουμπιά — μισή οθόνη μέσα σε μια καρτέλα που ανοίγεις για να δεις
+         τηλέφωνο. Κρατά τον αριθμό στην κεφαλίδα ώστε να ξέρεις αν αξίζει
+         να την ανοίξεις, και θυμάται αν την άφησες ανοιχτή. */
+      if(!(isLed(p)&&ME.role==='admin'))return '';
+      const b=schoolsBlock(p); if(!b)return '';
+      const dec=(D.sapp||[]).filter(a=>a.person_id===p.id&&a.status!=='ακυρώθηκε').length;
+      return `<div class="dsec"><details id="pfSchools"${PF_SCH?' open':''}>
+        <summary style="cursor:pointer;list-style:none;display:flex;gap:8px;align-items:center">
+          <h4 style="margin:0">Σχολές</h4>
+          ${dec?`<span class="pill" style="background:var(--accbg);color:var(--acc);border-color:transparent">${dec} ${dec===1?'δήλωση':'δηλώσεις'}</span>`:''}
+          <span class="sp"></span><span class="dim" style="font-size:11.5px">δήλωσε για λογαριασμό του ▾</span>
+        </summary>${b}</details></div>`})()}
     ${certsHTML(p)}
     ${mailsHTML(p)}
     ${isMem?'':vehHTML(p)}
@@ -2613,6 +2625,9 @@ async function openProfile(id){
     i.onchange=()=>{if(i.files[0])photoUpload(p,i.files[0],()=>openProfile(p.id))};i.click()};
   document.querySelectorAll('[data-hatsec]').forEach(s=>s.onchange=()=>
     hatRetarget(s.dataset.hatsec, s.value, ()=>openProfile(p.id)));
+  /* Θυμάται αν την άφησες ανοιχτή — αλλιώς κλείνει σε κάθε δήλωση και
+     ξαναψάχνεις πού ήσουν. */
+  const pfs=$('pfSchools'); if(pfs)pfs.ontoggle=()=>{PF_SCH=pfs.open};
   wireCerts(p,()=>openProfile(p.id));
   wireSchools(()=>openProfile(p.id));
   if(!isMem)wireVeh(p,()=>openProfile(p.id));
@@ -2680,6 +2695,7 @@ function histHTML(p){
   return out;
 }
 function agey(d){if(!d)return 0;const b=new Date(d),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a}
+let PF_SCH=false;   // μένει ανοιχτή η ενότητα «Σχολές» της καρτέλας;
 const isPar=p=>(p.kind||'')==='Γονέας';
 const isLed=p=>!isPar(p)&&(p.kind||'Βαθμοφόρος')!=='Μέλος';
 const isMem=p=>(p.kind||'')==='Μέλος';
@@ -3178,6 +3194,14 @@ function certsHTML(p){
         <label class="btn sm" style="cursor:pointer;justify-content:center">📎 Επισύναψη αρχείου<input type="file" id="pcFile" style="display:none" accept=".pdf,.png,.jpg,.jpeg,.heic"></label>
         <span class="dim" id="pcFileName" style="font-size:12px"></span>
         <button class="btn p sm" id="pcAdd">Καταχώρηση</button>
+        ${/* ΤΟ ΕΛΕΓΕ Η ΒΑΣΗ ΚΑΙ ΔΕΝ ΤΟ ΕΛΕΓΕ Η ΟΘΟΝΗ. Ό,τι καταχωρεί ο Α.Σ.
+              εδώ σφραγίζεται ΑΜΕΣΩΣ ως επιβεβαιωμένο (pc_self_guard): κρατά
+              το χαρτί στο χέρι του, δεν έχει νόημα να πάει μετά να εγκρίνει
+              τον εαυτό του. Ο Α.Σ. όμως το έψαχνε στην ουρά και δεν το
+              έβρισκε — και νόμιζε ότι χάθηκε. */''}
+        <div class="dim" style="font-size:11.5px;background:var(--okbg);color:var(--ok);
+             padding:6px 8px;border-radius:var(--rs)">✓ Ό,τι καταχωρείς εσύ μετράει
+          <b>αμέσως</b> — δεν περνά από την «Επιβεβαίωση». Εκεί πάνε μόνο όσα ανεβάζουν οι ίδιοι.</div>
       </div></details>
     <div class="dim" style="font-size:11.5px;margin-top:7px">Η λήξη υπολογίζεται αυτόματα από τον τύπο, αν αφήσεις το πεδίο κενό.</div></div>`;
 }
@@ -3633,17 +3657,59 @@ const listBar=(extra,hint)=>`<div class="card pad" style="display:flex;gap:9px;a
   <input id="vq" placeholder="Αναζήτηση…  ( / )" style="max-width:230px" autocomplete="off">${extra||''}
   <span class="sp"></span><span class="pill" id="vcnt"></span>
   ${hint?`<button class="btn gh sm" id="vinfo" title="Υπόμνημα — τι σημαίνει κάθε χρώμα και σήμα">${ic('info',15)}</button>`:''}</div>`;
+/* ══ ΨΑΧΝΩ ΟΠΩΣ ΜΟΥ ΕΡΧΕΤΑΙ ══════════════════════════════════════════════
+   Δύο κενά που έκαναν την αναζήτηση να «μη βρίσκει»:
+
+   1) ΛΑΤΙΝΙΚΑ. Ο μισός κόσμος γράφει «Georgiou» και «Hadjigeorgiou» — το
+      όνομα στη βάση είναι ελληνικά και δεν έβγαινε τίποτα. Κατεβάζουμε και
+      τα δύο σε κοινό «σκελετό ήχου»: ελληνικά→λατινικά, μετά ισοπεδώνουμε
+      τα ζευγάρια που ο καθένας τα γράφει αλλιώς (ch/h, ph/f, tz/dj, ου/u,
+      y/i) και τα διπλά γράμματα. ΔΕΝ αντικαθιστά τον κανονικό έλεγχο —
+      προστίθεται, ώστε να μη χάνεται ακριβές ταίριασμα.
+
+   2) Ο,ΤΙ ΔΕΝ ΦΑΙΝΕΤΑΙ ΣΤΗ ΓΡΑΜΜΗ. Α.Μ., Α.Δ.Τ., τηλέφωνο, email,
+      προσκοπικό όνομα: ο Α.Σ. τα ψάχνει συνέχεια και η γραμμή δείχνει μόνο
+      όνομα και τμήμα. Αν η γραμμή ξέρει ποιον αφορά ([data-p]), τραβάμε τα
+      υπόλοιπα από τη βάση. */
+const SQ_GR2LA={'α':'a','β':'v','γ':'g','δ':'d','ε':'e','ζ':'z','η':'i','θ':'th','ι':'i',
+ 'κ':'k','λ':'l','μ':'m','ν':'n','ξ':'x','ο':'o','π':'p','ρ':'r','σ':'s','ς':'s',
+ 'τ':'t','υ':'y','φ':'f','χ':'ch','ψ':'ps','ω':'o'};
+function latKey(s){
+  let t=(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  t=t.replace(/[α-ως]/g,c=>SQ_GR2LA[c]||c);
+  return t
+    /* ΠΡΟΣΟΧΗ ΣΤΗ ΣΕΙΡΑ: το ελληνικό «ου» γίνεται «oy» (ο→o, υ→y), όχι «ou».
+       Αν το «y→i» έτρεχε πρώτο, το «Γεωργίου» κατέληγε «georgi» και δεν
+       συναντούσε ποτέ το «Georgiou». */
+    .replace(/oy|ou/g,'u')
+    .replace(/ai|ae/g,'e')          // «Μιχαήλ» ≡ «Michael»
+    .replace(/tz|dj|dz/g,'j')
+    .replace(/ch|kh|kch/g,'h').replace(/ph/g,'f').replace(/th/g,'t')
+    .replace(/mp/g,'b').replace(/gk/g,'g')
+    .replace(/y/g,'i').replace(/ei|oi|ee/g,'i').replace(/w/g,'o')
+    .replace(/[^a-z0-9]/g,'')
+    .replace(/(.)\1+/g,'$1');
+}
+function searchBlob(pid){
+  const p=(D.bh||[]).find(x=>x.id===pid); if(!p)return '';
+  const sn=(D.sen||[]).find(x=>x.person_id===pid)||{};
+  const em=(D.pe||[]).filter(x=>x.person_id===pid).map(x=>x.address);
+  return [nm(p),p.nickname,p.scout_name,p.registry_no,sn.adt,p.phone,p.email,
+          p.section,p.category,...em].filter(Boolean).join(' ');
+}
 function wireVQ(){
   const i=$('vq'); if(!i)return;
-  /* Ψάχνει το ΚΕΙΜΕΝΟ της γραμμής — άρα πιάνει ό,τι φαίνεται. Για Α.Μ. και
-     τηλέφωνα που ΔΕΝ φαίνονται στη γραμμή, συγκρίνει και σκέτα ψηφία. */
-  const upd=()=>{const raw=i.value.trim(), q=nameKey(raw), d=digits(raw); let n=0;
+  const upd=()=>{const raw=i.value.trim(), q=nameKey(raw), L=latKey(raw), d=digits(raw); let n=0;
     /* Και γραμμές πίνακα ΚΑΙ κάρτες: μισές οθόνες είναι κάρτες, και η
        αναζήτηση σιωπούσε σε αυτές — χειρότερο από το να λείπει. */
     const items=document.querySelectorAll('#view tbody tr, #view .cgrid > .ccard');
     items.forEach(r=>{
-      const txt=r.textContent;
-      const ok=!raw||nameKey(txt).includes(q)||(d.length>=3&&digits(txt).includes(d));
+      let txt=r.textContent;
+      const pe=r.querySelector('[data-p]');
+      if(pe)txt+=' '+searchBlob(pe.dataset.p);
+      const ok=!raw||nameKey(txt).includes(q)
+        ||(L.length>=2&&latKey(txt).includes(L))
+        ||(d.length>=3&&digits(txt).includes(d));
       r.style.display=ok?'':'none'; if(ok)n++;});
     const c=$('vcnt'); if(c)c.textContent=n+(n===1?' εγγραφή':' εγγραφές');};
   i.addEventListener('input',upd); upd();
@@ -11466,7 +11532,7 @@ V.vpapers=()=>{
    σε καμία πολιτική. Αυτή η οθόνη ΔΙΑΒΑΖΕΙ· δεν κλείνει τίποτα. */
 const N91COL={'χωρίς πιστοποιητικό':'bad','ληγμένο':'bad','λήγει σε 7 μέρες':'warn',
               'λήγει σε 30 μέρες':'warn','λήγει σε 60 μέρες':'warn','εντάξει':'ok'};
-V.n91=async()=>{
+async function n91Body(){
   $('view').innerHTML='<div class="card pad dim">Υπολογισμός…</div>';
   const {data,error}=await sb.from('v_n91_gate').select('*');
   if(error){$('view').innerHTML=`<div class="uc"><h3>Δεν διαβάστηκε</h3><p>${esc(error.message)}</p></div>`;return}
@@ -11578,7 +11644,7 @@ async function certToVehicle(certId, vehId){
   D.pc=(D.pc||[]).filter(x=>x.id!==certId); saveCache();
   toast('Μεταφέρθηκε στο '+v.plate); V.certq();
 }
-V.certq=()=>{
+function certqBody(){
   const pend=(D.pc||[]).filter(c=>!c.confirmed_on&&!VEH_TYPES.includes(c.type_code));
   const byP={}; pend.forEach(c=>(byP[c.person_id]=byP[c.person_id]||[]).push(c));
   const ord=Object.keys(byP).map(id=>({p:D.bh.find(b=>b.id===id),cs:byP[id]}))
@@ -11904,6 +11970,17 @@ V.certq=()=>{
     const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
     if(c)docPreview(certSides(c),+a.dataset.ix||0);});
 };
+
+/* ══ ΜΙΑ ΟΘΟΝΗ ΓΙΑ ΤΑ ΧΑΡΤΙΑ ═══════════════════════════════════════════════
+   Το «Ν.91(Ι) — ποιος θα έκλεινε» καθόταν δίπλα στην «Επιβεβαίωση» σαν
+   ξεχωριστό κουμπί της Διοίκησης, ενώ αφορά ΤΟ ΙΔΙΟ πράγμα: πιστοποιητικά.
+   Δύο κουμπιά για μία δουλειά σε στέλνουν να θυμάσαι πού είναι τι. */
+V.certq=()=>tabView('certq',[
+  {k:'q',   t:'Προς επιβεβαίωση', i:'shield', fn:certqBody,
+   d:'χαρτιά που περιμένουν να τα δεις'},
+  {k:'n91', t:'Ν.91(Ι) — ποιος θα έκλεινε', i:'lock', fn:n91Body,
+   d:'δοκιμή πριν γίνει προϋπόθεση — δεν κλείνει τίποτα'}]);
+
 
 /* Πιθανές διπλοεγγραφές: ίδιο ονοματεπώνυμο χωρίς τόνους, ανεξάρτητα σειράς.
    Επιστρέφει υποψήφια ζεύγη με τα σήματα που τα στηρίζουν — ΠΟΤΕ δεν συγχωνεύει.
