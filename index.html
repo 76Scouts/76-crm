@@ -1035,7 +1035,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 00:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 08:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2444,30 +2444,62 @@ async function openProfile(id){
       ${p.scout_name?kv('Προσκοπικό όνομα','<b>'+esc(p.scout_name)+'</b>'):''}
       ${(()=>{
         /* ══ ΙΔΙΟΤΗΤΑ ≠ ΑΞΙΩΜΑ ══════════════════════════════════════════════
-           ΙΔΙΟΤΗΤΑ = τι ΕΙΝΑΙ ο άνθρωπος: Βαθμοφόρος, Μέλος, Γονέας. Μπορεί
-           να είναι περισσότερα από ένα ταυτόχρονα — ο αρχηγός Αγέλης που έχει
-           και παιδί στην Ομάδα είναι και τα δύο, και δεν διαλέγουμε εμείς.
-           ΑΞΙΩΜΑ = τι ΚΑΝΕΙ: «Αρχηγός Αγέλης Λυκοπούλων», «Υπαρχηγός Ομάδας».
+           ΙΔΙΟΤΗΤΑ = τι ΕΙΝΑΙ ο άνθρωπος: Βαθμοφόρος, Μέλος, Γονέας.
+           ΚΑΘΗΚΟΝΤΑ = τι ΚΑΝΕΙ: «Αρχηγός Αγέλης Λυκοπούλων». ΟΧΙ «αξίωμα» —
+           στον Προσκοπισμό δεν παίρνεις τίτλο, αναλαμβάνεις δουλειά.
 
            Η οθόνη τα είχε ενωμένα σε ένα πεδίο, κι έτσι ο αρχηγός τμήματος
            «έχανε» την ιδιότητά του — έγραφε ΑΑΛ εκεί που έπρεπε να λέει
            Βαθμοφόρος. Χώρια πράγματα, χώρια γραμμές.
 
-           Η ιδιότητα ΔΕΝ βγαίνει μόνο από το kind: το «Γονέας» το ξέρει ο
-           πίνακας κηδεμονίας, όχι το πεδίο — 28 βαθμοφόροι είχαν μπει ως
-           γονείς και το αντίστροφο συμβαίνει εξίσου. */
+           ΔΕΝ ΥΠΑΡΧΕΙ ΒΑΘΜΟΦΟΡΟΣ ΠΟΥ ΝΑ ΜΗΝ ΕΙΝΑΙ ΜΕΛΟΣ — η ιδιότητα του
+           μέλους του Σώματος ΕΙΝΑΙ ο Α.Μ. (τον έχουν 102/106 βαθμοφόροι και
+           0/396 γονείς). Γι' αυτό δεν προσθέτουμε ποτέ «Μέλος» σε βαθμοφόρο:
+           θα ήταν σαν να γράφαμε «Κύπριος · άνθρωπος». Μόνο το «Γονέας»
+           προστίθεται αληθινά, και το ξέρει ο πίνακας κηδεμονίας — όχι το
+           πεδίο kind, που σε δεκάδες περιπτώσεις λέει το αντίθετο.
+
+           ΤΑ ΚΑΘΗΚΟΝΤΑ ΕΙΝΑΙ ΠΟΛΛΑ, ΟΧΙ ΕΝΑ. Η λίστα δείχνει ένα καπέλο για
+           λόγους χώρου· η καρτέλα είναι το σημείο όπου βλέπεις ΟΛΑ όσα κρατά
+           ο καθένας — και εκεί φαίνεται και το διπλοπέρασμα. */
         const k=p.kind||'Βαθμοφόρος';
-        const hat=(D.ph||[]).find(h=>h.person_id===p.id&&!h.valid_to&&h.role_code);
-        const rc=hat&&(D.rc||[]).find(r=>r.code===hat.role_code);
+        const hats=(D.ph||[]).filter(h=>h.person_id===p.id&&!h.valid_to&&h.role_code);
+        const codes=[...new Set(hats.map(h=>h.role_code))];
+        const rcs=codes.map(c=>(D.rc||[]).find(r=>r.code===c)).filter(Boolean)
+          .sort((a,b)=>(a.seq||0)-(b.seq||0));
+        const rc=rcs[0];
         const kinds=[k];
         if(k!=='Γονέας'&&(D.cl||[]).some(c=>c.carer_id===p.id))kinds.push('Γονέας');
-        if(k==='Γονέας'&&rc&&rc.holder_kind==='Βαθμοφόρος')kinds.push('Βαθμοφόρος');
-        /* Ο πλήρης τίτλος από τον κατάλογο ρόλων — όχι η συντομογραφία.
+        if(k==='Γονέας'&&rcs.some(r=>r.holder_kind==='Βαθμοφόρος'))kinds.push('Βαθμοφόρος');
+        /* Οι πλήρεις τίτλοι από τον κατάλογο ρόλων — όχι οι συντομογραφίες.
            «ΑΑΛ» είναι για τη λίστα· στην καρτέλα χωράει ολόκληρο. */
-        const axioma = rc ? rc.title : (isMem ? (y.role||'') : ledLabel(p,true));
+        const kath = rcs.length
+          ? rcs.map(r=>esc(r.title)+(r.short&&r.short!==r.title?` <span class="dim">(${esc(r.short)})</span>`:'')).join('<br>')
+          : esc(isMem ? (y.role||'') : ledLabel(p,true));
+        /* Δύο φορές ΤΟ ΙΔΙΟ καπέλο δεν είναι δεύτερο καθήκον — είναι λάθος
+           καταχώρηση, και μόνο εδώ φαίνεται. */
+        const diplo = hats.length>codes.length;
+        /* ══ ΠΡΟΣΩΡΙΝΟ ΚΑΠΕΛΟ ══════════════════════════════════════════════
+           Όσο τα τμήματα δεν είναι στελεχωμένα, ο Α.Σ. καλύπτει ο ίδιος —
+           άλλοτε την Αγέλη, άλλοτε την Ομάδα. Δεν του δίνουμε καπέλο σε ΟΛΑ
+           τα τμήματα (θα έγραφε ότι είναι αρχηγός των πάντων και θα χαλούσε
+           κάθε λίστα «ποιος είναι αρχηγός τίνος»)· του δίνουμε ΕΝΑ που το
+           γυρίζει. Το ίδιο το πεδίο note είναι η σημαία — χωρίς νέα στήλη. */
+        const tmp=hats.filter(h=>/^Προσωρινό —/.test(h.note||''));
+        const tmpHTML = tmp.length&&ME.role==='admin' ? tmp.map(h=>{
+          const fam=HAT_FAM.find(f=>Object.values(f.map).includes(h.role_code));
+          if(!fam)return '';
+          return `<div style="display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap">
+            <span class="pill" style="font-size:10.5px;background:var(--warnbg);color:var(--warn);border-color:transparent">προσωρινό</span>
+            <span style="font-size:12.5px">${esc(fam.t)}</span>
+            <select data-hatsec="${h.id}" style="max-width:150px;font-size:12px">
+              ${Object.entries(fam.map).map(([sec,code])=>
+                `<option value="${code}"${code===h.role_code?' selected':''}>${esc(sec)}</option>`).join('')}
+            </select></div>`}).join('') : '';
         return kv('Ιδιότητα',esc(kinds.join(' · ')))
-             + (axioma?kv('Αξίωμα',esc(axioma)
-                 +(rc&&rc.short&&rc.short!==rc.title?` <span class="dim">(${esc(rc.short)})</span>`:'')):'')})()}
+             + (kath?kv('Καθήκοντα',kath
+                 +(diplo?`<div style="font-size:11.5px;color:var(--warn)">⚠ περασμένο ${hats.length} φορές — δες «Εντολές &amp; Αναθέσεις»</div>`:'')
+                 +tmpHTML):'')})()}
       ${kv('Τάξη',esc(y.grade||''))}
       ${kv('Ημ. γέννησης',sn.dob?fdate(sn.dob)+(agey(sn.dob)?` <span class="dim">(${agey(sn.dob)} ετών)</span>`:''):'')}
       ${kv('Τηλέφωνο',p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'')}
@@ -2536,6 +2568,8 @@ async function openProfile(id){
       +'Δεν εκτυπώνεται και δεν εξάγεται πουθενά.');
     const i=document.createElement('input');i.type='file';i.accept='image/*';
     i.onchange=()=>{if(i.files[0])photoUpload(p,i.files[0],()=>openProfile(p.id))};i.click()};
+  document.querySelectorAll('[data-hatsec]').forEach(s=>s.onchange=()=>
+    hatRetarget(s.dataset.hatsec, s.value, ()=>openProfile(p.id)));
   wireCerts(p,()=>openProfile(p.id));
   wireSchools(()=>openProfile(p.id));
   if(!isMem)wireVeh(p,()=>openProfile(p.id));
@@ -3758,6 +3792,23 @@ const MEMSECS=()=>{const c=SECCFG().filter(s=>s.has_members).map(s=>s.section);
    Τυπωμένο δίπλα στον ρόλο διάβαζε «ΑΣ · ΕΔ», σαν δύο αξιώματα. Η κατάσταση
    του χαρτιού ανήκει στην οθόνη «Εντολές & Αναθέσεις». */
 const PAPER_ONLY=new Set(['ΕΔ','Ε.Δ.','ΑΝΑΘΕΣΗ','Ανάθεση','ΕΝΤΟΛΗ','Εντολή']);
+/* Το ΤΜΗΜΑ ζει μέσα στον κωδικό ρόλου (ΑΑΛ = αρχηγός ΑΓΕΛΗΣ), οπότε «αλλαγή
+   τμήματος» σημαίνει αλλαγή κωδικού. Δύο οικογένειες: αρχηγός και βαθμοφόρος. */
+const HAT_FAM=[
+  {t:'Αρχηγός τμήματος', map:{'Αγέλη':'AAL','Ομάδα':'AOP','Κοινότητα':'AKA','Δίκτυο':'APD'}},
+  {t:'Βαθμοφόρος',       map:{'Αγέλη':'BAL','Ομάδα':'BOP','Κοινότητα':'BKA','Δίκτυο':'MPD'}}];
+async function hatRetarget(hatId,code,after){
+  const rc=(D.rc||[]).find(r=>r.code===code); if(!rc)return;
+  /* Ο τίτλος και το scope ακολουθούν τον κωδικό — αλλιώς η καρτέλα θα έλεγε
+     «Αρχηγός Αγέλης» ενώ ο κωδικός θα έδειχνε Ομάδα, και τα δικαιώματα
+     βγαίνουν από τον ΚΩΔΙΚΑ. */
+  const {error}=await sb.from('person_hats')
+    .update({role_code:code, title:rc.title, scope_value:rc.section}).eq('id',hatId);
+  if(error)return toast('Δεν άλλαξε: '+error.message);
+  const h=(D.ph||[]).find(x=>x.id===hatId);
+  if(h)Object.assign(h,{role_code:code,title:rc.title,scope_value:rc.section});
+  saveCache(); toast(rc.title); after&&after();
+}
 function ledLabel(p,full){
   const c=ledCode(p);
   const ap=(p.appointment&&!PAPER_ONLY.has(String(p.appointment).trim()))?p.appointment:'';
@@ -14336,13 +14387,22 @@ const wlDays=d=>d?Math.floor((new Date()-new Date(d))/86400000):null;
      περιμένω αυτόν · άχρωμο = δεν τον άγγιξε κανείς · ξέθωρο = έκλεισε.
    Το «Ενδιαφέρεται» είναι ΚΙΤΡΙΝΟ, όχι πράσινο: δεν είναι επιτυχία, είναι
    υπόσχεση που δεν εξαργυρώθηκε. */
+/* ΔΥΟ ΕΝΤΑΣΕΙΣ ΓΙΑ ΤΟ ΙΔΙΟ ΧΡΩΜΑ. Η γραμμή θέλει απαλό — ένας πίνακας με
+   έντονα φόντα δεν διαβάζεται. Το υπόμνημα θέλει ΕΝΤΟΝΟ, γιατί ένα τετράγωνο
+   11 pixel σε απαλή απόχρωση είναι αόρατο: ο Α.Σ. έβλεπε τέσσερις λέξεις
+   χωρίς κουκκίδες και δεν καταλάβαινε τι εξηγούν. */
 function wlState(r){
-  if(r.outcome==='Έγινε μέλος')   return {k:'melos',  bg:'var(--okbg)',   ln:'var(--ok)',   t:'Γράφτηκε'};
-  if(r.outcome==='Ενδιαφέρεται')  return {k:'endiaf', bg:'var(--warnbg)', ln:'var(--warn)', t:'Είπε ναι — δεν γράφτηκε'};
-  if(r.outcome&&r.outcome!=='Αναμονή') return {k:'klisto', bg:'transparent', ln:'var(--line)', t:'Έκλεισε', dim:true};
-  if(wlCts(r).length)             return {k:'epafi',  bg:'var(--accbg)',  ln:'var(--acc)',  t:'Έγινε επικοινωνία'};
-  return {k:'anamoni', bg:'transparent', ln:'transparent', t:'Καμία επαφή'};
+  if(r.outcome==='Έγινε μέλος')   return {k:'melos',  bg:'var(--okbg)',   sw:'var(--ok)',   ln:'var(--ok)',   t:'Γράφτηκε'};
+  if(r.outcome==='Ενδιαφέρεται')  return {k:'endiaf', bg:'var(--warnbg)', sw:'var(--warn)', ln:'var(--warn)', t:'Είπε ναι — δεν γράφτηκε'};
+  if(r.outcome&&r.outcome!=='Αναμονή') return {k:'klisto', bg:'transparent', sw:'var(--line)', ln:'var(--line)', t:'Έκλεισε', dim:true};
+  if(wlCts(r).length)             return {k:'epafi',  bg:'var(--accbg)',  sw:'var(--acc)',  ln:'var(--acc)',  t:'Έγινε επικοινωνία'};
+  return {k:'anamoni', bg:'transparent', sw:'transparent', ln:'transparent', t:'Καμία επαφή'};
 }
+/* Οι σημάνσεις προέλευσης ημερομηνίας ήταν χρήσιμες ΜΙΑ ΦΟΡΑ, όταν έγινε η
+   συγχώνευση. Τώρα επαναλαμβάνονται σε 18 γραμμές και θορυβούν — η απόφαση
+   πάρθηκε, δεν ξαναπαίρνεται. Μένουν στη βάση ως ίχνος· δεν τυπώνονται. */
+const wlFlag=f=>{const s=String(f||'').trim();
+  return /^ημερομηνία:/.test(s)?'':s};
 V.waitlist=()=>{
   const rows=(D.wl||[]).slice();
   if(!rows.length){
@@ -14414,8 +14474,17 @@ V.waitlist=()=>{
 
   const row=(r,i)=>{const gi=wlG(r), g=gi.g, st=wlState(r);
     return `<tr style="background:${st.bg};border-left:3px solid ${st.ln}${st.dim?';opacity:.62':''}" title="${esc(st.t)}">
-    <td style="white-space:nowrap;text-align:right;padding-right:2px"
-        class="dim"><b style="font-size:15px">${i+1}</b></td>
+    ${/* ΤΑ ΒΕΛΑΚΙΑ ΔΙΠΛΑ ΣΤΟΝ ΑΡΙΘΜΟ, όχι σε μενού: η σειρά είναι κάτι που
+         βλέπεις και διορθώνεις στο ίδιο βλέμμα. Το ✋ λέει ότι αυτή η θέση
+         δόθηκε με το χέρι — αλλιώς δεν ξεχωρίζει από την αυτόματη. */''}
+    <td style="white-space:nowrap;text-align:right;padding-right:2px;vertical-align:top">
+      <div class="dim"><b style="font-size:15px">${i+1}</b>${r.priority!=null
+        ? '<span title="χειροκίνητη θέση" style="font-size:10px">✋</span>':''}</div>
+      <div style="display:flex;flex-direction:column;gap:1px;margin-top:2px">
+        <button class="btn gh sm wlup" data-id="${r.id}" title="Πιο πάνω"
+          style="padding:0 4px;line-height:1.15;font-size:11px"${i?'':' disabled'}>▲</button>
+        <button class="btn gh sm wldn" data-id="${r.id}" title="Πιο κάτω"
+          style="padding:0 4px;line-height:1.15;font-size:11px">▼</button></div></td>
     <td><b>${esc(r.last_name)} ${esc(r.first_name)}</b>
       <div class="dim" style="font-size:11.5px">${esc(wlClass(g))}${gi.src?' <span title="'+(gi.src==='δήλωση'?'όπως το δήλωσε ο γονιός, μεταφερμένο μπροστά':'από την ημερομηνία γέννησης')+'">('+gi.src+')</span>':''}${r.dob?' · '+fdate(r.dob)+' · '+age(r.dob):' · χωρίς ημ. γέννησης'}${r.gender?' · '+esc(r.gender):''}</div>
       ${(()=>{const h=(D.wlc||[]).filter(x=>x.waitlist_id===r.id)
@@ -14425,7 +14494,7 @@ V.waitlist=()=>{
         return `<div class="dim" style="font-size:11px">${h.map(x=>
           `${esc(x.class_year)}: <b>${esc(x.school_class)}</b> <span style="opacity:.7">${esc(x.origin)}</span>`).join(' → ')}</div>`})()}
       ${r.eligible_year_declared?`<div class="dim" style="font-size:11px">Γ΄ Δημοτικού: <b>${esc(r.eligible_year_declared)}</b> (δηλωμένο)</div>`:''}
-      ${r.flag?`<div style="font-size:11.5px;color:var(--warn)">⚠ ${esc(r.flag)}</div>`:''}
+      ${wlFlag(r.flag)?`<div style="font-size:11.5px;color:var(--warn)">⚠ ${esc(wlFlag(r.flag))}</div>`:''}
       ${r.last_year_note?`<div class="dim" style="font-size:11.5px">${esc(r.last_year_note)}</div>`:''}
       ${r.note?`<div class="dim" style="font-size:11.5px">${esc(r.note)}</div>`:''}</td>
     <td style="white-space:nowrap">${r.section?sdot(r.section)+esc(r.section):'<span class="dim">—</span>'}
@@ -14497,11 +14566,17 @@ V.waitlist=()=>{
      λένε πάντα «πόσοι είναι», αλλιώς φιλτράρεις και νομίζεις ότι μειώθηκαν.
      Προεπιλογή «ανοιχτές»: όποιος έκλεισε δεν σε απασχολεί σήμερα — αλλά δεν
      σβήνεται ποτέ, γιατί χωρίς αυτόν δεν βγαίνει το ποσοστό της χρονιάς. */
+  /* Η ΧΕΙΡΟΚΙΝΗΤΗ ΣΕΙΡΑ ΝΙΚΑ ΠΑΝΤΑ, ΣΕ ΚΑΘΕ ΤΑΞΙΝΟΜΗΣΗ. Αν έβγαινε μόνο στη
+     «σειρά αναμονής», ο Α.Σ. θα άλλαζε ταξινόμηση για να ψάξει ένα όνομα και
+     η δουλειά που έκανε θα εξαφανιζόταν — και δεν θα καταλάβαινε γιατί. */
+  const auto=(WLSORTS[WLSORT]||WLSORTS.anamoni)[1];
   const shown = list
     .filter(r=>WLST==='all' || (WLST==='open'?WL_OPEN.includes(r.outcome):r.outcome===WLST))
     .filter(r=>{if(!WLCLS)return true; const g=wlGrade(r);
       return WLCLS==='?' ? g===null||g===undefined : String(g===null?99:g)===WLCLS})
-    .sort((WLSORTS[WLSORT]||WLSORTS.anamoni)[1]);
+    .sort((a,b)=>{
+      const pa=a.priority??9999, pb=b.priority??9999;
+      return pa!==pb ? pa-pb : auto(a,b)});
   shown.forEach(r=>{const g=wlGrade(r);(groups[g===null?99:g]=groups[g===null?99:g]||[]).push(r)});
   /* Οι τάξεις για το φίλτρο βγαίνουν από ΤΑ ΔΕΔΟΜΕΝΑ, όχι από τη λίστα των
      δώδεκα: δεν προσφέρουμε «Γ΄ Γυμνασίου» αν δεν υπάρχει κανείς εκεί. */
@@ -14575,11 +14650,13 @@ V.waitlist=()=>{
       <label style="max-width:280px">Σειρά<select id="wlsort">${Object.entries(WLSORTS)
         .map(([k,[t]])=>`<option value="${k}"${k===WLSORT?' selected':''}>${esc(t)}</option>`).join('')}</select></label>
       <label style="max-width:150px">&nbsp;<button class="btn sm" id="wlExp">Εξαγωγή</button></label>
+      ${list.some(r=>r.priority!=null)?`<label style="max-width:210px">&nbsp;<button class="btn gh sm" id="wlClrPri"
+        title="Επιστροφή στην αυτόματη σειρά για όλους">✋ Καθαρισμός σειράς (${list.filter(r=>r.priority!=null).length})</button></label>`:''}
     </div>
     <div class="dim" style="font-size:11.5px;margin:6px 0 2px;display:flex;gap:12px;flex-wrap:wrap">
-      ${[['transparent','Καμία επαφή'],['var(--accbg)','Μίλησα — περιμένω απάντηση'],
-         ['var(--warnbg)','Είπε ναι — δεν γράφτηκε'],['var(--okbg)','Γράφτηκε']].map(([c,t])=>
-        `<span><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${c};border:1px solid var(--line);vertical-align:-1px"></span> ${t}</span>`).join('')}
+      ${[['transparent','Καμία επαφή'],['var(--acc)','Μίλησα — περιμένω απάντηση'],
+         ['var(--warn)','Είπε ναι — δεν γράφτηκε'],['var(--ok)','Γράφτηκε']].map(([c,t])=>
+        `<span><span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${c};border:1px solid ${c==='transparent'?'var(--ink2)':c};vertical-align:-2px"></span> ${t}</span>`).join('')}
       <span>Δείχνει <b>${shown.length}</b> από ${list.length}</span></div>
 
     ${ord.map(g=>{const l=groups[g], w=g>=3&&g<=12;
@@ -14594,6 +14671,32 @@ V.waitlist=()=>{
   document.querySelectorAll('[data-wlct]').forEach(b=>b.onclick=()=>wlContact(b.dataset.wlct,b.dataset.k));
   document.querySelectorAll('[data-wlup]').forEach(b=>b.onclick=()=>wlElevate(b.dataset.wlup));
   document.querySelectorAll('[data-wlctdel]').forEach(b=>b.onclick=()=>wlContactDel(b.dataset.wlctdel));
+
+  /* ══ ΜΕΤΑΚΙΝΗΣΗ ΜΕΣΑ ΣΤΗΝ ΤΑΞΗ ══════════════════════════════════════════
+     Ανεβάζοντας έναν, αριθμούμε ΟΛΗ την ομάδα. Αλλιώς η πρώτη μετακίνηση θα
+     έδινε priority μόνο σε δύο και οι υπόλοιποι θα κρέμονταν στο «αυτόματο» —
+     δηλαδή η σειρά θα άλλαζε σε σημεία που δεν άγγιξε κανείς. */
+  const move=async(id,dir)=>{
+    const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
+    const g=wlGrade(r), arr=groups[g===null||g===undefined?99:g]; if(!arr)return;
+    const i=arr.indexOf(r), j=i+dir;
+    if(i<0||j<0||j>=arr.length)return;
+    arr.splice(j,0,arr.splice(i,1)[0]);
+    const rows=arr.map((x,n)=>({id:x.id, priority:n+1}));
+    const {error}=await sb.from('waitlist').upsert(rows,{onConflict:'id'});
+    if(error)return toast('Δεν αποθηκεύτηκε η σειρά: '+error.message);
+    rows.forEach(x=>{const t=(D.wl||[]).find(y=>y.id===x.id); if(t)t.priority=x.priority});
+    saveCache(); route('waitlist');
+  };
+  document.querySelectorAll('.wlup').forEach(b=>b.onclick=()=>move(b.dataset.id,-1));
+  document.querySelectorAll('.wldn').forEach(b=>b.onclick=()=>move(b.dataset.id, 1));
+  const cp=$('wlClrPri'); if(cp)cp.onclick=async()=>{
+    const ids=list.filter(r=>r.priority!=null).map(r=>r.id);
+    if(!confirm(`Επιστροφή στην αυτόματη σειρά για ${ids.length};\n\nΟι ημερομηνίες αίτησης δεν αλλάζουν — μόνο η χειροκίνητη θέση σβήνεται.`))return;
+    const {error}=await sb.from('waitlist').update({priority:null}).in('id',ids);
+    if(error)return toast('Δεν καθαρίστηκε: '+error.message);
+    ids.forEach(id=>{const t=(D.wl||[]).find(y=>y.id===id); if(t)t.priority=null});
+    saveCache(); toast('Αυτόματη σειρά'); route('waitlist')};
   document.querySelectorAll('[data-wledit]').forEach(b=>b.onclick=()=>{
     WLED = WLED===b.dataset.wledit ? null : b.dataset.wledit; route('waitlist')});
   document.querySelectorAll('[data-wlcancel]').forEach(b=>b.onclick=()=>{WLED=null;route('waitlist')});
