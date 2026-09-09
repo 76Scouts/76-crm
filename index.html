@@ -907,6 +907,9 @@ const NAV=[
       ΔΟΥΛΕΙΑ που κάθεσαι και την κάνεις — ανοίγεις χαρτιά, κρίνεις, δέχεσαι.
       Οι Εκκρεμότητες λένε ΤΙ λείπει· εδώ το κλείνεις. */
    {id:'certq',t:'Επιβεβαίωση πιστοποιητικών',i:'shield',s:'live'},
+   /* ΑΝΑΦΟΡΑ, ΟΧΙ ΠΥΛΗ — ΑΚΟΜΗ. Δείχνει ποιος ΘΑ έχανε τα ευαίσθητα την
+      ημέρα που θα ενεργοποιηθεί ο κανόνας. Τρέχει μία εβδομάδα πρώτα. */
+   {id:'n91',t:'Ν.91(Ι) — ποιος θα έκλεινε',i:'lock',s:'live'},
    {id:'vpapers',t:'Χαρτιά οχημάτων',i:'car',s:'live'},
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'training',t:'Εκπαιδεύσεις',i:'book',s:'live'},
@@ -1012,6 +1015,7 @@ const SUBS={
  fimport:'Επικόλληση από εξαγωγή φόρμας — ιατρικά προηγούμενων ετών',
 
  certq:'Χαρτιά που περιμένουν να τα δεις — μέχρι τότε δεν μετρούν σε δράση',
+ n91:'Δοκιμή πριν την ενεργοποίηση: ποιος χάνει τα ευαίσθητα όταν γίνει προϋπόθεση',
  vpapers:'ΜΟΤ, ασφάλειες και άδειες κυκλοφορίας — ανά όχημα, όχι ανά άνθρωπο',
  warrants:'Εντολές Διοίκησης και Αναθέσεις Καθηκόντων',
  honours:'Εύφημες μνείες και μετάλλια — σχεδόν πάντα βαθμοφόρων',
@@ -1035,7 +1039,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 08:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 21:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6023,7 +6027,7 @@ function deskBody(){
     b.disabled=true;
     const {data,error}=await sb.rpc('make_invite',{p_person:b.dataset.inv,p_email:b.dataset.em,p_purpose:'γονέας'});
     if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
-    await loadAll(); route(ROUTE);
+    await reload1('inv','ac'); route(ROUTE);
     openPrint('Κωδικός λογαριασμού', `<div class="fpage" style="min-height:auto">${letterhead('ΠΡΟΣΒΑΣΗ ΣΤΗΝ ΕΦΑΡΜΟΓΗ','')}
       <div style="text-align:center;margin:26px 0">
         <div style="font-size:12px;color:#555">Κωδικός ενεργοποίησης για</div>
@@ -8244,14 +8248,14 @@ function grantsBody(){
       scope_level:sec==='ΟΛΑ'?'ΟΛΑ':'section', scope_value:sec==='ΟΛΑ'?null:sec,
       valid_to:to, reason:why, granted_by:ME.person_id||null});
     if(error)return msg('Δεν έγινε: '+error.message);
-    await loadAll(); route('grants');
+    await reload1('gr'); route('grants');
   };
   document.querySelectorAll('[data-rev]').forEach(b=>b.onclick=async()=>{
     b.disabled=true;
     const {error}=await sb.from('grants').update({revoked_at:new Date().toISOString(),
       revoked_by:ME.person_id||null}).eq('id',b.dataset.rev);
     if(error){msg('Δεν έγινε: '+error.message);b.disabled=false;return}
-    await loadAll(); route('grants');
+    await reload1('gr'); route('grants');
   });
 };
 
@@ -9558,6 +9562,14 @@ V.me=()=>{
         ${!Object.keys(sd).length?'<span class="dim" style="font-size:13px">Χωρίς καταχωρημένες ημερομηνίες</span>':''}</div>
     </div>
 
+    ${/* ══ Η ΔΗΛΩΣΗ ΖΕΙ ΚΑΙ ΕΔΩ ══════════════════════════════════════════════
+         Η δήλωση σχολής είναι ΔΙΚΗ ΣΟΥ πράξη — και «Η καρτέλα μου» είναι το
+         πρώτο μέρος που κοιτάζει κάποιος για ό,τι τον αφορά. Το να ζει μόνο
+         στις «Εκπαιδεύσεις» σημαίνει ότι τη βρίσκει όποιος ξέρει ήδη ότι
+         υπάρχει. ΙΔΙΑ συνάρτηση, όχι αντίγραφο: μία αλήθεια για το τι
+         προσφέρεται, τι κόβεται και τι έχεις ήδη δηλώσει. */''}
+    ${isLed(p)?`<div id="meSchools">${schoolsBlock()}</div>`:''}
+
     <div class="sec"><h3>Τα πιστοποιητικά μου</h3><span class="n">${(D.pc||[]).filter(x=>x.person_id===p.id).length}</span></div>
     <div class="card pad" style="margin-bottom:0;border-bottom:0;border-radius:var(--r) var(--r) 0 0">
       <div class="dim" style="font-size:12.5px;line-height:1.6">Δηλώνεις εσύ, <b>επιβεβαιώνει ο Α.Σ.</b>
@@ -9647,6 +9659,12 @@ V.me=()=>{
     </div>
 
     ${meTabs(p)}`;
+
+  /* Η δήλωση αλλάζει ΜΟΝΟ αυτό το κουτί — δεν ξαναχτίζεται όλη η καρτέλα.
+     Δες [[mia-allagi-mia-grammi]]. */
+  const meSchoolsDraw=()=>{const b=$('meSchools'); if(!b)return;
+    b.innerHTML=schoolsBlock(); wireSchools(meSchoolsDraw)};
+  wireSchools(meSchoolsDraw);
 
   const cm=t=>{const e=$('cMsg'); if(e)e.textContent=t};
   document.querySelectorAll('.certview').forEach(a=>a.onclick=e=>{e.preventDefault();
@@ -11152,6 +11170,86 @@ V.vpapers=()=>{
              ?Object.assign({},y,{resolved_at:'now',vehicle_id:sel.value}):y); saveCache(); }
     V.vpapers();
   });
+};
+
+/* ══ Ν.91(Ι)/2014 — Η ΠΥΛΗ ΠΡΙΝ ΓΙΝΕΙ ΠΥΛΗ ══════════════════════════════════
+   Το πιστοποιητικό σήμερα είναι ΠΕΔΙΟ: πληροφορία, όχι έλεγχος. Ένας
+   βαθμοφόρος με ληγμένο βλέπει ό,τι κι ένας με ισχύον. Η απόφαση είναι να
+   γίνει προϋπόθεση των ευαίσθητων — αλλά ΟΧΙ σήμερα, γιατί:
+
+     24 δεν έχουν κανένα · 39 το έχουν ληγμένο · 63 από 106 θα έκλειναν.
+
+   Το κείμενο της απόφασης έλεγε «περίπου 35». Η βάση λέει 63 — γι' αυτό
+   ακριβώς η αναφορά τρέχει ΠΡΩΤΑ. Ενεργοποίηση με 63 ανθρώπους κλειστούς
+   την ίδια μέρα δεν είναι έλεγχος· είναι διακοπή λειτουργίας.
+
+   ΤΟ ΚΑΤΗΓΟΡΗΜΑ ΥΠΑΡΧΕΙ ΗΔΗ ΣΤΗ ΒΑΣΗ (has_valid_n91) και ΔΕΝ είναι δεμένο
+   σε καμία πολιτική. Αυτή η οθόνη ΔΙΑΒΑΖΕΙ· δεν κλείνει τίποτα. */
+const N91COL={'χωρίς πιστοποιητικό':'bad','ληγμένο':'bad','λήγει σε 7 μέρες':'warn',
+              'λήγει σε 30 μέρες':'warn','λήγει σε 60 μέρες':'warn','εντάξει':'ok'};
+V.n91=async()=>{
+  $('view').innerHTML='<div class="card pad dim">Υπολογισμός…</div>';
+  const {data,error}=await sb.from('v_n91_gate').select('*');
+  if(error){$('view').innerHTML=`<div class="uc"><h3>Δεν διαβάστηκε</h3><p>${esc(error.message)}</p></div>`;return}
+  const rows=(data||[]).sort((a,b)=>
+    (a.meres==null?-99999:a.meres)-(b.meres==null?-99999:b.meres)
+    || nameKey(a.onoma).localeCompare(nameKey(b.onoma),'el'));
+  const kleista=rows.filter(r=>r.tha_ekleine), ok=rows.filter(r=>!r.tha_ekleine);
+  const soon=ok.filter(r=>r.meres!=null&&r.meres<60);
+  const bySec={}; kleista.forEach(r=>{const s=r.section||'—';(bySec[s]=bySec[s]||[]).push(r)});
+
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px;border-left:3px solid var(--warn)">
+      <b>Ν.91(Ι)/2014 — ποιος θα έκλεινε</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Ο κανόνας <b>δεν είναι ενεργός</b>. Αυτή η οθόνη
+        δείχνει τι θα γινόταν αν το πιστοποιητικό γινόταν <b>προϋπόθεση</b> για τα ευαίσθητα
+        (ιατρικά, κηδεμονικά, καταστάσεις δράσης). Κανείς δεν έχασε τίποτα.</div>
+      <div class="dim" style="font-size:12.5px;margin-top:6px">Δεν κλείνει ο λογαριασμός — μόνο τα ευαίσθητα.
+        Παρουσίες, πρόοδος, πρόγραμμα και επικοινωνία συνεχίζουν κανονικά.</div></div>
+
+    <div class="tiles">
+      <div class="tile bad" style="cursor:default"><div class="k">Θα έκλειναν σήμερα</div>
+        <div class="v">${kleista.length}</div><div class="s">από ${rows.length} ενεργούς βαθμοφόρους</div></div>
+      <div class="tile bad" style="cursor:default"><div class="k">Χωρίς κανένα χαρτί</div>
+        <div class="v">${rows.filter(r=>r.katastasi==='χωρίς πιστοποιητικό').length}</div><div class="s">δεν έχει δηλωθεί ποτέ</div></div>
+      <div class="tile bad" style="cursor:default"><div class="k">Ληγμένο</div>
+        <div class="v">${rows.filter(r=>r.katastasi==='ληγμένο').length}</div><div class="s">θέλει ανανέωση</div></div>
+      <div class="tile ${soon.length?'warn':''}" style="cursor:default"><div class="k">Λήγει σε &lt;60 μέρες</div>
+        <div class="v">${soon.length}</div><div class="s">πρόλαβέ τους</div></div>
+      <div class="tile ok" style="cursor:default"><div class="k">Εντάξει</div>
+        <div class="v">${ok.length-soon.length}</div><div class="s">δεν τους αγγίζει</div></div>
+    </div>
+
+    ${kleista.length?`<div class="card pad" style="margin-top:14px;border-left:3px solid var(--bad)">
+      <b>Πριν πατηθεί ο διακόπτης</b>
+      <div class="muted" style="font-size:13.5px;margin-top:5px">Με <b>${kleista.length}</b> ανθρώπους κλειστούς
+        την ίδια μέρα, ο κανόνας θα παρακαμφθεί μέσα σε μια βδομάδα — και ένας κανόνας που παρακάμπτεται
+        δεν προστατεύει κανέναν. Πάρε πρώτα αυτούς που έχουν τμήμα.</div>
+      <div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap">
+        ${Object.entries(bySec).sort((a,b)=>b[1].length-a[1].length).map(([s,l])=>
+          `<span class="pill">${s==='—'?'χωρίς τμήμα':sdot(s)+esc(s)} <b>${l.length}</b></span>`).join('')}</div>
+      <div style="margin-top:10px"><button class="btn sm" id="n91Exp">Εξαγωγή λίστας</button></div></div>`:''}
+
+    ${['χωρίς πιστοποιητικό','ληγμένο','λήγει σε 7 μέρες','λήγει σε 30 μέρες','λήγει σε 60 μέρες','εντάξει']
+      .map(k=>{const l=rows.filter(r=>r.katastasi===k); if(!l.length)return '';
+      const c=N91COL[k]||'';
+      return `<div class="sec"><h3>${esc(k[0].toUpperCase()+k.slice(1))}</h3><span class="n">${l.length}</span></div>
+        <div class="card" style="overflow:auto"><table>
+          <thead><tr><th>Βαθμοφόρος</th><th>Τμήμα</th><th>Λήξη</th><th>Κατάσταση</th></tr></thead>
+          <tbody>${l.map(r=>`<tr>
+            <td><span class="pn" data-p="${r.id}"><b>${esc(r.onoma)}</b></span></td>
+            <td style="white-space:nowrap">${r.section?sdot(r.section)+esc(r.section):'<span class="dim">—</span>'}
+              ${r.is_network?'<span class="pill" style="font-size:10.5px">Δίκτυο</span>':''}</td>
+            <td class="dim" style="white-space:nowrap">${r.lixi?fdate(r.lixi):'—'}</td>
+            <td style="white-space:nowrap"><span class="pill"${c?` style="background:var(--${c}bg);color:var(--${c});border-color:transparent"`:''}>${
+              r.meres==null?'ποτέ':(r.meres<0?Math.abs(r.meres)+' μέρες πριν':r.meres+' μέρες ακόμη')}</span></td>
+          </tr>`).join('')}</tbody></table></div>`}).join('')}`;
+
+  const ex=$('n91Exp'); if(ex)ex.onclick=()=>{
+    const R=[['Βαθμοφόρος','Τμήμα','Ιδιότητα','Λήξη Ν.91(Ι)','Κατάσταση','Μέρες']];
+    kleista.forEach(r=>R.push([r.onoma,r.section||'',r.category||'',r.lixi||'',r.katastasi,r.meres==null?'':r.meres]));
+    exportRows(R,'n91-tha-ekleinan','Ν.91(Ι) — θα έκλειναν');
+  };
 };
 
 /* Τα χαρτιά ΤΟΥ ΟΧΗΜΑΤΟΣ δεν κρίνονται εδώ: εδώ δεν υπάρχει πινακίδα να
@@ -14269,7 +14367,7 @@ function deskKidsBody(){
     b.disabled=true;
     const {data,error}=await sb.rpc('make_invite',{p_person:p.id,p_email:p.email,p_purpose:'μέλος'});
     if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
-    await loadAll(); route(ROUTE);
+    await reload1('inv','ac'); route(ROUTE);
     openPrint('Κωδικός λογαριασμού', `<div class="fpage" style="min-height:auto">${letterhead('ΠΡΟΣΒΑΣΗ ΣΤΗΝ ΕΦΑΡΜΟΓΗ','')}
       <div style="text-align:center;margin:26px 0">
         <div style="font-size:12px;color:#555">Κωδικός ενεργοποίησης για</div>
@@ -14361,6 +14459,30 @@ function wlG(r){
 const wlGrade=r=>wlG(r).g;
 const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
 let WLY='', WLED=null, WLSORT='anamoni', WLCLS='', WLST='open';
+/* Η γέφυρα ανάμεσα στις συναρτήσεις γραψίματος (που ζουν έξω) και στη
+   ζωγραφική της γραμμής (που ζει μέσα στη V.waitlist, γιατί χρειάζεται τα
+   φίλτρα και τις ομάδες). Ορίζεται κάθε φορά που ζωγραφίζεται η οθόνη. */
+let WLPATCH=()=>{};
+
+/* ══ ΞΑΝΑΔΙΑΒΑΣΕ ΕΝΑΝ ΠΙΝΑΚΑ, ΟΧΙ ΟΛΟΥΣ ═══════════════════════════════════
+   Το loadAll() είναι ~84 ερωτήματα. Καλείται μετά από πράξεις που αγγίζουν
+   ΕΝΑ αντικείμενο — μία πρόσκληση, μία παραχώρηση — και τα 83 ερωτήματα
+   είναι σκουπίδια. Χειρότερα: όσο τρέχουν, η οθόνη είναι παγωμένη και μετά
+   πετάγεται στην κορυφή.
+   Οι ερωτήσεις εδώ είναι ΑΝΤΙΓΡΑΦΟ αυτών του loadAll() — αν αλλάξει το όριο
+   ή η ταξινόμηση εκεί, αλλάζει και εδώ. Γι' αυτό είναι ΛΙΓΕΣ: μόνο όσοι
+   πίνακες αλλάζουν από κουμπί που πατιέται δεκάδες φορές τη μέρα. */
+const R1={
+  bh : ()=>sb.from('badgeholders').select('*'),
+  gr : ()=>sb.from('grants').select('*').order('valid_to',{ascending:false}).limit(500),
+  inv: ()=>sb.from('invitations').select('*').limit(2000),
+  ac : ()=>sb.from('v_accounts').select('*'),
+};
+async function reload1(...keys){
+  for(const k of keys){ const {data,error}=await R1[k]();
+    if(error)console.warn('reload1',k,error); else if(data)D[k]=data }
+  saveCache();
+}
 
 /* ══ ΤΡΕΙΣ ΑΞΟΝΕΣ, ΟΧΙ ΕΝΑΣ ═══════════════════════════════════════════════
    Ό,τι ξέρουμε για ένα παιδί της λίστας απαντά σε τρεις ΔΙΑΦΟΡΕΤΙΚΕΣ
@@ -14433,7 +14555,7 @@ V.waitlist=()=>{
   /* Η γραμμή επεξεργασίας ανοίγει ΚΑΤΩ από την εγγραφή, όχι σε παράθυρο:
      διορθώνεις κοιτώντας τα διπλανά παιδιά, που είναι και ο λόγος που
      κατάλαβες ότι κάτι δεν πάει καλά. */
-  const edit=r=>`<tr><td colspan="6" style="background:var(--bg)">
+  const edit=r=>`<tr data-wledrow="${r.id}"><td colspan="6" style="background:var(--bg)">
     <div class="grow">
       <label>Επίθετο<input data-f="last_name" value="${esc(r.last_name||'')}"></label>
       <label>Όνομα<input data-f="first_name" value="${esc(r.first_name||'')}"></label>
@@ -14473,7 +14595,7 @@ V.waitlist=()=>{
       και το γράφουμε με ⚠ — δεν διορθώνεται σιωπηλά.</div></td></tr>`;
 
   const row=(r,i)=>{const gi=wlG(r), g=gi.g, st=wlState(r);
-    return `<tr style="background:${st.bg};border-left:3px solid ${st.ln}${st.dim?';opacity:.62':''}" title="${esc(st.t)}">
+    return `<tr data-wlrow="${r.id}" style="background:${st.bg};border-left:3px solid ${st.ln}${st.dim?';opacity:.62':''}" title="${esc(st.t)}">
     ${/* ΤΑ ΒΕΛΑΚΙΑ ΔΙΠΛΑ ΣΤΟΝ ΑΡΙΘΜΟ, όχι σε μενού: η σειρά είναι κάτι που
          βλέπεις και διορθώνεις στο ίδιο βλέμμα. Το ✋ λέει ότι αυτή η θέση
          δόθηκε με το χέρι — αλλιώς δεν ξεχωρίζει από την αυτόματη. */''}
@@ -14612,15 +14734,16 @@ V.waitlist=()=>{
 
     <div class="tiles">
       <div class="tile ${ready.length?'warn':''}" style="cursor:default"><div class="k">Έχουν την ηλικία</div>
-        <div class="v">${ready.length}</div><div class="s">Γ΄ Δημοτικού και πάνω</div></div>
+        <div class="v" data-wltile="ready">${ready.length}</div><div class="s">Γ΄ Δημοτικού και πάνω</div></div>
       <div class="tile" style="cursor:default"><div class="k">Περιμένουν να μεγαλώσουν</div>
-        <div class="v">${later.length}</div><div class="s">κάτω από Γ΄ Δημοτικού</div></div>
+        <div class="v" data-wltile="later">${later.length}</div><div class="s">κάτω από Γ΄ Δημοτικού</div></div>
       <div class="tile ${stale.length?'bad':'warn'}" style="cursor:default"><div class="k">Είπαν ναι</div>
-        <div class="v">${yes.length}</div><div class="s">${stale.length?`<b>${stale.length}</b> πάνω από ${WL_STALE} μέρες`:'δεν γράφτηκαν ακόμη'}</div></div>
+        <div class="v" data-wltile="yes">${yes.length}</div>
+        <div class="s" data-wltile="stalesub">${stale.length?`<b>${stale.length}</b> πάνω από ${WL_STALE} μέρες`:'δεν γράφτηκαν ακόμη'}</div></div>
       <div class="tile ok" style="cursor:default"><div class="k">Έγιναν μέλη</div>
-        <div class="v">${joined.length}</div><div class="s">από τη λίστα</div></div>
+        <div class="v" data-wltile="joined">${joined.length}</div><div class="s">από τη λίστα</div></div>
       <div class="tile" style="cursor:default"><div class="k">Έκλεισαν</div>
-        <div class="v">${gone.length}</div><div class="s">δεν ενδιαφέρονται ή δεν απάντησαν</div></div>
+        <div class="v" data-wltile="gone">${gone.length}</div><div class="s">δεν ενδιαφέρονται ή δεν απάντησαν</div></div>
     </div>
 
     <div class="sec" style="margin-top:14px"><h3>Τι απέδωσε κάθε χρονιά</h3></div>
@@ -14662,23 +14785,89 @@ V.waitlist=()=>{
     ${ord.map(g=>{const l=groups[g], w=g>=3&&g<=12;
       return `<div class="sec"><h3>${esc(wlClass(g===99?null:g))}</h3><span class="n">${l.length}</span></div>
         ${w?'':`<div class="dim" style="font-size:12.5px;margin:-4px 0 8px">Δεν έχει ακόμη την τάξη για την Αγέλη του 76ου (ξεκινά από Γ΄ Δημοτικού).</div>`}
-        ${table(l)}`}).join('')}`;
+        <div data-wlgrp="${g}">${table(l)}</div>`}).join('')}`;
+
+  /* ══ ΜΙΑ ΑΛΛΑΓΗ = ΜΙΑ ΓΡΑΜΜΗ ══════════════════════════════════════════════
+     Το route('waitlist') μετά από κάθε γράψιμο ξαναέχτιζε 160 γραμμές για να
+     αλλάξει ένα pill: η οθόνη πεταγόταν στην κορυφή και χανόταν το πού
+     κοίταζες. Ολόκληρη οθόνη ΜΟΝΟ όταν αλλάζει το ΣΥΝΟΛΟ (φίλτρο, σειρά,
+     μαζική ενέργεια). Για ένα παιδί, ξαναζωγραφίζεται το <tr> του.
+     Ο δείκτης βγαίνει από την ομάδα, όχι από κλεισμένο index — αλλιώς μετά
+     τη δεύτερη αλλαγή η αρίθμηση θα έλεγε ψέματα. */
+  function bindRow(tr){
+    if(!tr)return;
+    tr.querySelectorAll('[data-wlct]').forEach(b=>b.onclick=()=>wlContact(b.dataset.wlct,b.dataset.k));
+    tr.querySelectorAll('[data-wlup]').forEach(b=>b.onclick=()=>wlElevate(b.dataset.wlup));
+    tr.querySelectorAll('[data-wlctdel]').forEach(b=>b.onclick=()=>wlContactDel(b.dataset.wlctdel));
+    tr.querySelectorAll('.wlup').forEach(b=>b.onclick=()=>move(b.dataset.id,-1));
+    tr.querySelectorAll('.wldn').forEach(b=>b.onclick=()=>move(b.dataset.id, 1));
+    tr.querySelectorAll('[data-wledit]').forEach(b=>b.onclick=()=>{
+      WLED = WLED===b.dataset.wledit ? null : b.dataset.wledit; WLPATCH(b.dataset.wledit)});
+    tr.querySelectorAll('[data-wlcancel]').forEach(b=>b.onclick=()=>{
+      const id=WLED; WLED=null; if(id)WLPATCH(id)});
+    tr.querySelectorAll('[data-wlo]').forEach(s=>s.onchange=async e=>{
+      await wlSave(s.dataset.wlo,{outcome:e.target.value})});
+    tr.querySelectorAll('[data-wlsave]').forEach(b=>b.onclick=async()=>{
+      const td=b.closest('td'), patch={};
+      td.querySelectorAll('[data-f]').forEach(i=>{
+        let v=i.value; if(v==='')v=null; patch[i.dataset.f]=v});
+      const cs=td.querySelector('[data-wlcls]'), cls=cs&&cs.value;
+      WLED=null;
+      if(cls){
+        /* ΠΡΟΣΘΗΚΗ, όχι αντικατάσταση. Ο έλεγχος «τι έλεγε τότε» πρέπει να
+           δουλεύει και μετά από δέκα διορθώσεις. */
+        const row={waitlist_id:b.dataset.wlsave, class_year:curScoutYear(), school_class:cls, origin:'χέρι'};
+        const {error}=await sb.from('waitlist_class').upsert(row,{onConflict:'waitlist_id,class_year,origin'});
+        if(error)toast('Η τάξη δεν αποθηκεύτηκε: '+error.message);
+        else{const ex=(D.wlc||[]).find(x=>x.waitlist_id===row.waitlist_id&&x.class_year===row.class_year&&x.origin==='χέρι');
+          if(ex)ex.school_class=cls; else (D.wlc=D.wlc||[]).push(row)}
+      }
+      await wlSave(b.dataset.wlsave,patch)});
+  }
+  /* Τα ΠΛΑΚΙΔΙΑ ξαναϋπολογίζονται από το D.wl, ΟΧΙ από το παγωμένο `list`.
+     Αυτή ήταν η παγίδα στους Λογαριασμούς: η γραμμή ανανεωνόταν, οι μετρητές
+     έμεναν πίσω, και ο Α.Σ. έβλεπε δύο αλήθειες στην ίδια οθόνη. */
+  function wlTiles(){
+    const l=(D.wl||[]).filter(r=>!WLY||r.scout_year===WLY);
+    const op=l.filter(r=>r.outcome==='Αναμονή'), ys=l.filter(r=>r.outcome==='Ενδιαφέρεται');
+    const v={ready:op.filter(r=>(wlGrade(r)||0)>=3).length,
+             later:op.filter(r=>(wlGrade(r)||0)<3).length,
+             yes:ys.length, stale:ys.filter(r=>(wlDays(r.outcome_at)||0)>WL_STALE).length,
+             joined:l.filter(r=>r.outcome==='Έγινε μέλος').length,
+             gone:l.filter(r=>['Δεν ενδιαφέρεται','Δεν απάντησε','Διπλοεγγραφή'].includes(r.outcome)).length};
+    Object.entries(v).forEach(([k,n])=>{const el=document.querySelector(`[data-wltile="${k}"]`); if(el)el.textContent=n});
+    const st=document.querySelector('[data-wltile="stalesub"]');
+    if(st)st.innerHTML=v.stale?`<b>${v.stale}</b> πάνω από ${WL_STALE} μέρες`:'δεν γράφτηκαν ακόμη';
+  }
+  WLPATCH=id=>{
+    const r=(D.wl||[]).find(x=>x.id===id);
+    const tr=document.querySelector(`tr[data-wlrow="${id}"]`);
+    if(!r||!tr)return;
+    const g=wlGrade(r), arr=groups[g===null||g===undefined?99:g]||[];
+    const nx=tr.nextElementSibling;
+    if(nx&&nx.dataset&&nx.dataset.wledrow===id)nx.remove();
+    const box=document.createElement('tbody');
+    box.innerHTML=row(r, Math.max(0,arr.indexOf(r)));
+    tr.replaceWith(...box.children);
+    bindRow(document.querySelector(`tr[data-wlrow="${id}"]`));
+    const ed=document.querySelector(`tr[data-wledrow="${id}"]`); if(ed)bindRow(ed);
+    wlTiles();
+  };
 
   const ys=$('wly'); if(ys)ys.onchange=e=>{WLY=e.target.value;WLED=null;route('waitlist')};
   const so=$('wlsort'); if(so)so.onchange=e=>{WLSORT=e.target.value;WLED=null;route('waitlist')};
   const cf=$('wlcls'); if(cf)cf.onchange=e=>{WLCLS=e.target.value;WLED=null;route('waitlist')};
   const sf=$('wlst');  if(sf)sf.onchange=e=>{WLST=e.target.value;WLED=null;route('waitlist')};
-  document.querySelectorAll('[data-wlct]').forEach(b=>b.onclick=()=>wlContact(b.dataset.wlct,b.dataset.k));
-  document.querySelectorAll('[data-wlup]').forEach(b=>b.onclick=()=>wlElevate(b.dataset.wlup));
-  document.querySelectorAll('[data-wlctdel]').forEach(b=>b.onclick=()=>wlContactDel(b.dataset.wlctdel));
 
   /* ══ ΜΕΤΑΚΙΝΗΣΗ ΜΕΣΑ ΣΤΗΝ ΤΑΞΗ ══════════════════════════════════════════
      Ανεβάζοντας έναν, αριθμούμε ΟΛΗ την ομάδα. Αλλιώς η πρώτη μετακίνηση θα
      έδινε priority μόνο σε δύο και οι υπόλοιποι θα κρέμονταν στο «αυτόματο» —
-     δηλαδή η σειρά θα άλλαζε σε σημεία που δεν άγγιξε κανείς. */
+     δηλαδή η σειρά θα άλλαζε σε σημεία που δεν άγγιξε κανείς.
+     Ξαναζωγραφίζεται ΜΟΝΟ ο πίνακας της τάξης: οι άλλες τάξεις δεν άλλαξαν. */
   const move=async(id,dir)=>{
     const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
-    const g=wlGrade(r), arr=groups[g===null||g===undefined?99:g]; if(!arr)return;
+    const key=(()=>{const g=wlGrade(r);return g===null||g===undefined?99:g})();
+    const arr=groups[key]; if(!arr)return;
     const i=arr.indexOf(r), j=i+dir;
     if(i<0||j<0||j>=arr.length)return;
     arr.splice(j,0,arr.splice(i,1)[0]);
@@ -14686,38 +14875,22 @@ V.waitlist=()=>{
     const {error}=await sb.from('waitlist').upsert(rows,{onConflict:'id'});
     if(error)return toast('Δεν αποθηκεύτηκε η σειρά: '+error.message);
     rows.forEach(x=>{const t=(D.wl||[]).find(y=>y.id===x.id); if(t)t.priority=x.priority});
-    saveCache(); route('waitlist');
+    saveCache();
+    const tb=document.querySelector(`[data-wlgrp="${key}"] tbody`);
+    if(!tb)return route('waitlist');
+    tb.innerHTML=arr.map((x,n)=>row(x,n)).join('');
+    tb.querySelectorAll('tr[data-wlrow]').forEach(bindRow);
   };
-  document.querySelectorAll('.wlup').forEach(b=>b.onclick=()=>move(b.dataset.id,-1));
-  document.querySelectorAll('.wldn').forEach(b=>b.onclick=()=>move(b.dataset.id, 1));
   const cp=$('wlClrPri'); if(cp)cp.onclick=async()=>{
     const ids=list.filter(r=>r.priority!=null).map(r=>r.id);
     if(!confirm(`Επιστροφή στην αυτόματη σειρά για ${ids.length};\n\nΟι ημερομηνίες αίτησης δεν αλλάζουν — μόνο η χειροκίνητη θέση σβήνεται.`))return;
     const {error}=await sb.from('waitlist').update({priority:null}).in('id',ids);
     if(error)return toast('Δεν καθαρίστηκε: '+error.message);
     ids.forEach(id=>{const t=(D.wl||[]).find(y=>y.id===id); if(t)t.priority=null});
+    /* Εδώ ΝΑΙ ολόκληρη: άλλαξε η σειρά ΟΛΩΝ των τάξεων. */
     saveCache(); toast('Αυτόματη σειρά'); route('waitlist')};
-  document.querySelectorAll('[data-wledit]').forEach(b=>b.onclick=()=>{
-    WLED = WLED===b.dataset.wledit ? null : b.dataset.wledit; route('waitlist')});
-  document.querySelectorAll('[data-wlcancel]').forEach(b=>b.onclick=()=>{WLED=null;route('waitlist')});
-  document.querySelectorAll('[data-wlo]').forEach(s=>s.onchange=async e=>{
-    await wlSave(s.dataset.wlo,{outcome:e.target.value})});
-  document.querySelectorAll('[data-wlsave]').forEach(b=>b.onclick=async()=>{
-    const tr=b.closest('td'), patch={};
-    tr.querySelectorAll('[data-f]').forEach(i=>{
-      let v=i.value; if(v==='')v=null; patch[i.dataset.f]=v});
-    const cs=tr.querySelector('[data-wlcls]'), cls=cs&&cs.value;
-    WLED=null;
-    if(cls){
-      /* ΠΡΟΣΘΗΚΗ, όχι αντικατάσταση. Ο έλεγχος «τι έλεγε τότε» πρέπει να
-         δουλεύει και μετά από δέκα διορθώσεις. */
-      const row={waitlist_id:b.dataset.wlsave, class_year:curScoutYear(), school_class:cls, origin:'χέρι'};
-      const {error}=await sb.from('waitlist_class').upsert(row,{onConflict:'waitlist_id,class_year,origin'});
-      if(error)toast('Η τάξη δεν αποθηκεύτηκε: '+error.message);
-      else{const ex=(D.wlc||[]).find(x=>x.waitlist_id===row.waitlist_id&&x.class_year===row.class_year&&x.origin==='χέρι');
-        if(ex)ex.school_class=cls; else (D.wlc=D.wlc||[]).push(row)}
-    }
-    await wlSave(b.dataset.wlsave,patch)});
+  document.querySelectorAll('tr[data-wlrow]').forEach(bindRow);
+  const ed0=document.querySelector('tr[data-wledrow]'); if(ed0)bindRow(ed0);
   const ex=$('wlExp'); if(ex)ex.onclick=()=>{
     const R=[['Χρονιά','Επίθετο','Όνομα','Φύλο','Ημ. γέννησης','Φετινή τάξη','Πηγή τάξης','Δήλωσε','Χρονιά δήλωσης',
               'Τμήμα','Αιτητής','Τηλέφωνο','Email','Ποιος τον έφερε','Τι έγινε πέρσι','Καμπανάκι','Έκβαση','Σημείωση','Προέλευση']];
@@ -14739,7 +14912,8 @@ async function wlSave(id,patch){
   const {error}=await sb.from('waitlist').update(patch).eq('id',id);
   if(error){toast('Δεν αποθηκεύτηκε: '+error.message);return}
   Object.assign(r,patch);
-  toast('Αποθηκεύτηκε.'); route('waitlist');
+  /* ΜΙΑ ΓΡΑΜΜΗ, ΟΧΙ ΟΛΗ Η ΟΘΟΝΗ. Δες [[mia-allagi-mia-grammi]]. */
+  toast('Αποθηκεύτηκε.'); WLPATCH(id);
 }
 
 /* ΕΝΑ ΚΛΙΚ = ΜΙΑ ΕΠΑΦΗ ΣΗΜΕΡΑ. Δεν ρωτάμε ημερομηνία: την ώρα που κλείνεις
@@ -14750,12 +14924,13 @@ async function wlContact(id,kind){
   const {data,error}=await sb.from('waitlist_contact').insert(row).select().single();
   if(error)return toast('Δεν καταγράφηκε: '+error.message);
   (D.wlct=D.wlct||[]).push(data); saveCache();
-  toast(kind+' — καταγράφηκε'); route('waitlist');
+  toast(kind+' — καταγράφηκε'); WLPATCH(id);
 }
 async function wlContactDel(cid){
+  const c=(D.wlct||[]).find(x=>x.id===cid); const wid=c&&c.waitlist_id;
   const {error}=await sb.from('waitlist_contact').delete().eq('id',cid);
   if(error)return toast('Δεν διαγράφηκε: '+error.message);
-  D.wlct=(D.wlct||[]).filter(x=>x.id!==cid); saveCache(); route('waitlist');
+  D.wlct=(D.wlct||[]).filter(x=>x.id!==cid); saveCache(); if(wid)WLPATCH(wid);
 }
 
 /* ══ ΑΠΟ ΤΗ ΛΙΣΤΑ ΣΤΟ ΜΗΤΡΩΟ ══════════════════════════════════════════════
