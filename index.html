@@ -858,6 +858,11 @@ const NAV=[
     αλλάζει ιδιότητα σε «Μέλος». Οι οθόνες υπάρχουν — η θέση στο μενού όχι. */
  {g:'Εγώ', d:'Ο δικός μου φάκελος', items:[
    {id:'me',t:'Η καρτέλα μου',i:'users',s:'live'},
+   /* ΔΙΚΟ ΤΗΣ ΚΟΥΜΠΙ. Η δήλωση σχολής είναι πράξη με προθεσμία — ό,τι έχει
+      προθεσμία δεν κρύβεται σε καρτέλα μέσα σε άλλη οθόνη. Δείχνει το ΙΔΙΟ
+      μπλοκ με την «Καρτέλα μου» και τις «Εκπαιδεύσεις»: μία αλήθεια, τρεις
+      πόρτες — γιατί ο καθένας μπαίνει από αλλού. */
+   {id:'myschools',t:'Δηλώνω σχολή',i:'award',s:'live'},
    {id:'myatt',t:'Οι παρουσίες μου',i:'check',s:'live'},
    {id:'myforms',t:'Οι φόρμες μου',i:'book',s:'live'}]},
 
@@ -1016,6 +1021,7 @@ const SUBS={
 
  certq:'Χαρτιά που περιμένουν να τα δεις — μέχρι τότε δεν μετρούν σε δράση',
  n91:'Δοκιμή πριν την ενεργοποίηση: ποιος χάνει τα ευαίσθητα όταν γίνει προϋπόθεση',
+ myschools:'Δηλώνω ενδιαφέρον για τις σχολές της χρονιάς — δεν με γράφει, το βλέπει ο Α.Σ.',
  vpapers:'ΜΟΤ, ασφάλειες και άδειες κυκλοφορίας — ανά όχημα, όχι ανά άνθρωπο',
  warrants:'Εντολές Διοίκησης και Αναθέσεις Καθηκόντων',
  honours:'Εύφημες μνείες και μετάλλια — σχεδόν πάντα βαθμοφόρων',
@@ -1039,7 +1045,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-09 21:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-09 21:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1649,6 +1655,8 @@ let PERSONAS=[], PA=null;
    από εδώ — αλλιώς ο φακός λέει ψέματα: σου δείχνει τις δικές σου οθόνες με
    λιγότερα κουμπιά, αντί για τις οθόνες του άλλου. */
 const NAV_SELF=['me','myatt','myforms'];          // ο καθένας, για τον εαυτό του
+/* Οι σχολές αφορούν ΜΟΝΟ βαθμοφόρους — δεν μπαίνουν στο NAV_SELF, που το
+   κληρονομεί και το μέλος. */
 const NAV_MEMBER=[...NAV_SELF,'progKA','synod'];
 const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile'];
 /* Ο απλός βαθμοφόρος: το τμήμα του και το πρόγραμμα. Όχι μητρώο, όχι χρήματα. */
@@ -1657,7 +1665,7 @@ const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
   'progAL','progOP','progKA','medical','enroll',
   /* Οι σχολές δηλώνονται εδώ. Χωρίς αυτή την οθόνη ο απλός βαθμοφόρος δεν
      έχει πού να πει «θέλω να πάω» — και η δήλωση είναι δική του πράξη. */
-  'training'];
+  'training','me','myschools'];
 /* Ο Αρχηγός τμήματος: τα παραπάνω, συν ό,τι υπογράφει ή ζητά. */
 /* Ο φάκελος δράσης ανήκει σε όποιον ΤΡΕΧΕΙ τη δράση: τηλέφωνα, πιστοποιητικά
    συνοδών, τοποθεσία. Ήταν μόνο του Α.Σ., που δεν είναι εκεί την ημέρα. */
@@ -2148,14 +2156,22 @@ function modeBar(){
    Δύο θέσεις στο μενού για ένα θέμα σε κάνει να ψάχνεις σε ποια ήσουν.
    Ο μηχανισμός δεν ξαναγράφει τις οθόνες — τις τυλίγει. */
 let SUBTAB={}; try{SUBTAB=JSON.parse(localStorage.getItem('e76:subtab')||'{}')}catch(e){SUBTAB={}}
-function tabView(key, tabs){
+function tabView(key, tabs, head){
   const k = SUBTAB[key] && tabs.some(t=>t.k===SUBTAB[key]) ? SUBTAB[key] : tabs[0].k;
   const t = tabs.find(x=>x.k===k);
-  t.fn();                                   // η υπο-οθόνη γεμίζει το #view
-  $('view').insertAdjacentHTML('afterbegin',
-    `<div class="subtabs">${tabs.map(x=>
+  const bar=`<div class="subtabs">${tabs.map(x=>
       `<button class="stab${x.k===k?' on':''}" data-vtab="${esc(x.k)}">${x.i?ic(x.i,14):''}<span>${esc(x.t)}</span></button>`
-     ).join('')}</div>`);
+     ).join('')}</div>`;
+  if(head===undefined){
+    t.fn();                                 // η υπο-οθόνη γεμίζει το #view
+    $('view').insertAdjacentHTML('afterbegin', bar);
+  }else{
+    /* ΜΕ ΚΕΦΑΛΙΔΑ: η κεντρική κάρτα μένει πάνω και δεν ξαναζωγραφίζεται από
+       καρτέλα σε καρτέλα. «Ποιος είμαι» δεν είναι περιεχόμενο μιας καρτέλας —
+       είναι το πλαίσιο όλων. Η υπο-οθόνη γράφει στο δικό της κουτί. */
+    $('view').innerHTML = head + bar + '<div id="vbody"></div>';
+    t.fn($('vbody'));
+  }
   /* ΟΧΙ data-st: το χρησιμοποιεί ήδη ο επιλογέας σταδίου στην Πρόοδο, και το
      δεύτερο δέσιμο έσβηνε το πρώτο — οι καρτέλες φαίνονταν «νεκρές». */
   document.querySelectorAll('[data-vtab]').forEach(b=>b.onclick=()=>{
@@ -9546,11 +9562,17 @@ V.me=()=>{
   const mine=D.att.filter(a=>a.person_id===p.id&&ses.some(s=>s.id===a.session_id));
   const pct=mine.length?Math.round(100*mine.filter(x=>x.status==='Παρών').length/mine.length):null;
   const row=(k,v)=>v?`<div class="kv"><b>${esc(k)}</b><span>${v}</span></div>`:'';
-  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  /* ══ ΚΕΦΑΛΙΔΑ ΠΟΥ ΜΕΝΕΙ, ΠΕΡΙΕΧΟΜΕΝΟ ΠΟΥ ΑΛΛΑΖΕΙ ═════════════════════════
+     Η οθόνη είχε γίνει σεντόνι: στοιχεία, παρουσίες, πορεία, σχολές,
+     πιστοποιητικά, οχήματα, εκπαιδεύσεις, δράσεις, μεταβολές, πτυχία — όλα
+     το ένα κάτω από το άλλο. Το «ποιος είμαι» δεν είναι περιεχόμενο μιας
+     ενότητας· είναι το πλαίσιο. Μένει πάνω, τα υπόλοιπα σε καρτέλες. */
+  const head=`<div class="card pad" style="margin-bottom:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       ${avatar(p,46)}${sdot(sec)}<div><div style="font-size:19px;font-weight:600;letter-spacing:-.01em">${pn(p)}</div>
       <div class="dim" style="font-size:13px">${esc(ledLabel(p,true))}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
-      <span class="sp"></span><button class="btn sm" data-p="${p.id}">Πλήρης καρτέλα</button></div>
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
+      <span class="sp"></span><button class="btn sm" data-p="${p.id}">Πλήρης καρτέλα</button></div>`;
+
+  const overHTML=`<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
       <div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Στοιχεία</h3>
         ${row('Τμήμα',esc(sec||'—'))}${row('Υποομάδα',esc(y.group_name||''))}${row('Τηλέφωνο',p.phone?fphone(p.phone):'')}${row('Email',esc(p.email||''))}</div>
       <div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Παρουσίες ${esc(YEAR)}</h3>
@@ -9560,17 +9582,9 @@ V.me=()=>{
         ${row('Εγγραφή',esc(sd.Registration||''))}${row('Υπόσχεση Λυκ.',esc(fgr(sd.CubPromise||sd.CubDate)))}${row('Υπόσχεση Προσκ.',esc(fgr(sd.ScoutPromise||sd.ScoutDate)))}
         ${row('Πρόσκ. Δημοκρατίας',esc(fgr(sd.RepublicDate)))}${row('Έγινε βαθμοφόρος',esc(fgr(sd.LeaderDate)))}
         ${!Object.keys(sd).length?'<span class="dim" style="font-size:13px">Χωρίς καταχωρημένες ημερομηνίες</span>':''}</div>
-    </div>
+    </div>`;
 
-    ${/* ══ Η ΔΗΛΩΣΗ ΖΕΙ ΚΑΙ ΕΔΩ ══════════════════════════════════════════════
-         Η δήλωση σχολής είναι ΔΙΚΗ ΣΟΥ πράξη — και «Η καρτέλα μου» είναι το
-         πρώτο μέρος που κοιτάζει κάποιος για ό,τι τον αφορά. Το να ζει μόνο
-         στις «Εκπαιδεύσεις» σημαίνει ότι τη βρίσκει όποιος ξέρει ήδη ότι
-         υπάρχει. ΙΔΙΑ συνάρτηση, όχι αντίγραφο: μία αλήθεια για το τι
-         προσφέρεται, τι κόβεται και τι έχεις ήδη δηλώσει. */''}
-    ${isLed(p)?`<div id="meSchools">${schoolsBlock()}</div>`:''}
-
-    <div class="sec"><h3>Τα πιστοποιητικά μου</h3><span class="n">${(D.pc||[]).filter(x=>x.person_id===p.id).length}</span></div>
+  const certHTML=`<div class="sec" style="margin-top:0"><h3>Τα πιστοποιητικά μου</h3><span class="n">${(D.pc||[]).filter(x=>x.person_id===p.id).length}</span></div>
     <div class="card pad" style="margin-bottom:0;border-bottom:0;border-radius:var(--r) var(--r) 0 0">
       <div class="dim" style="font-size:12.5px;line-height:1.6">Δηλώνεις εσύ, <b>επιβεβαιώνει ο Α.Σ.</b>
         Μέχρι τότε το πιστοποιητικό φαίνεται εδώ αλλά <b>δεν μετράει</b> για το ποιος συνοδεύει σε δράση —
@@ -9622,9 +9636,9 @@ V.me=()=>{
       <button class="btn p" id="cAdd">Ανέβασμα για έλεγχο</button>
       <span class="dim" id="cMsg" style="margin-left:10px;font-size:12.5px"></span>
       <div class="dim" style="font-size:11.5px;margin-top:6px">Πάει στον Α.Σ. για επιβεβαίωση. Μέχρι τότε φαίνεται ως <b>εκκρεμεί</b> και δεν μετράει για καταλληλότητα.</div>
-    </div>
+    </div>`;
 
-    <div class="sec"><h3>Τα οχήματά μου</h3></div>
+  const vehHTML=`<div class="sec" style="margin-top:0"><h3>Τα οχήματά μου</h3></div>
     <div class="card pad">
       <div class="dim" style="font-size:12.5px;margin-bottom:10px">Δήλωσε όχημα για τις δράσεις. Μπορείς να το <b>μοιραστείς</b>
         με άλλον βαθμοφόρο της οικογένειας ή να το <b>δανείσεις</b> για μια περίοδο — χωρίς να πάψει να είναι δικό σου.</div>
@@ -9656,16 +9670,15 @@ V.me=()=>{
       </div>
       <button class="btn" id="vAdd">Δήλωση οχήματος</button>
       <span class="dim" id="vMsg" style="margin-left:10px;font-size:12.5px"></span>
-    </div>
+    </div>`;
 
-    ${meTabs(p)}`;
-
-  /* Η δήλωση αλλάζει ΜΟΝΟ αυτό το κουτί — δεν ξαναχτίζεται όλη η καρτέλα.
-     Δες [[mia-allagi-mia-grammi]]. */
+  /* Η καλωδίωση ακολουθεί το περιεχόμενο: κάθε καρτέλα δένει ΤΑ ΔΙΚΑ ΤΗΣ
+     κουμπιά όταν ζωγραφιστεί. Παλιά δένονταν όλα μαζί στο τέλος — τώρα τα
+     μισά δεν υπάρχουν στην οθόνη τη στιγμή του δεσίματος. */
   const meSchoolsDraw=()=>{const b=$('meSchools'); if(!b)return;
     b.innerHTML=schoolsBlock(); wireSchools(meSchoolsDraw)};
-  wireSchools(meSchoolsDraw);
 
+  const wireCert=()=>{
   const cm=t=>{const e=$('cMsg'); if(e)e.textContent=t};
   document.querySelectorAll('.certview').forEach(a=>a.onclick=e=>{e.preventDefault();
     const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
@@ -9703,6 +9716,9 @@ V.me=()=>{
     saveCache(); V.me();
     toast('Ανέβηκε — περιμένει έλεγχο από τον Α.Σ.');
   };
+  };
+
+  const wireVeh=()=>{
   const vm=t=>{const e=$('vMsg'); if(e)e.textContent=t};
   const va=$('vAdd'); if(va)va.onclick=async()=>{
     const plate=platePretty($('vP').value);
@@ -9718,6 +9734,25 @@ V.me=()=>{
     await sb.from('vehicle_links').insert({vehicle_id:v.id,person_id:p.id,relation:'Ιδιοκτήτης',valid_from:new Date().toISOString().slice(0,10)});
     await loadAll(); route('me');
   };
+  };
+
+  /* Η σειρά είναι η σειρά που τα χρειάζεσαι: πρώτα «πού βρίσκομαι», μετά
+     «τι δηλώνω», μετά τα χαρτιά μου, και τελευταίο το ιστορικό — που το
+     κοιτάς μία φορά τον χρόνο, όχι κάθε Σάββατο. */
+  const tabs=[
+    {k:'over', t:'Επισκόπηση',    i:'user',   d:'τμήμα, παρουσίες, πορεία',
+      fn:box=>{box.innerHTML=overHTML}},
+    ...(isLed(p)?[{k:'sch', t:'Σχολές', i:'award', d:'δηλώνω συμμετοχή',
+      fn:box=>{box.innerHTML='<div id="meSchools">'+schoolsBlock()+'</div>';
+               wireSchools(meSchoolsDraw)}}]:[]),
+    {k:'cert', t:'Πιστοποιητικά', i:'shield', d:'τα χαρτιά μου και τι λήγει',
+      fn:box=>{box.innerHTML=certHTML; wireCert()}},
+    {k:'veh',  t:'Οχήματα',       i:'car',    d:'ό,τι δήλωσα για μεταφορά',
+      fn:box=>{box.innerHTML=vehHTML; wireVeh()}},
+    {k:'hist', t:'Ιστορικό',      i:'book',   d:'εκπαιδεύσεις, δράσεις, μεταβολές',
+      fn:box=>{box.innerHTML=meTabs(p)}},
+  ];
+  tabView('me', tabs, head);
 };
 
 /* Τι κουβαλά ο άνθρωπος: εκπαιδεύσεις, σχολές, δράσεις, διοικητικές μεταβολές, πρόοδος */
@@ -10074,6 +10109,24 @@ function saWhen(e){
   return A ? (B?`<b>Α΄ μέρος</b> ${A} · <b>Β΄ μέρος</b> ${B}`:A)
            : '<span style="color:var(--warn)">αναμένεται ημερομηνία από τη Γ.Ε.</span>';
 }
+
+/* Η ΤΡΙΤΗ ΠΟΡΤΑ: δική της οθόνη, με το ίδιο μπλοκ. Ο βαθμοφόρος που άκουσε
+   «δήλωσε για τη ΣΠΕΒ» δεν ξέρει ότι πρέπει να ψάξει στις «Εκπαιδεύσεις»· ένα
+   κουμπί που λέει «Δηλώνω σχολή» δεν χρειάζεται εξήγηση. */
+V.myschools=()=>{
+  const p=meRec();
+  if(!p||!isLed(p))return $('view').innerHTML=
+    `<div class="uc"><h3>Οι σχολές αφορούν βαθμοφόρους</h3>
+     <p>Αν είσαι βαθμοφόρος και το βλέπεις αυτό, η καρτέλα σου δεν είναι δεμένη με τον λογαριασμό — πες το στον Α.Σ.</p></div>`;
+  const draw=()=>{
+    const b=schoolsBlock();
+    $('view').innerHTML = b || `<div class="uc"><div class="ico">${ic('award',26)}</div>
+      <h3>Καμία σχολή στο πρόγραμμα της χρονιάς</h3>
+      <p>Μόλις η Γ.Ε. ανακοινώσει ημερομηνίες και περαστούν στο πρόγραμμα, θα εμφανιστούν εδώ.</p></div>`;
+    if(b)wireSchools(draw);
+  };
+  draw();
+};
 
 function schoolsBlock(subject){
   /* Χωρίς όρισμα = εγώ. Με όρισμα = «δηλώνω για λογαριασμό του», από την
