@@ -1067,7 +1067,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-11 16:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-11 19:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2526,9 +2526,11 @@ async function openProfile(id){
         if(k==='Γονέας'&&rcs.some(r=>r.holder_kind==='Βαθμοφόρος'))kinds.push('Βαθμοφόρος');
         /* Οι πλήρεις τίτλοι από τον κατάλογο ρόλων — όχι οι συντομογραφίες.
            «ΑΑΛ» είναι για τη λίστα· στην καρτέλα χωράει ολόκληρο. */
+        /* Χωρίς καπέλο: το μέλος δείχνει τη θέση του στο τμήμα, ο βαθμοφόρος
+           την εφεδρεία, και ο ΓΟΝΙΟΣ τίποτα — δεν έχει καθήκοντα. */
         const kath = rcs.length
           ? rcs.map(r=>esc(r.title)+(r.short&&r.short!==r.title?` <span class="dim">(${esc(r.short)})</span>`:'')).join('<br>')
-          : esc(isMem ? (y.role||'') : ledLabel(p,true));
+          : esc(isMem ? (y.role||'') : isLed(p) ? ledLabel(p,true) : '');
         /* Δύο φορές ΤΟ ΙΔΙΟ καπέλο δεν είναι δεύτερο καθήκον — είναι λάθος
            καταχώρηση, και μόνο εδώ φαίνεται. */
         const diplo = hats.length>codes.length;
@@ -3947,6 +3949,12 @@ function ledCode(p){
   return base;
 }
 function ledCodeFallback(p){
+  /* ΤΟ «Βαθμ» ΕΒΓΑΙΝΕ ΚΑΙ ΣΕ ΓΟΝΕΙΣ. Η εφεδρεία κατέληγε πάντα σε «Βαθμ»
+     όταν δεν αναγνώριζε τμήμα — και ο γονιός δεν έχει τμήμα, άρα έπαιρνε
+     τίτλο βαθμοφόρου σε κάθε λίστα και στην καρτέλα του. Η εφεδρεία είναι
+     για ΒΑΘΜΟΦΟΡΟΥΣ χωρίς καπέλο· για όλους τους άλλους η σωστή απάντηση
+     είναι ΤΙΠΟΤΑ, όχι μια πιθανή. */
+  if(!isLed(p)) return '';
   const sec=p.section||'', cat=p.category||'';
   if(cat==='ΑΣ') return 'ΑΣ';
   if(cat==='Δίκτυο') return 'Δίκτυο';
@@ -12013,6 +12021,39 @@ function certqBody(){
 const FC_KIND=['Βαθμοφόρος','Μέλος','Γονέας','Όλοι'];
 const FC_SECS=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
 let FCED=null;                      // ποια φόρμα είναι ανοιχτή για επεξεργασία
+
+/* ══ ΤΑ ΚΑΠΕΛΑ ΘΕΛΟΥΝ ΤΟ ΤΜΗΜΑ ΤΟΥΣ ═══════════════════════════════════════
+   Οι συντομογραφίες ΣΥΓΚΡΟΥΟΝΤΑΙ: «Βαθμ» είναι Αγέλης, Ομάδας ΚΑΙ Κοινότητας·
+   «P/T» το ίδιο. Σε μία σειρά από κουτάκια έβγαιναν τρία «Βαθμ» και τρία
+   «P/T» δίπλα-δίπλα και κανένα δεν έλεγε ποιανού τμήματος είναι — δηλαδή
+   έπρεπε να μαντέψεις. Ομαδοποίηση ΑΝΑ ΤΜΗΜΑ: η ιεραρχία φαίνεται, η
+   σύγκρουση εξαφανίζεται χωρίς να πειράξουμε τον κατάλογο ρόλων.
+   ΚΑΙ ΦΙΛΤΡΟ ΚΑΤΟΧΟΥ: αν η φόρμα αφορά Γονείς, δεν προσφέρουμε «ΑΑΛ» —
+   κανένας γονιός δεν το κρατά, και ένα φίλτρο που δεν πιάνει κανέναν
+   σημαίνει σιωπηλά μηδέν παραλήπτες. */
+const FC_SECORDER=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Επιτροπή','Υποομάδα'];
+function fcRoleBox(kind, checked){
+  const on=new Set(checked||[]);
+  /* ΤΑ ΠΡΟΣ ΚΑΤΑΡΓΗΣΗ ΔΕΝ ΠΡΟΣΦΕΡΟΝΤΑΙ — αλλά ΔΕΝ κρύβονται αν είναι ήδη
+     τσεκαρισμένα: αλλιώς η φόρμα θα άλλαζε ακροατήριο μόλις την ανοίξεις. */
+  const all=(D.rc||[]).filter(x=>x.active!==false
+    && (!x.deprecated || on.has(x.code))
+    && (!kind || kind==='Όλοι' || x.holder_kind===kind));
+  if(!all.length)return `<div class="dim" style="font-size:12px">Η ιδιότητα «${esc(kind||'—')}» δεν κρατά καπέλα — το φίλτρο δεν ισχύει.</div>`;
+  const by={}; all.forEach(x=>(by[x.section||'—']=by[x.section||'—']||[]).push(x));
+  const secs=Object.keys(by).sort((a,b)=>{
+    const i=FC_SECORDER.indexOf(a), j=FC_SECORDER.indexOf(b);
+    return (i<0?99:i)-(j<0?99:j)});
+  return secs.map(s=>`<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:3px 0">
+      <span class="dim" style="font-size:11px;min-width:78px;text-transform:uppercase;letter-spacing:.05em">${esc(s)}</span>
+      ${by[s].sort((a,b)=>(a.seq||0)-(b.seq||0)).map(x=>
+        `<label style="display:flex;gap:4px;align-items:center;font-weight:400;max-width:none;font-size:12.5px"
+                title="${esc(x.title)}">
+          <input type="checkbox" class="ffrole" value="${esc(x.code)}"${on.has(x.code)?' checked':''} style="width:auto">
+          ${esc(x.short||x.code)}</label>`).join('')}
+    </div>`).join('')
+   +`<div class="dim" style="font-size:11.5px;margin-top:3px">κανένα τσεκαρισμένο = όλοι όσοι περνούν τα από πάνω φίλτρα</div>`;
+}
 async function fcCounts(ids){
   const out={};
   for(const id of ids){
@@ -12053,11 +12094,7 @@ V.formcat=async()=>{
           <input type="checkbox" class="ffsec" value="${s}"${(r.sections||[]).includes(s)?' checked':''} style="width:auto">${s}</label>`).join('')}
         <span class="dim" style="font-size:11.5px;align-self:center">κανένα τσεκαρισμένο = όλα</span></div></label></div>
     <div class="grow"><label style="flex:2">Μόνο σε καπέλα
-      <div style="display:flex;gap:9px;flex-wrap:wrap;padding-top:5px">${(D.rc||[]).filter(x=>x.holder_kind==='Βαθμοφόρος'&&x.active!==false)
-        .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(x=>
-        `<label style="display:flex;gap:4px;align-items:center;font-weight:400;max-width:none" title="${esc(x.title)}">
-          <input type="checkbox" class="ffrole" value="${esc(x.code)}"${(r.roles||[]).includes(x.code)?' checked':''} style="width:auto">${esc(x.short||x.code)}</label>`).join('')}
-        <span class="dim" style="font-size:11.5px;align-self:center">κανένα = όλοι</span></div></label></div>
+      <div id="ffRoles" style="padding-top:5px">${fcRoleBox(r.applies_to,r.roles)}</div></label></div>
     <div class="grow"><label style="flex:3">Σημείωση<input data-ff="note" value="${esc(r.note||'')}"></label>
       <label style="max-width:150px">Κατάσταση<select data-ff="active">
         <option value="1"${r.active!==false?' selected':''}>Ενεργή</option>
@@ -12092,7 +12129,10 @@ V.formcat=async()=>{
         <td style="white-space:nowrap;font-size:12.5px">${esc(r.applies_to||'—')}
           ${(r.sections||[]).length?`<div class="dim" style="font-size:11.5px">${(r.sections||[]).map(esc).join(', ')}</div>`:''}
           ${(r.roles||[]).length?`<div class="dim" style="font-size:11.5px">μόνο ${(r.roles||[]).map(c=>{
-            const x=(D.rc||[]).find(y=>y.code===c); return esc((x&&x.short)||c)}).join(', ')}</div>`:''}</td>
+            /* ΚΑΙ ΕΔΩ ΤΟ ΤΜΗΜΑ: σκέτο «Βαθμ» δεν λέει τίποτα όταν υπάρχουν τρία. */
+            const x=(D.rc||[]).find(y=>y.code===c); if(!x)return esc(c);
+            return esc(x.short||c)+(x.section&&x.section!=='Σύστημα'?' <span style="opacity:.75">'+esc(x.section)+'</span>':'')
+          }).join(' · ')}</div>`:''}</td>
         <td class="dim" style="white-space:nowrap;font-size:12.5px">
           ${r.opens_on||r.closes_on?`${r.opens_on?fdate(r.opens_on):'…'} → ${r.closes_on?fdate(r.closes_on):'…'}`:'χωρίς περίοδο'}
           <div style="font-size:11.5px">${r.valid_months?`ανανέωση ${r.valid_months} μήνες`:'μία φορά'}</div></td>
@@ -12103,6 +12143,13 @@ V.formcat=async()=>{
           <button class="btn gh sm" data-fcedit="${r.id}">✎</button></td></tr>
         ${FCED===r.id?ed(r):''}`).join('')||'<tr><td colspan="5" class="dim">Καμία φόρμα ακόμη.</td></tr>'}</tbody></table></div>`;
 
+  /* Αλλάζοντας ιδιότητα αλλάζουν και τα διαθέσιμα καπέλα — ξαναχτίζεται ΜΟΝΟ
+     αυτό το κουτί, κρατώντας ό,τι είχες ήδη τσεκάρει. */
+  document.querySelectorAll('[data-ff="applies_to"]').forEach(s=>s.onchange=()=>{
+    const box=s.closest('td').querySelector('#ffRoles'); if(!box)return;
+    const keep=[...box.querySelectorAll('.ffrole:checked')].map(x=>x.value);
+    box.innerHTML=fcRoleBox(s.value,keep);
+  });
   const nb=$('fcNew'); if(nb)nb.onclick=()=>{FCED=FCED==='NEW'?null:'NEW';V.formcat()};
   document.querySelectorAll('[data-fcedit]').forEach(b=>b.onclick=()=>{
     FCED=FCED===b.dataset.fcedit?null:b.dataset.fcedit;V.formcat()});
