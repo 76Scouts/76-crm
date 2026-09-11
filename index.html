@@ -898,14 +898,18 @@ const NAV=[
       μπλοκ με την «Καρτέλα μου» και τις «Εκπαιδεύσεις»: μία αλήθεια, τρεις
       πόρτες — γιατί ο καθένας μπαίνει από αλλού. */
    {id:'myschools',t:'Αιτήσεις σχολών',i:'award',s:'live'},
+   /* ΕΔΩ, ΟΧΙ ΣΤΟ «ΕΓΩ ΩΣ ΜΕΛΟΣ». Οι φόρμες απευθύνονται πλέον και σε
+      βαθμοφόρους (φανέλες, σκίαστρα, ιατρικό) — κρυμμένες πίσω από τον φακό
+      του Μέλους, ο Α.Σ. δεν έβλεπε ΚΑΜΙΑ από τις δικές του. Φόρμα με
+      προθεσμία δεν ζητά αλλαγή ιδιότητας για να βρεθεί. */
+   {id:'myforms',t:'Οι φόρμες μου',i:'book',s:'live'},
    {id:'mycerts',t:'Τα πιστοποιητικά μου',i:'shield',s:'live'},
    {id:'myveh',t:'Τα οχήματά μου',i:'car',s:'live'}]},
 
  /* Η ομάδα «Εγώ ως μέλος» δεν εμφανίζεται στους βαθμοφόρους: όποιος θέλει τα
     δικά του ως μέλος αλλάζει ιδιότητα. Οι οθόνες υπάρχουν — η θέση όχι. */
  {g:'Εγώ ως μέλος', d:'Ό,τι με αφορά ως μέλος τμήματος', items:[
-   {id:'myatt',t:'Οι παρουσίες μου',i:'check',s:'live'},
-   {id:'myforms',t:'Οι φόρμες μου',i:'book',s:'live'}]},
+   {id:'myatt',t:'Οι παρουσίες μου',i:'check',s:'live'}]},
 
  {g:'Τα παιδιά μου', d:'Ό,τι αφορά τα δικά μου παιδιά', items:[
    {id:'mykids',t:'Τα παιδιά μου',i:'home',s:'live'},
@@ -1008,7 +1012,11 @@ const NAV_ALWAYS=['account'];
    και η αίτηση σχολής είναι ΒΑΘΜΟΦΟΡΙΚΑ. Στέλναμε τον Α.Σ. σε φακό που δεν
    περιέχει τα δεδομένα του — γι' αυτό «δεν φαίνονταν πουθενά».
    Δεν μπαίνουν στο NAV_ALWAYS: ο γονιός δεν κάνει αίτηση σχολής. */
-const NAV_MINE=['me','mycerts','myschools','myveh'];
+const NAV_MINE=['me','myforms','mycerts','myschools','myveh'];
+/* Οι ΦΟΡΜΕΣ είναι η εξαίρεση μέσα στην εξαίρεση: τις βλέπει ΟΠΟΙΟΣ έχει
+   καρτέλα — βαθμοφόρος, μέλος ή γονιός — γιατί το ακροατήριο το ορίζει ο
+   κατάλογος φορμών, όχι το μενού. Τα άλλα τέσσερα θέλουν βαθμοφόρο. */
+const NAV_MINE_ANY=['me','myforms'];
 /* ══ ΥΠΟΤΙΤΛΟΙ ΟΘΟΝΩΝ ══════════════════════════════════════════════════════
    Μία γραμμή κάτω από κάθε τίτλο: τι κάνει αυτή η οθόνη και πότε την ανοίγεις.
    Ο τίτλος λέει ΤΟ ΟΝΟΜΑ· ο υπότιτλος λέει ΤΗ ΔΟΥΛΕΙΑ. Χωρίς αυτόν, μια
@@ -1105,7 +1113,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-11 19:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-11 20:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2323,7 +2331,7 @@ function renderNav(){
        όχι στον ρόλο που φοράει: ο Α.Σ. είναι και βαθμοφόρος. */
     if(NAV_MINE.includes(id)){
       const rec=meRec();
-      return !!rec && (id==='me' || isLed(rec));
+      return !!rec && (NAV_MINE_ANY.includes(id) || isLed(rec));
     }
     if(AL && !AL.includes(id)) return false;
     if(!AL && id==='dev' && !(ME.platform_admin||ME.role==='admin')) return false;
@@ -12188,7 +12196,10 @@ V.health=async()=>{
    Ο αριθμός των παραληπτών υπολογίζεται από την ΙΔΙΑ συνάρτηση που κρίνει
    ποιος τη βλέπει (form_audience) — όχι από δεύτερο, παρόμοιο ερώτημα. */
 const FC_KIND=['Βαθμοφόρος','Μέλος','Γονέας','Όλοι'];
-const FC_SECS=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+/* ΤΟ «ΣΥΣΤΗΜΑ» ΕΙΝΑΙ ΤΜΗΜΑ. Έλειπε, και ο Α.Σ. — που είναι ο μόνος με
+   section='Σύστημα' — κοβόταν από κάθε φόρμα όπου τσέκαρε «όλα τα τμήματα».
+   Τσέκαρε τέσσερα κουτάκια νομίζοντας ότι τα διάλεξε όλα. */
+const FC_SECS=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
 let FCED=null;                      // ποια φόρμα είναι ανοιχτή για επεξεργασία
 
 /* ══ ΤΑ ΚΑΠΕΛΑ ΘΕΛΟΥΝ ΤΟ ΤΜΗΜΑ ΤΟΥΣ ═══════════════════════════════════════
@@ -12213,15 +12224,53 @@ function fcRoleBox(kind, checked){
   const secs=Object.keys(by).sort((a,b)=>{
     const i=FC_SECORDER.indexOf(a), j=FC_SECORDER.indexOf(b);
     return (i<0?99:i)-(j<0?99:j)});
-  return secs.map(s=>`<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:3px 0">
-      <span class="dim" style="font-size:11px;min-width:78px;text-transform:uppercase;letter-spacing:.05em">${esc(s)}</span>
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;padding-bottom:4px">
+      <button type="button" class="btn gh sm" data-ffrall="1">Όλα</button>
+      <button type="button" class="btn gh sm" data-ffrnone="1">Κανένα</button></div>`
+   +secs.map(s=>`<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:3px 0">
+      <button type="button" class="dim" data-ffrsec="${esc(s)}"
+        style="font-size:11px;min-width:78px;text-align:left;text-transform:uppercase;letter-spacing:.05em;
+               background:none;border:0;padding:0;cursor:pointer;text-decoration:underline dotted"
+        title="Όλα ή κανένα σε αυτό το τμήμα">${esc(s)}</button>
       ${by[s].sort((a,b)=>(a.seq||0)-(b.seq||0)).map(x=>
         `<label style="display:flex;gap:4px;align-items:center;font-weight:400;max-width:none;font-size:12.5px"
                 title="${esc(x.title)}">
-          <input type="checkbox" class="ffrole" value="${esc(x.code)}"${on.has(x.code)?' checked':''} style="width:auto">
+          <input type="checkbox" class="ffrole" data-ffsec="${esc(x.section||'—')}"
+                 value="${esc(x.code)}"${on.has(x.code)?' checked':''} style="width:auto">
           ${esc(x.short||x.code)}</label>`).join('')}
     </div>`).join('')
-   +`<div class="dim" style="font-size:11.5px;margin-top:3px">κανένα τσεκαρισμένο = όλοι όσοι περνούν τα από πάνω φίλτρα</div>`;
+   +`<div class="dim" style="font-size:11.5px;margin-top:3px">κανένα τσεκαρισμένο = όλοι όσοι περνούν τα από πάνω φίλτρα
+      — <b>πιο πλατύ</b> από «όλα τσεκαρισμένα», γιατί πιάνει και όσους δεν κρατούν κανένα καπέλο</div>`;
+}
+
+/* ══ ΠΟΣΟΥΣ ΠΙΑΝΕΙ — ΠΡΙΝ ΤΗΝ ΑΠΟΘΗΚΕΥΣΗ ══════════════════════════════════
+   Ίδιος υπολογισμός με τη form_audience() της βάσης, στον φυλλομετρητή, για
+   να απαντηθεί η ερώτηση ΤΗ ΣΤΙΓΜΗ που τσεκάρεις — όχι αφού σώσεις.
+   ΓΙΑΤΙ ΜΠΗΚΕ: οι «Φανέλες Βαθμοφόρων» έπιαναν 9 από 106. Τα καπέλα έκοβαν
+   97 ανθρώπους που κρατούν παλιούς ρόλους, σιωπηλά, και ο κατάλογος έδειχνε
+   τον αριθμό μόνο μετά — σε μια στήλη που δεν κοιτάς όταν γράφεις.       */
+function fcAudience(v){
+  const act=(D.bh||[]).filter(b=>b.status==='Ενεργός');
+  const ids=v.person_ids||[];
+  const subj = ids.length ? act.filter(b=>ids.includes(b.id))
+    : act.filter(b=>{
+        if(!(v.applies_to==='Όλοι'||v.applies_to===b.kind)) return false;
+        if((v.sections||[]).length && !v.sections.includes(b.section)) return false;
+        if((v.roles||[]).length && !(D.ph||[]).some(h=>h.person_id===b.id&&!h.valid_to
+            &&v.roles.includes(h.role_code))) return false;
+        if((v.subgroups||[]).length && !(D.my||[]).some(m=>m.person_id===b.id&&!m.voided_at
+            &&v.subgroups.includes(m.group_name))) return false;
+        if((v.stages||[]).length && !(D.mprog||[]).some(m=>m.person_id===b.id
+            &&v.stages.includes(m.label))) return false;
+        return true;
+      });
+  const out=new Set(), reach=v.reach||'ίδιοι';
+  if(reach!=='κηδεμόνες') subj.forEach(b=>out.add(b.id));
+  if(reach!=='ίδιοι'){
+    const sid=new Set(subj.map(b=>b.id));
+    (D.cl||[]).forEach(c=>{ if(!c.valid_to&&sid.has(c.member_id))out.add(c.carer_id) });
+  }
+  return [...out];
 }
 async function fcCounts(ids){
   const out={};
@@ -12264,6 +12313,7 @@ V.formcat=async()=>{
         <span class="dim" style="font-size:11.5px;align-self:center">κανένα τσεκαρισμένο = όλα</span></div></label></div>
     <div class="grow"><label style="flex:2">Μόνο σε καπέλα
       <div id="ffRoles" style="padding-top:5px">${fcRoleBox(r.applies_to,r.roles)}</div></label></div>
+    <div id="ffCount" class="pill" style="margin:2px 0 4px">—</div>
     <div class="grow"><label style="flex:3">Σημείωση<input data-ff="note" value="${esc(r.note||'')}"></label>
       <label style="max-width:150px">Κατάσταση<select data-ff="active">
         <option value="1"${r.active!==false?' selected':''}>Ενεργή</option>
@@ -12312,13 +12362,49 @@ V.formcat=async()=>{
           <button class="btn gh sm" data-fcedit="${r.id}">✎</button></td></tr>
         ${FCED===r.id?ed(r):''}`).join('')||'<tr><td colspan="5" class="dim">Καμία φόρμα ακόμη.</td></tr>'}</tbody></table></div>`;
 
+  /* ══ ΖΩΝΤΑΝΗ ΜΕΤΡΗΣΗ ══════════════════════════════════════════════════
+     Ο αριθμός ενημερώνεται σε ΚΑΘΕ τσεκάρισμα. Και όταν τα καπέλα κόβουν,
+     λέει ΠΟΣΟΥΣ κόβουν — αυτό ακριβώς έλειπε όταν οι «Φανέλες» έπιασαν 9. */
+  const fcRead=td=>({
+    applies_to:(td.querySelector('[data-ff="applies_to"]')||{}).value||'Βαθμοφόρος',
+    sections:[...td.querySelectorAll('.ffsec:checked')].map(x=>x.value),
+    roles:[...td.querySelectorAll('.ffrole:checked')].map(x=>x.value),
+    reach:'ίδιοι'});
+  const fcTick=td=>{
+    const el=td.querySelector('#ffCount'); if(!el)return;
+    const v=fcRead(td), n=fcAudience(v).length;
+    const wide=fcAudience({...v,roles:[]}).length;
+    const cut=wide-n;
+    const cls=n?(cut>0?'warn':'ok'):'bad';
+    el.style.cssText='margin:2px 0 4px;background:var(--'+cls+'bg);color:var(--'+cls+');border-color:transparent';
+    el.innerHTML=n
+      ? `Πιάνει <b>${n}</b> ${n===1?'άτομο':'άτομα'}`
+        +(cut>0?` · τα καπέλα κόβουν <b>${cut}</b> (χωρίς αυτά: ${wide})`:'')
+      : 'Δεν πιάνει <b>κανέναν</b> — κανείς δεν θα δει αυτή τη φόρμα';
+  };
+  const fcWire=td=>{
+    td.querySelectorAll('.ffsec,.ffrole').forEach(i=>i.onchange=()=>fcTick(td));
+    const all=td.querySelector('[data-ffrall]'), non=td.querySelector('[data-ffrnone]');
+    const set=(sel,on)=>{td.querySelectorAll(sel).forEach(i=>i.checked=on);fcTick(td)};
+    if(all)all.onclick=()=>set('.ffrole',true);
+    if(non)non.onclick=()=>set('.ffrole',false);
+    /* Το τμήμα εναλλάσσει: αν λείπει έστω ένα, τα ανάβει όλα· αλλιώς τα σβήνει. */
+    td.querySelectorAll('[data-ffrsec]').forEach(b=>b.onclick=()=>{
+      const q=`.ffrole[data-ffsec="${b.dataset.ffrsec.replace(/"/g,'\\"')}"]`;
+      const miss=[...td.querySelectorAll(q)].some(i=>!i.checked);
+      set(q,miss);
+    });
+    fcTick(td);
+  };
   /* Αλλάζοντας ιδιότητα αλλάζουν και τα διαθέσιμα καπέλα — ξαναχτίζεται ΜΟΝΟ
      αυτό το κουτί, κρατώντας ό,τι είχες ήδη τσεκάρει. */
   document.querySelectorAll('[data-ff="applies_to"]').forEach(s=>s.onchange=()=>{
-    const box=s.closest('td').querySelector('#ffRoles'); if(!box)return;
+    const td=s.closest('td'), box=td.querySelector('#ffRoles'); if(!box)return;
     const keep=[...box.querySelectorAll('.ffrole:checked')].map(x=>x.value);
     box.innerHTML=fcRoleBox(s.value,keep);
+    fcWire(td);
   });
+  document.querySelectorAll('#ffCount').forEach(el=>fcWire(el.closest('td')));
   const nb=$('fcNew'); if(nb)nb.onclick=()=>{FCED=FCED==='NEW'?null:'NEW';V.formcat()};
   document.querySelectorAll('[data-fcedit]').forEach(b=>b.onclick=()=>{
     FCED=FCED===b.dataset.fcedit?null:b.dataset.fcedit;V.formcat()});
