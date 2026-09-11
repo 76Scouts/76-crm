@@ -1117,7 +1117,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-11 20:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-11 20:54'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2833,16 +2833,22 @@ const SEC_CODE={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα':'Κ
      2 = Βασική γι' αυτόν τον κλάδο
      1 = προπαίδευση, ή Βασική άλλου κλάδου
      0 = τίποτα                                                            */
+/* ΤΟ ΙΔΙΟ ΛΑΘΟΣ, ΔΕΥΤΕΡΗ ΦΟΡΑ. Το TR_B=/βασικ/i ψάχνει τη ΛΕΞΗ «βασική» —
+   αλλά οι σχολές γράφονται ΣΥΝΤΟΜΟΓΡΑΦΙΑ: «Σ.Β.Ε.Β.Λ.», «Σ.Β.Ε.Β.Π.»,
+   «Σ.Β.Ε.Β.Εφ-Α.Σ.». Καμία δεν περιέχει «βασικ», άρα ο Α.Σ. με τέσσερις
+   Βασικές έβγαινε «Καμία εκπαίδευση» — «γράφει ότι δεν έχω Βασική Α.Σ.
+   ενώ έχω». Το trLevel() το είχε ήδη λύσει με saKey()· αυτή η συνάρτηση
+   έμεινε πίσω. ΜΙΑ κρίση για το επίπεδο, παντού. */
 function trainLevel(id, sec){
   const t=(D.tr||[]).filter(x=>x.person_id===id);
   const code=SEC_CODE[sec]||null;
-  const basics=t.filter(x=>TR_B.test(x.type||x.code||''));
+  const basics=t.filter(x=>trLevel(x)===2);
   if(basics.length){
     if(!code) return 2;                                   // χωρίς κλάδο: αρκεί
     if(basics.some(x=>(x.section||'')===code)) return 2;   // Βασική ΤΟΥ κλάδου
     return 1;                                             // Βασική αλλού
   }
-  if(t.some(x=>TR_P.test(x.type||x.code||'')))return 1;
+  if(t.some(x=>trLevel(x)===1))return 1;
   return 0;
 }
 /* Η εντολή ανήκει σε ΧΡΟΝΙΑ. Στο στήσιμο της επόμενης, κανείς δεν έχει ακόμη —
@@ -9015,6 +9021,8 @@ function staffDiarthrosi(){
   exportRows(rows, `Diarthrosi-76ou-${SY}`, `Διάρθρωση ${SY}`);
 }
 
+let STNETAREA=false;
+try{STNETAREA=!!localStorage.getItem('e76:netarea')}catch(e){}
 function staffBoard(years){
   const cfg=(D.sc||[]).filter(s=>s.active!==false&&s.section!=='Σύστημα')
                       .sort((a,b)=>(a.seq||0)-(b.seq||0));
@@ -9063,25 +9071,51 @@ function staffBoard(years){
       &&(!x.expires_on||x.expires_on>=new Date().toISOString().slice(0,10)));
     return c?'<span class="facross" title="Ενεργές Α΄ Βοήθειες">✚</span>':''};
 
-  /* Ο «υπαρχηγός» δεν είναι βαθμίδα εδώ: αρχηγός είναι ένας, οι υπόλοιποι βαθμοφόροι.
-     Το P/T (μερική παρουσία) είναι η μόνη πραγματική διάκριση μεταξύ τους. */
-  const isPT=p=>{const h=hatOfYear(p,SY);
-    if(h){const rc=(D.rc||[]).find(r=>r.code===h.role_code); if(rc&&rc.part_time)return true}
+  /* ══ ΒΑΘΜΙΔΕΣ ΑΠΟ ΤΟΝ ΚΩΔΙΚΟ, ΟΧΙ ΑΠΟ ΤΟ ΚΕΙΜΕΝΟ ══════════════════════
+     Η σειρά έβγαινε από regex πάνω στον ΤΙΤΛΟ (`/^Αρχηγός/`). Ο τίτλος
+     είναι κείμενο που πληκτρολογεί άνθρωπος — γι' αυτό «δεν έβγαιναν οι
+     Α.Τ. πάνω πάνω»: όποιος είχε κενό ή παραλλαγμένο τίτλο έπεφτε στους
+     βαθμοφόρους. Ο ΚΩΔΙΚΑΣ είναι η αλήθεια (AAL/AOP/AKA = αρχηγός τμήματος).
+     Και ο ΥΠΑΡΧΗΓΟΣ ξαναγίνεται δική του βαθμίδα: το τυπωμένο επιτελείο
+     την είχε, η οθόνη την είχε χάσει. */
+  const hatOf=p=>{const h=hatOfYear(p,SY)||(D.ph||[]).find(x=>x.person_id===p.id&&!x.valid_to&&x.role_code);
+    return h?{h, rc:(D.rc||[]).find(r=>r.code===h.role_code)}:null};
+  const isPT=p=>{const x=hatOf(p);
+    if(x&&x.h.part_time)return true;
+    if(x&&x.rc&&/P\/T/.test(x.rc.short||''))return true;
     return /P\/T|Part[- ]?time|μερικ/i.test(roleOfYear(p,SY)+' '+(p.special||''))};
-  const CATORD=p=>{const r=roleOfYear(p,SY);
-    if(/Αρχηγός Συστ/i.test(r))return 0;
-    if(/^Αρχηγός|^Υπεύθυν/i.test(r))return 1;
-    return isPT(p)?3:2};
-  const CATNAME=['','ΑΡΧΗΓΟΣ','ΒΑΘΜΟΦΟΡΟΙ','ΒΑΘΜΟΦΟΡΟΙ P/T'];
+  const CATORD=p=>{const x=hatOf(p), c=(x&&x.rc&&x.rc.code)||'', r=roleOfYear(p,SY);
+    if(c==='AS'||c==='YAS'||/Αρχηγός Συστ/i.test(r))                 return 0;
+    if(/^(AAL|AOP|AKA|APD)$/.test(c))                                return 1;
+    if(/^(YAL|YOP|YKA|YPD)$/.test(c))                                return isPT(p)?3:2;
+    if(c==='ADIATH')                                                 return 5;
+    if(!c&&/^Αρχηγός|^Υπεύθυν/i.test(r))                             return 1;
+    if(!c&&/^Υπαρχηγός/i.test(r))                                    return isPT(p)?3:2;
+    return isPT(p)?3:4};
+  const CATNAME=['','ΑΡΧΗΓΟΣ','ΥΠΑΡΧΗΓΟΙ','ΥΠΑΡΧΗΓΟΙ ΜΕΡΙΚΗΣ ΠΑΡΟΥΣΙΑΣ','ΒΑΘΜΟΦΟΡΟΙ','ΑΔΙΑΘΕΤΟΙ'];
+  /* Ποιος εμφανίστηκε κάπου. Ό,τι μείνει απ' έξω πάει στο SANDBOX αντί να
+     εξαφανιστεί — «έκανα move και δεν μου το εμφάνισε στη σωστή θέση». */
+  const SEEN=new Set();
 
+  /* Στη στήλη του Δικτύου η ομαδοποίηση ΔΕΝ είναι βαθμίδα — είναι ΠΕΡΙΟΧΗ.
+     Το άτυπο Δίκτυο δεν έχει αρχηγό και υπαρχηγό· έχει «πού ζει ο καθένας»
+     και υπεύθυνο ανά περιοχή. Διακόπτης, γιατί άλλοτε ψάχνεις όνομα. */
+  const areaOf=p=>(p.network_area||'').split('-')[0]||'— χωρίς περιοχή';
   const col=s=>{
+    const net=s.section==='Δίκτυο';
     const list=live.filter(p=>secOfYear(p,SY)===s.section||(p.extra_sections||[]).includes(s.section))
-      .sort((a,b)=>CATORD(a)-CATORD(b)||sortByName(a,b));
+      .sort(net&&STNETAREA
+        ? (a,b)=>(b.is_area_lead?1:0)-(a.is_area_lead?1:0)||areaOf(a).localeCompare(areaOf(b))||sortByName(a,b)
+        : (a,b)=>CATORD(a)-CATORD(b)||sortByName(a,b));
     const head=list.find(isHead), rest=list.filter(p=>p!==head);
+    if(head)SEEN.add(head.id);
     const mem=D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)&&secOf(x)===s.section).length;
-    let cat=-1, n=0;
-    const body=rest.map(p=>{const c=CATORD(p); let hd='';
-      if(c!==cat){cat=c;n=0;hd=`<div class="subhead">${CATNAME[c]||''}</div>`}
+    let cat=-1, n=0, area=null;
+    const body=rest.map(p=>{SEEN.add(p.id); let hd='';
+      if(net&&STNETAREA){ const a=areaOf(p);
+        if(a!==area){area=a;n=0;hd=`<div class="subhead">${esc(a)}</div>`} }
+      else { const c=CATORD(p);
+        if(c!==cat){cat=c;n=0;hd=`<div class="subhead">${CATNAME[c]||''}</div>`} }
       n++;
       return hd+`<div class="prow" style="${hit(p)?'':'opacity:.28'}">
         <span class="num">${n}</span>
@@ -9109,27 +9143,67 @@ function staffBoard(years){
           :'<div class="dim" style="font-size:12.5px;padding:6px 0;border-bottom:2px solid var(--line2);margin-bottom:4px">— χωρίς αρχηγό —</div>'}
         ${body||'<div class="dim" style="font-size:12.5px">— κανένας άλλος —</div>'}
       </div></div>`};
+  /* ══ ΤΟ ΑΡΧΗΓΕΙΟ ΠΑΝΩ ΑΠΟ ΟΛΑ ═══════════════════════════════════════════
+     Ο Α.Σ. ήταν μία γραμμή μέσα σε μια κεντραρισμένη επικεφαλίδα, και ο
+     Υ.Σ. και οι Έφοροι πουθενά — έπρεπε να τους ψάξεις στις στήλες των
+     τμημάτων. Το Αρχηγείο ΔΕΝ είναι τμήμα ανάμεσα σε τμήματα· είναι από
+     πάνω τους, όπως στο τυπωμένο επιτελείο. */
+  const hq=live.filter(p=>{const x=hatOf(p), c=(x&&x.rc&&x.rc.code)||'';
+    return c==='AS'||c==='YAS'||p.category==='ΑΣ'||p.is_commissioner
+        || (!c&&/Αρχηγός Συστ|Υπαρχηγός Συστ/i.test(roleOfYear(p,SY)))})
+    .sort((a,b)=>CATORD(a)-CATORD(b)||(b.is_commissioner?0:1)-(a.is_commissioner?0:1)||sortByName(a,b));
+  const hqCard=p=>{SEEN.add(p.id);
+    return `<div class="prow" style="${hit(p)?'':'opacity:.28'};flex:1;min-width:230px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:10.5px;color:var(--ink3);letter-spacing:.05em;text-transform:uppercase">${esc(roleOfYear(p,SY))}</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          ${dot(p,'Σύστημα')}<span class="pn" data-p="${p.id}" style="font-weight:600;font-size:14px;cursor:pointer">${pn(p)}</span>
+          ${p.scout_name?`<span class="dim" style="font-size:11.5px">«${esc(p.scout_name)}»</span>`:''}
+          ${fa(p)}${chips(p,'Σύστημα')}</div>
+        <div class="dim" style="font-size:11.5px">${contact(p)}</div></div>
+      <span class="pencil" data-pe="${p.id}" title="Ρόλος, τμήμα, προβολή">✎</span></div>`};
+
   $('view').innerHTML=`
-    <div class="card pad" style="text-align:center;margin-bottom:14px">
+    <div class="card pad" style="text-align:center;margin-bottom:10px">
       <div style="font-size:11px;letter-spacing:.12em;color:var(--ink3)">ΔΙΑΡΘΡΩΣΗ 76ου Σ.Π. ΣΤΡΟΒΟΛΟΥ</div>
       <div style="font-size:22px;font-weight:600;letter-spacing:-.01em">${esc(SY)}</div>
-      ${as?`<div style="margin-top:8px">
-        <span class="dim" style="font-size:11.5px;letter-spacing:.05em">ΑΡΧΗΓΟΣ ΣΥΣΤΗΜΑΤΟΣ</span>
-        <div class="pn" data-p="${as.id}" style="font-weight:600;font-size:15px;cursor:pointer">${pn(as)}</div>
-        <div class="dim" style="font-size:12.5px">${contact(as)}</div></div>`:''}
     </div>
+
+    <div class="card" style="overflow:hidden;margin-bottom:14px">
+      <div class="bhead" style="background:${SECCOLOR['Σύστημα']||'var(--ink)'};color:#fff;border-radius:0">
+        <span style="flex:1">ΑΡΧΗΓΕΙΟ ΣΥΣΤΗΜΑΤΟΣ</span>
+        <span style="font-weight:400;opacity:.9;font-size:12px">${hq.length} ${hq.length===1?'θέση':'θέσεις'}</span></div>
+      <div style="padding:9px 12px;display:flex;gap:14px;flex-wrap:wrap">
+        ${hq.map(hqCard).join('')||'<div class="dim" style="font-size:12.5px">— κενό —</div>'}</div></div>
 
     <div class="grow" style="margin-bottom:10px">
       <label style="max-width:260px">Χρονιά<select id="sy">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select></label>
       <label style="flex:2">Αναζήτηση<input id="stq" value="${esc(STQ)}" placeholder="όνομα, ρόλος, email"></label>
       <label style="max-width:340px">&nbsp;<span style="display:flex;gap:6px">
         <button class="btn sm" id="stAdd">+ Πρόσθεσε</button>
+        <button class="btn sm${STNETAREA?' p':''}" id="stNetA"
+          title="Το Δίκτυο ανά χώρα ή αλφαβητικά">🌍 ${STNETAREA?'ανά περιοχή':'αλφαβητικά'}</button>
         <button class="btn sm" id="stExp">Εξαγωγή</button>
         <button class="btn sm" id="stPrint">Εκτύπωση</button>
         <button class="btn sm gh" id="toOrg">Ιεραρχία →</button></span></label>
     </div>
 
     <div class="grid2">${secs.map(col).join('')}</div>
+
+    ${(()=>{
+      /* ══ SANDBOX ══ Όποιος δεν ζωγραφίστηκε ΠΟΥΘΕΝΑ. Χωρίς αυτό, μια
+         αλλαγή τμήματος σε τιμή που δεν έχει στήλη εξαφανίζει άνθρωπο και
+         το μόνο που βλέπεις είναι ότι «δεν πήγε στη σωστή θέση». */
+      const lost=live.filter(p=>!SEEN.has(p.id)).sort(sortByName);
+      if(!lost.length)return '';
+      return `<div class="sec"><h3>Αταξινόμητοι</h3><span class="n">${lost.length}</span></div>
+      <div class="card pad" style="border-left:3px solid var(--warn)">
+        <div class="dim" style="font-size:12.5px;margin-bottom:8px">Δεν εμφανίζονται σε καμία στήλη — το τμήμα
+          ή το καπέλο τους δείχνει κάπου που δεν υπάρχει. Άνοιξε τον καθένα και διόρθωσε.</div>
+        ${lost.map(p=>`<span class="pill" style="margin:3px 3px 0 0">
+          <span class="pn" data-p="${p.id}">${pn(p)}</span>
+          <span class="dim">${esc(secOfYear(p,SY)||'χωρίς τμήμα')}</span>
+          <span class="pencil" data-pe="${p.id}">✎</span></span>`).join('')}</div>`})()}
 
     ${arch.length?`<div class="sec"><h3>Αρχειοθετημένοι &amp; YOLO</h3><span class="n">${arch.length}</span></div>
       <div class="card pad">
@@ -9145,6 +9219,8 @@ function staffBoard(years){
     document.querySelectorAll('#view .pill,#view [style*="opacity"]').forEach(()=>{}); V.staff();
     const n=$('stq'); if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length)}};
   const to=$('toOrg'); if(to)to.onclick=()=>route('org');
+  const na=$('stNetA'); if(na)na.onclick=()=>{STNETAREA=!STNETAREA;
+    try{localStorage.setItem('e76:netarea',STNETAREA?'1':'')}catch(x){} V.staff()};
   bindStaffEdit();
 }
 
