@@ -1113,7 +1113,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-11 20:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-11 20:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -12212,8 +12212,15 @@ let FCED=null;                      // ποια φόρμα είναι ανοιχ
    κανένας γονιός δεν το κρατά, και ένα φίλτρο που δεν πιάνει κανέναν
    σημαίνει σιωπηλά μηδέν παραλήπτες. */
 const FC_SECORDER=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Επιτροπή','Υποομάδα'];
+/* ΟΛΑ ΤΣΕΚΑΡΙΣΜΕΝΑ = ΚΑΝΕΝΑΣ ΠΕΡΙΟΡΙΣΜΟΣ (απόφαση Α.Σ. 11/09/2026).
+   «Αν διαλέξω βαθμοφόρους, τους εννοώ όλους — εκτός αν θέλω να το περιορίσω.»
+   Χωρίς αυτόν τον κανόνα, το «όλα» θα έκοβε τους 97 που κρατούν παλιό ή
+   κανένα καπέλο: ένα κουμπί «Όλα» που αφαιρεί κόσμο είναι παγίδα. Άρα:
+   κενά καπέλα ⇄ όλα τα καπέλα, ΤΟ ΙΔΙΟ πράγμα — και στη μία κατεύθυνση
+   (`roles=null` → δείχνει όλα τσεκαρισμένα) και στην άλλη (όλα → `null`). */
 function fcRoleBox(kind, checked){
   const on=new Set(checked||[]);
+  const ALL=!checked||!checked.length;     // «όλοι» — τα δείχνουμε αναμμένα
   /* ΤΑ ΠΡΟΣ ΚΑΤΑΡΓΗΣΗ ΔΕΝ ΠΡΟΣΦΕΡΟΝΤΑΙ — αλλά ΔΕΝ κρύβονται αν είναι ήδη
      τσεκαρισμένα: αλλιώς η φόρμα θα άλλαζε ακροατήριο μόλις την ανοίξεις. */
   const all=(D.rc||[]).filter(x=>x.active!==false
@@ -12236,11 +12243,11 @@ function fcRoleBox(kind, checked){
         `<label style="display:flex;gap:4px;align-items:center;font-weight:400;max-width:none;font-size:12.5px"
                 title="${esc(x.title)}">
           <input type="checkbox" class="ffrole" data-ffsec="${esc(x.section||'—')}"
-                 value="${esc(x.code)}"${on.has(x.code)?' checked':''} style="width:auto">
+                 value="${esc(x.code)}"${ALL||on.has(x.code)?' checked':''} style="width:auto">
           ${esc(x.short||x.code)}</label>`).join('')}
     </div>`).join('')
-   +`<div class="dim" style="font-size:11.5px;margin-top:3px">κανένα τσεκαρισμένο = όλοι όσοι περνούν τα από πάνω φίλτρα
-      — <b>πιο πλατύ</b> από «όλα τσεκαρισμένα», γιατί πιάνει και όσους δεν κρατούν κανένα καπέλο</div>`;
+   +`<div class="dim" style="font-size:11.5px;margin-top:3px">όλα τσεκαρισμένα = <b>κανένας περιορισμός</b>
+      (πιάνει και όσους δεν κρατούν καπέλο). Ξετσέκαρε για να στενέψεις.</div>`;
 }
 
 /* ══ ΠΟΣΟΥΣ ΠΙΑΝΕΙ — ΠΡΙΝ ΤΗΝ ΑΠΟΘΗΚΕΥΣΗ ══════════════════════════════════
@@ -12365,10 +12372,17 @@ V.formcat=async()=>{
   /* ══ ΖΩΝΤΑΝΗ ΜΕΤΡΗΣΗ ══════════════════════════════════════════════════
      Ο αριθμός ενημερώνεται σε ΚΑΘΕ τσεκάρισμα. Και όταν τα καπέλα κόβουν,
      λέει ΠΟΣΟΥΣ κόβουν — αυτό ακριβώς έλειπε όταν οι «Φανέλες» έπιασαν 9. */
+  /* ΜΙΑ πηγή για τον κανόνα «όλα = κανένας περιορισμός»: τη διαβάζει και ο
+     μετρητής και η αποθήκευση. Αν ήταν δύο, ο αριθμός θα έλεγε άλλα από
+     αυτό που γράφεται στη βάση. */
+  const fcRoles=td=>{
+    const all=[...td.querySelectorAll('.ffrole')], on=all.filter(i=>i.checked);
+    return (!on.length||on.length===all.length)?[]:on.map(i=>i.value);
+  };
   const fcRead=td=>({
     applies_to:(td.querySelector('[data-ff="applies_to"]')||{}).value||'Βαθμοφόρος',
     sections:[...td.querySelectorAll('.ffsec:checked')].map(x=>x.value),
-    roles:[...td.querySelectorAll('.ffrole:checked')].map(x=>x.value),
+    roles:fcRoles(td),
     reach:'ίδιοι'});
   const fcTick=td=>{
     const el=td.querySelector('#ffCount'); if(!el)return;
@@ -12400,8 +12414,10 @@ V.formcat=async()=>{
      αυτό το κουτί, κρατώντας ό,τι είχες ήδη τσεκάρει. */
   document.querySelectorAll('[data-ff="applies_to"]').forEach(s=>s.onchange=()=>{
     const td=s.closest('td'), box=td.querySelector('#ffRoles'); if(!box)return;
-    const keep=[...box.querySelectorAll('.ffrole:checked')].map(x=>x.value);
-    box.innerHTML=fcRoleBox(s.value,keep);
+    /* Αν ήταν «όλα» (= κανένας περιορισμός), μένει «όλα» και στη νέα ιδιότητα
+       — όχι μια τυχαία μερική επιλογή από καπέλα που δεν ισχύουν πια. */
+    const keep=fcRoles(td);
+    box.innerHTML=fcRoleBox(s.value,keep.length?keep:null);
     fcWire(td);
   });
   document.querySelectorAll('#ffCount').forEach(el=>fcWire(el.closest('td')));
@@ -12423,7 +12439,7 @@ V.formcat=async()=>{
            : (x||null);
     });
     v.sections=[...td.querySelectorAll('.ffsec:checked')].map(x=>x.value); if(!v.sections.length)v.sections=null;
-    v.roles   =[...td.querySelectorAll('.ffrole:checked')].map(x=>x.value); if(!v.roles.length)v.roles=null;
+    v.roles   =fcRoles(td); if(!v.roles.length)v.roles=null;   // όλα → κανένας περιορισμός
     if(!v.code||!v.title||!v.url)return toast('Θέλει κωδικό, τίτλο και σύνδεσμο.');
     /* Το form_kind δένει τις ΥΠΟΒΟΛΕΣ με τη φόρμα. Αν λείπει, η οθόνη
        «Οι φόρμες μου» δεν θα δει ποτέ ότι κάποιος την υπέβαλε. */
