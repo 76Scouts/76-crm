@@ -924,6 +924,9 @@ const NAV=[
    {id:'leaders',t:'Βαθμοφόροι',i:'award',s:'live'},
    {id:'guardians',t:'Γονείς',i:'home',s:'live'},
    {id:'staff',t:'Επιτελεία & οργανόγραμμα',i:'tree',s:'live'},
+   /* Το Δίκτυο δεν είναι τμήμα εδώ — είναι ΚΑΝΟΝΑΣ. Δική του οθόνη, γιατί
+      44 άνθρωποι δεν χωράνε ως υποσημείωση σε άλλο επιτελείο. */
+   {id:'network',t:'Δίκτυο',i:'flag',s:'live'},
    {id:'groups',t:'Εξάδες/Ενωμοτίες/Όμιλοι',i:'flag',s:'live'},
    {id:'dedupe',t:'Ταυτοποίηση διπλών',i:'users',s:'live'}]},
 
@@ -1087,6 +1090,7 @@ const SUBS={
  reminders:'Τι φεύγει αυτόματα με email, σε ποιον, και τι έφυγε ήδη',
  formcat:'Οι ζωντανές φόρμες του Smartespot — ποια, σε ποιους, πότε ανοίγει και κλείνει',
  health:'Τι δεν κουμπώνει στα δεδομένα — και πού διορθώνεται',
+ network:'Ο κανόνας του άτυπου Δικτύου και ποιος δεν τον ακολουθεί',
  myschools:'Δηλώνω ενδιαφέρον για τις σχολές της χρονιάς — δεν με γράφει, το βλέπει ο Α.Σ.',
  mycerts:'Τα χαρτιά μου: τι έχω, τι λήγει, και ανέβασμα νέου για έλεγχο',
  myveh:'Τα οχήματα που δήλωσα — και τα χαρτιά τους',
@@ -1113,7 +1117,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-11 20:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-11 20:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -12184,6 +12188,167 @@ V.health=async()=>{
     exportRows(R,'ygeia-dedomenwn','Υγεία δεδομένων')};
 };
 
+/* ══ ΔΙΚΤΥΟ ═══════════════════════════════════════════════════════════════
+   ΔΥΟ ΚΟΣΜΟΙ, ΕΝΑΣ ΔΙΑΚΟΠΤΗΣ.
+
+   ΤΥΠΙΚΟ ΔΙΚΤΥΟ: το Σύστημα έχει εγκεκριμένο Προσκοπικό Δίκτυο. Τότε το
+   Δίκτυο ΕΙΝΑΙ τμήμα — οι άνθρωποι γράφονται σε αυτό (ΑΠΔ/ΥΠΔ/ΜΠΔ) και,
+   αν θέλει το Σύστημα, παίρνουν ΕΠΙΠΛΕΟΝ καπέλο σε τμήμα.
+
+   ΑΤΥΠΟ ΔΙΚΤΥΟ (76ο): το Δίκτυο δεν είναι τμήμα — είναι ΙΔΙΟΤΗΤΑ. Άρα
+   κανείς δεν «ζει» σε αυτό: ο καθένας πρέπει να έχει ΚΑΙ θέση σε πραγματικό
+   τμήμα. Χωρίς αυτόν τον κανόνα 44 άνθρωποι κάθονται σε τμήμα-φάντασμα:
+   δεν τους βλέπει κανένας αρχηγός, δεν τους πιάνει καμία φόρμα, δεν τους
+   μετράει κανένα επιτελείο.
+
+   Η ΠΡΟΕΠΙΛΟΓΗ ΑΚΟΛΟΥΘΕΙ ΤΟ ΤΜΗΜΑ: υπαρχηγός P/T του τμήματός του —
+   Αγέλη→ΥΑΛ, Ομάδα→ΥΟΠ, Κοινότητα→ΥΚΑ. Αν το τμήμα λείπει, Αγέλη.
+   Το «όλοι στην Αγέλη» δεν ήταν κανόνας· ήταν το αποτέλεσμα του ότι το
+   τμήμα έμενε κενό.
+
+   Η ΡΗΤΗ ΑΝΑΘΕΣΗ ΝΙΚΑ ΠΑΝΤΑ. Ο κανόνας γεμίζει ΜΟΝΟ κενά — δεν πειράζει
+   ποτέ καπέλο που έβαλε άνθρωπος. Γι' αυτό και δεν εφαρμόζεται μαζικά με
+   ένα κουμπί: τα παλιά καπέλα (Βαθμ/P/T) θέλουν ΚΡΙΣΗ, όχι αντιστοίχιση. */
+const NW_COL={'εντάξει':'ok'};
+const nwCol=a=>a==='εντάξει'?'ok':/θέλει κρίση/.test(a)?'warn':'bad';
+let NWPLAN=[];
+
+async function nwApply(pid, role, pt, secOnly){
+  const rc=(D.rc||[]).find(r=>r.code===role);
+  const jobs=[];
+  /* ΔΥΟ ΞΕΧΩΡΙΣΤΑ ΚΑΠΕΛΑ, όχι ένα συνδυασμένο: η θέση στο τμήμα αλλάζει
+     χωρίς να χαθεί η ιδιότητα του Δικτύου, και αντίστροφα. */
+  if(rc) jobs.push(sb.from('person_hats').insert({person_id:pid,role_code:role,
+    title:rc.title, scope_value:rc.section, part_time:!!pt}));
+  if(!secOnly){
+    const mp=(D.rc||[]).find(r=>r.code==='MPD');
+    if(mp) jobs.push(sb.from('person_hats').insert({person_id:pid,role_code:'MPD',
+      title:mp.title, scope_value:'Δίκτυο', part_time:false}));
+  }
+  for(const j of jobs){ const {error}=await j;
+    /* Το μοναδικό ευρετήριο (person_id, role_code) where valid_to is null
+       κόβει το διπλοπάτημα στη ΒΑΣΗ — εδώ απλώς δεν το λέμε σφάλμα. */
+    if(error && !/duplicate key/i.test(error.message)) return toast('Δεν μπήκε: '+error.message);
+  }
+  await reload1('ph');
+  return true;
+}
+
+V.network=async()=>{
+  $('view').innerHTML='<div class="card pad dim">Έλεγχος…</div>';
+  const [{data:cfgRow},{data,error}]=await Promise.all([
+    sb.from('app_settings').select('v').eq('k','network').maybeSingle(),
+    sb.rpc('network_plan')]);
+  if(error)return $('view').innerHTML=`<div class="uc"><h3>Δεν έτρεξε</h3><p>${esc(error.message)}</p></div>`;
+  NWPLAN=data||[];
+  const cfg=(cfgRow&&cfgRow.v)||{}, formal=!!cfg.formal;
+  const dmap=cfg.default_by_section||{};
+  const ok=NWPLAN.filter(r=>r.action==='εντάξει').length;
+  const judge=NWPLAN.filter(r=>/θέλει κρίση/.test(r.action)).length;
+  const auto=NWPLAN.length-ok-judge;
+  /* Οι περιοχές είναι η ΠΡΑΓΜΑΤΙΚΗ δομή του Δικτύου — πού ζει ο καθένας. */
+  const areas={}; NWPLAN.forEach(r=>{const a=r.area||'—';(areas[a]=areas[a]||[]).push(r)});
+
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Δίκτυο</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">
+        Το Σύστημα έχει <b>${formal?'τυπικό':'άτυπο'}</b> Δίκτυο.
+        ${formal
+          ? 'Το Δίκτυο είναι τμήμα: οι άνθρωποι γράφονται σε αυτό, και προαιρετικά παίρνουν και καπέλο σε τμήμα.'
+          : 'Το Δίκτυο είναι <b>ιδιότητα</b>, όχι τμήμα — άρα ο καθένας χρειάζεται <b>και</b> θέση σε πραγματικό τμήμα.'}
+      </div>
+      ${formal?'':`<div class="dim" style="font-size:12.5px;margin-top:7px;line-height:1.7">
+        <b>Ο κανόνας:</b> ιδιότητα «Δίκτυο» (ΜΠΔ) + υπαρχηγός P/T του τμήματός του —
+        ${Object.entries(dmap).filter(([k])=>k!=='Μικρή Αγέλη')
+            .map(([k,v])=>esc(k)+' → '+esc(((D.rc||[]).find(r=>r.code===v)||{}).short||v)+' P/T').join(' · ')}.
+        Χωρίς τμήμα: ${esc(cfg.default_section||'Αγέλη')}.<br>
+        <b>Η ρητή ανάθεση νικά.</b> Ο κανόνας συμπληρώνει μόνο ό,τι λείπει — δεν αλλάζει τίποτα που έβαλες εσύ.</div>`}
+      <div style="margin-top:9px"><button class="btn sm" id="nwAgain">Ξανά</button>
+        <button class="btn gh sm" id="nwExp">Εξαγωγή</button>
+        <button class="btn gh sm" id="nwFormal">${formal?'Κάν΄ το άτυπο':'Κάν΄ το τυπικό'}</button></div></div>
+
+    <div class="tiles">
+      <div class="tile ${ok===NWPLAN.length?'ok':''}" style="cursor:default"><div class="k">Ακολουθούν τον κανόνα</div>
+        <div class="v">${ok}</div><div class="s">από ${NWPLAN.length}</div></div>
+      <div class="tile ${auto?'bad':''}" style="cursor:default"><div class="k">Λείπει κάτι</div>
+        <div class="v">${auto}</div><div class="s">συμπληρώνεται με τον κανόνα</div></div>
+      <div class="tile ${judge?'warn':''}" style="cursor:default"><div class="k">Θέλουν κρίση</div>
+        <div class="v">${judge}</div><div class="s">παλιό καπέλο — αποφασίζεις εσύ</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Περιοχές</div>
+        <div class="v">${Object.keys(areas).filter(a=>a!=='—').length}</div>
+        <div class="s">${(areas['—']||[]).length} χωρίς περιοχή</div></div>
+    </div>
+
+    <div class="card" style="overflow:auto;margin-top:12px"><table>
+      <thead><tr><th>Ποιος</th><th>Περιοχή</th><th>Τμήμα</th><th>Καπέλα τώρα</th>
+        <th>Τι λέει ο κανόνας</th><th></th></tr></thead>
+      <tbody id="nwBody">${NWPLAN.map(nwRow).join('')}</tbody></table></div>`;
+
+  $('nwAgain').onclick=()=>V.network();
+  $('nwExp').onclick=()=>{
+    const R=[['Ποιος','Περιοχή','Υπεύθυνος περιοχής','Τμήμα','Καπέλα','Κατάσταση','Προτεινόμενο']];
+    NWPLAN.forEach(r=>R.push([r.who,r.area||'',r.area_lead?'ναι':'',r.sec||'',r.hats,r.action,
+      (r.prop_short||'')+(r.prop_pt?' P/T':'')]));
+    exportRows(R,'diktyo','Δίκτυο');
+  };
+  $('nwFormal').onclick=async()=>{
+    if(!confirm(formal
+      ? 'Το Δίκτυο γίνεται ΑΤΥΠΟ.\n\nΘα ζητείται καπέλο τμήματος για κάθε μέλος του Δικτύου.'
+      : 'Το Δίκτυο γίνεται ΤΥΠΙΚΟ.\n\nΤα μέλη του θα πρέπει να έχουν τμήμα «Δίκτυο».\nΚαμία καρτέλα δεν αλλάζει τώρα — αλλάζει μόνο ο κανόνας ελέγχου.'))return;
+    const {error}=await sb.from('app_settings').update({v:{...cfg,formal:!formal}}).eq('k','network');
+    if(error)return toast('Δεν άλλαξε: '+error.message);
+    toast(!formal?'Τυπικό Δίκτυο':'Άτυπο Δίκτυο'); V.network();
+  };
+  nwWire();
+};
+
+function nwRow(r){
+  const c=nwCol(r.action), prop=(r.prop_short||'')+(r.prop_pt?' P/T':'');
+  const need=r.action!=='εντάξει';
+  /* Ο διακόπτης «μόνο η ιδιότητα» υπάρχει γιατί κάποιοι ΕΧΟΥΝ ήδη θέση
+     (η Χάλιου είναι ΥΑΛ) και τους λείπει μόνο το «Δίκτυο». */
+  const secOnly=r.mpd;
+  return `<tr data-nwrow="${r.person_id}">
+    <td><span class="pn" data-p="${r.person_id}"><b>${esc(r.who)}</b></span>
+      ${r.area_lead?'<span class="pill" style="margin-left:5px">υπεύθ. περιοχής</span>':''}</td>
+    <td class="dim" style="white-space:nowrap">${esc(r.area||'—')}</td>
+    <td class="dim" style="white-space:nowrap">${esc(r.sec||'—')}</td>
+    <td style="white-space:nowrap;font-size:12.5px">${esc(r.hats)}</td>
+    <td><span class="pill" style="background:var(--${c}bg);color:var(--${c});border-color:transparent">${esc(r.action)}</span></td>
+    <td style="white-space:nowrap">${need?`
+      <select data-nwrole="${r.person_id}" style="max-width:130px;display:inline-block">
+        ${(D.rc||[]).filter(x=>!x.deprecated&&x.holder_kind==='Βαθμοφόρος'
+            &&['Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα'].includes(x.section))
+          .sort((a,b)=>(a.seq||0)-(b.seq||0))
+          .map(x=>`<option value="${esc(x.code)}"${x.code===r.prop_role?' selected':''}>${esc(x.short)} ${esc(x.section)}</option>`).join('')}
+        <option value=""${r.sec_hat?' selected':''}>— χωρίς νέο καπέλο —</option>
+      </select>
+      <label style="display:inline-flex;gap:4px;align-items:center;font-weight:400;max-width:none;font-size:12px">
+        <input type="checkbox" data-nwpt="${r.person_id}"${r.prop_pt?' checked':''} style="width:auto">P/T</label>
+      <button class="btn p sm" data-nwgo="${r.person_id}" data-nwsec="${secOnly?1:''}">Εφάρμοσε</button>`
+      :'<span class="dim" style="font-size:12px">—</span>'}</td></tr>`;
+}
+
+function nwWire(){
+  document.querySelectorAll('[data-nwgo]').forEach(b=>b.onclick=async()=>{
+    const pid=b.dataset.nwgo;
+    const sel=document.querySelector(`[data-nwrole="${pid}"]`);
+    const pt =document.querySelector(`[data-nwpt="${pid}"]`);
+    b.disabled=true; b.textContent='…';
+    const done=await nwApply(pid, sel&&sel.value, pt&&pt.checked, !!b.dataset.nwsec);
+    if(!done){ b.disabled=false; b.textContent='Εφάρμοσε'; return }
+    /* ΜΙΑ ΑΛΛΑΓΗ = ΜΙΑ ΓΡΑΜΜΗ: ξαναρωτάμε τη βάση μόνο γι΄ αυτόν τον άνθρωπο
+       και ξαναζωγραφίζουμε ΜΟΝΟ το <tr> του. Η λίστα δεν αναπηδά. */
+    const {data}=await sb.rpc('network_plan');
+    const fresh=(data||[]).find(x=>x.person_id===pid);
+    NWPLAN=data||NWPLAN;
+    const tr=document.querySelector(`[data-nwrow="${pid}"]`);
+    if(tr&&fresh){ tr.outerHTML=nwRow(fresh); nwWire(); }
+    toast('Μπήκε');
+  });
+}
+
 /* ══ ΚΑΤΑΛΟΓΟΣ ΦΟΡΜΩΝ ══════════════════════════════════════════════════════
    Η προσθήκη φόρμας ήταν εντολή SQL. Δηλαδή: κάθε νέα φόρμα περνούσε από
    εμένα, και ο Α.Σ. δεν μπορούσε να ανοίξει μια φόρμα δράσης το Σάββατο.
@@ -15496,6 +15661,7 @@ const R1={
   gr : ()=>sb.from('grants').select('*').order('valid_to',{ascending:false}).limit(500),
   inv: ()=>sb.from('invitations').select('*').limit(2000),
   ac : ()=>sb.from('v_accounts').select('*'),
+  ph : ()=>sb.from('person_hats').select('*').limit(2000),
 };
 async function reload1(...keys){
   for(const k of keys){ const {data,error}=await R1[k]();
