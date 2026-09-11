@@ -925,6 +925,9 @@ const NAV=[
    /* «Αυτόματο» χωρίς οθόνη σημαίνει «δεν ξέρω τι έγινε» — και το πρώτο
       παράπονο δεν έχει απάντηση. Η οθόνη μπαίνει ΠΡΙΝ ανάψει ο διακόπτης. */
    {id:'reminders',t:'Υπενθυμίσεις',i:'mail',s:'live'},
+   /* Ο κατάλογος των ΖΩΝΤΑΝΩΝ φορμών (Smartespot) — άλλο πράγμα από τα
+      «Έντυπα & εξαγωγές Σ.Π.Κ.», που είναι χαρτιά προς εκτύπωση. */
+   {id:'formcat',t:'Κατάλογος φορμών',i:'book',s:'live'},
    {id:'vpapers',t:'Χαρτιά οχημάτων',i:'car',s:'live'},
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'training',t:'Εκπαιδεύσεις',i:'book',s:'live'},
@@ -1037,6 +1040,7 @@ const SUBS={
 
  certq:'Χαρτιά που περιμένουν να τα δεις — και η δοκιμή του Ν.91(Ι) ως προϋπόθεση',
  reminders:'Τι φεύγει αυτόματα με email, σε ποιον, και τι έφυγε ήδη',
+ formcat:'Οι ζωντανές φόρμες του Smartespot — ποια, σε ποιους, πότε ανοίγει και κλείνει',
  myschools:'Δηλώνω ενδιαφέρον για τις σχολές της χρονιάς — δεν με γράφει, το βλέπει ο Α.Σ.',
  mycerts:'Τα χαρτιά μου: τι έχω, τι λήγει, και ανέβασμα νέου για έλεγχο',
  myveh:'Τα οχήματα που δήλωσα — και τα χαρτιά τους',
@@ -1063,7 +1067,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-10 02:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-11 16:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -11993,6 +11997,141 @@ function certqBody(){
     e.preventDefault();e.stopPropagation();
     const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
     if(c)docPreview(certSides(c),+a.dataset.ix||0);});
+};
+
+/* ══ ΚΑΤΑΛΟΓΟΣ ΦΟΡΜΩΝ ══════════════════════════════════════════════════════
+   Η προσθήκη φόρμας ήταν εντολή SQL. Δηλαδή: κάθε νέα φόρμα περνούσε από
+   εμένα, και ο Α.Σ. δεν μπορούσε να ανοίξει μια φόρμα δράσης το Σάββατο.
+
+   ΤΟ ΑΚΡΟΑΤΗΡΙΟ ΕΙΝΑΙ ΤΡΙΑ ΦΙΛΤΡΑ ΠΟΥ ΤΕΜΝΟΝΤΑΙ, και το λέει η ίδια η οθόνη
+   δείχνοντας ΠΟΣΟΥΣ πιάνει τώρα:
+     ΙΔΙΟΤΗΤΑ (Βαθμοφόρος/Μέλος/Γονέας/Όλοι) × ΤΜΗΜΑΤΑ × ΚΑΠΕΛΑ
+   «Μόνο βαθμοφόροι» = Βαθμοφόρος + κανένα τμήμα + κανένα καπέλο.
+   «Δράση της Ομάδας» = Μέλος + τμήμα Ομάδα (+ ημερομηνίες ανοίγματος).
+   Ο αριθμός των παραληπτών υπολογίζεται από την ΙΔΙΑ συνάρτηση που κρίνει
+   ποιος τη βλέπει (form_audience) — όχι από δεύτερο, παρόμοιο ερώτημα. */
+const FC_KIND=['Βαθμοφόρος','Μέλος','Γονέας','Όλοι'];
+const FC_SECS=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+let FCED=null;                      // ποια φόρμα είναι ανοιχτή για επεξεργασία
+async function fcCounts(ids){
+  const out={};
+  for(const id of ids){
+    const {data}=await sb.rpc('form_audience',{p_form:id});
+    out[id]=(data||[]).length;
+  }
+  return out;
+}
+V.formcat=async()=>{
+  $('view').innerHTML='<div class="card pad dim">Φόρτωση…</div>';
+  const {data,error}=await sb.from('form_catalog').select('*').order('seq');
+  if(error)return $('view').innerHTML=`<div class="uc"><h3>Δεν διαβάστηκε</h3><p>${esc(error.message)}</p></div>`;
+  const rows=data||[];
+  const cnt=await fcCounts(rows.map(r=>r.id));
+  const today=new Date().toISOString().slice(0,10);
+  const live=r=>r.active!==false&&(!r.opens_on||r.opens_on<=today)&&(!r.closes_on||r.closes_on>=today);
+
+  const ed=r=>`<tr><td colspan="5" style="background:var(--bg)">
+    <div class="grow">
+      <label style="max-width:150px">Κωδικός<input data-ff="code" value="${esc(r.code||'')}" ${r.id?'disabled':''}></label>
+      <label style="flex:2">Τίτλος<input data-ff="title" value="${esc(r.title||'')}"></label>
+      <label style="max-width:110px">Quform id<input type="number" data-ff="quform_id" value="${r.quform_id||''}"></label>
+      <label style="max-width:90px">Σειρά<input type="number" data-ff="seq" value="${r.seq||50}"></label>
+    </div>
+    <div class="grow"><label style="flex:3">Σύνδεσμος<input data-ff="url" value="${esc(r.url||'')}"
+      placeholder="https://smartespot.com/76life/..."></label></div>
+    <div class="grow">
+      <label style="max-width:170px">Ποιους αφορά<select data-ff="applies_to">
+        ${FC_KIND.map(k=>`<option${k===r.applies_to?' selected':''}>${k}</option>`).join('')}</select></label>
+      <label style="max-width:150px">Ανοίγει<input type="date" data-ff="opens_on" value="${esc(r.opens_on||'')}"></label>
+      <label style="max-width:150px">Κλείνει<input type="date" data-ff="closes_on" value="${esc(r.closes_on||'')}"></label>
+      <label style="max-width:190px">Ανανέωση (μήνες)<input type="number" data-ff="valid_months" value="${r.valid_months||''}"
+        placeholder="κενό = μία φορά"></label>
+    </div>
+    <div class="grow"><label style="flex:2">Τμήματα
+      <div style="display:flex;gap:9px;flex-wrap:wrap;padding-top:5px">${FC_SECS.map(s=>
+        `<label style="display:flex;gap:4px;align-items:center;font-weight:400;max-width:none">
+          <input type="checkbox" class="ffsec" value="${s}"${(r.sections||[]).includes(s)?' checked':''} style="width:auto">${s}</label>`).join('')}
+        <span class="dim" style="font-size:11.5px;align-self:center">κανένα τσεκαρισμένο = όλα</span></div></label></div>
+    <div class="grow"><label style="flex:2">Μόνο σε καπέλα
+      <div style="display:flex;gap:9px;flex-wrap:wrap;padding-top:5px">${(D.rc||[]).filter(x=>x.holder_kind==='Βαθμοφόρος'&&x.active!==false)
+        .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(x=>
+        `<label style="display:flex;gap:4px;align-items:center;font-weight:400;max-width:none" title="${esc(x.title)}">
+          <input type="checkbox" class="ffrole" value="${esc(x.code)}"${(r.roles||[]).includes(x.code)?' checked':''} style="width:auto">${esc(x.short||x.code)}</label>`).join('')}
+        <span class="dim" style="font-size:11.5px;align-self:center">κανένα = όλοι</span></div></label></div>
+    <div class="grow"><label style="flex:3">Σημείωση<input data-ff="note" value="${esc(r.note||'')}"></label>
+      <label style="max-width:150px">Κατάσταση<select data-ff="active">
+        <option value="1"${r.active!==false?' selected':''}>Ενεργή</option>
+        <option value=""${r.active===false?' selected':''}>Κλειστή</option></select></label></div>
+    <div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">
+      <button class="btn p sm" data-fcsave="${r.id||'NEW'}">Αποθήκευση</button>
+      <button class="btn gh sm" data-fccancel="1">Άκυρο</button>
+      <span class="sp"></span>
+      ${r.id?`<button class="btn gh sm" data-fcdel="${r.id}">Διαγραφή</button>`:''}</div>
+    <div class="dim" style="font-size:11.5px;margin-top:6px">Ο <b>κωδικός</b> και το <b>είδος</b> δένουν τις υποβολές
+      με τη φόρμα — μην τα αλλάξεις αφού αρχίσει να δέχεται απαντήσεις.</div></td></tr>`;
+
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Κατάλογος φορμών</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Οι <b>ζωντανές</b> φόρμες του Smartespot.
+        Ό,τι βάλεις εδώ εμφανίζεται αυτόματα στις «Οι φόρμες μου» σε όσους το ακροατήριο τούς πιάνει,
+        <b>προσυμπληρωμένο</b> με ό,τι ήδη ξέρουμε.</div>
+      <div class="dim" style="font-size:12.5px;margin-top:6px">Δεν είναι τα «Έντυπα &amp; εξαγωγές Σ.Π.Κ.» —
+        εκείνα είναι χαρτιά προς εκτύπωση.</div>
+      <div style="margin-top:10px"><button class="btn p sm" id="fcNew">＋ Νέα φόρμα</button></div></div>
+
+    ${FCED==='NEW'?`<div class="card" style="margin-bottom:10px"><table><tbody>${
+      ed({applies_to:'Βαθμοφόρος',seq:50,active:true})}</tbody></table></div>`:''}
+
+    <div class="card" style="overflow:auto"><table>
+      <thead><tr><th>Φόρμα</th><th>Ποιους</th><th>Πότε</th><th>Πόσους πιάνει</th><th></th></tr></thead>
+      <tbody>${rows.map(r=>`<tr${live(r)?'':' style="opacity:.55"'}>
+        <td><b>${esc(r.title)}</b>
+          <div class="dim" style="font-size:11.5px">${esc(r.code)}${r.quform_id?` · Quform ${r.quform_id}`:''}</div>
+          ${r.url?`<div class="dim" style="font-size:11px"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url.replace(/^https?:\/\//,''))}</a></div>`:''}</td>
+        <td style="white-space:nowrap;font-size:12.5px">${esc(r.applies_to||'—')}
+          ${(r.sections||[]).length?`<div class="dim" style="font-size:11.5px">${(r.sections||[]).map(esc).join(', ')}</div>`:''}
+          ${(r.roles||[]).length?`<div class="dim" style="font-size:11.5px">μόνο ${(r.roles||[]).map(c=>{
+            const x=(D.rc||[]).find(y=>y.code===c); return esc((x&&x.short)||c)}).join(', ')}</div>`:''}</td>
+        <td class="dim" style="white-space:nowrap;font-size:12.5px">
+          ${r.opens_on||r.closes_on?`${r.opens_on?fdate(r.opens_on):'…'} → ${r.closes_on?fdate(r.closes_on):'…'}`:'χωρίς περίοδο'}
+          <div style="font-size:11.5px">${r.valid_months?`ανανέωση ${r.valid_months} μήνες`:'μία φορά'}</div></td>
+        <td><b style="font-size:15px">${cnt[r.id]??'—'}</b>
+          <div class="dim" style="font-size:11px">άτομα</div></td>
+        <td style="white-space:nowrap">
+          <span class="pill" style="background:var(--${live(r)?'ok':'warn'}bg);color:var(--${live(r)?'ok':'warn'});border-color:transparent">${live(r)?'ανοιχτή':'κλειστή'}</span>
+          <button class="btn gh sm" data-fcedit="${r.id}">✎</button></td></tr>
+        ${FCED===r.id?ed(r):''}`).join('')||'<tr><td colspan="5" class="dim">Καμία φόρμα ακόμη.</td></tr>'}</tbody></table></div>`;
+
+  const nb=$('fcNew'); if(nb)nb.onclick=()=>{FCED=FCED==='NEW'?null:'NEW';V.formcat()};
+  document.querySelectorAll('[data-fcedit]').forEach(b=>b.onclick=()=>{
+    FCED=FCED===b.dataset.fcedit?null:b.dataset.fcedit;V.formcat()});
+  document.querySelectorAll('[data-fccancel]').forEach(b=>b.onclick=()=>{FCED=null;V.formcat()});
+  document.querySelectorAll('[data-fcdel]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Διαγραφή της φόρμας από τον κατάλογο;\n\nΟι υποβολές που έχουν ήδη γίνει ΔΕΝ σβήνονται.'))return;
+    const {error}=await sb.from('form_catalog').delete().eq('id',b.dataset.fcdel);
+    if(error)return toast('Δεν διαγράφηκε: '+error.message);
+    FCED=null; toast('Διαγράφηκε'); V.formcat()});
+  document.querySelectorAll('[data-fcsave]').forEach(b=>b.onclick=async()=>{
+    const td=b.closest('td'), v={};
+    td.querySelectorAll('[data-ff]').forEach(i=>{
+      const f=i.dataset.ff; let x=i.value.trim();
+      v[f] = f==='active' ? !!x
+           : (f==='seq'||f==='valid_months'||f==='quform_id') ? (x===''?null:parseInt(x))
+           : (x||null);
+    });
+    v.sections=[...td.querySelectorAll('.ffsec:checked')].map(x=>x.value); if(!v.sections.length)v.sections=null;
+    v.roles   =[...td.querySelectorAll('.ffrole:checked')].map(x=>x.value); if(!v.roles.length)v.roles=null;
+    if(!v.code||!v.title||!v.url)return toast('Θέλει κωδικό, τίτλο και σύνδεσμο.');
+    /* Το form_kind δένει τις ΥΠΟΒΟΛΕΣ με τη φόρμα. Αν λείπει, η οθόνη
+       «Οι φόρμες μου» δεν θα δει ποτέ ότι κάποιος την υπέβαλε. */
+    if(!v.form_kind)v.form_kind=v.code.toLowerCase();
+    const q = b.dataset.fcsave==='NEW'
+      ? sb.from('form_catalog').insert(v)
+      : sb.from('form_catalog').update(v).eq('id',b.dataset.fcsave);
+    const {error}=await q;
+    if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
+    FCED=null; toast('Αποθηκεύτηκε'); V.formcat()});
 };
 
 /* ══ ΥΠΕΝΘΥΜΙΣΕΙΣ ═════════════════════════════════════════════════════════
