@@ -207,6 +207,16 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);cursor:pointer;transition:.13s;text-align:left;display:block;width:100%}
 .tile:hover{border-color:var(--ink3);transform:translateY(-1px)}
+/* ΠΛΑΚΙΔΙΟ ΠΟΥ ΔΕΝ ΠΑΤΙΕΤΑΙ ΔΕΝ ΠΡΕΠΕΙ ΝΑ ΜΟΙΑΖΕΙ ΚΟΥΜΠΙ. 58 πλακίδια
+   έχουν cursor:default — σηκώνονταν στο πέρασμα του ποντικιού και δεν
+   έκαναν τίποτα. Η υπόσχεση που δεν τηρείται είναι χειρότερη από την
+   απουσία της: μαθαίνεις να μην πατάς ΤΙΠΟΤΑ. */
+.tile[style*="cursor:default"]{box-shadow:none;background:transparent}
+.tile[style*="cursor:default"]:hover{border-color:var(--line);transform:none}
+/* ΙΕΡΑΡΧΙΑ: το ΠΡΩΤΟ πλακίδιο κάθε σειράς είναι η κύρια απάντηση.
+   Τέσσερα ίσα νούμερα δεν λένε πού να κοιτάξεις. */
+.tiles>.tile:first-child .v{font-size:34px}
+.tiles>.tile:first-child{grid-column:span 1}
 .tile .k{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:6px;margin-bottom:7px}
 .tile .v{font-size:27px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
 .tile .s{font-size:11.5px;color:var(--ink3);margin-top:3px}
@@ -364,6 +374,30 @@ td.mcell:hover .madd{opacity:1}
   table.mola{font-size:11px;table-layout:auto}
   table.mola th.mmon{width:70px;font-size:10px}
   td.mcell{min-width:118px}
+}
+/* ══ ΠΙΝΑΚΑΣ ΣΕ ΚΙΝΗΤΟ = ΚΑΡΤΕΣ ═══════════════════════════════════════════
+   Ο Α.Σ. δουλεύει από τηλέφωνο το Σάββατο. Πίνακας με έξι στήλες σε οθόνη
+   390px γίνεται οριζόντια κύλιση: βλέπεις το όνομα και χάνεις την κατάσταση,
+   ή το αντίστροφο. Κάθε γραμμή γίνεται κάρτα, κάθε κελί μια σειρά.
+   Η ΠΡΩΤΗ στήλη είναι ο τίτλος — σε κάθε πίνακα εδώ είναι το όνομα ή η
+   ημερομηνία, δηλαδή αυτό που ψάχνεις.
+   ΕΞΑΙΡΕΣΕΙΣ: το πρόγραμμα (mola) και όποιος πίνακας είναι πλέγμα και όχι
+   λίστα — εκεί η θέση του κελιού ΕΙΝΑΙ η πληροφορία. */
+@media(max-width:640px){
+  .card>table:not(.mola):not(.grid-tbl),
+  .card>div>table:not(.mola):not(.grid-tbl){display:block}
+  .card table:not(.mola):not(.grid-tbl) thead{display:none}
+  .card table:not(.mola):not(.grid-tbl) tbody,
+  .card table:not(.mola):not(.grid-tbl) tr{display:block}
+  .card table:not(.mola):not(.grid-tbl) tr{
+    border:1px solid var(--line);border-radius:var(--rs);
+    padding:9px 11px;margin-bottom:8px;background:var(--card)}
+  .card table:not(.mola):not(.grid-tbl) td{
+    display:block;border:0;padding:2px 0;white-space:normal!important}
+  .card table:not(.mola):not(.grid-tbl) td:first-child{
+    font-size:14.5px;padding-bottom:5px}
+  /* Κελί που θα έμενε κενό δεν παίρνει ολόκληρη σειρά. */
+  .card table:not(.mola):not(.grid-tbl) td:empty{display:none}
 }
 /* Το δέντρο σέρνει κι αυτό — ίδια γλώσσα σημάτων με τις στήλες. */
 .orow[draggable="true"]{cursor:grab}
@@ -928,6 +962,9 @@ const NAV=[
    /* Ο κατάλογος των ΖΩΝΤΑΝΩΝ φορμών (Smartespot) — άλλο πράγμα από τα
       «Έντυπα & εξαγωγές Σ.Π.Κ.», που είναι χαρτιά προς εκτύπωση. */
    {id:'formcat',t:'Κατάλογος φορμών',i:'book',s:'live'},
+   /* Ο έλεγχος που έλειπε: η βάση που ξέρει και σωπαίνει είναι χειρότερη
+      από τη βάση που δεν ξέρει. */
+   {id:'health',t:'Υγεία δεδομένων',i:'shield',s:'live'},
    {id:'vpapers',t:'Χαρτιά οχημάτων',i:'car',s:'live'},
    {id:'warrants',t:'Εντολές & Αναθέσεις',i:'book',s:'live'},
    {id:'training',t:'Εκπαιδεύσεις',i:'book',s:'live'},
@@ -1041,6 +1078,7 @@ const SUBS={
  certq:'Χαρτιά που περιμένουν να τα δεις — και η δοκιμή του Ν.91(Ι) ως προϋπόθεση',
  reminders:'Τι φεύγει αυτόματα με email, σε ποιον, και τι έφυγε ήδη',
  formcat:'Οι ζωντανές φόρμες του Smartespot — ποια, σε ποιους, πότε ανοίγει και κλείνει',
+ health:'Τι δεν κουμπώνει στα δεδομένα — και πού διορθώνεται',
  myschools:'Δηλώνω ενδιαφέρον για τις σχολές της χρονιάς — δεν με γράφει, το βλέπει ο Α.Σ.',
  mycerts:'Τα χαρτιά μου: τι έχω, τι λήγει, και ανέβασμα νέου για έλεγχο',
  myveh:'Τα οχήματα που δήλωσα — και τα χαρτιά τους',
@@ -1067,7 +1105,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-11 19:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-11 19:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2245,7 +2283,18 @@ function orphanGroup(){
    Ποιες ομάδες είναι διπλωμένες — θυμάται ανά συσκευή. Η ομάδα της τρέχουσας
    οθόνης ανοίγει πάντα: διπλωμένο μενού που κρύβει εκεί που βρίσκεσαι είναι
    παγίδα, όχι τακτοποίηση. */
+/* ══ 62 ΟΘΟΝΕΣ ΕΙΝΑΙ ΠΟΛΛΕΣ ΓΙΑ ΕΝΑΝ ΕΘΕΛΟΝΤΗ ════════════════════════════
+   Οι μισές ανοίγουν ΜΙΑ ΦΟΡΑ ΤΟΝ ΧΡΟΝΟ: μετάβαση χρονιάς, εισαγωγή από
+   e-Scouts, πίνακας δικαιωμάτων. Δεν τις σβήνουμε — τις κλείνουμε. Η ομάδα
+   είναι εκεί, ένα κλικ μακριά, αλλά δεν κουβαλιέται στο μάτι κάθε μέρα.
+   ΜΟΝΟ ΤΗΝ ΠΡΩΤΗ ΦΟΡΑ: αν ο χρήστης την ανοίξει, μένει ανοιχτή για πάντα —
+   η προεπιλογή δεν είναι κανόνας. */
+const NAV_RARE=['Νέα χρονιά','Μελλοντικά','Ρυθμίσεις','Εγώ ως μέλος','Τα παιδιά μου'];
 let NAVSHUT={}; try{NAVSHUT=JSON.parse(localStorage.getItem('e76:navshut')||'{}')}catch(e){NAVSHUT={}}
+if(!localStorage.getItem('e76:navshut')){
+  NAV_RARE.forEach(g=>NAVSHUT[g]=true);
+  try{localStorage.setItem('e76:navshut',JSON.stringify(NAVSHUT))}catch(e){}
+}
 function renderNav(){
   const cnt={members:D.bh.filter(p=>(p.kind||'')==='Μέλος').length,leaders:D.bh.filter(p=>isLed(p)).length,guardians:D.bh.filter(p=>isPar(p)).length,sessions:D.ss.length};
   /* ΕΚΚΡΕΜΟΤΗΤΕΣ, όχι πλήθος. Το «Μέλη 171» λέει πόσα υπάρχουν· το
@@ -2443,6 +2492,43 @@ function certList(){
 const drw=$('drw');
 drw.querySelector('.bg').onclick=()=>drw.classList.remove('on');
 document.addEventListener('keydown',e=>{if(e.key==='Escape')drw.classList.remove('on')});
+
+/* ══ ΨΑΞΕ ΠΑΝΤΟΥ ═══════════════════════════════════════════════════════════
+   65 οθόνες, και η αναζήτηση ήταν ΑΝΑ ΟΘΟΝΗ: ήξερες το όνομα αλλά όχι σε
+   ποια οθόνη ζει. Ένα πεδίο που βρίσκει ΠΡΟΣΩΠΟ, ΔΡΑΣΗ, ΟΧΗΜΑ, ΦΟΡΜΑ, ΣΧΟΛΗ
+   και ΟΘΟΝΗ — και σε πάει εκεί.
+   Χρησιμοποιεί το ΙΔΙΟ latKey() με την αναζήτηση των λιστών: «Georgiou»
+   βρίσκει «Γεωργίου», και ο Α.Μ. πιάνεται με σκέτα ψηφία. Δύο διαφορετικοί
+   τρόποι αναζήτησης στην ίδια εφαρμογή θα δίδασκαν τον χρήστη ότι «καμιά
+   φορά δεν βρίσκει». */
+function gsHits(raw){
+  const q=nameKey(raw), L=latKey(raw), d=digits(raw), out=[];
+  const hit=t=>{const s=String(t||''); return nameKey(s).includes(q)
+    || (L.length>=2&&latKey(s).includes(L))
+    || (d.length>=3&&digits(s).includes(d))};
+  const push=(kind,icon,label,sub,act)=>out.length<40&&out.push({kind,icon,label,sub,act});
+
+  (D.bh||[]).forEach(p=>{
+    if(hit(nm(p))||hit(p.registry_no)||hit(p.phone)||hit(p.email)||hit(p.scout_name)||hit(p.nickname))
+      push('Πρόσωπο','users',nm(p),
+        [p.kind,secOf(p),p.registry_no&&'Α.Μ. '+p.registry_no].filter(Boolean).join(' · '),
+        ()=>openProfile(p.id));
+  });
+  (D.ev||[]).forEach(e=>{ if(hit(e.title)||hit(e.place))
+    push(e.type==='Σχολή'?'Σχολή':'Δράση','flag',e.title,
+      [e.event_date&&fdate(e.event_date),e.place].filter(Boolean).join(' · '),
+      ()=>route(e.type==='Σχολή'?'training':'events')); });
+  (D.veh||[]).forEach(v=>{ if(hit(v.plate)||hit(v.make)||hit(v.model))
+    push('Όχημα','car',v.plate,[v.make,v.model].filter(Boolean).join(' '),()=>route('vpapers')); });
+  (D.wl||[]).forEach(r=>{ if(hit(r.last_name+' '+r.first_name)||hit(r.applicant_name)||hit(r.applicant_phone))
+    push('Λίστα αναμονής','clock',r.last_name+' '+r.first_name,
+      [r.scout_year,r.outcome].filter(Boolean).join(' · '),()=>route('waitlist')); });
+  /* ΚΑΙ ΟΙ ΙΔΙΕΣ ΟΙ ΟΘΟΝΕΣ: τις μισές φορές δεν ψάχνεις άνθρωπο — ψάχνεις
+     «πού είναι οι υπενθυμίσεις». */
+  NAV.forEach(g=>(g.items||[]).forEach(m=>{ if(hit(m.t)||hit(g.g)||hit((SUBS||{})[m.id]))
+    push('Οθόνη','grid',m.t,g.g,()=>route(m.id)); }));
+  return out;
+}
 (()=>{const b=document.getElementById('toTop'); if(!b)return;
   const sc=()=>b.classList.toggle('on',window.scrollY>500);
   window.addEventListener('scroll',sc,{passive:true});
@@ -10941,6 +11027,32 @@ function issuesBody(){
     {t:'Συγκεντρώσεις Αγέλης χωρίς μηνιαίο θέμα',w:'Χωρίς θέμα δεν μετριούνται τα «τόσα μηνιαία θέματα».',s:'info',
      goto:'attend', l:(D.ss||[]).filter(s=>s.section==='Αγέλη'&&!s.theme)
        .map(s=>({id:s.id,first_name:fdate(s.session_date),last_name:'',section:'Αγέλη'}))},
+   ]},
+   /* ══ Ο,ΤΙ ΧΤΙΣΤΗΚΕ ΜΕΤΑ ΗΤΑΝ ΑΟΡΑΤΟ ΕΔΩ ═══════════════════════════════
+      Οι Εκκρεμότητες κάλυπταν πιστοποιητικά, μητρώο και επικοινωνία — αλλά
+      η λίστα αναμονής, οι δηλώσεις σχολών, οι λογαριασμοί και οι κρατημένες
+      υπενθυμίσεις ζούσαν σε δικές τους οθόνες. Δηλαδή έπρεπε να ανοίξεις έξι
+      οθόνες για να μάθεις αν έχεις δουλειά. */
+   {g:'Περιμένουν εσένα',items:[
+    {t:'Παιδιά στη λίστα που έχουν την ηλικία',
+     w:'Είναι Γ΄ Δημοτικού και πάνω και κανείς δεν τους τηλεφώνησε.',s:'warn',goto:'waitlist',
+     l:(D.wl||[]).filter(r=>r.outcome==='Αναμονή'&&(wlGrade(r)||0)>=3)
+       .map(r=>({id:null,first_name:r.first_name,last_name:r.last_name,section:r.section}))},
+    {t:'Είπαν ναι και δεν γράφτηκαν',
+     w:'Υποσχέθηκαν συμμετοχή — αν δεν τους ξαναπάρεις, χάνονται.',s:'bad',goto:'waitlist',
+     l:(D.wl||[]).filter(r=>r.outcome==='Ενδιαφέρεται')
+       .map(r=>({id:null,first_name:r.first_name,last_name:r.last_name,section:r.section}))},
+    {t:'Δηλώσεις σχολών προς προώθηση',
+     w:'Δηλώθηκαν και δεν έχουν σταλεί ακόμη στη Γ.Ε.',s:'warn',goto:'training',
+     l:(D.sapp||[]).filter(a=>a.status==='δηλώθηκε')
+       .map(a=>D.bh.find(b=>b.id===a.person_id)).filter(Boolean)},
+    {t:'Χωρίς λογαριασμό — μπλοκάρουν υπενθυμίσεις',
+     w:'Δεν μπορούν να μπουν, άρα δεν λαμβάνουν τίποτα αυτόματο.',s:'warn',goto:'accounts',
+     l:act.filter(p=>isLed(p)&&p.email&&!(D.pr||[]).some(x=>x.person_id===p.id))},
+    {t:'Χαρτιά οχημάτων προς έλεγχο',
+     w:'Ανέβηκαν και περιμένουν να τα δεις.',s:'warn',goto:'vpapers',
+     l:(D.vpi||[]).filter(x=>!x.resolved_at&&!x.declined_at)
+       .map(x=>D.bh.find(b=>b.id===x.person_id)).filter(Boolean)},
    ]}];
   const tot=I.reduce((s,g)=>s+g.items.reduce((x,i)=>x+((i.pairs||i.l||[]).length),0),0);
   const crit=I[0].items.filter(i=>i.s==='bad').reduce((s,i)=>s+(i.l||[]).length,0)+dups.length;
@@ -12005,6 +12117,63 @@ function certqBody(){
     e.preventDefault();e.stopPropagation();
     const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
     if(c)docPreview(certSides(c),+a.dataset.ix||0);});
+};
+
+/* ══ ΥΓΕΙΑ ΔΕΔΟΜΕΝΩΝ ═══════════════════════════════════════════════════════
+   Κάθε γραμμή εδώ είναι σφάλμα που ΒΡΕΘΗΚΕ ΚΑΤΑ ΤΥΧΗ κάποια στιγμή. Ο κανόνας
+   του κανόνα: λέει ΤΙ φταίει, ΠΟΙΟΝ αφορά και ΠΟΥ διορθώνεται — εύρημα χωρίς
+   διαδρομή διόρθωσης είναι παράπονο, όχι εργαλείο. */
+const DH_COL={'κρίσιμο':'bad','προσοχή':'warn','πληροφορία':''};
+V.health=async()=>{
+  $('view').innerHTML='<div class="card pad dim">Έλεγχος…</div>';
+  const {data,error}=await sb.rpc('data_health');
+  if(error)return $('view').innerHTML=`<div class="uc"><h3>Δεν έτρεξε ο έλεγχος</h3><p>${esc(error.message)}</p></div>`;
+  const rows=data||[];
+  const by={}; rows.forEach(r=>{const k=r.code;
+    (by[k]=by[k]||{severity:r.severity,title:r.title,route:r.route,items:[]}).items.push(r)});
+  const ord=Object.entries(by).sort((a,b)=>{
+    const w=s=>s==='κρίσιμο'?0:s==='προσοχή'?1:2;
+    return w(a[1].severity)-w(b[1].severity) || b[1].items.length-a[1].items.length});
+  const n=s=>rows.filter(r=>r.severity===s).length;
+  $('view').innerHTML=`
+    <div class="card pad" style="margin-bottom:14px">
+      <b>Υγεία δεδομένων</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">Έλεγχοι συνέπειας που τρέχουν <b>μόνοι τους</b>.
+        Κάθε κανόνας εδώ είναι λάθος που κάποτε βρέθηκε κατά τύχη — τώρα το βρίσκει η ίδια η εφαρμογή.</div>
+      <div class="dim" style="font-size:12.5px;margin-top:6px">Δεν είναι όλα επείγοντα. Το «κρίσιμο» σημαίνει
+        ότι κάτι <b>δείχνει λάθος νούμερο</b> ή δεν λειτουργεί· το «προσοχή» ότι θέλει απόφαση δική σου.</div>
+      <div style="margin-top:9px"><button class="btn sm" id="dhAgain">Ξανά</button>
+        <button class="btn gh sm" id="dhExp">Εξαγωγή</button></div></div>
+
+    <div class="tiles">
+      <div class="tile ${n('κρίσιμο')?'bad':'ok'}" style="cursor:default"><div class="k">Κρίσιμα</div>
+        <div class="v">${n('κρίσιμο')}</div><div class="s">δείχνουν λάθος ή δεν δουλεύουν</div></div>
+      <div class="tile ${n('προσοχή')?'warn':''}" style="cursor:default"><div class="k">Θέλουν απόφαση</div>
+        <div class="v">${n('προσοχή')}</div><div class="s">δική σου κρίση</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Πληροφορία</div>
+        <div class="v">${n('πληροφορία')}</div><div class="s">καλό να ξέρεις</div></div>
+    </div>
+
+    ${ord.length?ord.map(([code,g])=>`
+      <div class="sec"><h3>${esc(g.title)}</h3><span class="n">${g.items.length}</span></div>
+      <div class="card pad" style="border-left:3px solid var(--${DH_COL[g.severity]||'line'})">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <span class="pill"${DH_COL[g.severity]?` style="background:var(--${DH_COL[g.severity]}bg);color:var(--${DH_COL[g.severity]});border-color:transparent"`:''}>${esc(g.severity)}</span>
+          <span class="sp"></span>
+          ${g.route?`<button class="btn sm" data-go="${esc(g.route)}">Διόρθωσέ τα →</button>`:''}</div>
+        ${g.items.slice(0,40).map(x=>`<div style="padding:4px 0;border-top:1px solid var(--line);font-size:13px">
+          ${x.person_id?`<span class="pn" data-p="${x.person_id}"><b>${esc(x.who||'')}</b></span>`:`<b>${esc(x.who||'')}</b>`}
+          <span class="dim"> · ${esc(x.detail||'')}</span></div>`).join('')}
+        ${g.items.length>40?`<div class="dim" style="font-size:12px;margin-top:6px">…και άλλα ${g.items.length-40}.</div>`:''}
+      </div>`).join('')
+      :`<div class="uc"><div class="ico">${ic('check',26)}</div><h3>Όλα κουμπώνουν</h3>
+        <p>Κανένας κανόνας δεν βρήκε ασυνέπεια. Αυτό δεν σημαίνει ότι τα δεδομένα είναι σωστά —
+           σημαίνει ότι δεν αντιφάσκουν μεταξύ τους.</p></div>`}`;
+  const a=$('dhAgain'); if(a)a.onclick=()=>V.health();
+  const e=$('dhExp'); if(e)e.onclick=()=>{
+    const R=[['Βαρύτητα','Κωδικός','Τι','Ποιος','Λεπτομέρεια','Πού διορθώνεται']];
+    rows.forEach(r=>R.push([r.severity,r.code,r.title,r.who||'',r.detail||'',r.route||'']));
+    exportRows(R,'ygeia-dedomenwn','Υγεία δεδομένων')};
 };
 
 /* ══ ΚΑΤΑΛΟΓΟΣ ΦΟΡΜΩΝ ══════════════════════════════════════════════════════
@@ -14586,10 +14755,16 @@ document.addEventListener('keydown',e=>{
 });
 $('palq').addEventListener('input',e=>palDraw(e.target.value));
 function palDraw(q){
-  const k=nameKey(q); const res=[];
-  Object.values(MOD).forEach(m=>{if(!k||nameKey(m.t).includes(k))res.push({t:m.t,g:m.s==='live'?'Ενότητα':'Σύντομα',go:()=>route(m.id)})});
-  if(k.length>1)D.bh.filter(p=>nameKey(nm(p)+' '+(p.nickname||'')+' '+(p.scout_name||'')).includes(k)).slice(0,7).forEach(p=>res.push({t:nm(p),g:(p.kind||'Βαθμοφόρος')==='Μέλος'?(secOf(p)||'Μέλος'):'Βαθμοφόρος',go:()=>{route((p.kind||'')==='Μέλος'?'members':'leaders');setTimeout(()=>{const f=$('fq');if(f){f.value=nm(p);f.dispatchEvent(new Event('input'))}},40)}}));
-  $('palres').innerHTML=res.slice(0,9).map((r,i)=>`<div class="palr${i===0?' on':''}" data-i="${i}">${esc(r.t)}<span class="g">${esc(r.g)}</span></div>`).join('')||'<div class="palr dim">Κανένα αποτέλεσμα — δοκίμασε λιγότερα γράμματα ή σβήσε το φίλτρο</div>';
+  /* ΜΙΑ ΠΑΛΕΤΑ, ΟΧΙ ΔΥΟ. Η παλέτα έψαχνε οθόνες και ονόματα — τίποτα άλλο,
+     και μόνο με ακριβές ελληνικό κείμενο. Τώρα ρωτά το gsHits, που είναι η
+     ΙΔΙΑ λογική με την αναζήτηση των λιστών: λατινικά, Α.Μ., τηλέφωνο,
+     πινακίδα, λίστα αναμονής, δράσεις. Δύο διαφορετικοί τρόποι αναζήτησης
+     στην ίδια εφαρμογή διδάσκουν ότι «καμιά φορά δεν βρίσκει». */
+  const res = q.trim().length>=2
+    ? gsHits(q).map(h=>({t:h.label, g:h.kind+(h.sub?' · '+h.sub:''), go:h.act}))
+    : Object.values(MOD).map(m=>({t:m.t, g:m.s==='live'?'Ενότητα':'Σύντομα', go:()=>route(m.id)}));
+  $('palres').innerHTML=res.slice(0,12).map((r,i)=>`<div class="palr${i===0?' on':''}" data-i="${i}">${esc(r.t)}<span class="g">${esc(r.g)}</span></div>`).join('')
+    ||'<div class="palr dim">Τίποτα. Δοκίμασε λιγότερα γράμματα — ψάχνει και λατινικά, Α.Μ., τηλέφωνο και πινακίδα.</div>';
   $('palres').querySelectorAll('.palr').forEach(el=>el.onclick=()=>{const r=res[+el.dataset.i];if(r){closePal();r.go()}});
   $('palq').onkeydown=e=>{if(e.key==='Enter'&&res[0]){closePal();res[0].go()}};
 }
