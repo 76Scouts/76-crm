@@ -1049,6 +1049,13 @@ const NAV_MINE=['me','myforms','mycerts','myschools','myveh'];
    καρτέλα — βαθμοφόρος, μέλος ή γονιός — γιατί το ακροατήριο το ορίζει ο
    κατάλογος φορμών, όχι το μενού. Τα άλλα τέσσερα θέλουν βαθμοφόρο. */
 const NAV_MINE_ANY=['me','myforms'];
+/* ΜΙΑ πηγή για το «με ποιο μάτι κοιτάζω τώρα» — τη διαβάζουν και το μενού
+   και οι οθόνες. Όσο ήταν γραμμένο μόνο μέσα στο μενού, η «Καρτέλα μου»
+   δεν ήξερε ότι ο χρήστης κοιτάζει ως γονιός και έδειχνε παρουσίες,
+   σχολές και οχήματα σε άνθρωπο που δεν έχει κανένα από τα τρία. */
+const LENS_PERSONAL=['member','parent'];
+const lensRole=()=>VIEWAS ? (VIEWAS.role==='section_head'?'head':VIEWAS.role)
+                          : (PA?(PA.role||PA.k):'leader');
 /* ══ ΥΠΟΤΙΤΛΟΙ ΟΘΟΝΩΝ ══════════════════════════════════════════════════════
    Μία γραμμή κάτω από κάθε τίτλο: τι κάνει αυτή η οθόνη και πότε την ανοίγεις.
    Ο τίτλος λέει ΤΟ ΟΝΟΜΑ· ο υπότιτλος λέει ΤΗ ΔΟΥΛΕΙΑ. Χωρίς αυτόν, μια
@@ -1147,7 +1154,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-11 23:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-13 19:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2360,8 +2367,7 @@ function renderNav(){
      βαθμοφορικές οθόνες άδειες και νομίζεις ότι κάτι έσπασε. */
   /* Ο φακός αλλάζει τον ρόλο ΟΛΟΚΛΗΡΟ — μενού και δεδομένα. Ο Α.Σ. που
      διαλέγει «Βαθμοφόρος Αγέλης» πρέπει να δει ό,τι ακριβώς βλέπει εκείνος. */
-  const K=VIEWAS ? (VIEWAS.role==='section_head'?'head':VIEWAS.role)
-                 : (PA?(PA.role||PA.k):'leader');
+  const K=lensRole();
   const MN=modeNav();
   /* Το τμήμα καθορίζει ΠΟΙΑ οθόνη προόδου βλέπεις — όχι μόνο ο ρόλος. */
   const mySec=(ME&&ME.rec&&(secOf(ME.rec)||ME.rec.section))||null;
@@ -2374,7 +2380,14 @@ function renderNav(){
        όχι στον ρόλο που φοράει: ο Α.Σ. είναι και βαθμοφόρος. */
     if(NAV_MINE.includes(id)){
       const rec=meRec();
-      return !!rec && (NAV_MINE_ANY.includes(id) || isLed(rec));
+      if(!rec) return false;
+      if(NAV_MINE_ANY.includes(id)) return true;
+      /* Ο ΦΑΚΟΣ ΜΕΤΡΑΕΙ ΚΑΙ ΕΔΩ. Ο Α.Σ. που κοιτάζει «ως Γονέας» έβλεπε
+         ακόμη πιστοποιητικά, οχήματα και αιτήσεις σχολών — δηλαδή ο φακός
+         έλεγε ψέματα για το τι βλέπει ο γονιός. Ο γονιός δεν έχει τίποτα
+         από αυτά. */
+      if(LENS_PERSONAL.includes(K)) return false;
+      return isLed(rec);
     }
     if(AL && !AL.includes(id)) return false;
     if(!AL && id==='dev' && !(ME.platform_admin||ME.role==='admin')) return false;
@@ -10184,9 +10197,48 @@ const meGone=()=>$('view').innerHTML=`<div class="uc"><h3>Ο λογαριασμ�
 /* Η καρτέλα μου κρατά ΜΟΝΟ ό,τι δεν είναι δουλειά από μόνο του: ποιος είμαι,
    τι έχω περάσει, πού πήγα, τι υπέγραψα. Τα πιστοποιητικά, τα οχήματα και οι
    αιτήσεις σχολών είναι ΠΡΑΞΕΙΣ — έχουν δικό τους κουμπί. */
+/* ══ Η ΚΑΡΤΕΛΑ ΤΟΥ ΓΟΝΙΟΥ ΕΙΝΑΙ ΑΛΛΟ ΠΡΑΓΜΑ ══════════════════════════════
+   Ο γονιός που δεν είναι βαθμοφόρος έβλεπε ΤΙΣ ΔΙΚΕΣ ΤΟΥ παρουσίες (καμία),
+   τις δικές του σχολές (καμία), τις δικές του τιμητικές διακρίσεις (καμία),
+   τα δικά του οχήματα και πιστοποιητικά. Τέσσερις καρτέλες που απαντούν σε
+   ερωτήσεις που δεν έκανε ποτέ — και ούτε μία γραμμή για τα ΠΑΙΔΙΑ του,
+   που είναι ο μόνος λόγος που έχει λογαριασμό.
+   Δύο ερωτήσεις έχει: «τι ξέρετε για μένα;» και «πού είναι τα παιδιά μου;». */
+function meSimpleHTML(p){
+  const kids=(typeof myKids==='function'?myKids():[])||[];
+  const row=(k,v)=>v?`<div class="kv"><b>${esc(k)}</b><span>${v}</span></div>`:'';
+  const em=(D.pe||[]).filter(x=>x.person_id===p.id&&x.address).map(x=>x.address);
+  const mails=[...new Set([p.email,...em].filter(Boolean))];
+  return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+    <div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Τα στοιχεία μου</h3>
+      ${row('Ονοματεπώνυμο',esc(nm(p)))}
+      ${row('Τηλέφωνο',p.phone?fphone(p.phone):'')}
+      ${mails.length?row('Email',mails.map(esc).join('<br>')):''}
+      <div class="dim" style="font-size:11.5px;margin-top:9px;line-height:1.6">
+        Αλλαγή στοιχείων: από «Τα παιδιά μου» → <b>Τα στοιχεία μας</b>,
+        ή γράψε στο <b>as@76.life</b>.</div></div>
+
+    <div class="card pad"><h3 style="font-size:13px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">Τα παιδιά μου</h3>
+      ${kids.length?kids.map(({kid:k})=>`<div class="kv">
+          <b style="flex:1"><span class="pn" data-p="${k.id}">${esc(nm(k))}</span></b>
+          <span class="dim" style="font-size:12.5px">${esc(secOf(k)||'')}</span></div>`).join('')
+        :'<div class="dim" style="font-size:12.5px">Ο λογαριασμός σου δεν είναι συνδεδεμένος με μέλος. Γράψε στο <b>as@76.life</b>.</div>'}
+      <div style="margin-top:11px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn sm p" data-go="mykids">Τα παιδιά μου</button>
+        <button class="btn sm" data-go="kidhealth">Έντυπα &amp; συγκαταθέσεις</button></div></div>
+  </div>`;
+}
+
 V.me=()=>{
   const M=mePieces(); if(!M)return meGone();
   const p=M.p;
+  /* Όχι μόνο «είναι βαθμοφόρος;» αλλά και «με ποιο μάτι κοιτάζει τώρα;».
+     Αλλιώς ο Α.Σ. στον φακό του Γονέα βλέπει ακόμη τα βαθμοφορικά του. */
+  if(!isLed(p) || LENS_PERSONAL.includes(lensRole())){
+    $('view').innerHTML=M.head+meSimpleHTML(p);
+    document.querySelectorAll('#view [data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go));
+    return;
+  }
   tabView('me',[
     {k:'over', t:'Επισκόπηση', i:'user', d:'τμήμα, παρουσίες, πορεία',
       fn:box=>{box.innerHTML=M.overHTML}},
