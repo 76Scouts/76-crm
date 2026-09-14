@@ -1156,7 +1156,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-14 12:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-14 13:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -15969,6 +15969,26 @@ function wlG(r){
 const wlGrade=r=>wlG(r).g;
 const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
 let WLY='', WLED=null, WLSORT='anamoni', WLCLS='', WLST='open', WLQ='', WLPRE='', WLYRS=false;
+/* ══ ΔΥΟ ΟΘΟΝΕΣ ΓΙΑ ΔΥΟ ΔΟΥΛΕΙΕΣ ═══════════════════════════════════════════
+   Ο πίνακας απαντά «τι έχουμε». Το ΦΥΛΛΟ ΚΛΗΣΕΩΝ απαντά «ποιον παίρνω
+   τώρα» — και αυτό κάνεις κρατώντας το τηλέφωνο: δεν θέλεις έξι στήλες,
+   θέλεις ένα όνομα, έναν αριθμό και έξι κουμπιά.
+   Ένα απόγευμα, τριάντα κλήσεις: το ζήτησε η πράξη, όχι η αισθητική. */
+let WLVIEW='list';
+try{WLVIEW=localStorage.getItem('e76:wlview')||'list'}catch(e){}
+/* Δεν παίρνει πάντα ο Α.Σ. Η Κασσιόπεια πήρε δύο· αν δεν το κρατήσουμε,
+   η επόμενη ερώτηση («τι σου είπε;») πάει σε λάθος άνθρωπο. */
+let WLBY=null;
+const wlByName=()=>{const p=(D.bh||[]).find(b=>b.id===(WLBY||(meRec()||{}).id));
+  return p?nm(p):'—'};
+/* ΑΔΕΛΦΙΑ: τα βρίσκει το ΤΗΛΕΦΩΝΟ, όχι το επώνυμο. Ο Κωνσταντίνος Κυπριανού
+   και η Άρτεμις έχουν το ίδιο· η Ρένα Κανάρη και ο Ανδρέας επίσης. Και τα
+   τρία αδέλφια Θεοδώρου γράφτηκαν χωριστά. Όταν λέει ναι ο ένας, θέλεις να
+   δεις τον άλλον ΤΗΝ ΙΔΙΑ ΣΤΙΓΜΗ — αλλιώς τον παίρνεις δεύτερη φορά. */
+function wlSibs(r, all){
+  const ph=digits(r.applicant_phone||''); if(ph.length<8)return [];
+  return all.filter(x=>x.id!==r.id && digits(x.applicant_phone||'')===ph);
+}
 /* Η δουλειά της λίστας είναι ΤΗΛΕΦΩΝΑ. 165 εγγραφές χωρίς αναζήτηση σημαίνει
    ότι για να βρεις έναν Παπαδόπουλο αλλάζεις ταξινόμηση και σαρώνεις με το
    μάτι· και το τηλέφωνο ήταν γκρίζο κείμενο, όχι σύνδεσμος — από κινητό δεν
@@ -16172,6 +16192,20 @@ V.waitlist=()=>{
             :'background:transparent;color:var(--ink2);border:1px dashed var(--line)'}"
           title="${on?k+' × '+c.length+' · τελευταία '+fdate(c[0].at)+' — πάτα για ακόμη μία':'Δεν έχει γίνει — πάτα για να καταγράψεις '+k.toLowerCase()}">${esc(k)}${on&&c.length>1?' '+c.length:''}${on?' ✓':''}</button>`}).join('')}
         ${wlCts(r).length?`<span class="dim" style="font-size:11px;align-self:center">${fdate(wlCts(r)[0].at)}</span>`:''}</div>
+      ${/* ΕΞΙ ΚΟΥΜΠΙΑ = ΟΙ ΕΞΙ ΑΠΑΝΤΗΣΕΙΣ ΠΟΥ ΠΑΙΡΝΕΙΣ. Το μενού έκβασης
+           μένει για τα υπόλοιπα — αλλά δεν είναι πια ο κύριος δρόμος. */''}
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px">
+        ${WL_PRESETS.map(P=>`<button class="btn sm${P.cls?' '+P.cls:' gh'}" data-wlp="${r.id}" data-pk="${P.k}"
+          style="font-size:11px;padding:2px 7px">${esc(P.t)}</button>`).join('')}</div>
+      ${/* ΤΙ ΧΡΩΣΤΑΩ ΕΓΩ — ο τέταρτος άξονας. Χωρίς αυτόν το «θα με πάρει
+           η μητέρα σε 48 ώρες» ζούσε στο κεφάλι σου, και σε τρεις μέρες
+           δεν θυμόσουν ποιοι ήταν οι πέντε που περίμενες. */''}
+      ${r.next_step?`<div style="font-size:11.5px;margin-bottom:4px;color:var(--${
+          r.callback_on&&r.callback_on<new Date().toISOString().slice(0,10)?'bad':'acc'})">
+        ⏳ ${esc(r.next_step)}${r.callback_on?` · ${fdate(r.callback_on)}${
+          r.callback_on<new Date().toISOString().slice(0,10)?' <b>πέρασε</b>':''}`:''}
+        <button class="btn gh sm" data-wlclr="${r.id}" title="Τακτοποιήθηκε" style="padding:0 5px">✓</button></div>`:''}
+      ${r.elsewhere?`<div class="dim" style="font-size:11.5px">→ ${esc(r.elsewhere)}</div>`:''}
       <select data-wlo="${r.id}" style="min-width:135px">${OUT.map(o=>
         `<option${o===r.outcome?' selected':''}>${o}</option>`).join('')}</select>
       <button class="btn sm gh" data-wledit="${r.id}" title="Επεξεργασία">✎</button>
@@ -16322,6 +16356,10 @@ V.waitlist=()=>{
         ${WL_OUT.map(o=>`<option value="${esc(o)}"${WLST===o?' selected':''}>${esc(o)}</option>`).join('')}</select></label>
       <label style="max-width:280px">Σειρά<select id="wlsort">${Object.entries(WLSORTS)
         .map(([k,[t]])=>`<option value="${k}"${k===WLSORT?' selected':''}>${esc(t)}</option>`).join('')}</select></label>
+      <label style="max-width:210px">Οθόνη<select id="wlview">
+        <option value="list"${WLVIEW==='list'?' selected':''}>Πίνακας — τι έχουμε</option>
+        <option value="calls"${WLVIEW==='calls'?' selected':''}>Φύλλο κλήσεων — ποιον παίρνω</option>
+      </select></label>
       <label style="max-width:150px">&nbsp;<button class="btn sm" id="wlExp">Εξαγωγή</button></label>
       ${list.some(r=>r.priority!=null)?`<label style="max-width:210px">&nbsp;<button class="btn gh sm" id="wlClrPri"
         title="Επιστροφή στην αυτόματη σειρά για όλους">✋ Καθαρισμός σειράς (${list.filter(r=>r.priority!=null).length})</button></label>`:''}
@@ -16333,8 +16371,39 @@ V.waitlist=()=>{
       <span>Δείχνει <b id="wlcount">${shown.length}</b> από ${list.length}</span>
       ${WLPRE?`<button class="btn gh sm" data-wlpre="${esc(WLPRE)}" style="padding:1px 8px">✕ καθάρισε το πλακίδιο</button>`:''}</div>
 
-    ${ord.map(g=>{const l=groups[g], w=g>=3&&g<=12;
+    ${WLVIEW==='calls' ? (()=>{
+      /* ΤΡΕΙΣ ΚΑΔΟΙ ΑΝΑ ΤΑΞΗ. Το «Πάρε τώρα» είναι η μόνη λίστα που
+         χρειάζεσαι όταν κάθεσαι να τηλεφωνήσεις. */
+      const BK=['Πάρε τώρα','Περιμένω απάντηση','Έκλεισαν'];
+      return ord.map(g=>{
+        const l=groups[g], by=[[],[],[]];
+        l.forEach(r=>by[wlBucket(r)].push(r));
+        return `<div class="sec"><h3>${esc(wlClass(g===99?null:g))}</h3><span class="n">${l.length}</span></div>
+        ${by.map((arr,bi)=>{ if(!arr.length)return '';
+          if(bi===2)return `<details class="card pad" style="margin-bottom:9px">
+            <summary style="cursor:pointer;font-size:13px;color:var(--ink3)">${BK[2]} — ${arr.length}</summary>
+            <div style="margin-top:8px;font-size:12.5px">${arr.map(r=>
+              `<div class="kv"><b style="flex:1">${esc(r.last_name)} ${esc(r.first_name)}</b>
+               <span class="dim">${esc(r.outcome)}${r.elsewhere?' · '+esc(r.elsewhere):''}</span></div>`).join('')}</div></details>`;
+          return `<div style="font-size:11.5px;color:var(--ink3);text-transform:uppercase;
+              letter-spacing:.06em;margin:10px 0 5px">${BK[bi]} · ${arr.length}</div>
+            <div data-wlgrp="${g}-${bi}">${arr.map((r,i)=>wlCard(r,i,list)).join('')}</div>`}).join('')}`;
+      }).join('');
+    })() : ord.map(g=>{const l=groups[g], w=g>=3&&g<=12;
+      /* ΜΕΤΡΙΚΕΣ ΑΝΑ ΤΑΞΗ, ΟΧΙ ΜΟΝΟ ΣΥΝΟΛΟ. Η ερώτηση δεν είναι «πόσοι
+         είναι στη λίστα» αλλά «πόσους έχω κλείσει στη Γ΄ και πόσους
+         περιμένω ακόμη» — γιατί η Αγέλη γεμίζει ανά τάξη. */
+      const all=list.filter(r=>{const gg=wlGrade(r); return (gg===null?99:gg)===g});
+      const m={yes:all.filter(r=>r.outcome==='Ενδιαφέρεται').length,
+               got:all.filter(r=>r.outcome==='Έγινε μέλος').length,
+               due:all.filter(r=>r.next_step&&WL_OPEN.includes(r.outcome)).length,
+               cold:all.filter(r=>r.outcome==='Αναμονή'&&!wlCts(r).length).length,
+               out:all.filter(r=>['Δεν ενδιαφέρεται','Πήγε αλλού','Διπλοεγγραφή'].includes(r.outcome)).length};
+      const chip=(n,t,c)=>n?`<span class="pill"${c?` style="background:var(--${c}bg);color:var(--${c});border-color:transparent"`:''}>${n} ${t}</span>`:'';
       return `<div class="sec"><h3>${esc(wlClass(g===99?null:g))}</h3><span class="n">${l.length}</span></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin:-2px 0 8px">
+          ${chip(m.got,'γράφτηκαν','ok')}${chip(m.yes,'θα έρθουν','warn')}
+          ${chip(m.due,'περιμένω','acc')}${chip(m.cold,'δεν πήρα ακόμη')}${chip(m.out,'έφυγαν')}</div>
         ${w?'':`<div class="dim" style="font-size:12.5px;margin:-4px 0 8px">Δεν έχει ακόμη την τάξη για την Αγέλη του 76ου (ξεκινά από Γ΄ Δημοτικού).</div>`}
         <div data-wlgrp="${g}">${table(l)}</div>`}).join('')}`;
 
@@ -16348,6 +16417,13 @@ V.waitlist=()=>{
   function bindRow(tr){
     if(!tr)return;
     tr.querySelectorAll('[data-wlct]').forEach(b=>b.onclick=()=>wlContact(b.dataset.wlct,b.dataset.k));
+    tr.querySelectorAll('[data-wlp]').forEach(b=>b.onclick=()=>wlPreset(b.dataset.wlp,b.dataset.pk));
+    tr.querySelectorAll('[data-wlclr]').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.wlclr;
+      const {error}=await sb.from('waitlist').update({next_step:null,callback_on:null}).eq('id',id);
+      if(error)return toast('Δεν έγινε: '+error.message);
+      const r=(D.wl||[]).find(x=>x.id===id); if(r)Object.assign(r,{next_step:null,callback_on:null});
+      saveCache(); WLPATCH(id);});
     tr.querySelectorAll('[data-wlup]').forEach(b=>b.onclick=()=>wlElevate(b.dataset.wlup));
     tr.querySelectorAll('[data-wlctdel]').forEach(b=>b.onclick=()=>wlContactDel(b.dataset.wlctdel));
     tr.querySelectorAll('.wlup').forEach(b=>b.onclick=()=>move(b.dataset.id,-1));
@@ -16392,6 +16468,22 @@ V.waitlist=()=>{
   }
   WLPATCH=id=>{
     const r=(D.wl||[]).find(x=>x.id===id);
+    /* ΤΟ ΦΥΛΛΟ ΚΛΗΣΕΩΝ ΞΑΝΑΖΩΓΡΑΦΙΖΕΤΑΙ ΚΑΙ ΑΥΤΟ ΑΝΑ ΓΡΑΜΜΗ. Η κάρτα
+       μπορεί να αλλάξει κάδο (από «Πάρε τώρα» σε «Περιμένω») — δεν τη
+       μετακινούμε: θα εξαφανιζόταν κάτω από τον αντίχειρά σου. Αλλάζει
+       χρώμα και περιεχόμενο εκεί που είναι, και μπαίνει στη θέση της την
+       επόμενη φορά που θα ανοίξεις την οθόνη. */
+    if(WLVIEW==='calls'){
+      const card=document.querySelector(`div[data-wlrow="${id}"]`);
+      if(!r||!card)return;
+      const box=document.createElement('div');
+      box.innerHTML=wlCard(r, 0, list);
+      const fresh=box.firstElementChild;
+      /* Ο αριθμός σειράς μένει αυτός που ήταν — δεν ξαναμετράμε. */
+      const n=card.querySelector('b'); const keep=n?n.textContent:'';
+      const nn=fresh.querySelector('b'); if(nn&&keep)nn.textContent=keep;
+      card.replaceWith(fresh); bindRow(fresh); wlTiles(); return;
+    }
     const tr=document.querySelector(`tr[data-wlrow="${id}"]`);
     if(!r||!tr)return;
     const g=wlGrade(r), arr=groups[g===null||g===undefined?99:g]||[];
@@ -16412,6 +16504,20 @@ V.waitlist=()=>{
      λένε «τι δείχνω» ταυτόχρονα, και το ένα κρυφό, είναι σίγουρη σύγχυση. */
   const sf=$('wlst');  if(sf)sf.onchange=e=>{WLST=e.target.value;WLPRE='';WLED=null;route('waitlist')};
   const pd=$('wlyrsD'); if(pd)pd.ontoggle=()=>{WLYRS=pd.open};
+  const vw=$('wlview'); if(vw)vw.onchange=e=>{WLVIEW=e.target.value;
+    try{localStorage.setItem('e76:wlview',WLVIEW)}catch(x){} WLED=null; route('waitlist')};
+  /* Η σημείωση αποθηκεύεται στο blur, όχι σε κάθε πλήκτρο — και ΔΕΝ
+     ξαναζωγραφίζει: γράφεις κοιτώντας τον άνθρωπο, δεν θες να πηδήξει. */
+  document.querySelectorAll('[data-wlnote]').forEach(i=>{
+    const id=i.dataset.wlnote, r0=(D.wl||[]).find(x=>x.id===id), was=(r0&&r0.note)||'';
+    i.onblur=async()=>{
+      const v=i.value.trim(); if(v===was)return;
+      const {error}=await sb.from('waitlist').update({note:v||null}).eq('id',id);
+      if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
+      const r=(D.wl||[]).find(x=>x.id===id); if(r)r.note=v||null;
+      saveCache(); i.style.borderColor='var(--ok)';
+      setTimeout(()=>{i.style.borderColor=''},900);
+    };});
   document.querySelectorAll('[data-wlpre]').forEach(b=>b.onclick=()=>{
     WLPRE = WLPRE===b.dataset.wlpre ? '' : b.dataset.wlpre;   // ξαναπάτημα = καθάρισμα
     WLED=null; route('waitlist')});
@@ -16467,7 +16573,9 @@ V.waitlist=()=>{
     ids.forEach(id=>{const t=(D.wl||[]).find(y=>y.id===id); if(t)t.priority=null});
     /* Εδώ ΝΑΙ ολόκληρη: άλλαξε η σειρά ΟΛΩΝ των τάξεων. */
     saveCache(); toast('Αυτόματη σειρά'); route('waitlist')};
-  document.querySelectorAll('tr[data-wlrow]').forEach(bindRow);
+  /* Και οι δύο οθόνες δένονται με τον ΙΔΙΟ bindRow: ο πίνακας δίνει <tr>,
+     το φύλλο κλήσεων <div>. Δύο συνδέσεις θα απέκλιναν στην πρώτη αλλαγή. */
+  document.querySelectorAll('[data-wlrow]').forEach(bindRow);
   const ed0=document.querySelector('tr[data-wledrow]'); if(ed0)bindRow(ed0);
   const ex=$('wlExp'); if(ex)ex.onclick=()=>{
     const R=[['Χρονιά','Επίθετο','Όνομα','Φύλο','Ημ. γέννησης','Φετινή τάξη','Πηγή τάξης','Δήλωσε','Χρονιά δήλωσης',
@@ -16497,11 +16605,98 @@ async function wlSave(id,patch){
 /* ΕΝΑ ΚΛΙΚ = ΜΙΑ ΕΠΑΦΗ ΣΗΜΕΡΑ. Δεν ρωτάμε ημερομηνία: την ώρα που κλείνεις
    το τηλέφωνο δεν θέλεις φόρμα. Η διόρθωση (λάθος κλικ, παλιά κλήση) γίνεται
    στο ημερολόγιο μέσα στην επεξεργασία, εκεί που πας ούτως ή άλλως. */
-async function wlContact(id,kind){
-  const row={waitlist_id:id, kind, at:new Date().toISOString().slice(0,10), by_id:(meRec()||{}).id||null};
+/* ══ ΦΥΛΛΟ ΚΛΗΣΕΩΝ ════════════════════════════════════════════════════════
+   ΤΡΕΙΣ ΚΑΔΟΙ, ΜΕ ΣΕΙΡΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ — όχι πέντε φίλτρα που στήνεις μόνος:
+     ΠΑΡΕ ΤΩΡΑ    όσους δεν πήρες ποτέ + όσων η προθεσμία έφτασε
+     ΠΕΡΙΜΕΝΩ     όσοι είπαν «θα σε πάρω» και η μέρα δεν ήρθε
+     ΕΚΛΕΙΣΑΝ     ναι, όχι, αλλού — μαζεμένα, δεν σε απασχολούν σήμερα
+   Η σειρά μέσα στο «Πάρε τώρα» είναι η σειρά αναμονής: όποιος περιμένει
+   περισσότερο, πρώτος. Είναι και το δίκαιο και το πρακτικό. */
+function wlBucket(r){
+  const t=new Date().toISOString().slice(0,10);
+  if(!WL_OPEN.includes(r.outcome)) return 2;
+  if(r.callback_on) return r.callback_on<=t ? 0 : 1;
+  if(r.next_step)   return 1;
+  return wlCts(r).length ? 1 : 0;
+}
+function wlCard(r, i, all){
+  const ph=String(r.applicant_phone||'').replace(/\s/g,'');
+  const sibs=wlSibs(r,all), st=wlState(r), cts=wlCts(r);
+  const late=r.callback_on&&r.callback_on<new Date().toISOString().slice(0,10);
+  return `<div class="card pad" data-wlrow="${r.id}"
+      style="margin-bottom:9px;border-left:4px solid ${st.ln||'var(--line)'}">
+    <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
+      <b style="font-size:19px;color:var(--ink3);min-width:24px">${i+1}</b>
+      <b style="font-size:16px;flex:1;min-width:140px">${esc(r.last_name)} ${esc(r.first_name)}</b>
+      <span class="dim" style="font-size:12px">${esc(wlClass(wlGrade(r)))}</span>
+    </div>
+    ${sibs.length?`<div style="font-size:12px;margin-top:3px">
+      <span class="pill" style="background:var(--accbg);color:var(--acc);border-color:transparent"
+        title="Ίδιο τηλέφωνο — πάρε τους μαζί">αδέλφια: ${sibs.map(s=>esc(s.first_name)).join(', ')}</span></div>`:''}
+    ${/* Ο ΑΡΙΘΜΟΣ ΕΙΝΑΙ ΤΟ ΚΟΥΜΠΙ, και είναι μεγάλο: το πατάς με τον αντίχειρα. */''}
+    <div style="margin:8px 0">
+      ${ph?`<a class="btn p" href="tel:${esc(ph)}" style="font-size:15px;padding:9px 15px">
+        ${ic('phone',15)} ${fphone(r.applicant_phone)}</a>`
+       :'<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">χωρίς τηλέφωνο</span>'}
+      <span class="dim" style="font-size:12.5px;margin-left:8px">${esc(r.applicant_name||'—')}</span>
+    </div>
+    ${r.next_step?`<div style="font-size:12.5px;margin-bottom:6px;color:var(--${late?'bad':'acc'})">
+      ⏳ ${esc(r.next_step)}${r.callback_on?' · '+fdate(r.callback_on):''}${late?' <b>πέρασε</b>':''}
+      <button class="btn gh sm" data-wlclr="${r.id}" style="padding:0 6px">✓</button></div>`:''}
+    ${cts.length?`<div class="dim" style="font-size:11.5px;margin-bottom:6px">${
+      cts.slice(0,4).map(c=>{const by=(D.bh||[]).find(b=>b.id===(c.by_person||c.by_id));
+        return esc(c.kind)+' '+fdate(c.at)+(by&&by.id!==(meRec()||{}).id?' ('+esc(by.first_name)+')':'')}).join(' · ')}</div>`:''}
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+      ${WL_PRESETS.map(P=>`<button class="btn sm${P.cls?' '+P.cls:' gh'}" data-wlp="${r.id}" data-pk="${P.k}"
+        style="font-size:12px;padding:4px 9px">${esc(P.t)}</button>`).join('')}</div>
+    <input data-wlnote="${r.id}" value="${esc(r.note||'')}" placeholder="Σημείωση — αποθηκεύεται μόλις φύγεις από το πεδίο"
+      style="font-size:12.5px;padding:5px 8px">
+    ${r.elsewhere?`<div class="dim" style="font-size:11.5px;margin-top:4px">→ ${esc(r.elsewhere)}</div>`:''}
+  </div>`;
+}
+
+/* ══ PRESETS — ΟΙ ΕΞΙ ΑΠΑΝΤΗΣΕΙΣ ΠΟΥ ΠΑΙΡΝΕΙΣ ΣΤΟ ΤΗΛΕΦΩΝΟ ═══════════════
+   Ένα απόγευμα, τριάντα κλήσεις: οι απαντήσεις είναι λίγες και οι ίδιες.
+   Κάθε μία θέλει ΤΡΕΙΣ καταχωρήσεις (επαφή + έκβαση + τι χρωστάω) — δηλαδή
+   τρία πατήματα και μία σκέψη «σε ποιο πεδίο πάει το “θα με πάρει”».
+   Ένα κουμπί = μία πραγματική απάντηση. Η μηχανή κάνει τα τρία. */
+const WL_PRESETS=[
+  {k:'yes',  t:'Θα έρθει',        cls:'ok',   ct:'Κλήση',
+   p:{outcome:'Ενδιαφέρεται', next_step:null, callback_on:null}},
+  {k:'back', t:'Θα με πάρει',     cls:'warn', ct:'Κλήση', days:2,
+   p:{next_step:'Περιμένω τηλέφωνο'}},
+  {k:'again',t:'Δεν απάντησε',    cls:'',     ct:'Αναπάντητη', days:2,
+   p:{next_step:'Να ξαναπάρω'}},
+  {k:'shut', t:'Κλειστό',         cls:'',     ct:'Κλειστό', days:1,
+   p:{next_step:'Να ξαναπάρω'}},
+  {k:'no',   t:'Δεν ενδιαφέρεται',cls:'bad',  ct:'Κλήση',
+   p:{outcome:'Δεν ενδιαφέρεται', next_step:null, callback_on:null}},
+  {k:'else', t:'Πήγε αλλού',      cls:'bad',  ct:'Κλήση', ask:'Σε ποιο Σύστημα;',
+   p:{outcome:'Πήγε αλλού', next_step:null, callback_on:null}},
+];
+async function wlPreset(id, key){
+  const P=WL_PRESETS.find(x=>x.k===key); if(!P)return;
+  const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
+  const v={...P.p};
+  if(P.days){ const d=new Date(); d.setDate(d.getDate()+P.days);
+    v.callback_on=d.toISOString().slice(0,10); }
+  if(P.ask){ const a=prompt(P.ask,r.elsewhere||''); if(a===null)return; v.elsewhere=a.trim()||null; }
+  if(v.outcome){ v.outcome_at=new Date().toISOString(); v.outcome_by=(meRec()||{}).id||null; }
+  const {error}=await sb.from('waitlist').update(v).eq('id',id);
+  if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
+  Object.assign(r,v);
+  /* Η επαφή καταγράφεται ΚΑΙ αυτή — αλλιώς αύριο δεν ξέρεις αν μίλησες. */
+  if(P.ct)await wlContact(id,P.ct,true);
+  saveCache(); toast(P.t); WLPATCH(id);
+}
+async function wlContact(id,kind,quiet){
+  const me=(meRec()||{}).id||null;
+  const row={waitlist_id:id, kind, at:new Date().toISOString().slice(0,10),
+             by_id:me, by_person:me};
   const {data,error}=await sb.from('waitlist_contact').insert(row).select().single();
   if(error)return toast('Δεν καταγράφηκε: '+error.message);
   (D.wlct=D.wlct||[]).push(data); saveCache();
+  if(quiet)return;                       // το preset λέει ήδη τι έγινε
   toast(kind+' — καταγράφηκε'); WLPATCH(id);
 }
 async function wlContactDel(cid){
