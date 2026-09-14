@@ -1156,7 +1156,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-14 13:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-14 14:31'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -15974,8 +15974,18 @@ let WLY='', WLED=null, WLSORT='anamoni', WLCLS='', WLST='open', WLQ='', WLPRE=''
    τώρα» — και αυτό κάνεις κρατώντας το τηλέφωνο: δεν θέλεις έξι στήλες,
    θέλεις ένα όνομα, έναν αριθμό και έξι κουμπιά.
    Ένα απόγευμα, τριάντα κλήσεις: το ζήτησε η πράξη, όχι η αισθητική. */
-let WLVIEW='list';
+let WLVIEW='list', WLTAB=null, WLOPEN_ID=null;
 try{WLVIEW=localStorage.getItem('e76:wlview')||'list'}catch(e){}
+/* ══ ΤΟ ΣΥΝΟΛΟ ΤΗΣ ΧΡΟΝΙΑΣ — ΜΕ ΤΟΥΣ ΥΦΙΣΤΑΜΕΝΟΥΣ ═══════════════════════
+   Η λίστα απαντούσε «πόσοι περιμένουν». Η ερώτηση όμως είναι «ΠΟΣΟΥΣ ΘΑ
+   ΕΧΕΙ Η Γ΄ ΦΕΤΟΣ» — και εκεί μετράνε και τα παιδιά που είναι ΗΔΗ μέλη.
+   Στη Γ΄ είναι μόλις 1 (η Εύη)· στη Δ΄ είναι 27. Χωρίς αυτόν τον αριθμό
+   δεν ξέρεις αν η τάξη είναι άδεια ή γεμάτη. */
+function wlYearTotal(grade){
+  const lbl=wlClass(grade);
+  const mem=(D.my||[]).filter(y=>y.scout_year===YEAR&&!y.voided_at&&y.grade===lbl).length;
+  return {mem, lbl};
+}
 /* Δεν παίρνει πάντα ο Α.Σ. Η Κασσιόπεια πήρε δύο· αν δεν το κρατήσουμε,
    η επόμενη ερώτηση («τι σου είπε;») πάει σε λάθος άνθρωπο. */
 let WLBY=null;
@@ -16018,6 +16028,8 @@ const R1={
   inv: ()=>sb.from('invitations').select('*').limit(2000),
   ac : ()=>sb.from('v_accounts').select('*'),
   ph : ()=>sb.from('person_hats').select('*').limit(2000),
+  wl : ()=>sb.from('waitlist').select('*'),
+  wlct:()=>sb.from('waitlist_contact').select('*'),
 };
 async function reload1(...keys){
   for(const k of keys){ const {data,error}=await R1[k]();
@@ -16234,17 +16246,25 @@ V.waitlist=()=>{
      Αλλά η προεπιλογή δεν είναι κανόνας: μερικές φορές ψάχνεις όνομα, και
      τότε η αλφαβητική είναι η μόνη χρήσιμη. */
   const D_=x=>String(x||'').trim();
+  /* ΚΑΘΕ ΤΑΞΙΝΟΜΗΣΗ ΤΕΛΕΙΩΝΕΙ ΜΕ ΣΤΑΘΕΡΟ ΚΡΙΤΗΡΙΟ. Χωρίς αυτό, οι 40
+     εγγραφές του xlsx (ίδιο created_at, κενό submitted_on) έβγαιναν σε
+     ισοπαλία και η βάση επέστρεφε άλλη σειρά κάθε φορά — «δεν είναι με τη
+     σειρά που ήταν στο αρχείο». Η σειρά του αρχείου είναι το file_seq. */
+  const TIE=(a,b)=>((a.file_seq??9999)-(b.file_seq??9999))
+    || D_(a.created_at).localeCompare(D_(b.created_at))
+    || D_(a.id).localeCompare(D_(b.id));
   const WLSORTS={
     anamoni:['Σειρά αναμονής (παλαιότερη αίτηση πρώτα)', (a,b)=>
       D_(a.scout_year).localeCompare(D_(b.scout_year)) ||
-      (a.submitted_on||'9999').localeCompare(b.submitted_on||'9999')],
+      (a.submitted_on||'9999').localeCompare(b.submitted_on||'9999') || TIE(a,b)],
+    arxeio:['Σειρά αρχείου / λίστας', TIE],
     neoteri:['Πρόσφατη αίτηση πρώτα', (a,b)=>
       D_(b.scout_year).localeCompare(D_(a.scout_year)) ||
-      (b.submitted_on||'').localeCompare(a.submitted_on||'')],
+      (b.submitted_on||'').localeCompare(a.submitted_on||'') || TIE(a,b)],
     onoma:['Αλφαβητικά', (a,b)=>
-      nameKey(a.last_name+' '+a.first_name).localeCompare(nameKey(b.last_name+' '+b.first_name),'el')],
-    ilikia:['Μεγαλύτερο παιδί πρώτα', (a,b)=>(a.dob||'9999').localeCompare(b.dob||'9999')],
-    mikroteros:['Μικρότερο παιδί πρώτα', (a,b)=>(b.dob||'').localeCompare(a.dob||'')],
+      nameKey(a.last_name+' '+a.first_name).localeCompare(nameKey(b.last_name+' '+b.first_name),'el')||TIE(a,b)],
+    ilikia:['Μεγαλύτερο παιδί πρώτα', (a,b)=>(a.dob||'9999').localeCompare(b.dob||'9999')||TIE(a,b)],
+    mikroteros:['Μικρότερο παιδί πρώτα', (a,b)=>(b.dob||'').localeCompare(a.dob||'')||TIE(a,b)],
   };
   /* ΤΑ ΦΙΛΤΡΑ ΚΟΒΟΥΝ ΤΟΝ ΠΙΝΑΚΑ, ΟΧΙ ΤΑ ΠΛΑΚΙΔΙΑ. Οι μετρήσεις πρέπει να
      λένε πάντα «πόσοι είναι», αλλιώς φιλτράρεις και νομίζεις ότι μειώθηκαν.
@@ -16286,7 +16306,10 @@ V.waitlist=()=>{
     else if(WL_OPEN.includes(r.outcome)){o.w++; if(r.outcome==='Ενδιαφέρεται')o.y++;
       const g=wlGrade(r); if(g>=3&&g<=5)o.ready++}
     else o.x++});
-  const ord=Object.keys(groups).map(Number).sort((a,b)=>a-b);
+  const ordAll=Object.keys(groups).map(Number).sort((a,b)=>a-b);
+  /* Η καρτέλα κόβει ΜΟΝΟ το τι ζωγραφίζεται — οι μετρήσεις και οι άλλες
+     καρτέλες μένουν σωστές, αλλιώς διαλέγεις τάξη και «χάθηκαν» οι άλλοι. */
+  const ord = WLTAB===null ? ordAll : ordAll.filter(g=>g===WLTAB);
 
   /* Η ΑΡΙΘΜΗΣΗ ΞΕΚΙΝΑ ΑΠΟ ΤΟ 1 ΣΕ ΚΑΘΕ ΤΑΞΗ. Δεν είναι διακόσμηση: είναι η
      σειρά που θα πάρεις τηλέφωνο. «Ο τέταρτος στη Γ΄» είναι πρόταση που
@@ -16326,6 +16349,8 @@ V.waitlist=()=>{
     ${/* Η ΑΝΑΛΥΣΗ ΔΕΝ ΕΙΝΑΙ Η ΔΟΥΛΕΙΑ. Ο πίνακας απόδοσης ανά χρονιά τον
          κοιτάς μία φορά τον χρόνο· τη λίστα την ανοίγεις για να πάρεις
          τηλέφωνο. Δεν στέκεται ανάμεσα σε σένα και τα παιδιά. */''}
+    ${wlDupBox()}
+
     <details class="card pad" id="wlyrsD" style="margin-top:12px"${WLYRS?' open':''}>
       <summary style="cursor:pointer;font-weight:600;font-size:14px">Τι απέδωσε κάθε χρονιά</summary>
       <div style="overflow:auto;margin-top:10px"><table>
@@ -16365,11 +16390,48 @@ V.waitlist=()=>{
         title="Επιστροφή στην αυτόματη σειρά για όλους">✋ Καθαρισμός σειράς (${list.filter(r=>r.priority!=null).length})</button></label>`:''}
     </div>
     <div class="dim" style="font-size:11.5px;margin:6px 0 2px;display:flex;gap:12px;flex-wrap:wrap">
-      ${[['transparent','Καμία επαφή'],['var(--acc)','Μίλησα — περιμένω απάντηση'],
-         ['var(--warn)','Είπε ναι — δεν γράφτηκε'],['var(--ok)','Γράφτηκε']].map(([c,t])=>
-        `<span><span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${c};border:1px solid ${c==='transparent'?'var(--ink2)':c};vertical-align:-2px"></span> ${t}</span>`).join('')}
+      ${/* ΣΚΑΛΑ, ΟΧΙ ΠΑΛΕΤΑ: τέσσερα σκαλιά προς την εγγραφή, με σειρά και
+           με λέξεις. Τα χρώματα μόνα τους ζητούσαν απομνημόνευση. */''}
+      <span class="dim">Πόσο κοντά στην εγγραφή:</span>
+      ${/* ΤΟ ΤΕΤΡΑΓΩΝΟ ΤΟΥ ΥΠΟΜΝΗΜΑΤΟΣ ΕΙΝΑΙ ΚΟΡΕΣΜΕΝΟ, η γραμμή απαλή:
+           13px σε απαλή απόχρωση δεν φαίνεται καν. Δύο χρήσεις, δύο τόνοι
+           του ΙΔΙΟΥ χρώματος — παλιό μάθημα, ισχύει και στη σκάλα. */''}
+      ${WL_STEPS.map(s=>`<span><span style="display:inline-block;width:13px;height:13px;border-radius:3px;
+        background:${s.c?'var(--'+s.c+')':'transparent'};border:1px solid var(--${s.c||'ink2'});
+        vertical-align:-2px"></span> ${s.n} · ${s.t}</span>`).join('')}
       <span>Δείχνει <b id="wlcount">${shown.length}</b> από ${list.length}</span>
       ${WLPRE?`<button class="btn gh sm" data-wlpre="${esc(WLPRE)}" style="padding:1px 8px">✕ καθάρισε το πλακίδιο</button>`:''}</div>
+
+    ${/* ══ ΚΑΡΤΕΛΕΣ ΑΝΑ ΤΑΞΗ ═══════════════════════════════════════════════
+         Δέκα τάξεις η μία κάτω από την άλλη σημαίνει κύλιση για να βρεις
+         αυτή που δουλεύεις. Μία τάξη τη φορά, και η επιλογή θυμάται. */''}
+    ${(()=>{
+      if(!ordAll.length)return '';
+      if(WLTAB!==null && !ordAll.includes(WLTAB))WLTAB=null;
+      return `<div class="subtabs" style="margin-top:12px">
+        <button class="btn sm${WLTAB===null?' p':''}" data-wltab="">Όλες <span class="dim">${shown.length}</span></button>
+        ${ordAll.map(g=>`<button class="btn sm${WLTAB===g?' p':''}" data-wltab="${g}"
+          >${esc(wlClass(g===99?null:g))} <span class="dim">${groups[g].length}</span></button>`).join('')}</div>`;
+    })()}
+
+    ${/* Το σύνολο της χρονιάς για την τάξη που κοιτάς — υφιστάμενοι ΚΑΙ νέοι. */''}
+    ${WLTAB!==null?(()=>{
+      const l=groups[WLTAB]||[], all=list.filter(r=>{const gg=wlGrade(r);return (gg===null?99:gg)===WLTAB});
+      const {mem}=wlYearTotal(WLTAB===99?null:WLTAB);
+      const got=all.filter(r=>r.outcome==='Έγινε μέλος').length;
+      const yes=all.filter(r=>r.outcome==='Ενδιαφέρεται').length;
+      return `<div class="card pad" style="margin-bottom:10px;background:var(--bg)">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline">
+          <b style="font-size:15px">${esc(wlClass(WLTAB===99?null:WLTAB))} ${esc(YEAR)}</b>
+          <span><b style="font-size:17px">${mem}</b> <span class="dim">ήδη μέλη</span></span>
+          <span class="dim">+</span>
+          <span><b style="font-size:17px;color:var(--ok)">${got}</b> <span class="dim">γράφτηκαν από τη λίστα</span></span>
+          <span class="dim">+</span>
+          <span><b style="font-size:17px;color:var(--warn)">${yes}</b> <span class="dim">είπαν ναι</span></span>
+          <span class="dim">=</span>
+          <span><b style="font-size:19px">${mem+got+yes}</b> <span class="dim">προβλεπόμενα</span></span>
+        </div></div>`;
+    })():''}
 
     ${WLVIEW==='calls' ? (()=>{
       /* ΤΡΕΙΣ ΚΑΔΟΙ ΑΝΑ ΤΑΞΗ. Το «Πάρε τώρα» είναι η μόνη λίστα που
@@ -16418,6 +16480,20 @@ V.waitlist=()=>{
     if(!tr)return;
     tr.querySelectorAll('[data-wlct]').forEach(b=>b.onclick=()=>wlContact(b.dataset.wlct,b.dataset.k));
     tr.querySelectorAll('[data-wlp]').forEach(b=>b.onclick=()=>wlPreset(b.dataset.wlp,b.dataset.pk));
+    tr.querySelectorAll('[data-wlopen]').forEach(b=>b.onclick=()=>{
+      const id=b.dataset.wlopen, was=WLOPEN_ID;
+      WLOPEN_ID = was===id ? null : id;
+      if(was && was!==id) WLPATCH(was);
+      WLPATCH(id);});
+    tr.querySelectorAll('[data-wlnote]').forEach(i=>{
+      const id=i.dataset.wlnote, r0=(D.wl||[]).find(x=>x.id===id), was=(r0&&r0.note)||'';
+      i.onblur=async()=>{
+        const v=i.value.trim(); if(v===was)return;
+        const {error}=await sb.from('waitlist').update({note:v||null}).eq('id',id);
+        if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
+        const r=(D.wl||[]).find(x=>x.id===id); if(r)r.note=v||null;
+        saveCache(); i.style.borderColor='var(--ok)';
+        setTimeout(()=>{i.style.borderColor=''},900);};});
     tr.querySelectorAll('[data-wlclr]').forEach(b=>b.onclick=async()=>{
       const id=b.dataset.wlclr;
       const {error}=await sb.from('waitlist').update({next_step:null,callback_on:null}).eq('id',id);
@@ -16504,6 +16580,27 @@ V.waitlist=()=>{
      λένε «τι δείχνω» ταυτόχρονα, και το ένα κρυφό, είναι σίγουρη σύγχυση. */
   const sf=$('wlst');  if(sf)sf.onchange=e=>{WLST=e.target.value;WLPRE='';WLED=null;route('waitlist')};
   const pd=$('wlyrsD'); if(pd)pd.ontoggle=()=>{WLYRS=pd.open};
+  /* Οι προτάσεις έρχονται ΜΕΤΑ τη ζωγραφική: δεν κρατάμε την οθόνη για
+     έναν έλεγχο συνέπειας. Αν αργήσει, απλώς δεν εμφανίζεται το κουτί. */
+  sb.rpc('waitlist_dups').then(({data,error})=>{
+    if(error||!data||!data.length)return;
+    if(JSON.stringify(data)===JSON.stringify(WLDUPS))return;   // ίδιο = μη ξαναζωγραφίζεις
+    WLDUPS=data;
+    const cur=$('wlDupD'), open=cur&&cur.open;
+    const box=document.createElement('div'); box.innerHTML=wlDupBox();
+    const fresh=box.firstElementChild; if(!fresh)return;
+    if(open)fresh.open=true;
+    if(cur)cur.replaceWith(fresh); else $('wlyrsD')?.before(fresh);
+    wlDupWire();
+  });
+  document.querySelectorAll('[data-wltab]').forEach(b=>b.onclick=()=>{
+    const v=b.dataset.wltab; WLTAB=v===''?null:+v; WLED=null; route('waitlist')});
+  /* Το άνοιγμα λεπτομερειών είναι ΜΙΑ γραμμή, όχι ξαναχτίσιμο. */
+  document.querySelectorAll('[data-wlopen]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.wlopen, was=WLOPEN_ID;
+    WLOPEN_ID = was===id ? null : id;
+    if(was && was!==id) WLPATCH(was);
+    WLPATCH(id);});
   const vw=$('wlview'); if(vw)vw.onchange=e=>{WLVIEW=e.target.value;
     try{localStorage.setItem('e76:wlview',WLVIEW)}catch(x){} WLED=null; route('waitlist')};
   /* Η σημείωση αποθηκεύεται στο blur, όχι σε κάθε πλήκτρο — και ΔΕΝ
@@ -16605,6 +16702,116 @@ async function wlSave(id,patch){
 /* ΕΝΑ ΚΛΙΚ = ΜΙΑ ΕΠΑΦΗ ΣΗΜΕΡΑ. Δεν ρωτάμε ημερομηνία: την ώρα που κλείνεις
    το τηλέφωνο δεν θέλεις φόρμα. Η διόρθωση (λάθος κλικ, παλιά κλήση) γίνεται
    στο ημερολόγιο μέσα στην επεξεργασία, εκεί που πας ούτως ή άλλως. */
+function wlDupWire(){
+  document.querySelectorAll('[data-wlmk]').forEach(b=>b.onclick=async()=>{
+    const keep=b.dataset.wlmk, drop=b.dataset.wlmd;
+    const k=(D.wl||[]).find(x=>x.id===keep), d=(D.wl||[]).find(x=>x.id===drop);
+    if(!confirm('Μένει: '+(k?k.last_name+' '+k.first_name:'—')
+      +'\nΚλείνει: '+(d?d.last_name+' '+d.first_name:'—')
+      +'\n\nΟι επαφές και ό,τι λείπει μεταφέρονται. Τίποτα δεν σβήνεται.'))return;
+    b.disabled=true;
+    const {data,error}=await sb.rpc('waitlist_merge',{p_keep:keep,p_drop:drop});
+    if(error){b.disabled=false; return toast('Δεν ενώθηκε: '+error.message)}
+    toast(data||'Ενώθηκε');
+    await reload1('wl','wlct'); route('waitlist');
+  });
+  document.querySelectorAll('[data-wlnd]').forEach(b=>b.onclick=async()=>{
+    /* Το αντικείμενο χτίζεται ΠΡΩΤΑ — όπως παντού στο αρχείο. Το ποιος
+       το είπε είναι ο ΠΡΑΓΜΑΤΙΚΟΣ άνθρωπος, όχι ο φακός. */
+    const me=(meRec()||{}).id||null;
+    const row={a:b.dataset.wlnd, b:b.dataset.wlnd2, by_id:me};
+    const {error}=await sb.from('waitlist_not_dup').insert(row);
+    if(error)return toast('Δεν καταγράφηκε: '+error.message);
+    /* Φεύγει ΜΟΝΟ αυτή η πρόταση — όχι ολόκληρη η οθόνη. */
+    const pair=b.closest('div[style*="border-top"]'); if(pair)pair.remove();
+    WLDUPS=WLDUPS.filter(x=>!(x.a===b.dataset.wlnd&&x.b===b.dataset.wlnd2));
+    toast('Σημειώθηκε — δεν θα ξαναπροταθεί');
+  });
+}
+
+/* ══ ΣΚΑΛΑ, ΟΧΙ ΠΑΛΕΤΑ ════════════════════════════════════════════════════
+   Τα χρώματα ήταν πέντε και σήμαιναν πέντε ΔΙΑΦΟΡΕΤΙΚΑ πράγματα — άλλο
+   «έγινε επαφή» (ενέργεια), άλλο «είπε ναι» (απάντηση), άλλο «γράφτηκε»
+   (γεγονός). Ο αναγνώστης έπρεπε να θυμάται τι σημαίνει το μπλε.
+   Τώρα είναι ΕΝΑ πράγμα, με σειρά: πόσο κοντά είναι στο να γραφτεί.
+   Και γράφεται με ΛΕΞΕΙΣ — το χρώμα βοηθά, δεν κουβαλά το νόημα μόνο του. */
+const WL_STEPS=[
+  {n:0, t:'δεν τον πήρα',  c:'',     bg:'transparent'},
+  {n:1, t:'μιλήσαμε',      c:'acc',  bg:'var(--accbg)'},
+  {n:2, t:'είπε ναι',      c:'warn', bg:'var(--warnbg)'},
+  {n:3, t:'γράφτηκε',      c:'ok',   bg:'var(--okbg)'},
+];
+function wlStep(r){
+  if(r.outcome==='Έγινε μέλος') return WL_STEPS[3];
+  if(!WL_OPEN.includes(r.outcome))
+    return {n:-1, t:r.outcome==='Πήγε αλλού'?'πήγε αλλού':r.outcome.toLowerCase(), c:'', bg:'transparent', dim:true};
+  if(r.outcome==='Ενδιαφέρεται') return WL_STEPS[2];
+  return wlCts(r).length?WL_STEPS[1]:WL_STEPS[0];
+}
+const wlStepPill=s=>`<span class="pill" style="background:${s.bg};color:var(--${s.c||'ink3'});border-color:transparent${
+  s.dim?';opacity:.7':''}">${s.n>=0?s.n+' · ':''}${esc(s.t)}</span>`;
+
+/* ══ ΠΟΙΟΣ ΕΙΝΑΙ ΔΙΚΟΣ ΜΑΣ ΗΔΗ ════════════════════════════════════════════
+   «Αδελφός υφιστάμενου μέλους» και «παιδί βαθμοφόρου» ΔΙΝΟΥΝ ΠΡΟΤΕΡΑΙΟΤΗΤΑ
+   — είναι ο λόγος που ο Ανδρέας Κόζας γράφτηκε χωρίς να περιμένει. Η λίστα
+   δεν το έδειχνε πουθενά, οπότε ο Α.Σ. το κουβαλούσε στο κεφάλι του.
+   Το βρίσκει το ΤΗΛΕΦΩΝΟ του αιτητή και το επώνυμο — με αυτή τη σειρά
+   εμπιστοσύνης, και πάντα λέει ΠΟΙΟΝ βρήκε. */
+function wlRel(r){
+  const ph=digits(r.applicant_phone||'');
+  if(ph.length>=8){
+    const led=(D.bh||[]).find(b=>isLed(b)&&b.status==='Ενεργός'&&digits(b.phone||'')===ph);
+    if(led) return {t:'παιδί βαθμοφόρου', who:nm(led), c:'ok'};
+    const g=(D.gu||[]).find(x=>digits(x.father_mobile||'')===ph||digits(x.mother_mobile||'')===ph);
+    if(g){ const kid=(D.bh||[]).find(b=>b.registry_no===g.registry_no&&b.status==='Ενεργός');
+      if(kid) return {t:'αδελφός μέλους', who:nm(kid), c:'ok'}; }
+  }
+  const ln=nameKey(r.last_name||''); if(ln.length<4) return null;
+  const sib=(D.bh||[]).find(b=>(b.kind||'')==='Μέλος'&&b.status==='Ενεργός'
+    &&nameKey(b.last_name||'')===ln);
+  if(sib) return {t:'ίδιο επώνυμο με μέλος', who:nm(sib), c:'warn'};
+  return null;
+}
+const wlRelPill=r=>{const x=wlRel(r); if(!x)return '';
+  return `<span class="pill" style="background:var(--${x.c}bg);color:var(--${x.c});border-color:transparent"
+    title="${esc(x.who)}">${esc(x.t)}</span>`};
+
+/* ══ ΠΙΘΑΝΕΣ ΔΙΠΛΟΕΓΓΡΑΦΕΣ ═══════════════════════════════════════════════
+   Η ΜΗΧΑΝΗ ΠΡΟΤΕΙΝΕΙ, Ο ΑΝΘΡΩΠΟΣ ΑΠΟΦΑΣΙΖΕΙ — και αυτό δεν είναι ευγένεια,
+   είναι ορθότητα: δύο παιδιά με το ίδιο τηλέφωνο και την ίδια ημερομηνία
+   είναι συνήθως ΔΙΔΥΜΑ. Ο Φοίβος και ο Κωνσταντίνος Δαφνίδης δεν είναι
+   διπλοεγγραφή· ο Κυπριανού με το λατινικό «K» είναι.
+   Γι' αυτό κάθε πρόταση κουβαλά τον ΛΟΓΟ της και βεβαιότητα 1-3, και
+   υπάρχει «ΔΕΝ είναι το ίδιο» που θυμάται — αλλιώς η ίδια πρόταση
+   ξαναγυρίζει κάθε μέρα και μαθαίνεις να την αγνοείς. */
+let WLDUPS=[];
+function wlDupBox(){
+  if(!WLDUPS.length)return '';
+  const side=(id,who,cls,src,dob,ep,other)=>`<div style="flex:1;min-width:210px;
+      border:1px solid var(--line);border-radius:var(--rs);padding:9px 11px">
+    <b style="font-size:14px">${esc(who)}</b>
+    <div class="dim" style="font-size:11.5px;margin-top:3px">${esc(cls||'—')}
+      · ${dob?fdate(dob):'χωρίς ημ. γέννησης'}</div>
+    <div class="dim" style="font-size:11.5px">πηγή: ${esc(src||'—')} · ${ep} ${ep===1?'επαφή':'επαφές'}</div>
+    <button class="btn p sm" data-wlmk="${id}" data-wlmd="${other}" style="margin-top:7px">
+      Κράτα αυτή</button></div>`;
+  return `<details class="card pad" id="wlDupD" style="margin-top:12px;border-left:3px solid var(--warn)">
+    <summary style="cursor:pointer;font-weight:600;font-size:14px">
+      Πιθανές διπλοεγγραφές — ${WLDUPS.length}</summary>
+    <div class="dim" style="font-size:12.5px;margin:8px 0">Καμία δεν ενώνεται μόνη της.
+      Διάλεξε ποια <b>μένει</b> — παίρνει ό,τι της λείπει από την άλλη και όλες τις επαφές.
+      Η άλλη <b>δεν σβήνεται</b>: μένει σημειωμένη, αλλιώς χάνεται το ποσοστό της χρονιάς.</div>
+    ${WLDUPS.map(d=>`<div style="border-top:1px solid var(--line);padding:10px 0">
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:7px">
+        <span class="pill" style="background:var(--${d.vevaiotita>=3?'warn':''}bg);color:var(--${d.vevaiotita>=3?'warn':'ink2'});border-color:transparent">${esc(d.logos)}</span>
+        <span class="sp"></span>
+        <button class="btn gh sm" data-wlnd="${d.a}" data-wlnd2="${d.b}">Δεν είναι το ίδιο παιδί</button></div>
+      <div style="display:flex;gap:9px;flex-wrap:wrap">
+        ${side(d.a,d.a_who,d.a_class,d.a_src,d.a_dob,d.a_epafes,d.b)}
+        ${side(d.b,d.b_who,d.b_class,d.b_src,d.b_dob,d.b_epafes,d.a)}</div></div>`).join('')}
+  </details>`;
+}
+
 /* ══ ΦΥΛΛΟ ΚΛΗΣΕΩΝ ════════════════════════════════════════════════════════
    ΤΡΕΙΣ ΚΑΔΟΙ, ΜΕ ΣΕΙΡΑ ΠΡΟΤΕΡΑΙΟΤΗΤΑΣ — όχι πέντε φίλτρα που στήνεις μόνος:
      ΠΑΡΕ ΤΩΡΑ    όσους δεν πήρες ποτέ + όσων η προθεσμία έφτασε
@@ -16619,39 +16826,47 @@ function wlBucket(r){
   if(r.next_step)   return 1;
   return wlCts(r).length ? 1 : 0;
 }
+/* ΛΕΠΤΗ ΚΑΡΤΑ. Η προηγούμενη είχε επτά σειρές πληροφορίας για κάθε παιδί —
+   με 28 παιδιά στη Γ΄ αυτό είναι δύο οθόνες κύλισης πριν φτάσεις στον
+   δέκατο. Εδώ: όνομα, σκάλα, τηλέφωνο, έξι κουμπιά. Το ιστορικό επαφών,
+   ο αιτητής και οι σημειώσεις ανοίγουν ΜΕ ΤΟ ΠΑΤΗΜΑ — δεν κάθονται. */
 function wlCard(r, i, all){
   const ph=String(r.applicant_phone||'').replace(/\s/g,'');
-  const sibs=wlSibs(r,all), st=wlState(r), cts=wlCts(r);
+  const sibs=wlSibs(r,all), s=wlStep(r), cts=wlCts(r);
   const late=r.callback_on&&r.callback_on<new Date().toISOString().slice(0,10);
-  return `<div class="card pad" data-wlrow="${r.id}"
-      style="margin-bottom:9px;border-left:4px solid ${st.ln||'var(--line)'}">
-    <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap">
-      <b style="font-size:19px;color:var(--ink3);min-width:24px">${i+1}</b>
-      <b style="font-size:16px;flex:1;min-width:140px">${esc(r.last_name)} ${esc(r.first_name)}</b>
-      <span class="dim" style="font-size:12px">${esc(wlClass(wlGrade(r)))}</span>
+  const open=WLOPEN_ID===r.id;
+  return `<div class="card" data-wlrow="${r.id}"
+      style="margin-bottom:6px;padding:8px 11px;border-left:4px solid var(--${s.c||'line'})${s.dim?';opacity:.55':''}">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <b style="font-size:14px;color:var(--ink3);min-width:20px;text-align:right">${i+1}</b>
+      <b style="font-size:14.5px;flex:1;min-width:130px;cursor:pointer" data-wlopen="${r.id}"
+         title="Λεπτομέρειες">${esc(r.last_name)} ${esc(r.first_name)}</b>
+      ${wlStepPill(s)}${wlRelPill(r)}
+      ${sibs.length?`<span class="pill" title="Ίδιο τηλέφωνο — πάρ΄ τους μαζί">+${sibs.length} αδελφ.</span>`:''}
+      ${r.next_step?`<span class="pill" style="background:var(--${late?'bad':'acc'}bg);color:var(--${late?'bad':'acc'});border-color:transparent"
+        title="${esc(r.next_step)}">⏳ ${r.callback_on?fdate(r.callback_on):''}${late?' πέρασε':''}</span>`:''}
+      ${ph?`<a class="btn p sm" href="tel:${esc(ph)}" style="padding:5px 11px;font-size:13px"
+        title="${esc(r.applicant_name||'')}">${ic('phone',13)} ${fphone(r.applicant_phone)}</a>`
+       :'<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">χωρίς τηλ.</span>'}
     </div>
-    ${sibs.length?`<div style="font-size:12px;margin-top:3px">
-      <span class="pill" style="background:var(--accbg);color:var(--acc);border-color:transparent"
-        title="Ίδιο τηλέφωνο — πάρε τους μαζί">αδέλφια: ${sibs.map(s=>esc(s.first_name)).join(', ')}</span></div>`:''}
-    ${/* Ο ΑΡΙΘΜΟΣ ΕΙΝΑΙ ΤΟ ΚΟΥΜΠΙ, και είναι μεγάλο: το πατάς με τον αντίχειρα. */''}
-    <div style="margin:8px 0">
-      ${ph?`<a class="btn p" href="tel:${esc(ph)}" style="font-size:15px;padding:9px 15px">
-        ${ic('phone',15)} ${fphone(r.applicant_phone)}</a>`
-       :'<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">χωρίς τηλέφωνο</span>'}
-      <span class="dim" style="font-size:12.5px;margin-left:8px">${esc(r.applicant_name||'—')}</span>
-    </div>
-    ${r.next_step?`<div style="font-size:12.5px;margin-bottom:6px;color:var(--${late?'bad':'acc'})">
-      ⏳ ${esc(r.next_step)}${r.callback_on?' · '+fdate(r.callback_on):''}${late?' <b>πέρασε</b>':''}
-      <button class="btn gh sm" data-wlclr="${r.id}" style="padding:0 6px">✓</button></div>`:''}
-    ${cts.length?`<div class="dim" style="font-size:11.5px;margin-bottom:6px">${
-      cts.slice(0,4).map(c=>{const by=(D.bh||[]).find(b=>b.id===(c.by_person||c.by_id));
-        return esc(c.kind)+' '+fdate(c.at)+(by&&by.id!==(meRec()||{}).id?' ('+esc(by.first_name)+')':'')}).join(' · ')}</div>`:''}
-    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
       ${WL_PRESETS.map(P=>`<button class="btn sm${P.cls?' '+P.cls:' gh'}" data-wlp="${r.id}" data-pk="${P.k}"
-        style="font-size:12px;padding:4px 9px">${esc(P.t)}</button>`).join('')}</div>
-    <input data-wlnote="${r.id}" value="${esc(r.note||'')}" placeholder="Σημείωση — αποθηκεύεται μόλις φύγεις από το πεδίο"
-      style="font-size:12.5px;padding:5px 8px">
-    ${r.elsewhere?`<div class="dim" style="font-size:11.5px;margin-top:4px">→ ${esc(r.elsewhere)}</div>`:''}
+        style="font-size:11.5px;padding:3px 8px">${esc(P.t)}</button>`).join('')}
+      ${r.next_step?`<button class="btn gh sm" data-wlclr="${r.id}" style="font-size:11.5px;padding:3px 8px"
+        title="Τακτοποιήθηκε">✓ τακτοποιήθηκε</button>`:''}
+    </div>
+    ${open?`<div style="margin-top:8px;border-top:1px solid var(--line);padding-top:7px">
+      <div class="dim" style="font-size:11.5px">${esc(r.applicant_name||'—')}${
+        r.applicant_email?' · '+esc(r.applicant_email):''}${
+        sibs.length?' · αδέλφια: '+sibs.map(x=>esc(x.first_name)).join(', '):''}</div>
+      ${cts.length?`<div class="dim" style="font-size:11.5px;margin-top:3px">${
+        cts.slice(0,6).map(c=>{const by=(D.bh||[]).find(b=>b.id===(c.by_person||c.by_id));
+          return esc(c.kind)+' '+fdate(c.at)+(by&&by.id!==(meRec()||{}).id?' ('+esc(by.first_name)+')':'')}).join(' · ')}</div>`:''}
+      ${r.elsewhere?`<div class="dim" style="font-size:11.5px;margin-top:3px">→ ${esc(r.elsewhere)}</div>`:''}
+      <input data-wlnote="${r.id}" value="${esc(r.note||'')}" placeholder="Σημείωση"
+        style="font-size:12.5px;padding:5px 8px;margin-top:6px">
+    </div>`:(r.note?`<div class="dim" style="font-size:11px;margin-top:4px;cursor:pointer" data-wlopen="${r.id}"
+        >${esc(r.note.slice(0,90))}${r.note.length>90?'…':''}</div>`:'')}
   </div>`;
 }
 
