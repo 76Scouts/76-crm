@@ -222,6 +222,8 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
    έκαναν τίποτα. Η υπόσχεση που δεν τηρείται είναι χειρότερη από την
    απουσία της: μαθαίνεις να μην πατάς ΤΙΠΟΤΑ. */
 .tile[style*="cursor:default"]{box-shadow:none;background:transparent}
+/* Το ΕΝΕΡΓΟ πλακίδιο-φίλτρο: πρέπει να φαίνεται ότι κρατάει την οθόνη. */
+.tile.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--accln,var(--accbg))}
 .tile[style*="cursor:default"]:hover{border-color:var(--line);transform:none}
 /* ΙΕΡΑΡΧΙΑ: το ΠΡΩΤΟ πλακίδιο κάθε σειράς είναι η κύρια απάντηση.
    Τέσσερα ίσα νούμερα δεν λένε πού να κοιτάξεις. */
@@ -1154,7 +1156,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-14 12:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-14 12:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -15966,7 +15968,17 @@ function wlG(r){
 }
 const wlGrade=r=>wlG(r).g;
 const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
-let WLY='', WLED=null, WLSORT='anamoni', WLCLS='', WLST='open';
+let WLY='', WLED=null, WLSORT='anamoni', WLCLS='', WLST='open', WLQ='', WLPRE='', WLYRS=false;
+/* Η δουλειά της λίστας είναι ΤΗΛΕΦΩΝΑ. 165 εγγραφές χωρίς αναζήτηση σημαίνει
+   ότι για να βρεις έναν Παπαδόπουλο αλλάζεις ταξινόμηση και σαρώνεις με το
+   μάτι· και το τηλέφωνο ήταν γκρίζο κείμενο, όχι σύνδεσμος — από κινητό δεν
+   πατιόταν. Ψάχνει και λατινικά, όπως όλη η εφαρμογή. */
+const wlBlob=r=>[r.last_name,r.first_name,r.applicant_name,r.applicant_phone,
+  r.applicant_email,r.note,r.referred_by,r.school_class,r.section].filter(Boolean).join(' ');
+const wlHit=(r,q)=>{ if(!q)return true;
+  const b=wlBlob(r);
+  return nameKey(b).includes(nameKey(q)) || latKey(b).includes(latKey(q))
+      || digits(b).includes(digits(q)) && digits(q).length>=3; };
 /* Η γέφυρα ανάμεσα στις συναρτήσεις γραψίματος (που ζουν έξω) και στη
    ζωγραφική της γραμμής (που ζει μέσα στη V.waitlist, γιατί χρειάζεται τα
    φίλτρα και τις ομάδες). Ορίζεται κάθε φορά που ζωγραφίζεται η οθόνη. */
@@ -16130,8 +16142,15 @@ V.waitlist=()=>{
       ${r.note?`<div class="dim" style="font-size:11.5px">${esc(r.note)}</div>`:''}</td>
     <td style="white-space:nowrap">${r.section?sdot(r.section)+esc(r.section):'<span class="dim">—</span>'}
       <div class="dim" style="font-size:11.5px">δήλωσε: ${esc(r.school_class||'—')}</div></td>
+    ${/* ΤΟ ΤΗΛΕΦΩΝΟ ΕΙΝΑΙ ΚΟΥΜΠΙ, ΟΧΙ ΚΕΙΜΕΝΟ. Η μόνη πράξη αυτής της οθόνης
+         είναι «πάρ΄ τον τηλέφωνο». Ήταν γκρίζο κείμενο 11.5px — από κινητό
+         έπρεπε να το διαβάσεις και να το πληκτρολογήσεις αλλού. */''}
     <td>${esc(r.applicant_name||'—')}
-      <div class="dim" style="font-size:11.5px">${r.applicant_phone?fphone(r.applicant_phone):''}${r.applicant_email?' · '+esc(r.applicant_email):''}</div>
+      <div style="font-size:12.5px;margin-top:2px">${r.applicant_phone
+        ? `<a href="tel:${esc(String(r.applicant_phone).replace(/\s/g,''))}" class="lnk"
+             style="font-weight:600">${ic('phone',12)} ${fphone(r.applicant_phone)}</a>`
+        : '<span class="dim">χωρίς τηλέφωνο</span>'}</div>
+      ${r.applicant_email?`<div style="font-size:11.5px"><a href="mailto:${esc(r.applicant_email)}" class="lnk">${esc(r.applicant_email)}</a></div>`:''}
       ${r.referred_by?`<div class="dim" style="font-size:11.5px">${ic('users',11)} ${esc(r.referred_by)}</div>`:''}</td>
     <td class="hide-s dim" style="font-size:12px;white-space:nowrap">${r.submitted_on?fdate(String(r.submitted_on).slice(0,10)):'—'}
       <div style="font-size:11px">${esc(r.scout_year)}${(()=>{
@@ -16201,8 +16220,19 @@ V.waitlist=()=>{
      «σειρά αναμονής», ο Α.Σ. θα άλλαζε ταξινόμηση για να ψάξει ένα όνομα και
      η δουλειά που έκανε θα εξαφανιζόταν — και δεν θα καταλάβαινε γιατί. */
   const auto=(WLSORTS[WLSORT]||WLSORTS.anamoni)[1];
+  /* Το πλακίδιο είναι ΕΤΟΙΜΟΣ ΣΥΝΔΥΑΣΜΟΣ, όχι δεύτερο φίλτρο: πατώντας το
+     «Έχουν την ηλικία» παίρνεις ανοιχτές ΚΑΙ Γ΄+ με μία κίνηση. */
+  const PRE={
+    ready : r=>WL_OPEN.includes(r.outcome)&&(wlGrade(r)||0)>=3,
+    later : r=>WL_OPEN.includes(r.outcome)&&(wlGrade(r)||0)<3,
+    yes   : r=>r.outcome==='Ενδιαφέρεται',
+    joined: r=>r.outcome==='Έγινε μέλος',
+    gone  : r=>['Δεν ενδιαφέρεται','Δεν απάντησε','Διπλοεγγραφή'].includes(r.outcome),
+  };
   const shown = list
-    .filter(r=>WLST==='all' || (WLST==='open'?WL_OPEN.includes(r.outcome):r.outcome===WLST))
+    .filter(r=>WLPRE?PRE[WLPRE](r)
+      :(WLST==='all' || (WLST==='open'?WL_OPEN.includes(r.outcome):r.outcome===WLST)))
+    .filter(r=>wlHit(r,WLQ))
     .filter(r=>{if(!WLCLS)return true; const g=wlGrade(r);
       return WLCLS==='?' ? g===null||g===undefined : String(g===null?99:g)===WLCLS})
     .sort((a,b)=>{
@@ -16241,22 +16271,30 @@ V.waitlist=()=>{
       <div class="dim" style="font-size:12.5px;margin-top:6px">Χωρισμένα κατά <b>φετινή τάξη (${esc(curScoutYear())})</b>,
         υπολογισμένη από την ημερομηνία γέννησης — όχι από ό,τι γράφτηκε στη φόρμα της χρονιάς της.</div></div>
 
+    ${/* ΤΑ ΠΛΑΚΙΔΙΑ ΕΙΝΑΙ Η ΔΙΑΛΟΓΗ, ΑΡΑ ΠΑΤΙΟΥΝΤΑΙ. Έδειχναν πέντε αριθμούς
+         και μετά έπρεπε να κατέβεις στα φίλτρα και να στήσεις μόνος σου
+         τον συνδυασμό που λέει ο τίτλος τους. */''}
     <div class="tiles">
-      <div class="tile ${ready.length?'warn':''}" style="cursor:default"><div class="k">Έχουν την ηλικία</div>
-        <div class="v" data-wltile="ready">${ready.length}</div><div class="s">Γ΄ Δημοτικού και πάνω</div></div>
-      <div class="tile" style="cursor:default"><div class="k">Περιμένουν να μεγαλώσουν</div>
-        <div class="v" data-wltile="later">${later.length}</div><div class="s">κάτω από Γ΄ Δημοτικού</div></div>
-      <div class="tile ${stale.length?'bad':'warn'}" style="cursor:default"><div class="k">Είπαν ναι</div>
+      <button class="tile ${ready.length?'warn':''}${WLPRE==='ready'?' on':''}" data-wlpre="ready"
+        title="Ανοιχτές, Γ΄ Δημοτικού και πάνω — αυτούς παίρνεις τηλέφωνο"><div class="k">Έχουν την ηλικία</div>
+        <div class="v" data-wltile="ready">${ready.length}</div><div class="s">Γ΄ Δημοτικού και πάνω</div></button>
+      <button class="tile${WLPRE==='later'?' on':''}" data-wlpre="later"><div class="k">Περιμένουν να μεγαλώσουν</div>
+        <div class="v" data-wltile="later">${later.length}</div><div class="s">κάτω από Γ΄ Δημοτικού</div></button>
+      <button class="tile ${stale.length?'bad':'warn'}${WLPRE==='yes'?' on':''}" data-wlpre="yes"><div class="k">Είπαν ναι</div>
         <div class="v" data-wltile="yes">${yes.length}</div>
-        <div class="s" data-wltile="stalesub">${stale.length?`<b>${stale.length}</b> πάνω από ${WL_STALE} μέρες`:'δεν γράφτηκαν ακόμη'}</div></div>
-      <div class="tile ok" style="cursor:default"><div class="k">Έγιναν μέλη</div>
-        <div class="v" data-wltile="joined">${joined.length}</div><div class="s">από τη λίστα</div></div>
-      <div class="tile" style="cursor:default"><div class="k">Έκλεισαν</div>
-        <div class="v" data-wltile="gone">${gone.length}</div><div class="s">δεν ενδιαφέρονται ή δεν απάντησαν</div></div>
+        <div class="s" data-wltile="stalesub">${stale.length?`<b>${stale.length}</b> πάνω από ${WL_STALE} μέρες`:'δεν γράφτηκαν ακόμη'}</div></button>
+      <button class="tile ok${WLPRE==='joined'?' on':''}" data-wlpre="joined"><div class="k">Έγιναν μέλη</div>
+        <div class="v" data-wltile="joined">${joined.length}</div><div class="s">από τη λίστα</div></button>
+      <button class="tile${WLPRE==='gone'?' on':''}" data-wlpre="gone"><div class="k">Έκλεισαν</div>
+        <div class="v" data-wltile="gone">${gone.length}</div><div class="s">δεν ενδιαφέρονται ή δεν απάντησαν</div></button>
     </div>
 
-    <div class="sec" style="margin-top:14px"><h3>Τι απέδωσε κάθε χρονιά</h3></div>
-    <div class="card" style="overflow:auto"><table>
+    ${/* Η ΑΝΑΛΥΣΗ ΔΕΝ ΕΙΝΑΙ Η ΔΟΥΛΕΙΑ. Ο πίνακας απόδοσης ανά χρονιά τον
+         κοιτάς μία φορά τον χρόνο· τη λίστα την ανοίγεις για να πάρεις
+         τηλέφωνο. Δεν στέκεται ανάμεσα σε σένα και τα παιδιά. */''}
+    <details class="card pad" id="wlyrsD" style="margin-top:12px"${WLYRS?' open':''}>
+      <summary style="cursor:pointer;font-weight:600;font-size:14px">Τι απέδωσε κάθε χρονιά</summary>
+      <div style="overflow:auto;margin-top:10px"><table>
       <thead><tr><th>Χρονιά αίτησης</th><th>Μπήκαν</th><th>Ήρθαν</th><th>Ποσοστό</th>
         <th>Περιμένουν</th><th>Έχουν την ηλικία</th><th>Έκλεισαν</th></tr></thead>
       <tbody>${Object.keys(YRS).sort().map(y=>{const o=YRS[y];
@@ -16269,8 +16307,11 @@ V.waitlist=()=>{
       <div class="dim" style="font-size:12px;margin-top:7px">«Έχουν την ηλικία» = Γ΄ ως Ε΄ Δημοτικού, δηλαδή
         μπορούν να μπουν στην Αγέλη <b>τώρα</b>. Αυτούς παίρνεις τηλέφωνο πρώτους,
         και μέσα σε κάθε τάξη με τη σειρά που έκαναν αίτηση.</div></div>
+    </details>
 
     <div class="grow" style="margin-top:12px">
+      <label style="flex:2;min-width:200px">Αναζήτηση<input id="wlq" value="${esc(WLQ)}"
+        placeholder="όνομα, γονιός, τηλέφωνο, σημείωση"></label>
       <label style="max-width:200px">Χρονιά φόρμας<select id="wly"><option value="">Όλες</option>
         ${years.map(y=>`<option${y===WLY?' selected':''}>${esc(y)}</option>`).join('')}</select></label>
       <label style="max-width:200px">Τάξη<select id="wlcls"><option value="">Όλες</option>
@@ -16289,7 +16330,8 @@ V.waitlist=()=>{
       ${[['transparent','Καμία επαφή'],['var(--acc)','Μίλησα — περιμένω απάντηση'],
          ['var(--warn)','Είπε ναι — δεν γράφτηκε'],['var(--ok)','Γράφτηκε']].map(([c,t])=>
         `<span><span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${c};border:1px solid ${c==='transparent'?'var(--ink2)':c};vertical-align:-2px"></span> ${t}</span>`).join('')}
-      <span>Δείχνει <b>${shown.length}</b> από ${list.length}</span></div>
+      <span>Δείχνει <b id="wlcount">${shown.length}</b> από ${list.length}</span>
+      ${WLPRE?`<button class="btn gh sm" data-wlpre="${esc(WLPRE)}" style="padding:1px 8px">✕ καθάρισε το πλακίδιο</button>`:''}</div>
 
     ${ord.map(g=>{const l=groups[g], w=g>=3&&g<=12;
       return `<div class="sec"><h3>${esc(wlClass(g===99?null:g))}</h3><span class="n">${l.length}</span></div>
@@ -16366,7 +16408,34 @@ V.waitlist=()=>{
   const ys=$('wly'); if(ys)ys.onchange=e=>{WLY=e.target.value;WLED=null;route('waitlist')};
   const so=$('wlsort'); if(so)so.onchange=e=>{WLSORT=e.target.value;WLED=null;route('waitlist')};
   const cf=$('wlcls'); if(cf)cf.onchange=e=>{WLCLS=e.target.value;WLED=null;route('waitlist')};
-  const sf=$('wlst');  if(sf)sf.onchange=e=>{WLST=e.target.value;WLED=null;route('waitlist')};
+  /* Το χειροκίνητο φίλτρο κατάστασης ΣΒΗΝΕΙ το πλακίδιο: δύο πράγματα που
+     λένε «τι δείχνω» ταυτόχρονα, και το ένα κρυφό, είναι σίγουρη σύγχυση. */
+  const sf=$('wlst');  if(sf)sf.onchange=e=>{WLST=e.target.value;WLPRE='';WLED=null;route('waitlist')};
+  const pd=$('wlyrsD'); if(pd)pd.ontoggle=()=>{WLYRS=pd.open};
+  document.querySelectorAll('[data-wlpre]').forEach(b=>b.onclick=()=>{
+    WLPRE = WLPRE===b.dataset.wlpre ? '' : b.dataset.wlpre;   // ξαναπάτημα = καθάρισμα
+    WLED=null; route('waitlist')});
+  /* Η αναζήτηση ΔΕΝ ξαναχτίζει την οθόνη σε κάθε πλήκτρο — κρύβει γραμμές.
+     Με 165 εγγραφές το route() σε κάθε γράμμα έχανε τον δρομέα. */
+  const qf=$('wlq'); if(qf)qf.oninput=e=>{
+    WLQ=e.target.value;
+    let n=0;
+    document.querySelectorAll('[data-wlrow]').forEach(tr=>{
+      const r=(D.wl||[]).find(x=>x.id===tr.dataset.wlrow);
+      const ok=!r||wlHit(r,WLQ); tr.style.display=ok?'':'none'; if(ok)n++;
+      const ed=document.querySelector(`[data-wledrow="${tr.dataset.wlrow}"]`);
+      if(ed)ed.style.display=ok?'':'none';
+    });
+    /* Και οι άδειες ομάδες φεύγουν — αλλιώς μένουν δέκα επικεφαλίδες χωρίς
+       τίποτα από κάτω και φαίνεται σαν σφάλμα. */
+    document.querySelectorAll('[data-wlgrp]').forEach(g=>{
+      const vis=[...g.querySelectorAll('[data-wlrow]')].some(tr=>tr.style.display!=='none');
+      g.style.display=vis?'':'none';
+      const sec=g.previousElementSibling;
+      if(sec&&sec.classList.contains('sec'))sec.style.display=vis?'':'none';
+    });
+    const c=$('wlcount'); if(c)c.textContent=n;
+  };
 
   /* ══ ΜΕΤΑΚΙΝΗΣΗ ΜΕΣΑ ΣΤΗΝ ΤΑΞΗ ══════════════════════════════════════════
      Ανεβάζοντας έναν, αριθμούμε ΟΛΗ την ομάδα. Αλλιώς η πρώτη μετακίνηση θα
