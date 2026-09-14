@@ -1184,7 +1184,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-14 21:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-14 21:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -7223,6 +7223,16 @@ const ACC_STEP={'χωρίς email':0,'έχει email — χωρίς κωδικό
   'χρησιμοποίησε τον κωδικό':4,'έφτιαξε λογαριασμό — χωρίς συνθηματικό':4,'ενεργός':5};
 /* Ο κωδικός που κάθεται εκδομένος δεν βοηθά κανέναν — είναι εκκρεμότητα, όχι πρόοδος. */
 const ACC_PEND=['εκδόθηκε — δεν δόθηκε'];
+/* ══ ΤΡΙΑ ΣΚΑΛΙΑ, ΤΟ ΙΔΙΟ ΛΕΞΙΛΟΓΙΟ ΣΕ ΔΥΟ ΟΘΟΝΕΣ ══════════════════════════
+   «Χωρίς λογαριασμό» έβαζε στον ίδιο κουβά δύο τελείως διαφορετικές δουλειές:
+   αυτόν που περιμένει να πατήσει τον κωδικό που του στείλαμε, και αυτόν που
+   δεν έχει πάρει ποτέ τίποτα. Ο πρώτος θέλει υπενθύμιση, ο δεύτερος έκδοση.
+   ΜΙΑ συνάρτηση — οι δύο οθόνες (Βαθμοφόροι, Λογαριασμοί) δεν επιτρέπεται
+   να αποκλίνουν: το ίδιο κουμπί πρέπει να δίνει τους ίδιους ανθρώπους. */
+const ACC_HAS=[['me','Έφτιαξε προφίλ'],['sent','Στάλθηκε κωδικός — δεν μπήκε'],
+               ['none','Ούτε κωδικός ακόμη'],['xoris','Χωρίς λογαριασμό (και τα δύο πιο πάνω)']];
+const accBucket=n=>n>=4?'me':n>=2?'sent':'none';
+const accHasOk=(sel,n)=>!sel||(sel==='xoris'?n<4:accBucket(n)===sel);
 /* ΕΞΙ σκαλιά, όχι πέντε. Το ACC_STEP φτάνει ως το 5 (ενεργός) — ο πίνακας
    σταματούσε στο 4, οπότε ο ΕΝΕΡΓΟΣ έπαιρνε ACC_COL[5]=undefined και έβγαινε
    άχρωμος. Πράσινο δικαιούται μόνο όποιος μπορεί ΟΝΤΩΣ να μπει: το
@@ -7295,7 +7305,7 @@ V.accounts=()=>{
                           /* «Με λογαριασμό» = πάτησε το κατώφλι 4: έφτιαξε λογαριασμό.
                              Ό,τι είναι κάτω από αυτό ΔΕΝ μπορεί να μπει, όσους
                              κωδικούς κι αν του στείλαμε. */
-                          &&(!ACCHAS||(ACCHAS==='me'?step(r.katastasi)>=4:step(r.katastasi)<4)));
+                          &&accHasOk(ACCHAS,step(r.katastasi)));
   const by={}; rows.forEach(r=>{by[r.katastasi]=(by[r.katastasi]||0)+1});
   const step=s=>ACC_STEP[s]||0;
 
@@ -7373,10 +7383,9 @@ V.accounts=()=>{
         ${['Βαθμοφόρος','Μέλος','Γονέας'].map(x=>`<option${x===ACCID?' selected':''}>${x}</option>`).join('')}</select></label>
       <label style="max-width:170px">Κλάδος<select id="accsec"><option value="">Όλοι</option>
         ${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'].map(x=>`<option${x===ACCSEC?' selected':''}>${x}</option>`).join('')}</select></label>
-      <label style="max-width:190px">Λογαριασμός<select id="acchas">
+      <label style="max-width:250px">Λογαριασμός<select id="acchas">
         <option value="">Όλοι</option>
-        <option value="me"${ACCHAS==='me'?' selected':''}>Με λογαριασμό</option>
-        <option value="xoris"${ACCHAS==='xoris'?' selected':''}>Χωρίς λογαριασμό</option></select></label>
+        ${ACC_HAS.map(([v,t])=>`<option value="${v}"${ACCHAS===v?' selected':''}>${esc(t)}</option>`).join('')}</select></label>
       ${ACCF?`<label style="max-width:230px">&nbsp;<button class="btn sm" id="accAll">Όλοι (${rows.length})</button></label>`:''}
       <label style="max-width:150px">&nbsp;<button class="btn sm" id="accExp">Εξαγωγή</button></label>
       <label style="max-width:210px">&nbsp;<button class="btn sm p" id="accMail">Αποστολή κωδικών με email</button></label>
@@ -7440,7 +7449,7 @@ V.accounts=()=>{
       &&(!f2||f2.includes(r.katastasi))
       &&(!ACCID||r.idiotita===ACCID)
       &&(!ACCSEC||secOfAcc(r).includes(ACCSEC))
-      &&(!ACCHAS||(ACCHAS==='me'?step(r.katastasi)>=4:step(r.katastasi)<4)))};
+      &&accHasOk(ACCHAS,step(r.katastasi)))};
   }
   /* Οι μετρητές ξαναγράφονται ΧΩΡΙΣ να ξαναζωγραφιστεί η οθόνη. Πλακίδιο που
      λέει «1» ενώ από κάτω φαίνονται έντεκα είναι χειρότερο από καθόλου πλακίδιο. */
@@ -15048,20 +15057,37 @@ V.members=()=>{
   fill(); draw(); makeSortable();
 };
 
+/* ══ ΠΟΥ ΕΙΝΑΙ Ο ΚΑΘΕΝΑΣ ΣΤΟΝ ΔΡΟΜΟ ΠΡΟΣ ΤΟΝ ΛΟΓΑΡΙΑΣΜΟ ══════════════════
+   Τρία σκαλιά, όχι εννέα καταστάσεις: «έφτιαξε προφίλ» · «του στείλαμε
+   κωδικό και περιμένουμε» · «ούτε κωδικός ακόμη». Η οθόνη Λογαριασμοί έχει
+   όλες τις αποχρώσεις — εδώ θέλεις να ξέρεις ΠΟΙΟΥΣ κυνηγάς. */
+const LACC={me:['ok','έφτιαξε προφίλ'], sent:['warn','του στείλαμε κωδικό'], none:['bad','ούτε κωδικός']};
+function leadAccState(){
+  const m={}; (D.ac||[]).forEach(a=>{m[a.id]=ACC_STEP[a.katastasi]||0});
+  /* ΤΟ ΙΔΙΟ accBucket ΜΕ ΤΗΝ ΟΘΟΝΗ ΛΟΓΑΡΙΑΣΜΟΙ — όχι δεύτερο αντίγραφο του
+     κανόνα. Δύο αντίγραφα αποκλίνουν στην πρώτη αλλαγή και μετά το ίδιο
+     φίλτρο δίνει άλλους ανθρώπους σε κάθε οθόνη. */
+  return p=>accBucket(m[p.id]||0);
+}
 V.leaders=()=>{
   const list=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός'&&inScope(p)).sort(sortByName);
+  const accSt=leadAccState();
   $('view').innerHTML=listBar(chipsHTML([
       {k:'sec',opts:[{v:'Αγέλη',l:'Αγέλη'},{v:'Ομάδα',l:'Ομάδα'},{v:'Κοινότητα',l:'Κοινότητα'},{v:'Δίκτυο',l:'Δίκτυο'},{v:'Σύστημα',l:'Σύστημα'}]},
+      {k:'acc',opts:[{v:'me',l:'Έφτιαξε προφίλ'},{v:'sent',l:'Στάλθηκε κωδικός'},{v:'none',l:'Ούτε κωδικός'}]},
       {k:'cert',opts:[{v:'ok',l:'Ν.91(Ι) σε ισχύ'},{v:'warn',l:'λήγει'},{v:'bad',l:'έληξε'},{v:'none',l:'χωρίς'}]}
-    ]),true)+`<div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th class="hide-s">Ιδιότητα</th><th class="hide-s">Τηλέφωνο</th><th><span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Ν.91(Ι)</span></th></tr></thead><tbody>${
+    ]),true)+`<div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th class="hide-s">Ιδιότητα</th><th class="hide-s">Τηλέφωνο</th><th>Λογαριασμός</th><th><span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Ν.91(Ι)</span></th></tr></thead><tbody>${
     list.map(p=>{const c=D.cert.find(x=>x.person_id===p.id);const d=c&&c.sexoxarto_expiry?Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5):null;
       const st=d===null?'<span class="pill" style="border-color:var(--line2)">—</span>':d<0?`<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Έληξε</span>`:d<=90?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">${d} μέρες</span>`:`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Σε ισχύ</span>`;
       const cst=d===null?'none':d<0?'bad':d<=90?'warn':'ok';
       const nd=(D.doc||[]).filter(x=>x.person_id===p.id).length;
-      return `<tr data-sec="${esc(p.section||'')}" data-cert="${cst}"><td>${statusBar(p)}</td>
+      const ak=accSt(p), [acol,atxt]=LACC[ak];
+      return `<tr data-sec="${esc(p.section||'')}" data-cert="${cst}" data-acc="${ak}"><td>${statusBar(p)}</td>
         <td>${pnm(p)}${nd?` <span class="dim" style="font-size:11px" title="${nd} αρχεία">📎${nd}</span>`:''}${p.is_commissioner?' <span class="pill">Έφορος</span>':''}${p.is_network?' <span class="pill">Δίκτυο</span>':''}</td>
         <td class="hide-s">${esc(p.section||'—')}</td><td class="hide-s dim">${esc(ledLabel(p,true)||'—')}</td>
-        <td class="hide-s">${p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'<span class="dim">—</span>'}</td><td>${st}</td></tr>`}).join('')}</tbody></table></div>`;
+        <td class="hide-s">${p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'<span class="dim">—</span>'}</td>
+        <td><span class="pill" style="background:var(--${acol}bg);color:var(--${acol});border-color:transparent">${atxt}</span></td>
+        <td>${st}</td></tr>`}).join('')}</tbody></table></div>`;
   wireVQ();
 };
 
@@ -15995,6 +16021,23 @@ function wlG(r){
   return {g:dob, src:dob===null?null:'υπολογισμός', dob};
 }
 const wlGrade=r=>wlG(r).g;
+/* ══ ΠΟΤΕ ΑΞΙΖΕΙ ΝΑ ΔΕΙΞΕΙΣ ΤΟ ΙΣΤΟΡΙΚΟ ΤΑΞΗΣ ═══════════════════════════════
+   Σχεδόν ποτέ. Κάθε παιδί που ήρθε από φόρμα του 2025-26 έχει «Β΄ → Γ΄» —
+   δηλαδή πέρασε ένας χρόνος. Αυτό δεν είναι πληροφορία, είναι ημερολόγιο,
+   και τυπωμένο σε 60 γραμμές έκρυβε τις ΤΡΕΙΣ που λένε κάτι πραγματικό.
+   Διαφωνία = δύο δηλώσεις που, μεταφερμένες στη ΦΕΤΙΝΗ χρονιά, δίνουν
+   διαφορετική τάξη. Ο Οικονόμου: 2026-27 Γ΄ (χειρόγραφο) και 2026-27 Ε΄
+   (χέρι) — εκεί θέλεις να δεις και τα δύο. */
+function wlHistConflict(r){
+  const h=(D.wlc||[]).filter(x=>x.waitlist_id===r.id)
+    .sort((a,b)=>String(a.class_year).localeCompare(String(b.class_year))||(WLRANK(a.origin)-WLRANK(b.origin)));
+  if(h.length<2)return null;
+  const now=Number(String(curScoutYear()).slice(0,4));
+  const norm=x=>{const d=WLDECL[String(x.school_class||'').trim()];
+    return d===undefined?null:d+(now-Number(String(x.class_year||'').slice(0,4)))};
+  const vs=h.map(norm).filter(v=>v!==null);
+  return new Set(vs).size>1 ? h : null;
+}
 const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
 let WLY='', WLED=null, WLSORT='arxeio', WLCLS='', WLST='open', WLQ='', WLPRE='', WLYRS=false, WLMORE=false;
 /* ══ ΔΥΟ ΟΘΟΝΕΣ ΓΙΑ ΔΥΟ ΔΟΥΛΕΙΕΣ ═══════════════════════════════════════════
@@ -16190,11 +16233,11 @@ V.waitlist=()=>{
           style="padding:0 4px;line-height:1.15;font-size:11px">▼</button></div></td>
     <td><b>${wlName(r)}</b>
       <div class="dim" style="font-size:11.5px">${esc(wlClass(g))}${gi.src?' <span title="'+(gi.src==='δήλωση'?'όπως το δήλωσε ο γονιός, μεταφερμένο μπροστά':'από την ημερομηνία γέννησης')+'">('+gi.src+')</span>':''}${r.dob?' · '+fdate(r.dob)+' · '+age(r.dob):' · χωρίς ημ. γέννησης'}${r.gender?' · '+esc(r.gender):''}</div>
-      ${(()=>{const h=(D.wlc||[]).filter(x=>x.waitlist_id===r.id)
-          .sort((a,b)=>String(a.class_year).localeCompare(String(b.class_year))||(WLRANK(a.origin)-WLRANK(b.origin)));
-        if(!h.length)return '';
-        /* Το ίχνος, όχι το συμπέρασμα: «τότε έλεγε Α΄, άρα φέτος Β΄». */
-        return `<div class="dim" style="font-size:11px">${h.map(x=>
+      ${(()=>{const h=wlHistConflict(r); if(!h)return '';
+        /* ΜΟΝΟ ΟΤΑΝ ΔΙΑΦΩΝΟΥΝ. «2025-26: Β΄ → 2026-27: Γ΄» δεν είναι είδηση,
+           είναι το ημερολόγιο: το παιδί μεγάλωσε. Σε 168 γραμμές αυτή η
+           αράδα επαναλαμβανόταν παντού και έκρυβε τις τρεις που λένε κάτι. */
+        return `<div style="font-size:11px;color:var(--warn)">⚠ ${h.map(x=>
           `${esc(x.class_year)}: <b>${esc(x.school_class)}</b> <span style="opacity:.7">${esc(x.origin)}</span>`).join(' → ')}</div>`})()}
       ${r.eligible_year_declared?`<div class="dim" style="font-size:11px">Γ΄ Δημοτικού: <b>${esc(r.eligible_year_declared)}</b> (δηλωμένο)</div>`:''}
       ${wlFlag(r.flag)?`<div style="font-size:11.5px;color:var(--warn)">⚠ ${esc(wlFlag(r.flag))}</div>`:''}
@@ -16318,6 +16361,11 @@ V.waitlist=()=>{
     yes   : r=>r.outcome==='Ενδιαφέρεται',
     joined: r=>r.outcome==='Έγινε μέλος',
     gone  : r=>['Δεν ενδιαφέρεται','Δεν απάντησε','Διπλοεγγραφή','Πήγε αλλού'].includes(r.outcome),
+    /* Οι τρεις μετρήσεις της ζώνης «Τάξη». Ήταν <span> που έμοιαζαν με
+       κουμπιά και δεν ήταν: ο Α.Σ. τα πατούσε και δεν γινόταν τίποτα. */
+    cold  : r=>r.outcome==='Αναμονή'&&!wlCts(r).length,
+    due   : r=>_op(r)&&!!r.next_step,
+    out   : r=>['Δεν ενδιαφέρεται','Πήγε αλλού','Διπλοεγγραφή'].includes(r.outcome),
   };
   const shown = list
     .filter(r=>WLPRE?PRE[WLPRE](r)
@@ -16411,15 +16459,23 @@ V.waitlist=()=>{
       return `<div class="card pad" style="margin-bottom:10px;background:var(--bg);
           display:flex;gap:16px;flex-wrap:wrap;align-items:baseline">
         <b style="font-size:15px">${esc(wlClass(WLTAB===99?null:WLTAB))}</b>
-        <span><b style="font-size:18px">${mem+got+y2}</b> <span class="dim">προβλεπόμενα</span></span>
-        <span class="dim" style="font-size:12.5px">${mem} ήδη μέλη · ${got} γράφτηκαν · ${y2} είπαν ναι</span>
-        ${/* ΜΕΤΡΙΚΕΣ ΑΝΑ ΤΑΞΗ: «πόσους δεν πήρα ακόμη» και «πόσοι έφυγαν» δεν
-             βγαίνουν από τη χωρητικότητα — είναι η δουλειά που μένει. */''}
-        ${(()=>{const cold=all.filter(r=>r.outcome==='Αναμονή'&&!wlCts(r).length).length;
-          const due=all.filter(r=>r.next_step&&isOpen(r)).length;
-          const out=all.filter(r=>['Δεν ενδιαφέρεται','Πήγε αλλού','Διπλοεγγραφή'].includes(r.outcome)).length;
-          const p=(n,t,c)=>n?`<span class="pill"${c?` style="background:var(--${c}bg);color:var(--${c});border-color:transparent"`:''}>${n} ${t}</span>`:'';
-          return p(cold,'δεν πήρα ακόμη')+p(due,'περιμένω','acc')+p(out,'έφυγαν');})()}
+        <span title="${mem} μέλη + ${got} γράφτηκαν + ${y2} είπαν ναι"><b style="font-size:18px">${mem+got+y2}</b>
+          <span class="dim">προβλεπόμενα</span></span>
+        <span class="dim" style="font-size:12.5px">${mem} ήδη μέλη <span style="opacity:.7">(δεν είναι σε αυτή τη λίστα)</span></span>
+        ${/* ΜΕΤΡΙΚΕΣ ΑΝΑ ΤΑΞΗ = ΦΙΛΤΡΑ. Ήταν <span class="pill"> — έμοιαζαν με
+             κουμπιά, πατιούνταν, δεν έκαναν τίποτα. Ό,τι δείχνει αριθμό
+             ανθρώπων πρέπει να μπορεί να τους δείξει κιόλας. Ο αριθμός μένει
+             ΤΗΣ ΤΑΞΗΣ (δεν μικραίνει όταν φιλτράρεις) — αλλιώς φιλτράρεις
+             και νομίζεις ότι μειώθηκαν. */''}
+        ${(()=>{const F=(k,fn,t,c)=>{const n=all.filter(fn).length; if(!n)return '';
+            return `<button class="btn sm${WLPRE===k?' p':' gh'}" data-wlpre="${k}"
+              style="padding:4px 10px;font-size:12.5px${WLPRE===k?'':(c?';color:var(--'+c+')':'')}"
+              title="Δείξε μόνο αυτούς">${n} ${esc(t)}</button>`};
+          return F('cold',r=>r.outcome==='Αναμονή'&&!wlCts(r).length,'δεν πήρα ακόμη')
+               + F('due', r=>r.next_step&&isOpen(r),'περιμένω','acc')
+               + F('yes', r=>r.outcome==='Ενδιαφέρεται','είπαν ναι','warn')
+               + F('joined',r=>r.outcome==='Έγινε μέλος','γράφτηκαν','ok')
+               + F('out', r=>['Δεν ενδιαφέρεται','Πήγε αλλού','Διπλοεγγραφή'].includes(r.outcome),'έφυγαν');})()}
       </div>`;
     })():''}
 
@@ -16436,6 +16492,23 @@ V.waitlist=()=>{
       <label style="max-width:130px">&nbsp;<span class="dim" style="font-size:12px;padding-top:8px;display:block"
         >δείχνει <b id="wlcount">${shown.length}</b>/${list.length}</span></label>
     </div>
+
+    ${/* ══ Η ΛΕΖΑΝΤΑ ΜΠΡΟΣΤΑ, ΟΧΙ ΠΙΣΩ ΑΠΟ ΤΟ «⋯» ═══════════════════════════
+         Τα χρώματα είναι ΤΟΥ ΑΡΧΕΙΟΥ ΤΟΥ — τα διαβάσαμε από το Excel του.
+         Αλλά χρώμα που δεν εξηγείται είναι διακόσμηση: αν πρέπει να θυμηθείς
+         τι σημαίνει το πορτοκαλί, θα σταματήσεις να το κοιτάς. Δύο κελιά,
+         δύο ερωτήσεις: το ΟΝΟΜΑ λέει τι απάντησε εκείνος, το ΝΟΥΜΕΡΟ τι
+         έκανα εγώ — γι' αυτό μπορεί να είναι και τα δύο χρωματιστά. */''}
+    ${WLVIEW==='calls'?`<div class="dim" style="font-size:11.5px;margin:-2px 0 8px;
+        display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+      <span><b>Όνομα</b> = τι απάντησε:</span>
+      <span style="color:var(--ok);font-weight:600">πράσινο</span><span style="margin-left:-11px">απάντησαν θετικά</span>
+      <span style="color:var(--warn);font-weight:600">πορτοκαλί</span><span style="margin-left:-11px">περιμένουμε να μας πάρουν πίσω</span>
+      <span style="color:var(--ink3);text-decoration:line-through">γκρι</span><span style="margin-left:-11px">έκλεισε</span>
+      <span style="opacity:.5">·</span>
+      <span><b>Νούμερο</b> = τι έκανα:</span>
+      <span style="color:var(--warn);font-weight:600">πορτοκαλί</span><span style="margin-left:-11px">αφήσαμε αναπάντητη / κλειστό</span>
+    </div>`:''}
 
     ${/* ── ΠΙΣΩ ΑΠΟ ΤΟ «⋯»: ό,τι χρειάζεσαι σπάνια ───────────────────── */''}
     <div id="wlMoreBox" style="display:${WLMORE?'block':'none'}">
