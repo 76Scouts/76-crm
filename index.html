@@ -406,9 +406,18 @@ td.mcell.oppt{box-shadow:inset 0 3px 0 var(--acc)}
 /* Το εύρος του πολυήμερου μέσα στο κελί. Ίδιο μέγεθος με το «κοινό» — είναι
    σήμανση, όχι τίτλος: το μάτι πρέπει να πέφτει πρώτα στο όνομα της δράσης. */
 .mrng{font-style:normal;font-size:9.5px;opacity:.75;margin-left:4px;white-space:nowrap}
+.mev.alien{opacity:.45;font-style:italic}
 .madd{position:absolute;right:3px;top:2px;border:0;background:transparent;color:var(--ink3);
   cursor:pointer;font-size:14px;line-height:1;opacity:0;padding:2px 4px}
+.msadd{border:0;background:transparent;color:var(--ink3);font-size:10.5px;font-weight:700;
+  cursor:pointer;padding:0 3px;opacity:0;transition:opacity .12s;line-height:1}
+td.mcell:hover .msadd{opacity:1}
+.msadd:hover{color:var(--acc)}
 td.mcell:hover .madd{opacity:1}
+/* ΣΕ ΟΘΟΝΗ ΑΦΗΣ ΔΕΝ ΥΠΑΡΧΕΙ HOVER. Το ＋ ήταν opacity:0 μέχρι να περάσει
+   ποντίκι από πάνω — δηλαδή από κινητό ΔΕΝ ΥΠΗΡΧΕ ΤΡΟΠΟΣ να προσθέσεις
+   δράση. Ο προγραμματισμός γίνεται με το κινητό στο χέρι, στο τραπέζι. */
+@media (hover:none){ .madd{opacity:.55} .msadd{opacity:.55} }
 .madd:hover{color:var(--acc)}
 @media print{
   table.mola{font-size:8.5px}
@@ -1179,7 +1188,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-18 18:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-18 20:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -17420,9 +17429,37 @@ const MOLA_SECMAIN={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα'
    η σχολή παίρνει τον βαθμοφόρο σου, η δράση Επαρχίας πιάνει το Σάββατό σου,
    η αργία αδειάζει την αίθουσα. Ό,τι είναι εδώ φαίνεται σε κάθε άποψη. */
 const MOLA_SHARED=['ΣΥΣΤΗΜΑ','ΑΡΓΙΕΣ','ΒΑΘΜΟΦΟΡΩΝ','ΣΧΟΛΕΣ','ΓΕΝΙΚΗ','ΕΠΑΡΧΙΑ'];
+
+/* ΠΡΟΕΠΙΛΟΓΗ ΕΙΔΟΥΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ. Το τμήμα που προσθέτει κάτι στο Σάββατό
+   του εννοεί «συγκέντρωση» εννιά φορές στις δέκα· το Σύστημα, η Γενική, η
+   Επαρχία και οι Βαθμοφόροι εννοούν «εκδήλωση». Το πεδίο άνοιγε κενό και ο
+   καθένας διάλεγε ό,τι θυμόταν — γι' αυτό τα «Είδος» ήταν ανάκατα. */
+const MOLA_KINDDEF={'ΑΛ':'syg','ΟΠ':'syg','ΚΑ':'syg',
+  'ΣΥΣΤΗΜΑ':'ekdil','ΓΕΝΙΚΗ':'ekdil','ΕΠΑΡΧΙΑ':'ekdil','ΒΑΘΜΟΦΟΡΩΝ':'ekdil',
+  'ΣΧΟΛΕΣ':'ekdil','ΑΡΓΙΕΣ':'allo'};
+const molaKindFor=tags=>MOLA_KINDDEF[String((tags||[])[0]||'').split(':')[0]]||'';
+
+/* Η ΕΒΔΟΜΑΔΑ ΤΟΥ ΚΕΛΙΟΥ: Τρίτη → Δευτέρα, με το Σάββατο στη μέση.
+   Δίνει [{iso,label}] ώστε ο χρήστης να διαλέγει ΗΜΕΡΑ, όχι ημερομηνία:
+   κανείς δεν ξέρει απέξω ότι το τριήμερο αρχίζει «7 Νοεμβρίου» — ξέρει ότι
+   αρχίζει «Παρασκευή». */
+const MOLA_DAYNAME=['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'];
+function molaWeek(satIso){
+  if(!satIso)return [];
+  const sat=new Date(satIso+'T00:00:00Z'), out=[];
+  for(let k=-4;k<=2;k++){                      // Τρί(-4) … Δευ(+2)
+    const d=new Date(sat.getTime()+k*86400000);
+    out.push({iso:d.toISOString().slice(0,10),
+      label:MOLA_DAYNAME[d.getUTCDay()]+' '+d.getUTCDate()+'/'+(d.getUTCMonth()+1)});
+  }
+  return out;
+}
 const MOLA_MAINSEC={'ΑΛ':'Αγέλη','ΟΠ':'Ομάδα','ΚΑ':'Κοινότητα'};
 
-let MOLA={view:'all', src:{ge:1,ep:1,sy:1}, fmain:{}, sel:null};
+/* `peek` = «δείξε μου και τις δράσεις των άλλων τμημάτων, χωρίς να τις
+   αγγίζω». Χωρίς αυτό, ο Α.Α.Λ. στην άποψη «Αγέλη» δεν έβλεπε ποτέ ότι η
+   Ομάδα έχει διήμερο το ίδιο Σάββατο — και έκλεινε το λεωφορείο δεύτερη φορά. */
+let MOLA={view:'all', src:{ge:1,ep:1,sy:1}, fmain:{}, sel:null, peek:0};
 try{MOLA=Object.assign(MOLA,JSON.parse(localStorage.getItem('e76:mola')||'{}'))}catch(e){}
 const molaSave=()=>{try{localStorage.setItem('e76:mola',JSON.stringify(MOLA))}catch(e){}};
 
@@ -17446,6 +17483,16 @@ function molaGrid(yr){
 
 /* Η ταξινομία. Έρχεται από τη βάση (prog_category) — κάθε κλιμάκιο βάζει τις
    δικές του. Αν η βάση δεν έχει φορτώσει, δουλεύουμε με τα βασικά χρώματα. */
+const MOLA_FALLBACK=[
+  ['ΣΥΣΤΗΜΑ','#15558F',['Συγκέντρωση','Εκδηλώσεις','Μπάντα','Σημαντικά','Εθνικές']],
+  ['ΑΛ','#8F6B00',['Δράσεις','Σημαντικά','Πρόγραμμα']],
+  ['ΟΠ','#3D5F26',['Δράσεις','Σημαντικά','Πρόγραμμα']],
+  ['ΚΑ','#900000',['Δράσεις','Σημαντικά','Πρόγραμμα']],
+  ['ΣΧΟΛΕΣ','#37145A',['ΑΛ','ΟΠ','ΚΑ','ΣΠΕΒ','Άλλες','Επαρχίας']],
+  ['ΓΕΝΙΚΗ','#6D3BB5',['ΑΛ','ΟΠ','ΚΑ','Άλλες','Σημαντικά']],
+  ['ΕΠΑΡΧΙΑ','#0E7C86',['ΑΛ','ΟΠ','ΚΑ','Άλλες','Σημαντικά']],
+  ['ΑΡΓΙΕΣ','#5A5A5A',['Αργία','Εθνική','Πάσχα']],
+  ['ΒΑΘΜΟΦΟΡΩΝ','#5E2A08',['Συνάντηση','Εκπαίδευση','Εκδήλωση']]];
 function molaMains(){
   const m={};
   (D.pcg||[]).filter(x=>x.active!==false).forEach(c=>{
@@ -17453,9 +17500,11 @@ function molaMains(){
     if(c.sub&&!m[c.main].subs.includes(c.sub))m[c.main].subs.push(c.sub);
   });
   if(!Object.keys(m).length){
-    ['ΣΥΣΤΗΜΑ:#15558F','ΑΛ:#8F6B00','ΟΠ:#3D5F26','ΚΑ:#900000','ΣΧΟΛΕΣ:#37145A',
-     'ΓΕΝΙΚΗ:#6D3BB5','ΕΠΑΡΧΙΑ:#0E7C86','ΑΡΓΙΕΣ:#5A5A5A','ΒΑΘΜΟΦΟΡΩΝ:#5E2A08']
-      .forEach((s,i)=>{const [k,c]=s.split(':');m[k]={c,subs:[],seq:(i+1)*10}});
+    /* ΕΦΕΔΡΕΙΑ ΜΕ ΥΠΟΚΑΤΗΓΟΡΙΕΣ. Πριν έδινε `subs:[]`: αν αργούσε το
+       prog_category, η φόρμα πρόσφερε «—» ως υποκατηγορία και ο βαθμοφόρος
+       αποθήκευε ετικέτα «ΑΛ:—» που δεν σημαίνει τίποτα. Οι λίστες είναι του
+       Κανονισμού, δεν τις εφευρίσκουμε — μπορούν να ζουν στον κώδικα. */
+    MOLA_FALLBACK.forEach(([k,c,subs],i)=>{ m[k]={c, subs:subs.slice(), seq:(i+1)*10} });
   }
   return m;
 }
@@ -17655,7 +17704,7 @@ function molaBody(){
       const hits=tags.some(t=>{const [m,s]=t.split(':');
         if(MOLA_SHARED.includes(m)) return true;          // κοινά στρώματα
         return m===code || s===code});
-      if(!hits && e.section!==MOLA.view) return false;
+      if(!hits && e.section!==MOLA.view && !MOLA.peek) return false;
     }
     if(Object.keys(MOLA.fmain).length){
       if(!tags.some(t=>!MOLA.fmain[t.split(':')[0]])) return false;
@@ -17676,9 +17725,18 @@ function molaBody(){
     /* Η αργία μπαίνει ΠΡΩΤΗ: πλαισιώνει την εβδομάδα, δεν είναι μια ακόμη γραμμή. */
     const args=evs.filter(isArgia), rest=evs.filter(e=>!isArgia(e));
     const free=args.some(e=>ARG[e.id]&&!ARG[e.id].used);
-    return `<td class="mcell${ses.length?'':' nomeet'}${args.length?(free?' oppt':' argi'):''}" data-cell="${mi}_${si}">
+    /* Λευκό = «κάτι γίνεται». Η κατασκήνωση ΕΙΝΑΙ κάτι — το κελί έβγαινε
+       γκρίζο («καμία συγκέντρωση») πάνω σε εφτά μέρες κατασκήνωσης. */
+    const camp=evs.some(e=>Number(e.nights||0)>=2);
+    return `<td class="mcell${(ses.length||camp)?'':' nomeet'}${args.length?(free?' oppt':' argi'):''}" data-cell="${mi}_${si}">
       <div class="mday">${c.s.day}${ses.length?`<span class="mses" title="Συγκέντρωση: ${ses.join(', ')}">${
-        ses.map(s=>MOLA_SECMAIN[s]).join('·')}</span>`:''}</div>
+        ses.map(s=>MOLA_SECMAIN[s]).join('·')}</span>`:''}${
+        /* ＋Σ ΣΤΟ ΚΕΛΙ. Οι συγκεντρώσεις ζούσαν μόνο στο συρτάρι: για να πεις
+           «αυτό το Σάββατο δεν έχουμε» άνοιγες πίνακα 33 γραμμών και έψαχνες
+           τη σωστή. Εδώ το λες εκεί που το βλέπεις. */
+        molaCanEdit({section:null,klimakio_id:(molaKl().sy||{}).id})
+          ?`<button class="msadd" data-sescell="${c.s.iso}"
+             title="Συγκεντρώσεις αυτού του Σαββάτου">＋Σ</button>`:''}</div>
       ${args.map(e=>{const a=ARG[e.id]||{}; const w=a.win||{t:''};
         return `<div class="marg${a.used?' used':''}" data-ev="${e.id}"
           title="${esc(e.title)}&#10;${esc(a.dow||'')} ${esc(e.event_date||'')} · ${esc(w.why||'')}">
@@ -17687,7 +17745,10 @@ function molaBody(){
       ${rest.map(e=>{const t=(e.tags||[])[0]||'', col=molaColor(t), lv=molaLevel(e);
         const shared=(e.tags||[]).filter(x=>['ΑΛ','ΟΠ','ΚΑ'].includes(x.split(':')[0])).length>1;
         const rng=molaRange(e);
-        return `<div class="mev${e.bold?' b':''}" data-ev="${e.id}" style="color:${col};border-left-color:${col}"
+        /* Στο «και τα άλλα τμήματα»: ό,τι δεν είναι δικό σου φαίνεται ξεθωριασμένο.
+           Το βλέπεις για να μη συγκρουστείς μαζί του, δεν το πειράζεις. */
+        const alien=MOLA.peek&&MOLA.view!=='all'&&e.section&&e.section!==MOLA.view;
+        return `<div class="mev${e.bold?' b':''}${alien?' alien':''}" data-ev="${e.id}" style="color:${col};border-left-color:${col}"
           title="${esc(e.title)}&#10;${esc(lv.t)}${rng?' · '+esc(rng):''}${e.hours?' · '+esc(e.hours):''}">
           ${esc(e.title)}${rng?`<i class="mrng">${esc(rng)}</i>`:''}${shared?'<i class="mko">κοινό</i>':''}</div>`}).join('')}
       ${molaCanEdit()?`<button class="madd" data-add="${mi}_${si}" title="Πρόσθεσε δράση">＋</button>`:''}
@@ -17707,6 +17768,7 @@ function molaBody(){
       <span class="dim" style="font-size:12px">Άποψη:</span>
       ${chip('view:all',MOLA.view==='all','ΣΥΣΤΗΜΑ (όλα)')}
       ${secs.map(s=>chip('view:'+s,MOLA.view===s,MOLA_SECMAIN[s],SECCOLOR[s])).join('')}
+      ${MOLA.view!=='all'?chip('peek:1',MOLA.peek,'👁 και τα άλλα τμήματα'):''}
     </div>
     <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:8px">
       <span class="dim" style="font-size:12px">Πηγή:</span>
@@ -17720,8 +17782,10 @@ function molaBody(){
       <button class="btn sm${freeArg?' p':' gh'}" id="mArg"
         title="Αργίες που δεν αξιοποιούμε">☆ Ευκαιρίες${freeArg?' · '+freeArg:''}</button>
       <button class="btn sm" id="mXls">${ic('down',14)} Excel</button>
-      <button class="btn sm gh" id="mJson">${ic('down',14)} .json</button>
-      <button class="btn sm gh" id="mImp">${ic('down',14)} Εισαγωγή</button>
+      ${/* Η ΕΙΣΑΓΩΓΗ ΓΡΑΦΕΙ. Έμενε ορατή και σε όποιον δεν έχει δικαίωμα
+           πουθενά — κουμπί που υπόσχεται κάτι και μετά αρνείται. */''}
+      ${molaCanEdit()?`<button class="btn sm gh" id="mJson">${ic('down',14)} .json</button>
+      <button class="btn sm gh" id="mImp">${ic('down',14)} Εισαγωγή</button>`:''}
       <button class="btn sm" onclick="window.print()">Εκτύπωση</button>
     </div>
     <div class="dim" style="font-size:12.5px;margin-top:7px">
@@ -17738,10 +17802,13 @@ function molaBody(){
 
   document.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{
     const [k,v]=b.dataset.mv.split(':');
-    if(k==='view')MOLA.view=v; else MOLA.src[v]=!MOLA.src[v];
+    if(k==='view')MOLA.view=v;
+    else if(k==='peek')MOLA.peek=MOLA.peek?0:1;
+    else MOLA.src[v]=!MOLA.src[v];
     molaSave(); V.cal()});
   document.querySelectorAll('[data-ev]').forEach(d=>d.onclick=()=>molaEdit(d.dataset.ev));
   document.querySelectorAll('[data-add]').forEach(b=>b.onclick=e=>{e.stopPropagation();molaEdit(null,b.dataset.add)});
+  document.querySelectorAll('[data-sescell]').forEach(b=>b.onclick=e=>{e.stopPropagation();molaSesOne(b.dataset.sescell)});
   $('mLeg').onclick=molaLegend;
   $('mCat').onclick=molaCats;
   $('mSes').onclick=molaSesPanel;
@@ -17749,8 +17816,8 @@ function molaBody(){
   /* Η εξαγωγή παίρνει ΤΟ ΙΔΙΟ φίλτρο με την οθόνη — αλλιώς ο βαθμοφόρος
      τυπώνει «τη μόλα του» και μοιράζει δράσεις άλλων τμημάτων. */
   $('mXls').onclick=()=>molaExcel(yr, viewOK);
-  $('mJson').onclick=()=>molaJson(yr);
-  $('mImp').onclick=molaImport;
+  if($('mJson'))$('mJson').onclick=()=>molaJson(yr, viewOK);
+  if($('mImp'))$('mImp').onclick=molaImport;
 }
 
 /* ── Συρτάρι δράσης: πρόσθεσε / άλλαξε / σβήσε ─────────────────────────── */
@@ -17779,11 +17846,25 @@ function molaEdit(id, slot, seed){
           <b>Δεν είναι δικό σου.</b> Ανήκει στο κλιμάκιο «${esc(lv.t)}». Το βλέπεις, δεν το αλλάζεις.
           Αν είναι λάθος, ζήτησέ το από εκεί.</div>`}
         <label>Τίτλος<input id="meT" value="${esc(ev?ev.title:(seed&&seed.title||''))}" ${can?'':'disabled'}></label>
+        ${(()=>{
+          /* ΗΜΕΡΑ ΤΗΣ ΕΒΔΟΜΑΔΑΣ, ΟΧΙ ΗΜΕΡΟΛΟΓΙΟ. Ο βαθμοφόρος σκέφτεται
+             «Παρασκευή απόγευμα», όχι «7 Νοεμβρίου». Το ημερολόγιο μένει από
+             κάτω για τις εξαιρέσεις — δεν του το παίρνουμε. */
+          const satIso=slot?cellIso(slot):(ev&&ev.sat_slot?cellIso(ev.sat_slot):null);
+          const wk=molaWeek(satIso);
+          const cur=ev&&ev.event_date||(seed&&seed.event_date)||satIso||'';
+          if(!wk.length)return '';
+          return `<label>Ημέρα<select id="meW" ${can?'':'disabled'}>
+            ${wk.map(d=>`<option value="${d.iso}"${d.iso===cur?' selected':''}>${esc(d.label)}</option>`).join('')}
+            <option value="ΣΚ"${(ev&&ev.nights===1&&cur!==satIso)?' selected':''}>— σύνολο Σαββατοκύριακου —</option>
+          </select></label>`})()}
         <div class="grow">
           <label>Ημερομηνία<input id="meD" type="date" value="${esc(ev&&ev.event_date||(seed&&seed.event_date)||(slot?cellIso(slot):''))}" ${can?'':'disabled'}></label>
           <label>Είδος<select id="meK" ${can?'':'disabled'}>
             <option value="">—</option>
-            ${MOLA_KIND.map(([k,t,n])=>`<option value="${k}" data-n="${n}"${(ev&&ev.type===t)||(!ev&&seed&&seed.kind===k)?' selected':''}>${esc(t)}</option>`).join('')}
+            ${(()=>{const dflt=ev?null:molaKindFor(tags);
+              return MOLA_KIND.map(([k,t,n])=>`<option value="${k}" data-n="${n}"${
+                (ev&&ev.type===t)||(!ev&&(seed&&seed.kind===k||(!seed&&k===dflt)))?' selected':''}>${esc(t)}</option>`).join('')})()}
           </select></label>
         </div>
         <div class="grow">
@@ -17824,6 +17905,18 @@ function molaEdit(id, slot, seed){
         if(!tags.includes(t))tags.push(t); draw()}; }
     const mk=$('meK'); if(mk)mk.onchange=()=>{const o=mk.selectedOptions[0];
       if(o&&o.dataset.n!=null&&$('meN'))$('meN').value=o.dataset.n};
+    /* Η ΗΜΕΡΑ ΟΔΗΓΕΙ ΤΗΝ ΗΜΕΡΟΜΗΝΙΑ — όχι το αντίστροφο. Το ημερολόγιο μένει
+       ορατό γιατί κάποιες δράσεις δεν πέφτουν στην εβδομάδα του κελιού.
+       «Σύνολο Σαββατοκύριακου» = Παρασκευή→Κυριακή, δηλαδή 2 βράδια. */
+    const mw=$('meW'); if(mw)mw.onchange=()=>{
+      const wk=molaWeek(slot?cellIso(slot):(ev&&ev.sat_slot?cellIso(ev.sat_slot):null));
+      if(mw.value==='ΣΚ'){
+        const fri=wk.find(d=>d.label.startsWith('Παρασκευή'));
+        if(fri&&$('meD'))$('meD').value=fri.iso;
+        if($('meN'))$('meN').value=2;
+        if($('meK')){const o=[...$('meK').options].find(x=>x.value==='trihm'); if(o)o.selected=true}
+      }else if($('meD')) $('meD').value=mw.value;
+    };
 
     const sv=$('meSave'); if(sv)sv.onclick=async()=>{
       const t=$('meT').value.trim(); if(!t)return toast('Θέλει τίτλο');
@@ -17880,6 +17973,40 @@ const SES_CYCLE=[
 const sesKind=x=>{ if(!x)return 3;
   const i=SES_CYCLE.findIndex(c=>c[0]===(x.session_type||'Συγκέντρωση'));
   return i<0?0:i; };
+
+/* ══ ΕΝΑ ΣΑΒΒΑΤΟ, ΤΡΙΑ ΤΜΗΜΑΤΑ ═══════════════════════════════════════════
+   Ο μεγάλος πίνακας (molaSesPanel) είναι για τη ΧΡΟΝΙΑ: τον ανοίγεις τον
+   Σεπτέμβρη και τον κλείνεις. Αυτό εδώ είναι για τη ΣΤΙΓΜΗ: «βάλαμε δράση
+   εκείνο το Σάββατο, βγάλε τη συγκέντρωση της Αγέλης». Ίδια δεδομένα, άλλη
+   ερώτηση — και δεν σε βάζει να ψάξεις γραμμή σε πίνακα 33 σειρών. */
+async function molaSesOne(iso){
+  const yr=YEAR, secs=['Αγέλη','Ομάδα','Κοινότητα'];
+  const canSec=sec=>molaCanEdit({section:sec, klimakio_id:(molaKl().sy||{}).id});
+  const draw=()=>{
+    drawer('Συγκεντρώσεις · '+fdate(iso), `
+      <div class="muted" style="font-size:13px;line-height:1.6;margin-bottom:11px">
+        Πάτα ένα τμήμα για να μπει ή να βγει η συγκέντρωσή του αυτό το Σάββατο.
+        Γράφεται πραγματική συνεδρία — την επόμενη μέρα το παρουσιολόγιο τη βρίσκει έτοιμη.</div>
+      <div style="display:grid;gap:7px">
+        ${secs.map(x=>{const cur=molaSes(yr,iso,x), on=!!cur;
+          return `<button class="btn${on?' p':' gh'}" data-so="${esc(x)}"${canSec(x)?'':' disabled'}
+            style="justify-content:space-between;padding:13px 15px">
+            <span><b>${esc(x)}</b>${cur&&cur.session_type&&cur.session_type!=='Συγκέντρωση'
+              ?` <span class="dim" style="font-size:12px">· ${esc(cur.session_type)}</span>`:''}</span>
+            <span>${on?'✓ έχει':'— δεν έχει'}</span></button>`}).join('')}
+      </div>
+      <div class="dim" style="font-size:12px;margin-top:11px">
+        Για όλη τη χρονιά μαζί: <b>Συγκεντρώσεις</b> από τα εργαλεία της Μόλας.</div>`);
+    document.querySelectorAll('[data-so]').forEach(b=>b.onclick=async()=>{
+      b.disabled=true;
+      await molaToggleSes(yr,iso,b.dataset.so);
+      /* Το molaToggleSes ξαναζωγραφίζει την οθόνη· ξαναστήνουμε το συρτάρι
+         πάνω από αυτήν ώστε να συνεχίσεις με τα άλλα δύο τμήματα. */
+      draw();
+    });
+  };
+  draw();
+}
 
 function molaSesPanel(){
   const yr=YEAR, {G}=molaCells(yr), secs=['Αγέλη','Ομάδα','Κοινότητα'];
@@ -18171,10 +18298,17 @@ function molaExcel(yr, keep){
   saveBlob(xml,'application/vnd.ms-excel','e76-mola-'+yr+'.xls');
   toast('Κατέβηκε — δύο φύλλα: Πλέγμα και Λίστα');
 }
-function molaJson(yr){
+/* ΤΟ ΑΝΤΙΓΡΑΦΟ ΕΙΝΑΙ Η ΜΕΡΙΔΑ ΣΟΥ, ΟΧΙ ΟΛΗ Η ΧΡΟΝΙΑ.
+   Κατέβαζε τα πάντα και το ξαναανέβαζε ο επόμενος — δηλαδή επανέφερε και
+   δράσεις άλλων τμημάτων σε παλιά μορφή. Κρατάς ό,τι βλέπεις ΚΑΙ μπορείς
+   να γράψεις· τα υπόλοιπα δεν είναι δικά σου να τα «σώσεις». */
+function molaJson(yr, keep){
+  const ok = typeof keep==='function' ? keep : ()=>true;
+  const mine=(D.ev||[]).filter(e=>e.scout_year===yr&&ok(e)&&molaCanEdit(e));
   const out={app:'e76', kind:'mola', scout_year:yr, at:new Date().toISOString(),
+    scope:'η μερίδα μου — '+molaMyScope(),
     categories:(D.pcg||[]),
-    events:(D.ev||[]).filter(e=>e.scout_year===yr).map(e=>({
+    events:mine.map(e=>({
       ext_id:e.ext_id, title:e.title, event_date:e.event_date, end_date:e.end_date,
       nights:e.nights, type:e.type, hours:e.hours, place:e.place, tags:e.tags,
       bold:e.bold, section:e.section, sat_slot:e.sat_slot,
@@ -18182,7 +18316,7 @@ function molaJson(yr){
     sessions:(D.ss||[]).filter(x=>x.scout_year===yr)
       .map(x=>({date:x.session_date, section:x.section, type:x.session_type}))};
   saveBlob(JSON.stringify(out,null,1),'application/json','e76-mola-'+yr+'.json');
-  toast('Κατέβηκε');
+  toast('Κατέβηκε — '+mine.length+' δικές σου δράσεις');
 }
 
 /* ── ΕΙΣΑΓΩΓΗ ─────────────────────────────────────────────────────────────
