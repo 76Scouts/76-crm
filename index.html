@@ -1217,7 +1217,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 14:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 14:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -16739,8 +16739,15 @@ function wlSibs(r, all){
    ότι για να βρεις έναν Παπαδόπουλο αλλάζεις ταξινόμηση και σαρώνεις με το
    μάτι· και το τηλέφωνο ήταν γκρίζο κείμενο, όχι σύνδεσμος — από κινητό δεν
    πατιόταν. Ψάχνει και λατινικά, όπως όλη η εφαρμογή. */
+/* ΟΛΟΚΛΗΡΗ Η ΣΗΜΕΙΩΣΗ, ΟΧΙ Ο,ΤΙ ΦΑΙΝΕΤΑΙ. Η γραμμή δείχνει 70 χαρακτήρες·
+   40 από τις 59 σημειώσεις είναι μεγαλύτερες (η πιο μακριά 409). Αν η
+   αναζήτηση έψαχνε ό,τι φαίνεται, η παρέα θα κρυβόταν στην ουρά του κειμένου.
+
+   ΤΟ «ΤΙ ΕΓΙΝΕ ΠΕΡΣΙ» ΕΛΕΙΠΕ: εκεί ζει το «25-26 ΝΟ ΑΛΛΑ ΝΑ ΜΕΙΝΕΙ ΣΤΟ WL»
+   και το «Δεν είχε χρόνο το 2025-26». Ψάχνεις «πέρσι» και δεν έβγαινε κανείς. */
 const wlBlob=r=>[r.last_name,r.first_name,r.applicant_name,r.applicant_phone,
-  r.applicant_email,r.note,r.referred_by,r.school_class,r.section].filter(Boolean).join(' ');
+  r.applicant_email,r.note,r.last_year_note,r.referred_by,r.elsewhere,
+  r.school_class,r.section].filter(Boolean).join(' ');
 const wlHit=(r,q)=>{ if(!q)return true;
   const b=wlBlob(r);
   return nameKey(b).includes(nameKey(q)) || latKey(b).includes(latKey(q))
@@ -17759,7 +17766,10 @@ function wlCard(r, i, all){
         return esc(c.kind)+' '+fdate(c.at)+(by&&by.id!==(meRec()||{}).id?' ('+esc(by.first_name)+')':'')}).join(' · ')}</div>`:''}
       ${r.elsewhere?`<div class="dim">→ ${esc(r.elsewhere)}</div>`:''}
       <input data-wlnote="${r.id}" value="${esc(r.note||'')}" placeholder="Σημείωση">
-    </div>`:(r.note?`<span class="wlnote" data-wlopen="${r.id}">${esc(r.note.slice(0,70))}${r.note.length>70?'…':''}</span>`:'')}
+    ${/* Το «…» έκρυβε τα δύο τρίτα των σημειώσεων. Ολόκληρη στο title:
+         διαβάζεται με το ποντίκι από πάνω, χωρίς να ανοίξεις την καρτέλα. */''}
+    </div>`:(r.note?`<span class="wlnote" data-wlopen="${r.id}" title="${esc(r.note)}${
+      r.last_year_note?'\n\nΠέρσι: '+esc(r.last_year_note):''}">${esc(r.note.slice(0,70))}${r.note.length>70?'…':''}</span>`:'')}
   </div>`;
 }
 
