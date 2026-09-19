@@ -362,6 +362,16 @@ th.srt.desc:after{content:"↓";opacity:.9}
 .avawrap{position:relative;display:inline-block;cursor:pointer}
 .avawrap:hover .avaedit{opacity:1}
 .avaedit{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:grid;place-items:center;font-size:11px;opacity:0;transition:.15s}
+/* ΣΕ ΟΘΟΝΗ ΑΦΗΣ ΔΕΝ ΥΠΑΡΧΕΙ HOVER — και η φωτογραφία είναι ακριβώς το πράγμα
+   που τραβάς με το κινητό. Όσο περίμενε ποντίκι, από κινητό δεν υπήρχε τρόπος
+   να την αλλάξεις. Μικρό σήμα κάτω δεξιά, αρκετό για να φαίνεται ότι πατιέται. */
+@media (hover:none){
+  .avaedit{opacity:1;background:transparent;font-size:0;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+  .avaedit::after{content:'✎';position:absolute;right:-1px;bottom:-1px;font-size:10px;
+    width:16px;height:16px;border-radius:50%;background:var(--side);color:#fff;
+    display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+}
 .deda{display:inline-flex;gap:2px;vertical-align:middle}
 .deda i{display:block;width:9px;height:9px;border-radius:2px;background:var(--line2)}
 .sbar{display:inline-flex;width:44px;height:15px;border-radius:5px;overflow:hidden;border:1px solid var(--line2);vertical-align:middle;gap:1px;background:var(--line2)}
@@ -1192,7 +1202,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 12:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 12:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1515,8 +1525,72 @@ async function start(){
 /* ══ OFFLINE CACHE + ΟΥΡΑ ══ */
 const CK='e76:cache', QK='e76:queue';
 let QUEUE=[]; try{QUEUE=JSON.parse(localStorage.getItem(QK)||'[]')}catch(e){}
-function saveCache(){try{if(!(D.bh||[]).length)return;localStorage.setItem(CK,JSON.stringify({t:Date.now(),D}))}catch(e){}}
-function loadCache(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.D){D=c.D;return c.t}}catch(e){}return 0}
+/* Η εγγραφή στο localStorage είναι ΣΥΓΧΡΟΝΗ: όσο γράφει, η σελίδα παγώνει.
+   Καλείται μετά από κάθε αλλαγή — και στην προσέλευση αυτό σημαίνει μία
+   σειριοποίηση όλου του αρχείου ανά τσεκάρισμα παιδιού. Μαζεύουμε τις
+   κλήσεις και γράφουμε ΜΙΑ φορά, όταν το χέρι σταματήσει. */
+let _sct=null;
+function saveCache(now){
+  if(now===true)return _saveCacheNow();
+  if(_sct)return;
+  _sct=setTimeout(()=>{_sct=null;_saveCacheNow()},1200);
+}
+function _saveCacheNow(){try{if(!(D.bh||[]).length)return;localStorage.setItem(CK,JSON.stringify({t:Date.now(),D}))}catch(e){}}
+/* Αν κλείσει η καρτέλα με εκκρεμή εγγραφή, γράφουμε αμέσως. */
+window.addEventListener('pagehide',()=>{if(_sct){clearTimeout(_sct);_sct=null;_saveCacheNow()}});
+function loadCache(){try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.D){D=c.D;lazyArm();return c.t}}catch(e){}return 0}
+
+/* ══ ΤΕΜΠΕΛΙΚΗ ΦΟΡΤΩΣΗ ══════════════════════════════════════════════════════
+   Πέντε πίνακες που τους διαβάζει ΜΙΑ οθόνη ο καθένας, και καμία τους δεν
+   είναι η πρώτη που ανοίγεις. Το audit_log μόνο του είναι τα μισά δεδομένα
+   της εκκίνησης — και καθόταν και στο localStorage, που έχει όριο ~5 MB.
+
+   ΔΕΝ ΥΠΑΡΧΕΙ ΠΙΝΑΚΑΣ «ΠΟΙΑ ΟΘΟΝΗ ΘΕΛΕΙ ΤΙ». Τέτοιος πίνακας ξεχνιέται την
+   πρώτη φορά που κάποιος διαβάσει τον πίνακα από αλλού, και τότε η οθόνη
+   δείχνει άδεια χωρίς σφάλμα. Αντί γι' αυτό, η ΙΔΙΑ Η ΑΝΑΓΝΩΣΗ του D.au
+   ξεκινά τη φόρτωση: όποιος κι αν τη ζητήσει, από όπου κι αν τη ζητήσει.
+   Πρώτη ζωγραφιά με άδειο, δεύτερη με τα δεδομένα — 200 ms μετά.
+
+   ΜΟΝΟ ΓΙΑ ΠΙΝΑΚΕΣ ΠΟΥ ΔΙΑΒΑΖΟΝΤΑΙ. Ό,τι αλλάζει η εφαρμογή στη μνήμη
+   (push, filter) μένει κανονικό: εκεί μια καθυστερημένη άφιξη θα έσβηνε την
+   αλλαγή που μόλις έκανε ο χρήστης. */
+const LZQ={
+  au:  ()=>sb.from('audit_log').select('*').order('at',{ascending:false}).limit(300),
+  amx: ()=>sb.from('v_access_matrix').select('*'),
+  wcon:()=>sb.from('v_warrant_conflicts').select('*').limit(500),
+  tr2: ()=>sb.from('transfers').select('*').limit(1000),
+  tp:  ()=>sb.from('transfer_policy').select('*')
+};
+/* Το όνομα που έχει ο καθένας ΣΤΟΝ ΠΙΝΑΚΑ ΦΟΡΤΩΣΗΣ — δεν είναι πάντα το ίδιο
+   με το κλειδί του D. Από εδώ βγαίνει ποιες θέσεις παραλείπονται στην
+   εκκίνηση· τα τεστ ελέγχουν ότι και τα πέντε βρίσκονται. */
+const LZN={au:'audit_log', amx:'amx', wcon:'wcon', tr2:'transfers', tp:'transfer_policy'};
+const LZ={}, LZON={};
+function lazyArm(){
+  for(const k of Object.keys(LZQ)){
+    const d=Object.getOwnPropertyDescriptor(D,k);
+    if(d&&d.get)continue;                       // ήδη οπλισμένο
+    if(d&&d.value&&d.value.length)LZ[k]=d.value;  // ό,τι ήρθε από την κρυφή μνήμη
+    /* enumerable:false — και γι' αυτό ΔΕΝ μπαίνει στο JSON.stringify του
+       saveCache(). Δύο μεγάβιτα λιγότερα στο localStorage, κάθε φορά. */
+    Object.defineProperty(D,k,{configurable:true, enumerable:false,
+      get(){ lazyFire(k); return LZ[k]||[] },
+      set(v){ if(LZON[k]==='ok'||(v&&v.length))LZ[k]=v||[] }});
+  }
+}
+function lazyFire(k){
+  if(LZON[k])return;
+  LZON[k]='...';
+  Promise.resolve(LZQ[k]()).then(({data,error})=>{
+    LZON[k]=error?null:'ok';                   // σφάλμα = ξαναδοκιμάζει
+    if(error){console.warn('e76 τεμπέλικο '+k+':',error.message);return}
+    LZ[k]=data||[];
+    /* Ξαναζωγραφίζουμε ΜΟΝΟ αν ο χρήστης είναι ακόμη εδώ — αν άλλαξε οθόνη
+       στα 200 ms, δεν του την τραβάμε πίσω. */
+    if(LOADED&&ROUTE)route(ROUTE);
+  }, e=>{ LZON[k]=null; console.warn('e76 τεμπέλικο '+k+':',e) });
+}
+lazyArm();
 function qAdd(job){QUEUE.push(job);localStorage.setItem(QK,JSON.stringify(QUEUE));banner()}
 async function qFlush(){
   if(!QUEUE.length||!navigator.onLine)return;
@@ -1701,21 +1775,28 @@ async function loadAll(){
   const r=new Array(q.length).fill(null);
   const core=[...CORE].filter(i=>i<q.length);
   await Promise.all(core.map(async i=>{ r[i]=await guard(q[i],names[i]) }));
-  const rest=q.map((_,i)=>i).filter(i=>!CORE.has(i));
+  /* Τα τεμπέλικα ΔΕΝ ζητιούνται καθόλου στην εκκίνηση. Το supabase-js στέλνει
+     το αίτημα μόλις γίνει await — όσο δεν το κάνεις, δεν φεύγει τίποτα. */
+  const LZI=new Set(Object.values(LZN).map(n=>names.indexOf(n)).filter(i=>i>=0));
+  const rest=q.map((_,i)=>i).filter(i=>!CORE.has(i)&&!LZI.has(i));
   /* Δώδεκα τη φορά, όχι έξι. Τα ερωτήματα είναι γρήγορα στη βάση (7-12 ms
      μετρημένα) — ό,τι κοστίζει είναι οι ΓΥΡΟΙ στο δίκτυο. Με 59 ερωτήματα
-     ανά έξι έκανε δέκα κύματα· ανά δώδεκα κάνει πέντε. Το HTTP/2 πολυπλέκει,
+     ανά έξι έκανε δέκα κύματα· ανά είκοσι κάνει τέσσερα. Το HTTP/2 πολυπλέκει,
      οπότε δεν στοιβάζονται. */
   const restJob=(async()=>{
-    for(let i=0;i<rest.length;i+=12){
-      await Promise.all(rest.slice(i,i+12).map(async k=>{ r[k]=await guard(q[k],names[k]) }));
+    for(let i=0;i<rest.length;i+=20){
+      await Promise.all(rest.slice(i,i+20).map(async k=>{ r[k]=await guard(q[k],names[k]) }));
     }
   })();
   window.__REST=restJob;
   LOADMS=Date.now()-_t0;
-  DIAG=r.map((x,i)=>({t:names[i]||('#'+i),n:(x&&x.data)?x.data.length:null,e:x&&x.error?(x.error.message||String(x.error)):(x?null:'φορτώνει…')}));
+  /* Τα τεμπέλικα δεν είναι «σφάλμα» και δεν είναι «φορτώνει» — δεν ζητήθηκαν.
+     Η διάγνωση πρέπει να λέει την αλήθεια, αλλιώς ψάχνεις βλάβη που δεν υπάρχει. */
+  const dg=(x,i,pend)=>({t:names[i]||('#'+i), n:(x&&x.data)?x.data.length:null,
+    e: LZI.has(i) ? 'κατά ζήτηση' : (x&&x.error?(x.error.message||String(x.error)):(x?null:pend))});
+  DIAG=r.map((x,i)=>dg(x,i,'φορτώνει…'));
   try{const w=await guard(sb.rpc('whoami'),'whoami'); WHO=(w&&w.data)||null}catch(e){WHO=null}
-  const bad=DIAG.filter(d=>d.e&&d.e!=='φορτώνει…');
+  const bad=DIAG.filter(d=>d.e&&d.e!=='φορτώνει…'&&d.e!=='κατά ζήτηση');
   if(bad.length)console.warn('e76 φόρτωση:',bad);
   if((!r[0]||!r[0].data||!r[0].data.length)){
     if(loadCache()&&(D.bh||[]).length){banner();return}
@@ -1723,12 +1804,12 @@ async function loadAll(){
   LOADED=true;
   const assign=()=>{
   D.bh=r[0]?.data||D.bh||[]; D.my=r[1]?.data||[]; D.ss=r[2]?.data||[]; D.att=r[3]?.data||[]; D.cert=r[4]?.data||[]; D.gu=r[5]?.data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[]; D.mb=r[41]?.data||[]; D.kl=r[42]?.data||[]; D.inv=r[43]?.data||[]; D.tr2=r[44]?.data||[]; D.tp=r[45]?.data||[]; D.am=r[46]?.data||[]; D.au=r[47]?.data||[]; D.ac=r[48]?.data||[]; D.cons=r[49]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[]; D.mb=r[41]?.data||[]; D.kl=r[42]?.data||[]; D.inv=r[43]?.data||[]; /* 44 tr2 · 45 tp · 47 au → τεμπέλικα */ D.am=r[46]?.data||[]; D.ac=r[48]?.data||[]; D.cons=r[49]?.data||[];
   D.syn=r[50]?.data||[]; D.synp=r[51]?.data||[]; D.synd=r[52]?.data||[];
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; D.amx=r[66]?.data||[]; D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; D.wcon=r[76]?.data||[]; D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.elog=r[80]?.data||[]; D.wl=r[81]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.rr=r[84]?.data||[]; D.rl=r[85]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[]; /* 66 amx → τεμπέλικο */ D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[]; /* 76 wcon → τεμπέλικο */ D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.elog=r[80]?.data||[]; D.wl=r[81]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.rr=r[84]?.data||[]; D.rl=r[85]?.data||[];
   /* Ο πίνακας care_links επιστρέφει 0 σε όποιον δεν είναι Α.Σ. — εκεί μπαίνει
      η όψη. Τα τηλέφωνα στον φάκελο δράσης πρέπει να δουλεύουν για τον αρχηγό
      τμήματος· το διάταγμα δεν πρέπει. Ίδιο σχήμα, λιγότερα πεδία. */
@@ -1749,7 +1830,7 @@ async function loadAll(){
   };
   assign();
   restJob.then(()=>{ assign(); saveCache();
-    DIAG=r.map((x,i)=>({t:names[i]||('#'+i),n:(x&&x.data)?x.data.length:null,e:x&&x.error?(x.error.message||String(x.error)):null}));
+    DIAG=r.map((x,i)=>dg(x,i,null));
     if(LOADED&&ROUTE)route(ROUTE); });
   saveCache(); qFlush();
   ensurePhotos((D.pph||[]).map(x=>x.path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
@@ -2830,11 +2911,13 @@ async function openProfile(id){
     if(l)l.scrollIntoView({behavior:'smooth',block:'center'}); const fi=$('docFile'); if(fi)fi.focus()};
   $('dArch').onclick=async()=>{
     if(p.status==='Αρχειοθετημένος'){
-      if(!confirm(`Επαναφορά ${nm(p)} στους ενεργούς;`))return;
+      const was=p.status;
       const {error}=await sb.from('badgeholders').update({status:'Ενεργός'}).eq('id',p.id);
       if(error)return toast('Σφάλμα: '+error.message);
-      p.status='Ενεργός'; saveCache(); toast('Επανήλθε');
-      drw.classList.remove('on'); route(ROUTE); return;
+      p.status='Ενεργός'; saveCache();
+      drw.classList.remove('on'); route(ROUTE);
+      undoBar('Επανήλθε: '+nm(p), ()=>undoRow('badgeholders', p.id, {status:was}, p));
+      return;
     }
     archiveFlow(p);};
   $('eCancel').onclick=()=>{$('dEditBox').style.display='none'};
@@ -3815,7 +3898,7 @@ function makeSortable(){
         const dir=th.classList.contains('asc')?-1:1;
         [...ths].forEach(x=>x.classList.remove('asc','desc'));
         th.classList.add(dir===1?'asc':'desc');
-        const rows=[...body.rows];
+        const rows=[...body.rows].filter(r=>!r.classList.contains('vqnone'));
         rows.sort((a,b)=>{
           const A=(a.cells[i]?.textContent||'').trim(), B=(b.cells[i]?.textContent||'').trim();
           const nA=parseFloat(A.replace(/[^\d.,-]/g,'').replace(',','.')), nB=parseFloat(B.replace(/[^\d.,-]/g,'').replace(',','.'));
@@ -3832,24 +3915,72 @@ function chipsHTML(defs){
     `<button class="chipf" data-k="${esc(g.k)}" data-v="${esc(o.v)}">${o.l}</button>`).join('')).join('<span class="dim" style="padding:0 2px">·</span>')}
     <button class="btn gh sm" id="fclr" style="display:none">Καθαρισμός</button></div>`;
 }
+/* ══ ΕΝΑ ΦΙΛΤΡΟ, ΟΧΙ ΔΥΟ ═══════════════════════════════════════════════════
+   Ήταν δύο ξεχωριστές συναρτήσεις που έδεναν και οι δύο στο ίδιο πεδίο
+   αναζήτησης, και η καθεμιά ήξερε τα μισά: η μία τα λατινικά, τον Α.Μ. και το
+   τηλέφωνο· η άλλη τα chips. Έτρεχαν και οι δύο σε κάθε πληκτρολόγηση και
+   κέρδιζε η τελευταία — δηλαδή σε ΚΑΘΕ οθόνη με chips, η αναζήτηση με
+   «Georgiou» ή με Α.Μ. ΣΙΩΠΟΥΣΕ. Δύο κατάλογοι για το ίδιο πράγμα πάντα
+   αποκλίνουν· τώρα είναι ένας. */
+function vqApply(){
+  const i=$('vq'); const raw=i?i.value.trim():'';
+  const q=nameKey(raw), L=latKey(raw), d=digits(raw);
+  let n=0, total=0;
+  document.querySelectorAll('#view tbody tr, #view .cgrid > .ccard').forEach(r=>{
+    if(r.classList.contains('vqnone'))return;
+    total++;
+    let txt=r.textContent;
+    const pe=r.querySelector('[data-p]');
+    if(pe)txt+=' '+searchBlob(pe.dataset.p);
+    let ok=!raw||nameKey(txt).includes(q)
+      ||(L.length>=2&&latKey(txt).includes(L))
+      ||(d.length>=3&&digits(txt).includes(d));
+    if(ok)for(const k in VF){if(VF[k]&&r.dataset[k]!==VF[k]){ok=false;break}}
+    r.style.display=ok?'':'none'; if(ok)n++;});
+  const c=$('vcnt'); if(c)c.textContent=n+(n===1?' εγγραφή':' εγγραφές');
+  const any=Object.values(VF).some(Boolean);
+  const b=$('fclr'); if(b)b.style.display=(any||raw)?'':'none';
+  vqEmpty(n,total,raw,any);
+}
+/* ══ ΤΟ ΑΔΕΙΟ ΠΡΕΠΕΙ ΝΑ ΛΕΕΙ ΓΙΑΤΙ ═════════════════════════════════════════
+   «Δεν υπάρχει τίποτα» και «το φίλτρο σου δεν βρήκε τίποτα» φαίνονταν ΙΔΙΑ:
+   λευκό κάτω από μια κεφαλίδα πίνακα. Είναι όμως δύο εντελώς διαφορετικά
+   μηνύματα — στο ένα δεν έχεις τι να κάνεις, στο άλλο έχεις ξεχάσει ένα chip
+   πατημένο από πριν. Και υπάρχει και τρίτο: «δεν ήρθαν ακόμη». */
+function vqEmpty(n,total,raw,any){
+  document.querySelectorAll('#view .vqnone').forEach(x=>x.remove());
+  if(n>0)return;
+  const host=document.querySelector('#view tbody') || document.querySelector('#view .cgrid');
+  if(!host)return;
+  const cols=(document.querySelectorAll('#view thead th')||[]).length||1;
+  const busy=Object.values(LZON).some(v=>v==='...');
+  const body = busy
+    ? `<b class="dim">Φορτώνει…</b>`
+    : (raw||any)
+      ? `<b>Κανένα αποτέλεσμα</b>${raw?` για «${esc(raw)}»`:''}${any?' με αυτά τα φίλτρα':''}
+         <div style="margin-top:8px"><button class="btn sm" id="vqclr">Καθαρισμός αναζήτησης και φίλτρων</button></div>`
+      : (total?'':`<b class="dim">Η λίστα είναι άδεια</b>`);
+  if(!body)return;
+  const html=`<div style="text-align:center;padding:26px 14px;font-size:13.5px">${body}</div>`;
+  if(host.tagName==='TBODY')
+    host.insertAdjacentHTML('beforeend',`<tr class="vqnone"><td colspan="${cols}" style="border:0">${html}</td></tr>`);
+  else host.insertAdjacentHTML('beforeend',`<div class="vqnone" style="grid-column:1/-1">${html}</div>`);
+  const c=$('vqclr'); if(c)c.onclick=vqClear;
+}
+function vqClear(){
+  VF={}; document.querySelectorAll('.chipf').forEach(x=>x.classList.remove('on'));
+  if($('vq'))$('vq').value='';
+  vqApply();
+}
 function wireChips(){
   VF={};
-  const apply=()=>{
-    const q=nameKey(($('vq')||{}).value||''); let n=0;
-    document.querySelectorAll('#view tbody tr').forEach(r=>{
-      let ok=!q||nameKey(r.textContent).includes(q);
-      if(ok)for(const k in VF){if(VF[k]&&r.dataset[k]!==VF[k]){ok=false;break}}
-      r.style.display=ok?'':'none'; if(ok)n++;});
-    const c=$('vcnt'); if(c)c.textContent=n+(n===1?' εγγραφή':' εγγραφές');
-    const any=Object.values(VF).some(Boolean); const b=$('fclr'); if(b)b.style.display=any?'':'none';};
   document.querySelectorAll('.chipf').forEach(b=>b.onclick=()=>{
     const k=b.dataset.k,v=b.dataset.v;
     if(VF[k]===v){VF[k]=null;b.classList.remove('on')}
     else{document.querySelectorAll(`.chipf[data-k="${k}"]`).forEach(x=>x.classList.remove('on'));VF[k]=v;b.classList.add('on')}
-    apply();});
-  const clr=$('fclr'); if(clr)clr.onclick=()=>{VF={};document.querySelectorAll('.chipf').forEach(x=>x.classList.remove('on'));if($('vq'))$('vq').value='';apply()};
-  const i=$('vq'); if(i)i.addEventListener('input',apply);
-  apply();
+    vqApply();});
+  const clr=$('fclr'); if(clr)clr.onclick=vqClear;
+  vqApply();
 }
 
 /* ── γενική αναζήτηση λίστας ── */
@@ -3899,22 +4030,10 @@ function searchBlob(pid){
 }
 function wireVQ(){
   const i=$('vq'); if(!i)return;
-  const upd=()=>{const raw=i.value.trim(), q=nameKey(raw), L=latKey(raw), d=digits(raw); let n=0;
-    /* Και γραμμές πίνακα ΚΑΙ κάρτες: μισές οθόνες είναι κάρτες, και η
-       αναζήτηση σιωπούσε σε αυτές — χειρότερο από το να λείπει. */
-    const items=document.querySelectorAll('#view tbody tr, #view .cgrid > .ccard');
-    items.forEach(r=>{
-      let txt=r.textContent;
-      const pe=r.querySelector('[data-p]');
-      if(pe)txt+=' '+searchBlob(pe.dataset.p);
-      const ok=!raw||nameKey(txt).includes(q)
-        ||(L.length>=2&&latKey(txt).includes(L))
-        ||(d.length>=3&&digits(txt).includes(d));
-      r.style.display=ok?'':'none'; if(ok)n++;});
-    const c=$('vcnt'); if(c)c.textContent=n+(n===1?' εγγραφή':' εγγραφές');};
-  i.addEventListener('input',upd); upd();
+  /* ΕΝΑ listener, όχι δύο. Πριν έδεναν και οι δύο μηχανισμοί το ίδιο πεδίο. */
+  i.addEventListener('input',vqApply);
   const b=$('vinfo'); if(b)b.onclick=showLegend;
-  makeSortable(); wireChips();
+  makeSortable(); wireChips();   // το wireChips κλείνει με vqApply()
 }
 
 /* ── επεξήγηση συμβόλων ── */
@@ -4615,11 +4734,14 @@ function archiveFlow(p){
     const why=($('arWhy').value||'').trim();
     const alsoIds=[...document.querySelectorAll('.arp:checked')].map(c=>c.value);
     const also=alsoIds.map(id=>D.bh.find(b=>b.id===id)).filter(Boolean);
-    if(!confirm('Αρχειοθέτηση: '+nm(p)
-      +(also.length?'\nΚαι οι γονείς: '+also.map(nm).join(', '):'')
-      +(rows.some(r=>r.why)?'\n\nΜένουν ενεργοί: '+rows.filter(r=>r.why).map(r=>nm(r.g)).join(', '):'')
-      +'\n\nΤο ιστορικό και οι δεσμοί μένουν.'))return;
+    /* ΧΩΡΙΣ confirm(). Το συρτάρι από πάνω δείχνει ΗΔΗ ονομαστικά ποιος φεύγει,
+       ποιος μένει και γιατί — το παράθυρο ρωτούσε κάτι που μόλις απάντησε.
+       Στη θέση του: είκοσι δευτερόλεπτα αναίρεση, που πιάνουν το λάθος αφού
+       το δεις στη λίστα, όχι πριν. */
     const b=$('arGo'); b.disabled=true; b.textContent='…';
+    /* Οι παλιές τιμές ΠΡΙΝ αγγίξουμε οτιδήποτε — αλλιώς δεν υπάρχει επιστροφή. */
+    const wasP=p.status, wasAlso=also.map(g=>({g, st:g.status}));
+    const wasMy=my?{voided_at:my.voided_at||null, voided_reason:my.voided_reason||null}:null;
     const fail=m=>{b.disabled=false;b.textContent='Αρχειοθέτηση';toast(m);return false};
 
     /* 1 · Ο ΙΔΙΟΣ */
@@ -4643,8 +4765,14 @@ function archiveFlow(p){
     }
 
     saveCache();
-    toast('Αρχειοθετήθηκε'+(also.length?' — μαζί '+also.length+' '+(also.length===1?'γονέας':'γονείς'):''));
     $('drw').classList.remove('on'); route(ROUTE);
+    undoBar('Αρχειοθετήθηκε: '+nm(p)
+      +(also.length?' + '+also.length+' '+(also.length===1?'γονέας':'γονείς'):''),
+      async()=>{
+        await undoRow('badgeholders', p.id, {status:wasP}, p);
+        if(my&&wasMy) await undoRow('member_year', my.id, wasMy, my);
+        for(const x of wasAlso) await undoRow('badgeholders', x.g.id, {status:x.st}, x.g);
+      });
   };
 }
 
@@ -15712,6 +15840,52 @@ function guardiansBody(){
 function cp(t,l){navigator.clipboard.writeText(t).then(()=>toast(`Αντιγράφηκαν τα ${l}`))}
 function toast(m){const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--side);color:#fff;padding:10px 16px;border-radius:22px;font-size:13.5px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.28)';document.body.appendChild(d);setTimeout(()=>d.remove(),2300)}
 
+/* ══ ΑΝΑΙΡΕΣΗ ══════════════════════════════════════════════════════════════
+   Το confirm() προστατεύει ΠΡΙΝ — και μετά σε αφήνει μόνο. Η αναίρεση
+   προστατεύει ΜΕΤΑ, δηλαδή την ώρα που πραγματικά καταλαβαίνεις το λάθος:
+   όταν η οθόνη αλλάξει και δεις ότι έφυγε λάθος όνομα.
+
+   ΕΙΚΟΣΙ ΔΕΥΤΕΡΟΛΕΠΤΑ. Πέντε φτάνουν για «ωχ, λάθος κουμπί». Δεν φτάνουν για
+   να αρχειοθετήσεις δεκαεννιά άτομα, να διαβάσεις τη λίστα που έμεινε, και να
+   προσέξεις ότι ένα από αυτά συνεχίζει.
+
+   ΜΟΝΟ ΣΕ ΑΝΤΙΣΤΡΕΨΙΜΕΣ. Αν η ενέργεια σβήνει αρχείο από τον αποθηκευτικό
+   χώρο ή στέλνει email, δεν υπάρχει αναίρεση — εκεί το confirm() μένει, και
+   πρέπει να μένει. Ψεύτικο κουμπί «Αναίρεση» είναι χειρότερο από κανένα. */
+let UNDO=null;
+function undoClose(){ if(!UNDO)return; clearInterval(UNDO.tick); UNDO.el.remove(); UNDO=null }
+function undoBar(text, fn, secs){
+  secs=secs||20;
+  undoClose();
+  const b=document.createElement('div'); b.id='undob'; b.className='noprint';
+  /* Αν ήδη υπάρχει η μπάρα «χωρίς σύνδεση», ανεβαίνει από πάνω της. */
+  const up=$('offb')?66:22;
+  b.style.cssText='position:fixed;bottom:'+up+'px;left:50%;transform:translateX(-50%);z-index:210;'
+    +'background:var(--side);color:#fff;padding:9px 10px 9px 16px;border-radius:24px;font-size:13.5px;'
+    +'display:flex;gap:12px;align-items:center;box-shadow:0 8px 28px rgba(0,0,0,.32);max-width:92vw';
+  b.innerHTML=`<span style="flex:1;min-width:0">${esc(text)}</span>
+    <button class="btn sm" id="undoGo" style="background:#fff;color:#000;border:0;padding:4px 13px;font-weight:600;flex:0 0 auto">Αναίρεση</button>
+    <span id="undoT" style="opacity:.55;font-variant-numeric:tabular-nums;min-width:18px;text-align:right;flex:0 0 auto">${secs}</span>`;
+  document.body.appendChild(b);
+  let left=secs;
+  const tick=setInterval(()=>{ left--; const t=$('undoT'); if(t)t.textContent=left>0?left:''; if(left<=0)undoClose() },1000);
+  UNDO={el:b, tick};
+  $('undoGo').onclick=async()=>{
+    const g=$('undoGo'); if(g){g.disabled=true; g.textContent='…'}
+    clearInterval(tick);
+    try{ await fn(); undoClose(); saveCache(); toast('Αναιρέθηκε'); if(ROUTE)route(ROUTE) }
+    catch(e){ undoClose(); toast('Η αναίρεση δεν έγινε: '+(e&&e.message||e)) }
+  };
+}
+/* Βοηθός: γυρίζει ΜΙΑ γραμμή στις παλιές της τιμές, και στη βάση και στη μνήμη.
+   Παίρνει ΜΟΝΟ τα πεδία που άλλαξαν — όχι ολόκληρη τη γραμμή: ό,τι άλλαξε
+   κάποιος άλλος στο ενδιάμεσο δεν έχει λόγο να χαθεί. */
+async function undoRow(table, id, before, memRow){
+  const {error}=await sb.from(table).update(before).eq('id', id);
+  if(error)throw error;
+  if(memRow)Object.assign(memRow, before);
+}
+
 function attendBody(){
   const risk=riskList();
   $('view').innerHTML=`<div style="display:flex;gap:8px;margin-bottom:14px">
@@ -17553,12 +17727,23 @@ async function wlPreset(id, key){
   }
   if(P.ask){ const a=prompt(P.ask,r.elsewhere||''); if(a===null)return; v.elsewhere=a.trim()||null; }
   if(v.outcome){ v.outcome_at=new Date().toISOString(); v.outcome_by=(meRec()||{}).id||null; }
+  /* Οι παλιές τιμές ΜΟΝΟ των πεδίων που πειράζουμε. Ένα λάθος πάτημα εδώ
+     αλλάζει την έκβαση ενός παιδιού — και τα κουμπιά είναι το ένα δίπλα στο
+     άλλο. Η αναίρεση δεν είναι πολυτέλεια, είναι το ζευγάρι του κουμπιού. */
+  const before={}; for(const k of Object.keys(v)) before[k]=(r[k]===undefined?null:r[k]);
   const {error}=await sb.from('waitlist').update(v).eq('id',id);
   if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
   Object.assign(r,v);
   /* Η επαφή καταγράφεται ΚΑΙ αυτή — αλλιώς αύριο δεν ξέρεις αν μίλησες. */
-  if(P.ct)await wlContact(id,P.ct,true);
-  saveCache(); toast(P.t); WLPATCH(id);
+  const ct=P.ct?await wlContact(id,P.ct,true):null;
+  saveCache(); WLPATCH(id);
+  const who=[r.last_name,r.first_name].map(x=>String(x||'').trim()).filter(x=>x&&x!=='?').join(' ')||'κρατημένη θέση';
+  undoBar(P.t+' · '+who, async()=>{
+    await undoRow('waitlist', id, before, r);
+    if(ct&&ct.id){ await sb.from('waitlist_contact').delete().eq('id',ct.id);
+                   D.wlct=(D.wlct||[]).filter(x=>x.id!==ct.id) }
+    WLPATCH(id);
+  });
 }
 async function wlContact(id,kind,quiet){
   const me=(meRec()||{}).id||null;
@@ -17567,8 +17752,9 @@ async function wlContact(id,kind,quiet){
   const {data,error}=await sb.from('waitlist_contact').insert(row).select().single();
   if(error)return toast('Δεν καταγράφηκε: '+error.message);
   (D.wlct=D.wlct||[]).push(data); saveCache();
-  if(quiet)return;                       // το preset λέει ήδη τι έγινε
+  if(quiet)return data;    // το preset λέει ήδη τι έγινε — και θέλει το id για αναίρεση
   toast(kind+' — καταγράφηκε'); WLPATCH(id);
+  return data;
 }
 async function wlContactDel(cid){
   const c=(D.wlct||[]).find(x=>x.id===cid); const wid=c&&c.waitlist_id;
