@@ -1251,7 +1251,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 16:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 17:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -16734,6 +16734,12 @@ function wlHistConflict(r){
   const vs=h.map(norm).filter(v=>v!==null);
   return new Set(vs).size>1 ? h : null;
 }
+/* ΕΝΑ ΚΟΥΤΙ ΑΝΑ ΕΤΙΚΕΤΑ. Το wlClass λέει «Δεν πάει σχολείο ακόμη» για ΚΑΘΕ
+   αριθμό κάτω από το 1 — αλλά το φίλτρο ομαδοποιεί με τον ΑΡΙΘΜΟ. Έτσι το
+   0 (δήλωσαν «ΠΙΟ ΜΙΚΡΟΙ», 10 παιδιά) και το −1 (παιδί του 2022 χωρίς
+   δήλωση, που το βγάζει η ηλικία) έφτιαχναν ΔΥΟ επιλογές με το ΙΔΙΟ όνομα.
+   Ο κάδος βγαίνει τώρα από την ετικέτα, όχι από τον αριθμό. */
+const wlBk=g=>(g===null||g===undefined)?99:(g<1?0:(g>12?13:g));
 const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
 let WLY='', WLED=null, WLSORT='arxeio', WLCLS='', WLST='open', WLQ='', WLPRE='', WLYRS=false, WLMORE=false;
 /* '' = όλοι · 'prio' = μόνο επιβεβαιωμένη προτεραιότητα · 'said' = δηλώθηκε
@@ -16962,7 +16968,7 @@ V.wl2=()=>{
   const UNSURE=[];              // θέλουν επιβεβαίωση τάξης
   all.forEach(r=>{ const g=wl2G(r);
     if(!g.sure)UNSURE.push(r);
-    const k=(g.g===null||g.g===undefined)?99:g.g;
+    const k=wlBk(g.g);
     (G.get(k)||G.set(k,[]).get(k)).push(r); });
   /* «Όχι φέτος» ΔΕΝ είναι κλειστό. Ο ίδιος το λέει γαλάζιο: «απάντησαν
      αρνητικά για φέτος ΑΛΛΑ θέλουν να παραμείνουν στη λίστα». Το πρώτο
@@ -17003,7 +17009,7 @@ V.wl2=()=>{
         <button class="btn gh sm" id="wl2qx" style="margin-left:8px">Καθαρισμός</button></div>`
      :`<div class="wl2tabs noprint">
         ${keys.map(k=>{const L=G.get(k); const o=L.filter(open).length;
-          return tab(k, o, wlClass(k===99?null:k), o!==L.length?`<span class="dim" style="font-weight:400"> /${L.length}</span>`:'')}).join('')}
+          return tab(k, o, wlClass(k===99?null:(k===13?13:k)), o!==L.length?`<span class="dim" style="font-weight:400"> /${L.length}</span>`:'')}).join('')}
         ${UNSURE.length?tab('?',UNSURE.length,'⚠ θέλουν τάξη'):''}
        </div>`}
 
@@ -17351,8 +17357,8 @@ V.waitlist=()=>{
     .filter(r=>WLPRE?PRE[WLPRE](r)
       :(WLST==='all' || (WLST==='open'?WL_OPEN.includes(r.outcome):r.outcome===WLST)))
     .filter(r=>wlHit(r,WLQ))
-    .filter(r=>{if(!WLCLS)return true; const g=wlGrade(r);
-      return WLCLS==='?' ? g===null||g===undefined : String(g===null?99:g)===WLCLS})
+    .filter(r=>{if(!WLCLS)return true;
+      return WLCLS==='?' ? wlBk(wlGrade(r))===99 : String(wlBk(wlGrade(r)))===WLCLS})
     /* ΑΝΕΞΑΡΤΗΤΟΣ ΔΙΑΚΟΠΤΗΣ, όχι δέκατος κάδος. Οι εννέα κάδοι είναι
        διαλογή («τι κάνω σήμερα»)· η προτεραιότητα είναι δικαίωμα και
        συνδυάζεται με τον καθένα τους — «ποιοι από όσους θα πάρω σήμερα
@@ -17361,11 +17367,10 @@ V.waitlist=()=>{
     .sort((a,b)=>{
       const pa=a.priority??9999, pb=b.priority??9999;
       return pa!==pb ? pa-pb : auto(a,b)});
-  shown.forEach(r=>{const g=wlGrade(r);(groups[g===null?99:g]=groups[g===null?99:g]||[]).push(r)});
+  shown.forEach(r=>{const k=wlBk(wlGrade(r));(groups[k]=groups[k]||[]).push(r)});
   /* Οι τάξεις για το φίλτρο βγαίνουν από ΤΑ ΔΕΔΟΜΕΝΑ, όχι από τη λίστα των
      δώδεκα: δεν προσφέρουμε «Γ΄ Γυμνασίου» αν δεν υπάρχει κανείς εκεί. */
-  const clsOpts=[...new Set(list.map(r=>{const g=wlGrade(r);return g===null||g===undefined?99:g}))]
-    .sort((a,b)=>a-b);
+  const clsOpts=[...new Set(list.map(r=>wlBk(wlGrade(r))))].sort((a,b)=>a-b);
 
   /* ΤΙ ΑΠΕΔΩΣΕ ΚΑΘΕ ΧΡΟΝΙΑ. Χωρίς αυτό η λίστα είναι σωρός ονομάτων: δεν
      ξέρεις αν αξίζει να τηλεφωνείς, ούτε ποια χρονιά έμεινε ανοιχτή. */
