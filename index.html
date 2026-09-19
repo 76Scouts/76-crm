@@ -1296,7 +1296,10 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 20:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 20:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+/* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
+   μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
+let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -1927,6 +1930,18 @@ async function loadAll(){
       ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer"
            style="color:inherit;text-decoration:underline"><b>${own}</b></a>` : `<b>${own}</b>`;
     _ow.innerHTML=`e76 · λογισμικό ${lbl}<br>Τα δεδομένα ανήκουν στο κλιμάκιο`;
+  }
+  /* ══ ΣΙΩΠΗΛΗ ΚΟΠΗ ΣΤΙΣ 1000 ═══════════════════════════════════════════
+     Το PostgREST κόβει στις 1000 όσο μεγάλο κι αν είναι το `.limit()` — γι'
+     αυτό η `attendance` χρησιμοποιεί `pageAll`. Υπάρχουν όμως 23 φορτώσεις
+     με limit πάνω από 1000 ΧΩΡΙΣ σελιδοποίηση. Σήμερα όλες χωράνε
+     (μεγαλύτερη: care_links 544). Την ημέρα που κάποια περάσει τις 1000 θα
+     κοπεί ΑΘΟΡΥΒΑ: λίστες που λείπουν άνθρωποι, μετρητές που βγάζουν λιγότερα,
+     και κανένα μήνυμα. Ακριβώς 1000 γραμμές δεν είναι ποτέ σύμπτωση. */
+  CUT=Object.keys(D).filter(k=>Array.isArray(D[k])&&D[k].length===1000);
+  if(CUT.length){
+    console.warn('e76: ΚΟΠΗΚΕ στις 1000 —', CUT.join(', '));
+    try{toast('Κόπηκαν δεδομένα στις 1000 γραμμές: '+CUT.join(', ')+' — χρειάζεται σελιδοποίηση')}catch(e){}
   }
   };
   assign();
@@ -4032,6 +4047,9 @@ function chipsHTML(defs){
 function vqApply(){
   const i=$('vq'); const raw=i?i.value.trim():'';
   const q=nameKey(raw), L=latKey(raw), d=digits(raw);
+  /* Ρωτά τη βάση για το Α.Δ.Τ. και ξαναφιλτράρει μόλις απαντήσει. Δεν κάνει
+     αναδρομή: με την απάντηση το ADTQ ισούται με τα ψηφία, οπότε βγαίνει αμέσως. */
+  adtSoon(raw);
   let n=0, total=0;
   document.querySelectorAll('#view tbody tr, #view .cgrid > .ccard').forEach(r=>{
     if(r.classList.contains('vqnone'))return;
@@ -4130,10 +4148,15 @@ function latKey(s){
 }
 function searchBlob(pid){
   const p=(D.bh||[]).find(x=>x.id===pid); if(!p)return '';
-  const sn=(D.sen||[]).find(x=>x.person_id===pid)||{};
   const em=(D.pe||[]).filter(x=>x.person_id===pid).map(x=>x.address);
-  return [nm(p),p.nickname,p.scout_name,p.registry_no,sn.adt,p.phone,p.email,
-          p.section,p.category,...em].filter(Boolean).join(' ');
+  /* Το Α.Δ.Τ. ΔΕΝ μπαίνει ποτέ στο κείμενο της σελίδας — ούτε καν κατεβαίνει.
+     Αν η βάση είπε ότι αυτό το πρόσωπο ταιριάζει, κολλάμε τα ΨΗΦΙΑ ΠΟΥ
+     ΠΛΗΚΤΡΟΛΟΓΗΣΕ ο χρήστης, ώστε να πιάσει το ίδιο φίλτρο κειμένου.
+     Πριν εδώ καθόταν `sn.adt` από την όψη v_person_dob, που δεν το έχει:
+     πάντα undefined, πάντα κανένα αποτέλεσμα, κανένα μήνυμα. */
+  const adt=(ADTHIT&&ADTHIT.has(pid))?' '+ADTQ:'';
+  return [nm(p),p.nickname,p.scout_name,p.registry_no,p.phone,p.email,
+          p.section,p.category,...em].filter(Boolean).join(' ')+adt;
 }
 function wireVQ(){
   const i=$('vq'); if(!i)return;
@@ -16629,13 +16652,43 @@ function personMatch(p,q){
     const gu=gOf(p.registry_no)||{};
     if((gu.father_email||'').toLowerCase().includes(em)||(gu.mother_email||'').toLowerCase().includes(em))return true;
   }
-  if(d.length>=5&&canSeeSensitive()){
-    const sn=(D.sen||[]).find(x=>x.person_id===p.id);
-    if(sn&&digits(sn.adt).includes(d))return true;
-  }
+  /* Η κρίση έγινε στη ΒΑΣΗ και άφησε ίχνος· εδώ μόνο διαβάζουμε ποιοι ήρθαν. */
+  if(d.length>=5&&canSeeSensitive()&&ADTHIT&&ADTQ===d&&ADTHIT.has(p.id))return true;
   return false;
 }
 const canSeeSensitive=()=>ME.role==='admin'||ME.platform_admin;
+
+/* ══ ΑΝΑΖΗΤΗΣΗ ΜΕ ΑΡΙΘΜΟ ΤΑΥΤΟΤΗΤΑΣ ═══════════════════════════════════════
+   Το Α.Δ.Τ. είναι άρθρο 9· δεν κατεβαίνει στον φυλλομετρητή και δεν μπαίνει
+   στη μνήμη της σελίδας. Η `adt_search()` συγκρίνει ΜΕΣΑ στη βάση, γράφει
+   ΠΡΩΤΑ μία γραμμή ίχνους ανά πρόσωπο που αποκαλύπτει, και γυρίζει μόνο uuid.
+   Κάτω από 5 ψηφία δεν ρωτάμε καν — είναι τηλέφωνο ή Α.Μ., και ένα ίχνος σε
+   κάθε πληκτρολόγηση θα έπνιγε το αρχείο με θόρυβο.
+   Καθυστέρηση 350ms: μία ερώτηση ανά αναζήτηση, όχι ανά πλήκτρο. */
+function adtSoon(raw){
+  clearTimeout(ADTT);
+  const d=digits(raw||'');
+  if(d.length<5||!canSeeSensitive()){
+    if(ADTHIT){ADTQ='';ADTHIT=null;vqApply()}
+    return;
+  }
+  if(d===ADTQ)return;
+  ADTT=setTimeout(async()=>{
+    try{
+      const {data,error}=await sb.rpc('adt_search',{p_q:d,p_purpose:ROUTE||'αναζήτηση'});
+      if(error)throw error;
+      ADTQ=d; ADTHIT=new Set(data||[]);
+    }catch(e){
+      /* Άρνηση ή σφάλμα: κενό σύνολο, ΟΧΙ σιωπή. Ο χρήστης πρέπει να ξέρει
+         ότι ρωτήθηκε και δεν του δόθηκε — αλλιώς νομίζει ότι δεν υπάρχει. */
+      console.warn('adt_search:', (e&&e.message)||e);
+      ADTQ=d; ADTHIT=new Set();
+      if(String((e&&e.message)||'').includes('μόνο για τον Α.Σ.'))
+        toast('Η αναζήτηση με αριθμό ταυτότητας είναι μόνο για τον Α.Σ.');
+    }
+    vqApply();
+  },350);
+}
 /* Τι ταίριαξε — για να μη μαντεύει ο χρήστης γιατί εμφανίστηκε κάποιος. */
 function matchWhy(p,q){
   const d=digits(q), k=nameKey(q);
@@ -16643,6 +16696,7 @@ function matchWhy(p,q){
   if(d.length>=3&&digits(p.registry_no).includes(d))return 'Α.Μ. '+esc(p.registry_no);
   if(d.length>=3&&(digits(p.phone).includes(d)||digits(p.home_phone).includes(d)))return 'τηλέφωνο';
   if(q.includes('@'))return 'email';
+  if(d.length>=5&&ADTHIT&&ADTQ===d&&ADTHIT.has(p.id))return 'αριθμός ταυτότητας';
   if(d.length>=3)return 'τηλέφωνο επαφής';
   return 'ψευδώνυμο';
 }
