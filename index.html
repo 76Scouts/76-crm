@@ -719,6 +719,16 @@ tr.argrow td{background:var(--bg2)}
 .pdorph>b{font-size:12.5px}
 .pdoc.orph{border-style:dashed;margin-top:6px}
 .pdoc.orph .pdi{background:var(--ink3);color:#fff}
+/* Επιλογέας σελίδων: βλέπει τη σελίδα, δεν θυμάται αριθμό. */
+.pdsheet{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:965;
+         display:flex;align-items:center;justify-content:center;padding:14px}
+.pdgrid{flex:1 1 auto;min-height:0;overflow:auto;padding:12px;
+        display:grid;gap:11px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.pdcell{border:1px solid var(--line);border-radius:10px;padding:7px;background:var(--card)}
+.pdcell img{width:100%;height:auto;display:block;border-radius:6px;background:#fff;
+            box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.pdnum{font-size:11.5px;color:var(--ink3);margin:5px 0 4px;text-align:center}
+.pdcell select{width:100%;font-size:12px}
 .pdo{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .pdo select{font-size:12px;max-width:200px;flex:1}
 @media(max-width:420px){.pdoc{flex-wrap:wrap}.pdoc .btn{width:100%;justify-content:center;margin-top:4px}
@@ -1286,7 +1296,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 19:31'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 20:11'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -3717,7 +3727,8 @@ async function docPreview(list,ix){
     ov.innerHTML=`<div class="card" style="max-width:900px;width:100%;height:calc(100vh - 28px);display:flex;flex-direction:column;overflow:hidden">
       <div class="pad" style="flex:0 0 auto;border-bottom:1px solid var(--line);display:flex;gap:7px;align-items:center;flex-wrap:wrap">
         <div style="flex:1;min-width:140px"><b style="font-size:14.5px">${esc(it.label||name)}</b>
-          ${items.length>1?`<div class="dim" style="font-size:12px">όψη ${i+1} από ${items.length}</div>`:''}</div>
+          ${items.length>1?`<div class="dim" style="font-size:12px">όψη ${i+1} από ${items.length}</div>`
+            :(it.page?`<div class="dim" style="font-size:12px">άνοιξε στη σελίδα ${+it.page}</div>`:'')}</div>
         ${items.length>1?`<button class="btn gh sm" id="dpPrev"${i?'':' disabled'}>‹</button>
           <button class="btn gh sm" id="dpNext"${i<items.length-1?'':' disabled'}>›</button>`:''}
         ${pdf?'':`<button class="btn gh sm" id="dpOut" title="Σμίκρυνση (−)">−</button>
@@ -3761,7 +3772,7 @@ async function docPreview(list,ix){
     const body=$('dpBody');
     body.style.alignItems = pdf?'stretch':'center';
     body.innerHTML = pdf
-      ? `<iframe src="${esc(url)}#view=Fit" style="width:100%;height:100%;border:0;background:#fff"></iframe>`
+      ? `<iframe src="${esc(url)}#${it.page?'page='+(+it.page)+'&':''}view=Fit" style="width:100%;height:100%;border:0;background:#fff"></iframe>`
       : `<img id="dpImg" src="${esc(url)}" alt="${esc(it.label||name)}" style="display:block;margin:auto;max-width:100%;max-height:100%">`;
     if(!pdf){
       /* Κάποιες σαρώσεις έρχονται τεράστιες και το «ταίριασμα» κόβει τις
@@ -6169,7 +6180,9 @@ function docRowHTML(p,r){
         s.ok&&s.e&&s.e.received_on?' '+fdate(s.e.received_on):''}</div>
       ${/* Χωρίς το όνομα του αρχείου ανεβάζεις σε μαύρο κουτί: δεν ξέρεις
             αν πήγε το σωστό, ούτε ποιο από τα δύο κρατάμε. */''}
-      ${f?`<div class="pdf"><a href="#" class="pdfa" data-doc="${f.id}">${ic(fileIcon(f.mime),12)} ${esc(f.title||'αρχείο')}</a></div>`
+      ${f?`<div class="pdf"><a href="#" class="pdfa" data-doc="${f.id}" data-pg="${s.e.page||''}">${
+          ic(fileIcon(f.mime),12)} ${esc(f.title||'αρχείο')}${
+          s.e.page?` <span class="dim">· σελίδα ${s.e.page}</span>`:''}</a></div>`
         :(s.e?`<div class="pds">στο χαρτί — δεν έχουμε σαρωμένο αντίγραφο</div>`:'')}
       ${s.why?`<div class="pdw">${esc(s.why)}</div>`:''}
     </div>
@@ -6223,7 +6236,10 @@ async function docAttach(pid, docId, code, after){
 function wireDocs(after){
   document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu,b.dataset.pc||b.dataset.code));
   document.querySelectorAll('.pdfa').forEach(a=>a.onclick=e=>{e.preventDefault();
-    const d=(D.doc||[]).find(x=>x.id===a.dataset.doc); if(d)docPreview(d.path);});
+    const d=(D.doc||[]).find(x=>x.id===a.dataset.doc); if(!d)return;
+    /* Όταν το χαρτί είναι η σελίδα 3 ενός κοινού αρχείου, ανοίγουμε ΣΤΗ ΣΕΛΙΔΑ 3.
+       Αλλιώς ο βαθμοφόρος θα φυλλομετρούσε ψάχνοντας ποια εννοούσε ο γονιός. */
+    docPreview([{path:d.path, label:d.title, page:+a.dataset.pg||null}]);});
   document.querySelectorAll('[data-oa]').forEach(b=>b.onclick=()=>{
     const sel=document.querySelector('[data-oc="'+b.dataset.oa+'"]');
     docAttach(b.dataset.op, b.dataset.oa, sel&&sel.value, after);});
@@ -6481,6 +6497,108 @@ function scanToFile(file, baseName){
    Το εφάπαξ —πιστοποιητικό γεννήσεως— δεν ξαναζητιέται. */
 function docCanReplace(r,e){ return !!e && r.cadence==='ετήσιο'; }
 
+/* ══ ΕΝΑ PDF ΜΕ ΟΛΑ ΜΕΣΑ ══════════════════════════════════════════════════
+   Ο γονιός κατεβάζει από τον γιατρό και το σχολείο ένα αρχείο με τέσσερα
+   χαρτιά. ΔΕΝ το σπάμε: θα σήμαινε είτε τέσσερα αντίγραφα του ίδιου αρχείου,
+   είτε να γράψουμε PDF writer στον φυλλομετρητή — και στις δύο περιπτώσεις
+   χάνεται το πρωτότυπο. Ο ίδιος κανόνας με τις σαρώσεις: ό,τι παρέδωσε
+   φυλάσσεται όπως ήρθε.
+   Αντ' αυτού: ΕΝΑ ανέβασμα, ένας δείκτης ανά χαρτί (enrollment_docs.page).
+
+   Και δεν ζητάμε αριθμό σελίδας στα τυφλά — κανείς δεν θυμάται «ποια ήταν η
+   σελίδα 3». Βλέπει τις σελίδες και δείχνει. */
+let _pdfjs=null;
+function pdfLib(){
+  if(_pdfjs)return _pdfjs;
+  const B='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  _pdfjs=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=B+'pdf.min.js';
+    s.onload=()=>{ const L=window.pdfjsLib;
+      if(!L)return rej(new Error('Ο αναγνώστης PDF δεν ξεκίνησε'));
+      L.GlobalWorkerOptions.workerSrc=B+'pdf.worker.min.js'; res(L); };
+    s.onerror=()=>{ _pdfjs=null; rej(new Error('Δεν φόρτωσε ο αναγνώστης PDF')); };
+    document.head.appendChild(s);
+  });
+  return _pdfjs;
+}
+/* Πόσες σελίδες — και μικρογραφίες. Πάνω από 30 σελίδες δεν είναι
+   δικαιολογητικό, είναι λάθος αρχείο: σταματάμε αντί να παγώσουμε το κινητό. */
+const PDFMAX=30;
+async function pdfThumbs(file, onEach){
+  const L=await pdfLib();
+  const buf=await file.arrayBuffer();
+  const doc=await L.getDocument({data:new Uint8Array(buf)}).promise;
+  const n=Math.min(doc.numPages, PDFMAX);
+  for(let i=1;i<=n;i++){
+    const pg=await doc.getPage(i);
+    const v0=pg.getViewport({scale:1});
+    const sc=Math.min(1.6, 260/Math.max(1,v0.width));
+    const v=pg.getViewport({scale:sc});
+    const cv=document.createElement('canvas');
+    cv.width=Math.round(v.width); cv.height=Math.round(v.height);
+    await pg.render({canvasContext:cv.getContext('2d'), viewport:v}).promise;
+    onEach(i, cv.toDataURL('image/jpeg',0.7));
+  }
+  return {pages:doc.numPages, shown:n};
+}
+
+/* Ο επιλογέας: μία μικρογραφία ανά σελίδα, και από κάτω «τι είναι αυτή».
+   Επιστρέφει πίνακα [{code,page}] — ή null αν πατήσει άκυρο. */
+function pdfAssign(file, reqs, preCode){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.className='pdsheet';
+    ov.innerHTML=`<div class="card" style="max-width:760px;width:100%;max-height:92vh;display:flex;flex-direction:column">
+      <div class="pad" style="flex:0 0 auto;border-bottom:1px solid var(--line)">
+        <b style="font-size:15px">Τι είναι η κάθε σελίδα;</b>
+        <div class="dim" style="font-size:12px;margin-top:3px">${esc(file.name)} — το αρχείο ανεβαίνει <b>ολόκληρο, μία φορά</b>. Δείξε μας μόνο πού είναι το κάθε χαρτί.</div>
+      </div>
+      <div id="pdGrid" class="pdgrid">
+        <div class="dim" style="font-size:13px;padding:18px">Διαβάζω τις σελίδες…</div></div>
+      <div class="pad" style="flex:0 0 auto;border-top:1px solid var(--line);display:flex;gap:7px">
+        <button class="btn" id="pdX" style="flex:1;justify-content:center">Άκυρο</button>
+        <button class="btn p" id="pdOK" style="flex:2;justify-content:center" disabled>Ανέβασμα</button></div></div>`;
+    document.body.appendChild(ov);
+    const done=v=>{ ov.remove(); resolve(v); };
+    $('pdX').onclick=()=>done(null);
+    ov.onclick=e=>{ if(e.target===ov)done(null) };
+
+    const grid=$('pdGrid'); let first=true;
+    const opt=sel=>`<option value="">—</option>`+reqs.map(r=>
+      `<option value="${esc(r.code)}"${sel===r.code?' selected':''}>${esc(r.label)}</option>`).join('');
+
+    pdfThumbs(file,(i,url)=>{
+      if(first){ grid.innerHTML=''; first=false; }
+      const d=document.createElement('div');
+      d.className='pdcell';
+      d.innerHTML=`<img src="${url}" alt="σελίδα ${i}">
+        <div class="pdnum">σελίδα ${i}</div>
+        <select data-pg="${i}">${opt(i===1?preCode:'')}</select>`;
+      grid.appendChild(d);
+      d.querySelector('select').onchange=sync;
+      sync();
+    }).then(info=>{
+      if(info.pages>info.shown){
+        const w=document.createElement('div');
+        w.className='dim'; w.style.cssText='grid-column:1/-1;font-size:12px';
+        w.textContent='Το αρχείο έχει '+info.pages+' σελίδες — δείχνω τις πρώτες '+info.shown+'.';
+        grid.appendChild(w);
+      }
+      sync();
+    }).catch(e=>{ done({error:e.message||String(e)}); });
+
+    function sync(){
+      const out=[...ov.querySelectorAll('[data-pg]')]
+        .filter(s=>s.value).map(s=>({code:s.value, page:+s.dataset.pg}));
+      const ok=$('pdOK'); if(!ok)return;
+      ok.disabled=!out.length;
+      ok.textContent=out.length>1?('Ανέβασμα — '+out.length+' χαρτιά'):'Ανέβασμα';
+      ok.onclick=()=>done(out);
+    }
+  });
+}
+
 function parentUpload(pid, only){
   const p=D.bh.find(x=>x.id===pid);
   const reqs=(D.dr||[]).filter(r=>r.active!==false&&(only?r.code===only:!edHas(p,r)));
@@ -6510,16 +6628,53 @@ function parentUpload(pid, only){
       f=scanned;
     }
     if(f.size>12*1024*1024)return toast('Πολύ μεγάλο (μέγιστο 12 MB)');
+
+    /* Δύο περιπτώσεις, καμία ενδιάμεση: ή ένα αρχείο ανά χαρτί, ή όλα μαζί.
+       Μονοσέλιδο (ή αν δεν φόρτωσε ο αναγνώστης) → όπως πάντα, ολόκληρο.
+       Πολυσέλιδο → δείχνει ο ίδιος πού είναι το κάθε χαρτί. */
+    let plan=[{code, page:null}];
+    if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){
+      const n=await pdfPageCount(f);
+      if(n&&n>1){
+        const all=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
+        const res=await pdfAssign(f, all, code);
+        if(!res)return;                                   // άκυρο
+        if(res.error)return toast('Σφάλμα: '+res.error);
+        plan=res;
+      }
+    }
+
     toast('Ανέβασμα…');
     try{
-      const doc=await docUpload(f,{person_id:pid,kind:req.label,title:req.label+' — '+YEAR});
-      const {data,error}=await sb.from('enrollment_docs').upsert({person_id:pid,req_code:code,
-        scout_year:req.cadence==='ετήσιο'?YEAR:null,received_on:new Date().toISOString().slice(0,10),
-        document_id:doc.id,notes:'Ανέβηκε από τον γονέα'},{onConflict:'person_id,req_code,scout_year'}).select().single();
-      if(error)throw error;
-      const i=(D.ed||[]).findIndex(x=>x.id===data.id); i>=0?D.ed[i]=data:(D.ed=D.ed||[]).push(data);
-      saveCache(); toast('Το λάβαμε — ευχαριστούμε'); drw.classList.remove('on'); V.mykids();
+      const multi=plan.length>1;
+      const doc=await docUpload(f,{person_id:pid,
+        kind:multi?'Δικαιολογητικά':req.label,
+        title:multi?('Δικαιολογητικά — '+YEAR):(req.label+' — '+YEAR)});
+      /* ΕΝΑ αρχείο, μία γραμμή ανά χαρτί — με τη σελίδα του. */
+      for(const a of plan){
+        const rq=(D.dr||[]).find(r=>r.code===a.code); if(!rq)continue;
+        const {data,error}=await sb.from('enrollment_docs').upsert({person_id:pid,req_code:a.code,
+          scout_year:rq.cadence==='ετήσιο'?YEAR:null,received_on:new Date().toISOString().slice(0,10),
+          document_id:doc.id,page:a.page,notes:'Ανέβηκε από τον γονέα'},
+          {onConflict:'person_id,req_code,scout_year'}).select().single();
+        if(error)throw error;
+        const i=(D.ed||[]).findIndex(x=>x.id===data.id); i>=0?D.ed[i]=data:(D.ed=D.ed||[]).push(data);
+      }
+      saveCache();
+      toast(plan.length>1?('Τα λάβαμε — '+plan.length+' χαρτιά'):'Το λάβαμε — ευχαριστούμε');
+      drw.classList.remove('on'); V.mykids();
     }catch(e){toast('Σφάλμα: '+(e.message||e))}};
+}
+/* Πόσες σελίδες. Αν η βιβλιοθήκη δεν φορτώσει (εκτός δικτύου, πεσμένο CDN)
+   επιστρέφει κενό και το ανέβασμα συνεχίζει σαν μονοσέλιδο — δεν μπλοκάρουμε
+   γονιό επειδή δεν κατέβηκε ένα script. */
+async function pdfPageCount(file){
+  try{
+    const L=await pdfLib();
+    const b=await file.arrayBuffer();
+    const d=await L.getDocument({data:new Uint8Array(b)}).promise;
+    return d.numPages;
+  }catch(e){ console.warn('pdfPageCount:', e); return null; }
 }
 function parentEdit(pid){
   const p=D.bh.find(x=>x.id===pid), g=gOf(p.registry_no)||{};
