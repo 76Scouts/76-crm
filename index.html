@@ -1302,7 +1302,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 21:06'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-19 21:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -5471,6 +5471,11 @@ function hkadeBody(){
         <b style="font-size:13.5px">${esc(r.label)}</b>
         ${r.badge?'<span class="dim" style="font-size:11px"> ● σήμα</span>':''}
         ${r.verifier&&r.verifier!=='Σύνοδος'?`<span class="pill" style="margin-left:5px;font-size:10.5px">${esc(r.verifier)}</span>`:''}
+        ${/* Ο τίτλος λέει ΠΩΣ λέγεται η απαίτηση· η περιγραφή λέει ΤΙ ζητά.
+             Χωρίς αυτήν ο Ανιχνευτής ρωτά τον Α.Κ.Α. κάθε φορά, και η
+             απάντηση αλλάζει ανάλογα με το ποιος ρωτήθηκε. */''}
+        ${r.description?`<div class="dim" style="font-size:12px;line-height:1.45;margin-top:3px">${esc(r.description)}</div>`
+          :`<div class="dim" style="font-size:11.5px;margin-top:3px;font-style:italic">— χωρίς περιγραφή —</div>`}
         <div style="margin-top:4px">${dedaBar(step)}
           <span class="dim" style="font-size:11.5px;margin-left:7px">${
             ok?'διαβεβαιώθηκε '+fdate(g.approved_on)
@@ -5586,9 +5591,20 @@ async function openDeda(who, reqId){
         :`<button class="btn sm" id="eeE">Σημείωσε ως απεσταλμένο</button>`}</div>`)}
 
     ${stepBox(7, g.approved_on
-      ? `<div class="kv"><span style="flex:1">Διαβεβαιώθηκε στη Σύνοδο</span>
+      ? (()=>{
+          /* ΠΟΙΑ Σύνοδος, όχι μόνο πότε. Το ka_progress.synod_id γραφόταν ήδη
+             στην έγκριση αλλά δεν το διάβαζε καμία οθόνη — το Η.Κ.Α.Δ.Ε. έλεγε
+             «διαβεβαιώθηκε» χωρίς να λέει από ποιο σώμα. Ο προεδρεύων είναι
+             ΤΗΣ ΣΥΓΚΕΚΡΙΜΕΝΗΣ Συνόδου: αλλάζει από σύνοδο σε σύνοδο, και δεν
+             είναι ο σημερινός Α.Κ.Α. */
+          const sy=(D.syn||[]).find(x=>x.id===g.synod_id);
+          const ch=sy&&D.bh.find(x=>x.id===sy.chair_id);
+          return `<div class="kv"><span style="flex:1">Διαβεβαιώθηκε στη Σύνοδο${sy&&sy.no?' αρ. '+esc(sy.no):''}</span>
            <b>${fdate(g.approved_on)}</b></div>
-         <div class="dim" style="font-size:12px;margin-top:6px">Υπογραφές Η.Κ.Α.Δ.Ε.:</div>
+         ${sy?`<div class="dim" style="font-size:11.5px;margin-top:2px">Προεδρεύων: ${ch?esc(nm(ch)):'<i>δεν καταγράφηκε</i>'}</div>`
+             :`<div class="dim" style="font-size:11.5px;margin-top:2px"><i>Δεν καταγράφηκε σε ποια Σύνοδο.</i></div>`}
+         <div class="dim" style="font-size:12px;margin-top:6px">Υπογραφές Η.Κ.Α.Δ.Ε.:</div>`;
+        })()+`
          <div style="display:grid;gap:5px;margin-top:5px">
            ${['Α.Κ.Α.','Πρόεδρος Συνόδου'].map(role=>{
              const s=sigs.find(x=>x.role===role);
@@ -6985,7 +7001,13 @@ function accessBody(){
     ]),true)}
     <div class="card" style="overflow:auto"><table><thead><tr><th>Πρόσωπο</th><th>Ρόλος</th><th class="hide-s">Τμήματα</th></tr></thead><tbody>
       ${rows.map(({prs,p})=>{const pr=prs[0];
-        const secs=(pr.sections||[]).length?pr.sections:(p&&p.section?[p.section]:[]);
+        /* ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΟ ΤΜΗΜΑ — secOf(), όπως κάθε άλλη οθόνη. Εδώ διάβαζε
+           σκέτο p.section, την ΠΑΛΙΑ στήλη του badgeholders, που δεν αλλάζει
+           στην αλλαγή χρονιάς. Αποτέλεσμα: οι νέοι Ανιχνευτές που ανέβηκαν
+           από την Ομάδα φαίνονταν ακόμη «Ομάδα», και το φίλτρο «Κοινότητα»
+           τούς έκοβε — ακριβώς τη στιγμή που τους φτιάχνεις λογαριασμούς.
+           Η αλήθεια της χρονιάς ζει στο member_year. */
+        const secs=(pr.sections||[]).length?pr.sections:(p?[secOf(p)].filter(Boolean):[]);
         return `<tr data-role="${esc(pr.access_role||'')}" data-sec="${esc(secs[0]||'')}"><td>${p?pnm(p):'<span class="dim">—</span>'}
         ${prs.length>1?`<div class="dim" style="font-size:11px">${prs.length} λογαριασμοί σύνδεσης — ένας άνθρωπος</div>`:''}</td>
         <td><select data-ar="${prs.map(x=>x.id).join(',')}" style="max-width:230px;font-size:12.5px">
