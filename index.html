@@ -1188,7 +1188,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-18 20:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 10:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -7429,7 +7429,19 @@ const ACC_PEND=['εκδόθηκε — δεν δόθηκε'];
 const ACC_HAS=[['me','Έφτιαξε προφίλ'],['sent','Στάλθηκε κωδικός — δεν μπήκε'],
                ['none','Ούτε κωδικός ακόμη'],['xoris','Χωρίς λογαριασμό (και τα δύο πιο πάνω)']];
 const accBucket=n=>n>=4?'me':n>=2?'sent':'none';
-const accHasOk=(sel,n)=>!sel||(sel==='xoris'?n<4:accBucket(n)===sel);
+/* ΔΕΧΕΤΑΙ ΤΗΝ ΚΑΤΑΣΤΑΣΗ, ΟΧΙ ΤΟ ΣΚΑΛΙ — και το βρίσκει μόνη της.
+   ΤΟ ΣΦΑΛΜΑ ΠΟΥ ΕΡΙΞΕ ΤΗΝ ΟΘΟΝΗ (16→19/09/2026): έγραφα
+   `accHasOk(ACCHAS, step(r.katastasi))`, αλλά το `step` δηλώνεται ΜΕΤΑ το
+   φιλτράρισμα. Ο παλιός κώδικας ήταν `!ACCHAS || (… step(…) …)` και το
+   `||` έκοβε πριν φτάσει στο `step` όταν δεν υπήρχε φίλτρο — δηλαδή στην
+   ΠΡΟΕΠΙΛΟΓΗ. Το όρισμα συνάρτησης ΔΕΝ κόβεται: υπολογίζεται πάντα, οπότε
+   «Cannot access 'step' before initialization» σε κάθε άνοιγμα της οθόνης.
+   Μάθημα: όταν αντικαθιστάς `||` με κλήση, χάνεις τη βραχυκύκλωση. */
+const accHasOk=(sel,katastasi)=>{
+  if(!sel)return true;
+  const n=ACC_STEP[katastasi]||0;
+  return sel==='xoris' ? n<4 : accBucket(n)===sel;
+};
 /* ΕΞΙ σκαλιά, όχι πέντε. Το ACC_STEP φτάνει ως το 5 (ενεργός) — ο πίνακας
    σταματούσε στο 4, οπότε ο ΕΝΕΡΓΟΣ έπαιρνε ACC_COL[5]=undefined και έβγαινε
    άχρωμος. Πράσινο δικαιούται μόνο όποιος μπορεί ΟΝΤΩΣ να μπει: το
@@ -7502,7 +7514,7 @@ V.accounts=()=>{
                           /* «Με λογαριασμό» = πάτησε το κατώφλι 4: έφτιαξε λογαριασμό.
                              Ό,τι είναι κάτω από αυτό ΔΕΝ μπορεί να μπει, όσους
                              κωδικούς κι αν του στείλαμε. */
-                          &&accHasOk(ACCHAS,step(r.katastasi)));
+                          &&accHasOk(ACCHAS,r.katastasi));
   const by={}; rows.forEach(r=>{by[r.katastasi]=(by[r.katastasi]||0)+1});
   const step=s=>ACC_STEP[s]||0;
 
@@ -7646,7 +7658,7 @@ V.accounts=()=>{
       &&(!f2||f2.includes(r.katastasi))
       &&(!ACCID||r.idiotita===ACCID)
       &&(!ACCSEC||secOfAcc(r).includes(ACCSEC))
-      &&accHasOk(ACCHAS,step(r.katastasi)))};
+      &&accHasOk(ACCHAS,r.katastasi))};
   }
   /* Οι μετρητές ξαναγράφονται ΧΩΡΙΣ να ξαναζωγραφιστεί η οθόνη. Πλακίδιο που
      λέει «1» ενώ από κάτω φαίνονται έντεκα είναι χειρότερο από καθόλου πλακίδιο. */
