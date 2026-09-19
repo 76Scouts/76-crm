@@ -1192,7 +1192,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 11:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 11:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -4550,8 +4550,10 @@ function archiveKeepWhy(carer, leavingId){
     .filter(l=>l.member_id!==leavingId)
     .map(l=>D.bh.find(b=>b.id===l.member_id))
     .filter(k=>k&&STAYS.includes(k.status));
-  if(others.length) return others.map(k=>nm(k)
-      +(k.status==='Σε αναστολή'?' (σε αναστολή — γυρίζει)':'')).join(' · ')
+  /* ΜΟΝΟ ΤΟ ΟΝΟΜΑ. Η «αναστολή» μπορεί να είναι για λόγους υγείας — το να
+     γράφεται δίπλα στο όνομα, σε οθόνη που ανοίγει κανείς για άλλη δουλειά,
+     είναι διαρροή. Ο κανόνας κρατά τον γονιό· ο λόγος δεν ανακοινώνεται. */
+  if(others.length) return others.map(k=>nm(k)).join(' · ')
     +(others.length===1?' συνεχίζει':' συνεχίζουν');
   return null;                       // κανένας λόγος να μείνει
 }
@@ -13404,6 +13406,7 @@ function remRulesBody(){
         ${r.repeat_days?`<span class="pill">επανάληψη κάθε ${r.repeat_days} μέρες, ως ${r.max_sends} φορές</span>`
                        :'<span class="pill">μία φορά</span>'}
         <span class="sp"></span>
+        <button class="btn sm gh" data-remedit="${esc(r.code)}">Άλλαξε</button>
         <button class="btn sm ${r.active?'gh':'p'}" data-remrule="${esc(r.code)}" data-on="${r.active?'1':''}">
           ${r.active?'Ενεργός — κλείσ᾿ τον':'Κλειστός — άνοιξέ τον'}</button></div>
       <div class="dim" style="font-size:12.5px;margin-top:7px;padding:9px;background:var(--bg);border-radius:var(--rs)">${r.body||''}</div>
@@ -13414,6 +13417,71 @@ function remRulesBody(){
     if(error)return toast('Δεν άλλαξε: '+error.message);
     const r=(D.rr||[]).find(x=>x.code===b.dataset.remrule); if(r)r.active=on;
     saveCache(); route('reminders');});
+  document.querySelectorAll('[data-remedit]').forEach(b=>b.onclick=()=>remRuleEdit(b.dataset.remedit));
+}
+
+/* ══ ΤΟ ΛΕΚΤΙΚΟ ΚΑΙ ΟΙ ΜΕΡΕΣ ΑΛΛΑΖΟΥΝ ΑΠΟ ΤΗΝ ΟΘΟΝΗ ══════════════════════
+   19/09/2026: η οθόνη έδειχνε τα κείμενα και έλεγε «ζουν στη βάση, όχι στον
+   κώδικα — αλλάζουν χωρίς να περιμένεις έκδοση». Αλήθεια για τη βάση, ψέμα
+   για τον χρήστη: το μόνο κουμπί ήταν άνοιγμα/κλείσιμο. Για να αλλάξει μια
+   λέξη χρειαζόταν εγώ και SQL.
+
+   ΠΡΟΕΠΙΣΚΟΠΗΣΗ ΜΕ ΠΡΑΓΜΑΤΙΚΕΣ ΤΙΜΕΣ: το {τι} και το {πότε} δεν λένε τίποτα
+   μέχρι να τα δεις γεμάτα. Κείμενο που γράφεις χωρίς να το βλέπεις όπως θα
+   φτάσει, φτάνει λάθος. */
+const REM_VARS=[['{τι}','τι αφορά — όχημα, πιστοποιητικό, σχολή'],
+                ['{πότε}','η ημερομηνία λήξης, γραμμένη ολογράφως']];
+function remPreview(body){
+  return String(body||'').replace(/\{τι\}/g,'<b>ΚΑ 1234 · Ασφάλεια</b>')
+                         .replace(/\{πότε\}/g,'<b>'+fdate(new Date(Date.now()+14*864e5).toISOString().slice(0,10))+'</b>');
+}
+function remRuleEdit(code){
+  const r=(D.rr||[]).find(x=>x.code===code); if(!r)return;
+  const draw=()=>{
+    drawer(r.title||code, `
+      <div class="muted" style="font-size:13px;line-height:1.6;margin-bottom:12px">
+        Ό,τι αλλάξεις εδώ ισχύει <b>από το επόμενο στάλσιμο</b>. Τα ήδη σταλμένα δεν αλλάζουν.</div>
+
+      <label>Τίτλος<input id="rrT" value="${esc(r.title||'')}"></label>
+
+      <div class="grow" style="margin-top:9px">
+        <label>Πόσες μέρες
+          <input id="rrO" type="number" value="${r.offset_days??0}">
+          <span class="dim" style="font-size:11.5px">αρνητικό = ΠΡΙΝ τη λήξη · θετικό = ΜΕΤΑ</span></label>
+        <label>Κάθε πόσες μέρες ξανά
+          <input id="rrR" type="number" min="0" value="${r.repeat_days??''}" placeholder="κενό = μία φορά"></label>
+        <label>Το πολύ φορές
+          <input id="rrM" type="number" min="1" max="20" value="${r.max_sends??1}"></label>
+      </div>
+
+      <div class="sec"><h3>Το κείμενο</h3></div>
+      <div class="dim" style="font-size:12px;margin-bottom:6px">
+        ${REM_VARS.map(([v,d])=>`<b>${esc(v)}</b> — ${esc(d)}`).join(' · ')}</div>
+      <textarea id="rrB" rows="12" style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px">${esc(r.body||'')}</textarea>
+
+      <div class="sec"><h3>Πώς θα φτάσει</h3></div>
+      <div class="card pad" id="rrPrev" style="font-size:13px;line-height:1.6">${remPreview(r.body)}</div>
+
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn p" id="rrSave">Αποθήκευση</button>
+        <button class="btn gh" onclick="document.getElementById('drw').classList.remove('on')">Άκυρο</button>
+      </div>`);
+    /* Η προεπισκόπηση ακολουθεί ό,τι γράφεις, χωρίς να πατήσεις τίποτα. */
+    const tb=$('rrB'); if(tb)tb.oninput=()=>{ const pv=$('rrPrev'); if(pv)pv.innerHTML=remPreview(tb.value) };
+    const sv=$('rrSave'); if(sv)sv.onclick=async()=>{
+      const v={title:$('rrT').value.trim()||r.title,
+               offset_days:parseInt($('rrO').value,10)||0,
+               repeat_days:$('rrR').value===''?null:(parseInt($('rrR').value,10)||null),
+               max_sends:Math.max(1,parseInt($('rrM').value,10)||1),
+               body:$('rrB').value};
+      sv.disabled=true;
+      const {error}=await sb.from('reminder_rules').update(v).eq('code',code);
+      if(error){sv.disabled=false;return toast('Δεν σώθηκε: '+error.message)}
+      Object.assign(r,v); saveCache(); toast('Αποθηκεύτηκε');
+      $('drw').classList.remove('on'); route('reminders');
+    };
+  };
+  draw();
 }
 
 /* ΤΑ ΚΡΑΤΗΜΕΝΑ ΕΙΝΑΙ ΔΟΥΛΕΙΑ, ΟΧΙ ΑΡΧΕΙΟ. Κάθε γραμμή εδώ είναι ένας
