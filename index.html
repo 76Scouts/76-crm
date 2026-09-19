@@ -710,7 +710,19 @@ tr.argrow td{background:var(--bg2)}
 .pdl{font-size:13.5px;font-weight:600;line-height:1.3}
 .pds{font-size:11.5px;color:var(--ink3);margin-top:2px;line-height:1.35}
 .pdw{font-size:11.5px;color:var(--warn);margin-top:3px;line-height:1.35}
-@media(max-width:420px){.pdoc{flex-wrap:wrap}.pdoc .btn{width:100%;justify-content:center;margin-top:4px}}
+.pdf{margin-top:3px;font-size:11.5px}
+.pdfa{color:var(--ink2);text-decoration:none;display:inline-flex;align-items:center;gap:4px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.pdfa:hover{text-decoration:underline}
+/* Αδέσποτα: ανέβηκαν σωστά, αλλά κανείς δεν είπε σε τι αντιστοιχούν. */
+.pdorph{margin-top:8px;padding:9px 10px;border:1px dashed var(--line);border-radius:10px}
+.pdorph>b{font-size:12.5px}
+.pdoc.orph{border-style:dashed;margin-top:6px}
+.pdoc.orph .pdi{background:var(--ink3);color:#fff}
+.pdo{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.pdo select{font-size:12px;max-width:200px;flex:1}
+@media(max-width:420px){.pdoc{flex-wrap:wrap}.pdoc .btn{width:100%;justify-content:center;margin-top:4px}
+  .pdo select,.pdo .btn{width:100%;max-width:none}}
 .crow{display:flex;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
 .crow.skip{opacity:.42}
 .crow .cn{flex:0 0 20px;height:20px;border-radius:50%;background:var(--line);color:var(--ink3);font-size:11px;display:grid;place-items:center}
@@ -1274,7 +1286,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 19:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 19:31'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -5670,8 +5682,8 @@ V.kidhealth=()=>{
   const cs=(D.cons||[]).filter(c=>c.person_id===kid.id&&c.scout_year===YEAR);
   const reqs=(D.dr||[]).filter(r=>r.active!==false&&(r.applies_to||'Μέλος')==='Μέλος')
                        .sort((a,b)=>(a.seq||0)-(b.seq||0));
-  const has=r=>(D.ed||[]).find(x=>x.person_id===kid.id&&x.req_code===r.code
-                 &&(r.cadence==='ετήσιο'?x.scout_year===YEAR:true));
+  /* Το ντόπιο `has` έφυγε: ήταν τρίτο αντίγραφο του edHas, με δικό του
+     ρίσκο να αποκλίνει. Η κατάσταση κρίνεται ΜΟΝΟ από το docState. */
 
   $('view').innerHTML=`${kidTabs()}
     <div class="card pad" style="margin-bottom:14px">
@@ -5689,21 +5701,12 @@ V.kidhealth=()=>{
       <b>Έντυπα εγγραφής</b>
       <div class="muted" style="margin-top:5px;font-size:13px">Μπορείς να τα ανεβάσεις εσύ,
         ή να τα φέρεις τυπωμένα στο τραπέζι των εγγραφών.</div>
-      <div style="margin-top:10px">${reqs.map(r=>{const e=has(r);
-        /* Ό,τι ανέβασες, το βλέπεις. Χωρίς αυτό, ανεβάζεις σε μαύρο κουτί και
-           δεν ξέρεις αν πήγε το σωστό αρχείο ή αν διαβάζεται. */
-        const doc=e&&e.document_id?(D.doc||[]).find(d=>d.id===e.document_id):null;
-        return `<div class="kv" style="border-top:1px solid var(--line);padding:8px 0">
-          <span style="flex:1;min-width:0"><b style="font-size:13.5px">${esc(r.label)}</b>
-            <div class="dim" style="font-size:11.5px">${esc(r.cadence)}${
-              e&&e.received_on?' · λάβαμε '+fdate(e.received_on):''}${
-              doc?' · '+esc(doc.title||''):''}</div></span>
-          ${doc?`<button class="btn sm gh" data-doc="${doc.id}" title="Άνοιγμα">${ic('book',13)} δες</button>`:''}
-          ${e?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">✓ το έχουμε</span>
-               ${docCanReplace(r,e)?`<button class="btn sm gh" data-pu="${kid.id}" data-code="${esc(r.code)}">αντικατάσταση</button>`:''}`
-             :'<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">εκκρεμεί</span>'}
-        </div>`}).join('')||'<div class="dim">—</div>'}</div>
-      <button class="btn p sm" data-pu="${kid.id}" style="margin-top:11px">Ανέβασμα εντύπου</button>
+      ${/* ΙΔΙΟΣ κώδικας με «Τα παιδιά μου». Πριν ήταν δύο διαφορετικές
+            υλοποιήσεις των ίδιων τεσσάρων χαρτιών: εδώ έγραφε «εφάπαξ» και
+            «εκκρεμεί», εκεί «μία φορά» και «λείπει» — ο γονιός νόμιζε ότι
+            κοιτούσε άλλο πράγμα. */''}
+      <div class="pdocs" style="margin-top:10px">${
+        reqs.map(r=>docRowHTML(kid,r)).join('')||'<div class="dim">—</div>'}${docOrphansHTML(kid)}</div>
     </div>
 
     <div class="card pad">
@@ -5720,9 +5723,7 @@ V.kidhealth=()=>{
       }).join('')||'<div class="dim">—</div>'}</div>
     </div>`;
 
-  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu,b.dataset.code));
-  document.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>{
-    const d=(D.doc||[]).find(x=>x.id===b.dataset.doc); if(d)docOpen(d.path);});
+  wireDocs(V.kidhealth);
   /* Πόσο φρέσκα είναι — χωρίς να δείξουμε τι λένε. */
   sb.rpc('medical_freshness',{p_person:kid.id}).then(({data})=>{
     const el=$('mfBox'); if(!el)return;
@@ -6154,18 +6155,78 @@ function docState(p,r){
               return {ok:false, w:'θέλει νέα υπογραφή', btn:'Νέο έντυπο', why:'Το παιδί έκλεισε τα 16 — υπογράφει πλέον και το ίδιο.'};
   return {ok:true, w:'το λάβαμε', e, btn:r.cadence==='ετήσιο'?'Αντικατάσταση':''};
 }
+/* Το αρχείο που κρατάμε για ένα δικαιολογητικό — αν κρατάμε. Οι παλιές
+   γραμμές από το έντυπο εγγραφών δεν έχουν αρχείο: «το έχουμε στο χαρτί». */
+const docFileOf=e=>e&&e.document_id?(D.doc||[]).find(d=>d.id===e.document_id)||null:null;
+
 function docRowHTML(p,r){
-  const s=docState(p,r), cad=DOCCAD[r.cadence]||r.cadence;
+  const s=docState(p,r), cad=DOCCAD[r.cadence]||r.cadence, f=docFileOf(s.e);
   return `<div class="pdoc${s.ok?'':' need'}">
     <div class="pdi">${s.ok?'✓':'!'}</div>
     <div style="flex:1;min-width:0">
       <div class="pdl">${esc(r.label)}</div>
       <div class="pds">${esc(cad)}${r.cadence==='ετήσιο'?' · '+esc(YEAR):''} · <b>${esc(s.w)}</b>${
         s.ok&&s.e&&s.e.received_on?' '+fdate(s.e.received_on):''}</div>
+      ${/* Χωρίς το όνομα του αρχείου ανεβάζεις σε μαύρο κουτί: δεν ξέρεις
+            αν πήγε το σωστό, ούτε ποιο από τα δύο κρατάμε. */''}
+      ${f?`<div class="pdf"><a href="#" class="pdfa" data-doc="${f.id}">${ic(fileIcon(f.mime),12)} ${esc(f.title||'αρχείο')}</a></div>`
+        :(s.e?`<div class="pds">στο χαρτί — δεν έχουμε σαρωμένο αντίγραφο</div>`:'')}
       ${s.why?`<div class="pdw">${esc(s.why)}</div>`:''}
     </div>
     ${s.btn?`<button class="btn sm ${s.ok?'':'p'}" data-pu="${p.id}" data-pc="${r.code}">${s.btn}</button>`:''}
   </div>`;
+}
+
+/* ══ ΑΔΕΣΠΟΤΑ ══
+   Ο Στάθης ανέβασε το «ΠΙΣΤΟΠΟΙΗΤΙΚΟ ΥΓΕΙΑΣ αντρεα.pdf» από την καρτέλα
+   αρχείων — σωστό αρχείο, σωστό παιδί, αλλά δεμένο σε τίποτα. Η λίστα
+   δικαιολογητικών δεν το κοίταζε, οπότε έδειχνε «λείπει» ενώ το είχαμε.
+   Ξαναδοκίμασε με φωτογραφία 76 δευτερόλεπτα μετά.
+   Δεν μαντεύω σε τι αντιστοιχεί: το βγάζω μπροστά και το δένει ΑΥΤΟΣ. */
+const docOrphans=p=>(D.doc||[]).filter(d=>d.person_id===p.id&&!d.event_id
+  &&!(D.ed||[]).some(e=>e.document_id===d.id));
+
+function docOrphanHTML(p,d){
+  const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
+  return `<div class="pdoc orph">
+    <div class="pdi">?</div>
+    <div style="flex:1;min-width:0">
+      <div class="pdl">${esc(d.title||'αρχείο')}</div>
+      <div class="pds">${esc(d.kind||'')}${d.uploaded_at?' · '+fdate(d.uploaded_at):''}
+        · <a href="#" class="pdfa" data-doc="${d.id}">δες το</a></div>
+      <div class="pdo">
+        <select data-oc="${d.id}">${reqs.map(r=>`<option value="${r.code}">${esc(r.label)}</option>`).join('')}</select>
+        <button class="btn sm p" data-oa="${d.id}" data-op="${p.id}">Σύνδεση</button>
+      </div>
+    </div>
+  </div>`;
+}
+function docOrphansHTML(p){
+  const o=docOrphans(p); if(!o.length)return '';
+  return `<div class="pdorph"><b>${o.length===1?'Ένα αρχείο ανέβηκε':'Αρχεία που ανέβηκαν'} χωρίς να πει σε τι αντιστοιχεί</b>
+    <div class="dim" style="font-size:11.5px;margin:3px 0 7px">Διάλεξε τι είναι, για να μετρήσει ως δικαιολογητικό.</div>
+    ${o.map(d=>docOrphanHTML(p,d)).join('')}</div>`;
+}
+async function docAttach(pid, docId, code, after){
+  const req=(D.dr||[]).find(r=>r.code===code); if(!req)return;
+  const rec={person_id:pid, req_code:code,
+    scout_year:req.cadence==='ετήσιο'?YEAR:null,
+    received_on:new Date().toISOString().slice(0,10),
+    document_id:docId, notes:'Συνδέθηκε από τον γονέα'};
+  const {data,error}=await sb.from('enrollment_docs')
+    .upsert(rec,{onConflict:'person_id,req_code,scout_year'}).select().single();
+  if(error)return toast('Σφάλμα: '+(error.message||error));
+  const i=(D.ed||[]).findIndex(x=>x.id===data.id); i>=0?D.ed[i]=data:(D.ed=D.ed||[]).push(data);
+  saveCache(); toast('Συνδέθηκε — ευχαριστούμε'); after&&after();
+}
+/* Μία σύνδεση καλωδίων για τις δύο οθόνες που δείχνουν τα ίδια χαρτιά. */
+function wireDocs(after){
+  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu,b.dataset.pc||b.dataset.code));
+  document.querySelectorAll('.pdfa').forEach(a=>a.onclick=e=>{e.preventDefault();
+    const d=(D.doc||[]).find(x=>x.id===a.dataset.doc); if(d)docPreview(d.path);});
+  document.querySelectorAll('[data-oa]').forEach(b=>b.onclick=()=>{
+    const sel=document.querySelector('[data-oc="'+b.dataset.oa+'"]');
+    docAttach(b.dataset.op, b.dataset.oa, sel&&sel.value, after);});
 }
 
 V.mykids=()=>{
@@ -6190,7 +6251,7 @@ V.mykids=()=>{
           <div class="v">${reqs.length-miss.length}<span class="dim" style="font-size:14px">/${reqs.length}</span></div>
           <div class="s">${miss.length?'λείπουν '+miss.length:'πλήρης'}</div></div>
       </div>
-      <div class="pdocs">${reqs.map(r=>docRowHTML(p,r)).join('')}</div>
+      <div class="pdocs">${reqs.map(r=>docRowHTML(p,r)).join('')}${docOrphansHTML(p)}</div>
       ${fl.length?`<div class="cflag">${fl.map(f=>`<b>${esc(f.kind)}:</b> ${esc(f.detail)}`).join(' · ')}</div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
         <button class="btn sm" data-pe="${p.id}">Τα στοιχεία μας</button></div>
@@ -6199,7 +6260,7 @@ V.mykids=()=>{
       <b>Τα παιδιά μου</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Ό,τι αφορά τα παιδιά σου στο 76ο. Βλέπεις μόνο τα δικά σου.</div></div>
     <div class="cgrid">${list.map(card).join('')}</div>`;
-  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu,b.dataset.pc));
+  wireDocs(V.mykids);
   document.querySelectorAll('[data-pe]').forEach(b=>b.onclick=()=>parentEdit(b.dataset.pe));
 };
 
