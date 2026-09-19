@@ -1192,7 +1192,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 10:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 11:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -4535,14 +4535,24 @@ const linkedKidsOf=id=>(D.cl||[]).filter(x=>x.carer_id===id&&!x.valid_to&&!x.res
 
    ΟΙ ΔΕΣΜΟΙ ΦΡΟΝΤΙΔΑΣ ΔΕΝ ΚΛΕΙΝΟΥΝ ΠΟΤΕ ΕΔΩ. Η αρχειοθέτηση είναι κατάσταση,
    όχι διαγραφή σχέσης: αν γυρίσει του χρόνου, ο γονιός είναι ακόμη ο γονιός. */
+/* ══ Η «ΣΕ ΑΝΑΣΤΟΛΗ» ΔΕΝ ΕΙΝΑΙ ΦΥΓΗ ═══════════════════════════════════════
+   19/09/2026: παραλίγο να αρχειοθετηθούν οι γονείς της Σταυριάνας Κυπριανού
+   και της Νικολέτας Πεχλιβάνη. Και οι δύο ήταν «Σε αναστολή» — η μία για
+   λόγους υγείας, με ρητή σημείωση στην καρτέλα της «Να ΜΗΝ αρχειοθετηθεί σε
+   καθάρισμα λίστας». Η αναστολή είναι ΠΡΟΣΩΡΙΝΗ: το παιδί γυρίζει, και
+   γυρίζει σε οικογένεια που πρέπει να είναι ακόμη εκεί.
+   ΑΡΑ: ενεργό ή σε αναστολή = λόγος να μείνει ο γονιός. */
+const STAYS=['Ενεργός','Σε αναστολή'];
 function archiveKeepWhy(carer, leavingId){
   /* Γιατί ΜΕΝΕΙ ενεργός ένας γονιός — με όνομα, όχι «έχει κι άλλα». */
   if(isLed(carer)) return 'είναι βαθμοφόρος';
   const others=linkedKidsOf(carer.id)
     .filter(l=>l.member_id!==leavingId)
     .map(l=>D.bh.find(b=>b.id===l.member_id))
-    .filter(k=>k&&k.status==='Ενεργός');
-  if(others.length) return others.map(k=>nm(k)).join(' · ')+(others.length===1?' συνεχίζει':' συνεχίζουν');
+    .filter(k=>k&&STAYS.includes(k.status));
+  if(others.length) return others.map(k=>nm(k)
+      +(k.status==='Σε αναστολή'?' (σε αναστολή — γυρίζει)':'')).join(' · ')
+    +(others.length===1?' συνεχίζει':' συνεχίζουν');
   return null;                       // κανένας λόγος να μείνει
 }
 
