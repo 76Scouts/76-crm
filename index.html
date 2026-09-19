@@ -116,6 +116,8 @@ button{font:inherit;color:inherit}
 .navall button:hover{color:var(--sidein)}
 .navall button.off{opacity:.35;cursor:default}
 .navg{padding:8px 10px 2px}
+/* Η μονή γραμμή δεν κουβαλά το padding της επικεφαλίδας που δεν έχει. */
+.navg.solo{padding:2px 10px}
 .navg>span{display:flex;align-items:center;gap:6px;padding:8px 8px 5px;font-size:10.5px;letter-spacing:.09em;
   text-transform:uppercase;color:var(--sidein2);font-weight:600;cursor:pointer;user-select:none;border-radius:var(--rs)}
 .navg>span:hover{color:var(--sidein)}
@@ -1188,7 +1190,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 10:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 10:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -2314,8 +2316,13 @@ function orphanGroup(){
   const parked=NAV_PARK.filter(([k])=>V[k]);
   /* Τα ψευδώνυμα (V.settings=()=>V.mysys()) υπάρχουν μόνο για να μη σπάνε
      παλιοί σύνδεσμοι. Δεν είναι οθόνες — δεν έχουν θέση σε λίστα. */
+  /* ΚΑΘΕ ΟΝΟΜΑ ΕΔΩ ΕΧΕΙ /*@alias*\/ ΔΙΠΛΑ ΤΟΥ ΣΤΗ ΔΗΛΩΣΗ ΤΟΥ.
+     Η λίστα είναι χειρόγραφη, άρα ξεχνιέται: το «templates» έλειπε και τα
+     Αταξινόμητα έδειχναν μόνιμα μία κατηγορία με ένα πράγμα — ένα ψευδώνυμο
+     που δεν είναι καν οθόνη. Δοκιμή στο tests.mjs αντιπαραβάλλει τα δύο και
+     κόβει το build αν ξαναξεχαστεί κάποιο. */
   const ALIAS=new Set(['settings','dev','progress','grants','certs','org','hkade',
-                       'sessions','mark','pass','badges','expiry']);
+                       'sessions','mark','pass','badges','expiry','templates']);
   const ids=Object.keys(V).filter(k=>!placed.has(k)&&!skip.has(k)&&!ALIAS.has(k)
               &&!parked.some(([p])=>p===k)).sort();
   if(!ids.length&&!parked.length)return null;
@@ -2418,6 +2425,19 @@ function renderNav(){
     +GROUPS.map(g=>{
     const its=g.g==='Αταξινόμητα'?g.items.filter(m=>allow(m.id)||K==='admin'||K==='dev')
                                  :g.items.filter(m=>allow(m.id)); if(!its.length)return '';
+    /* ══ ΟΜΑΔΑ ΜΕ ΕΝΑ ΣΤΟΙΧΕΙΟ ΔΕΝ ΕΙΝΑΙ ΟΜΑΔΑ ════════════════════════════
+       Επικεφαλίδα + μετρητής «1» + βελάκι που διπλώνει — τρία στοιχεία για να
+       δείξουν μία γραμμή. Και επειδή οι ρόλοι κρύβουν οθόνες, μια ομάδα των
+       πέντε γίνεται ομάδα του ενός χωρίς να το σχεδιάσει κανείς: ο γονέας
+       έβλεπε «Εγώ ως μέλος → Οι παρουσίες μου» σαν να είναι κατηγορία.
+       Κανόνας, όχι εξαίρεση: μία γραμμή ⇒ σκέτη γραμμή.
+       ΤΑ ΑΤΑΞΙΝΟΜΗΤΑ ΕΞΑΙΡΟΥΝΤΑΙ — εκεί η επικεφαλίδα ΕΙΝΑΙ το μήνυμα
+       («αυτό δεν το έχει τοποθετήσει κανείς ακόμη»). */
+    if(its.length===1 && g.g && g.g!=='Αταξινόμητα'){
+      const m=its[0];
+      return `<div class="navg solo" data-g="${esc(g.g)}"><button class="nav${ROUTE===m.id?' on':''}"
+        data-r="${m.id}" title="${esc(SUBS[m.id]||m.t)}">${ic(m.i)}<span>${esc(m.t)}</span></button></div>`;
+    }
     const shut=NAVSHUT[g.g]&&!its.some(m=>m.id===ROUTE);
     const flag=g.g==='Αταξινόμητα';
     return `<div class="navg${shut?' shut':''}${flag?' navpark':''}" data-g="${esc(g.g||'')}">${g.g?
@@ -2807,13 +2827,14 @@ async function openProfile(id){
   const df=$('dFiles'); if(df)df.onclick=()=>{const l=$('docList');
     if(l)l.scrollIntoView({behavior:'smooth',block:'center'}); const fi=$('docFile'); if(fi)fi.focus()};
   $('dArch').onclick=async()=>{
-    const arch=p.status!=='Αρχειοθετημένος';
-    if(!confirm(arch?`Αρχειοθέτηση: ${nm(p)};\n\nΘα φύγει από τις ενεργές λίστες αλλά το ιστορικό μένει ανέπαφο.`:`Επαναφορά ${nm(p)} στους ενεργούς;`))return;
-    const v={status:arch?'Αρχειοθετημένος':'Ενεργός'};
-    const {error}=await sb.from('badgeholders').update(v).eq('id',p.id);
-    if(error)return toast('Σφάλμα: '+error.message);
-    p.status=v.status; saveCache(); toast(arch?'Αρχειοθετήθηκε':'Επανήλθε');
-    drw.classList.remove('on'); route(ROUTE);};
+    if(p.status==='Αρχειοθετημένος'){
+      if(!confirm(`Επαναφορά ${nm(p)} στους ενεργούς;`))return;
+      const {error}=await sb.from('badgeholders').update({status:'Ενεργός'}).eq('id',p.id);
+      if(error)return toast('Σφάλμα: '+error.message);
+      p.status='Ενεργός'; saveCache(); toast('Επανήλθε');
+      drw.classList.remove('on'); route(ROUTE); return;
+    }
+    archiveFlow(p);};
   $('eCancel').onclick=()=>{$('dEditBox').style.display='none'};
   $('eSave').onclick=async()=>{
     const btn=$('eSave'); btn.disabled=true; btn.textContent='…';
@@ -4494,6 +4515,124 @@ function voidReg(personId){
 /* Ίδιοι κανόνες με τη my_children() της βάσης: λήξαντες δεσμοί έξω, κηδεμονικά έξω.
    Αν η οθόνη έδειχνε παιδί που η βάση κρύβει, ο φακός θα έλεγε ψέματα. */
 const linkedKidsOf=id=>(D.cl||[]).filter(x=>x.carer_id===id&&!x.valid_to&&!x.restricted);
+
+/* ══ ΑΡΧΕΙΟΘΕΤΗΣΗ — ΤΟ ΠΑΙΔΙ ΦΕΥΓΕΙ, Ο ΓΟΝΙΟΣ ΙΣΩΣ ΟΧΙ ═══════════════════════
+   Ο Α.Σ., 19/09/2026: «ο Ανδρέας Κωνσταντίνου δεν συνεχίζει ΑΛΛΑ η αδελφή του
+   η Μαρίνα συνεχίζει ως βαθμοφόρος — άρα αρχειοθετείται μόνο ο Ανδρέας και
+   όχι οι γονείς του, αφού είναι συνδεδεμένοι και με τη Μαρίνα».
+
+   Τρία πράγματα έκανε λάθος η παλιά αρχειοθέτηση:
+
+   1. ΑΛΛΑΖΕ ΜΟΝΟ ΤΟ status. Η φετινή εγγραφή (`member_year`) έμενε ζωντανή,
+      οπότε το παιδί συνέχιζε να μετριέται στα μέλη της χρονιάς, στα δίδακτρα
+      και στα παρουσιολόγια. «Αρχειοθετημένος» και «γραμμένος φέτος» ταυτόχρονα.
+   2. ΑΓΝΟΟΥΣΕ ΤΟΥΣ ΓΟΝΕΙΣ. Έμεναν ενεργοί για πάντα — ή τους έσβηνε κανείς
+      στο χέρι, μαζί με αυτούς που είχαν κι άλλο παιδί μέσα.
+   3. ΔΕΝ ΡΩΤΟΥΣΕ ΓΙΑΤΙ. Τον Νοέμβρη κανείς δεν θυμάται αν έφυγε, μετακόμισε,
+      ή απλώς δεν ξαναήρθε.
+
+   ΟΙ ΔΕΣΜΟΙ ΦΡΟΝΤΙΔΑΣ ΔΕΝ ΚΛΕΙΝΟΥΝ ΠΟΤΕ ΕΔΩ. Η αρχειοθέτηση είναι κατάσταση,
+   όχι διαγραφή σχέσης: αν γυρίσει του χρόνου, ο γονιός είναι ακόμη ο γονιός. */
+function archiveKeepWhy(carer, leavingId){
+  /* Γιατί ΜΕΝΕΙ ενεργός ένας γονιός — με όνομα, όχι «έχει κι άλλα». */
+  if(isLed(carer)) return 'είναι βαθμοφόρος';
+  const others=linkedKidsOf(carer.id)
+    .filter(l=>l.member_id!==leavingId)
+    .map(l=>D.bh.find(b=>b.id===l.member_id))
+    .filter(k=>k&&k.status==='Ενεργός');
+  if(others.length) return others.map(k=>nm(k)).join(' · ')+(others.length===1?' συνεχίζει':' συνεχίζουν');
+  return null;                       // κανένας λόγος να μείνει
+}
+
+function archiveFlow(p){
+  const kid=isMem(p);
+  const carers=(D.cl||[]).filter(c=>c.member_id===p.id&&!c.valid_to)
+    .map(c=>D.bh.find(b=>b.id===c.carer_id))
+    .filter(g=>g&&g.status==='Ενεργός');
+  const rows=carers.map(g=>({g, why:archiveKeepWhy(g,p.id)}));
+  const free=rows.filter(r=>!r.why);          // γονείς χωρίς άλλον λόγο να μείνουν
+  const my=myOf(p);
+
+  drawer('Αρχειοθέτηση: '+nm(p), `
+    <div class="muted" style="font-size:13.5px;line-height:1.65;margin-bottom:12px">
+      Φεύγει από τις ενεργές λίστες. <b>Το ιστορικό μένει ανέπαφο</b> — παρουσίες,
+      πρόοδος, πιστοποιητικά, και οι δεσμοί με τους γονείς. Αν γυρίσει, επανέρχεται
+      με ένα κουμπί.</div>
+
+    <label>Γιατί;
+      <input id="arWhy" placeholder="π.χ. μετακόμισε · δεν συνέχισε · πάει σε άλλο Σύστημα">
+    </label>
+    <div class="dim" style="font-size:12px;margin:4px 0 14px">
+      Τον Νοέμβρη κανείς δεν θυμάται. Γράφεται στην εγγραφή της χρονιάς.</div>
+
+    <div class="card pad" style="margin-bottom:12px">
+      <b style="font-size:13.5px">Τι θα γίνει</b>
+      <div class="kv" style="font-size:13px"><span style="flex:1">Κατάσταση</span>
+        <b>Αρχειοθετημένος</b></div>
+      ${my?`<div class="kv" style="font-size:13px"><span style="flex:1">Εγγραφή ${esc(YEAR)}</span>
+        <b>ακυρώνεται</b></div>`:`<div class="kv dim" style="font-size:13px">
+        <span style="flex:1">Εγγραφή ${esc(YEAR)}</span><span>δεν υπάρχει</span></div>`}
+    </div>
+
+    ${carers.length?`
+    <div class="sec"><h3>Οι γονείς του</h3><span class="n">${carers.length}</span></div>
+    <div class="card pad">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:9px">
+        Γονιός που δεν έχει άλλο ενεργό παιδί — και δεν είναι βαθμοφόρος — δεν έχει
+        λόγο να μένει ενεργός. Όποιος έχει, <b>μένει</b>, και φαίνεται γιατί.</div>
+      ${rows.map((r,i)=>r.why
+        ? `<div class="kv" style="font-size:13px;opacity:.65;border-top:1px solid var(--line);padding-top:7px">
+             <span style="flex:1">${pn(r.g)}</span>
+             <span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent"
+               title="Μένει ενεργός">μένει · ${esc(r.why)}</span></div>`
+        : `<label class="kv" style="font-size:13px;cursor:pointer;border-top:1px solid var(--line);padding-top:7px">
+             <input type="checkbox" class="arp" value="${r.g.id}" checked style="width:auto;margin-right:9px">
+             <span style="flex:1">${pn(r.g)}</span>
+             <span class="dim" style="font-size:11.5px">χωρίς άλλο ενεργό παιδί</span></label>`).join('')}
+    </div>`:''}
+
+    <div style="margin-top:15px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn p" id="arGo">Αρχειοθέτηση</button>
+      <button class="btn gh" onclick="document.getElementById('drw').classList.remove('on')">Άκυρο</button>
+    </div>
+    <div id="arMsg" class="dim" style="font-size:12.5px;margin-top:9px"></div>`);
+
+  $('arGo').onclick=async()=>{
+    const why=($('arWhy').value||'').trim();
+    const alsoIds=[...document.querySelectorAll('.arp:checked')].map(c=>c.value);
+    const also=alsoIds.map(id=>D.bh.find(b=>b.id===id)).filter(Boolean);
+    if(!confirm('Αρχειοθέτηση: '+nm(p)
+      +(also.length?'\nΚαι οι γονείς: '+also.map(nm).join(', '):'')
+      +(rows.some(r=>r.why)?'\n\nΜένουν ενεργοί: '+rows.filter(r=>r.why).map(r=>nm(r.g)).join(', '):'')
+      +'\n\nΤο ιστορικό και οι δεσμοί μένουν.'))return;
+    const b=$('arGo'); b.disabled=true; b.textContent='…';
+    const fail=m=>{b.disabled=false;b.textContent='Αρχειοθέτηση';toast(m);return false};
+
+    /* 1 · Ο ΙΔΙΟΣ */
+    {const {error}=await sb.from('badgeholders').update({status:'Αρχειοθετημένος'}).eq('id',p.id);
+     if(error)return fail('Δεν έγινε: '+error.message);
+     p.status='Αρχειοθετημένος';}
+
+    /* 2 · Η ΦΕΤΙΝΗ ΕΓΓΡΑΦΗ. Χωρίς αυτό μένει «γραμμένος φέτος» ενώ έφυγε. */
+    if(my){
+      const v={voided_at:new Date().toISOString(), voided_reason:why||'αρχειοθετήθηκε'};
+      const {error}=await sb.from('member_year').update(v).eq('id',my.id);
+      if(error)return fail('Η εγγραφή δεν ακυρώθηκε: '+error.message);
+      Object.assign(my,v);
+    }
+
+    /* 3 · ΟΙ ΓΟΝΕΙΣ ΧΩΡΙΣ ΑΛΛΟ ΠΑΙΔΙ. Οι δεσμοί ΔΕΝ αγγίζονται. */
+    for(const g of also){
+      const {error}=await sb.from('badgeholders').update({status:'Αρχειοθετημένος'}).eq('id',g.id);
+      if(error)return fail('Ο/Η '+nm(g)+' δεν αρχειοθετήθηκε: '+error.message);
+      g.status='Αρχειοθετημένος';
+    }
+
+    saveCache();
+    toast('Αρχειοθετήθηκε'+(also.length?' — μαζί '+also.length+' '+(also.length===1?'γονέας':'γονείς'):''));
+    $('drw').classList.remove('on'); route(ROUTE);
+  };
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    ΚΟΙΝΟΤΗΤΑ ΑΝΙΧΝΕΥΤΩΝ — Σύνοδος και απαιτήσεις
