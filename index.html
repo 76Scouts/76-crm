@@ -729,6 +729,12 @@ tr.argrow td{background:var(--bg2)}
             box-shadow:0 1px 3px rgba(0,0,0,.18)}
 .pdnum{font-size:11.5px;color:var(--ink3);margin:5px 0 4px;text-align:center}
 .pdcell select{width:100%;font-size:12px}
+/* Δύο επιλογές ανά σελίδα όταν ο γονιός έχει πάνω από ένα παιδί: ΠΟΙΑΝΟΥ
+   και ΤΙ. Χωρίς το «ποιανού», ένα οικογενειακό αρχείο θα έδειχνε στους
+   βαθμοφόρους του ενός παιδιού τα ιατρικά των αδελφών του. */
+.pdcell select+select{margin-top:4px}
+.pdcell.pdwho select:first-of-type{border-color:var(--acc)}
+.pdcell.pdbad{border-color:var(--bad)}
 .pdo{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .pdo select{font-size:12px;max-width:200px;flex:1}
 @media(max-width:420px){.pdoc{flex-wrap:wrap}.pdoc .btn{width:100%;justify-content:center;margin-top:4px}
@@ -1296,7 +1302,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 20:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-19 21:06'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -3879,6 +3885,11 @@ async function docUpload(file,meta){
   if(up.error)throw up.error;
   const rec={person_id:meta.person_id||null,event_id:meta.event_id||null,kind:meta.kind||'Άλλο',
     title:meta.title||file.name,path,mime:file.type,size_bytes:file.size,uploaded_by:ME.email};
+  /* restricted: το βλέπουν μόνο ο ίδιος και ο Α.Σ. (πολιτική documents_read).
+     original_path: από πού κόπηκε — «το πρωτότυπο φυλάσσεται», ίδια σύμβαση
+     με τις διορθωμένες σαρώσεις. */
+  if(meta.restricted)rec.restricted=true;
+  if(meta.original_path)rec.original_path=meta.original_path;
   const {data,error}=await sb.from('documents').insert(rec).select().single();
   if(error)throw error;
   D.doc=(D.doc||[]); D.doc.push(data); saveCache(); return data;
@@ -6578,16 +6589,51 @@ async function pdfThumbs(file, onEach){
   return {pages:doc.numPages, shown:n};
 }
 
-/* Ο επιλογέας: μία μικρογραφία ανά σελίδα, και από κάτω «τι είναι αυτή».
-   Επιστρέφει πίνακα [{code,page}] — ή null αν πατήσει άκυρο. */
-function pdfAssign(file, reqs, preCode){
+/* ══ ΓΡΑΨΙΜΟ PDF ══════════════════════════════════════════════════════════
+   Το pdf.js ΔΙΑΒΑΖΕΙ. Για να κόψουμε σελίδες σε δικό τους αρχείο χρειάζεται
+   συντάκτης. Το pdf-lib αντιγράφει τη σελίδα ΟΠΩΣ ΕΙΝΑΙ — το κείμενο μένει
+   ζωντανό και επιλέξιμο. Απόδοση σε εικόνα θα το έκανε φωτογραφία χαρτιού.
+   Φορτώνει μόνο όταν χρειαστεί, δηλαδή μόνο σε οικογενειακό αρχείο. */
+let _pdflib=null;
+function pdfWriteLib(){
+  if(_pdflib)return _pdflib;
+  _pdflib=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+    s.onload=()=>{ const L=window.PDFLib;
+      if(!L)return rej(new Error('Ο συντάκτης PDF δεν ξεκίνησε'));
+      res(L); };
+    s.onerror=()=>{ _pdflib=null; rej(new Error('Δεν φόρτωσε ο συντάκτης PDF')); };
+    document.head.appendChild(s);
+  });
+  return _pdflib;
+}
+/* Νέο PDF με ΜΟΝΟ τις σελίδες που ζητήθηκαν (1-based). */
+async function pdfSplit(file, pages, name){
+  const L=await pdfWriteLib();
+  const src=await L.PDFDocument.load(await file.arrayBuffer());
+  const out=await L.PDFDocument.create();
+  const cp=await out.copyPages(src, pages.map(n=>n-1));
+  cp.forEach(p=>out.addPage(p));
+  const bytes=await out.save();
+  return new File([bytes], name, {type:'application/pdf'});
+}
+
+/* Ο επιλογέας: μία μικρογραφία ανά σελίδα, και από κάτω «τι είναι αυτή» —
+   και, όταν ο γονιός έχει πάνω από ένα παιδί, «ποιανού είναι».
+   Επιστρέφει πίνακα [{pid,code,page}] — ή null αν πατήσει άκυρο. */
+function pdfAssign(file, reqs, preCode, kids, preKid){
+  const KIDS=(kids||[]).filter(Boolean);
+  const many=KIDS.length>1;
   return new Promise(resolve=>{
     const ov=document.createElement('div');
     ov.className='pdsheet';
     ov.innerHTML=`<div class="card" style="max-width:760px;width:100%;max-height:92vh;display:flex;flex-direction:column">
       <div class="pad" style="flex:0 0 auto;border-bottom:1px solid var(--line)">
-        <b style="font-size:15px">Τι είναι η κάθε σελίδα;</b>
-        <div class="dim" style="font-size:12px;margin-top:3px">${esc(file.name)} — το αρχείο ανεβαίνει <b>ολόκληρο, μία φορά</b>. Δείξε μας μόνο πού είναι το κάθε χαρτί.</div>
+        <b style="font-size:15px">${many?'Ποιανού είναι η κάθε σελίδα, και τι;':'Τι είναι η κάθε σελίδα;'}</b>
+        <div class="dim" style="font-size:12px;margin-top:3px">${esc(file.name)} — ${many
+          ? 'κάθε παιδί παίρνει <b>μόνο τις δικές του σελίδες</b>, σε δικό του αρχείο. Το πρωτότυπο φυλάσσεται ολόκληρο και το βλέπεις μόνο εσύ και ο Αρχηγός Συστήματος.'
+          : 'το αρχείο ανεβαίνει <b>ολόκληρο, μία φορά</b>. Δείξε μας μόνο πού είναι το κάθε χαρτί.'}</div>
       </div>
       <div id="pdGrid" class="pdgrid">
         <div class="dim" style="font-size:13px;padding:18px">Διαβάζω τις σελίδες…</div></div>
@@ -6602,6 +6648,11 @@ function pdfAssign(file, reqs, preCode){
     const grid=$('pdGrid'); let first=true;
     const opt=sel=>`<option value="">—</option>`+reqs.map(r=>
       `<option value="${esc(r.code)}"${sel===r.code?' selected':''}>${esc(r.label)}</option>`).join('');
+    /* «— ποιανού; —» ΠΡΩΤΟ και κενό: μια προεπιλεγμένη πρώτη τιμή θα έστελνε
+       σιωπηλά το χαρτί του ενός παιδιού στον φάκελο του άλλου. Ο κανόνας των
+       <select> ισχύει και εδώ: το «δεν ξέρω» δεν γίνεται ποτέ πρώτη επιλογή. */
+    const kopt=sel=>`<option value="">— ποιανού; —</option>`+KIDS.map(k=>
+      `<option value="${esc(k.id)}"${sel===k.id?' selected':''}>${esc(pn(k))}</option>`).join('');
 
     pdfThumbs(file,(i,url)=>{
       if(first){ grid.innerHTML=''; first=false; }
@@ -6609,9 +6660,10 @@ function pdfAssign(file, reqs, preCode){
       d.className='pdcell';
       d.innerHTML=`<img src="${url}" alt="σελίδα ${i}">
         <div class="pdnum">σελίδα ${i}</div>
+        ${many?`<select data-kid="${i}">${kopt(i===1?preKid:'')}</select>`:''}
         <select data-pg="${i}">${opt(i===1?preCode:'')}</select>`;
       grid.appendChild(d);
-      d.querySelector('select').onchange=sync;
+      d.querySelectorAll('select').forEach(s=>s.onchange=sync);
       sync();
     }).then(info=>{
       if(info.pages>info.shown){
@@ -6624,11 +6676,26 @@ function pdfAssign(file, reqs, preCode){
     }).catch(e=>{ done({error:e.message||String(e)}); });
 
     function sync(){
-      const out=[...ov.querySelectorAll('[data-pg]')]
-        .filter(s=>s.value).map(s=>({code:s.value, page:+s.dataset.pg}));
       const ok=$('pdOK'); if(!ok)return;
-      ok.disabled=!out.length;
-      ok.textContent=out.length>1?('Ανέβασμα — '+out.length+' χαρτιά'):'Ανέβασμα';
+      const out=[]; let missing=0;
+      [...ov.querySelectorAll('[data-pg]')].forEach(s=>{
+        const cell=s.closest('.pdcell');
+        if(!s.value){ if(cell)cell.classList.remove('pdbad'); return }
+        const pg=+s.dataset.pg;
+        const ks=many?ov.querySelector(`[data-kid="${pg}"]`):null;
+        const pid=many?(ks&&ks.value||''):(KIDS[0]&&KIDS[0].id)||'';
+        /* Σελίδα με χαρτί αλλά χωρίς παιδί: ΔΕΝ μαντεύουμε. Κοκκινίζει και
+           το κουμπί μένει κλειστό — καλύτερα να σταματήσει εδώ παρά να μπει
+           το ιατρικό του ενός στον φάκελο του άλλου. */
+        if(!pid){ missing++; if(cell)cell.classList.add('pdbad'); return }
+        if(cell)cell.classList.remove('pdbad');
+        out.push({pid, code:s.value, page:pg});
+      });
+      const kidsHit=new Set(out.map(x=>x.pid)).size;
+      ok.disabled=!out.length||missing>0;
+      ok.textContent = missing ? ('Λείπει «ποιανού» σε '+missing+(missing===1?' σελίδα':' σελίδες'))
+        : kidsHit>1 ? ('Ανέβασμα — '+out.length+' χαρτιά σε '+kidsHit+' παιδιά')
+        : out.length>1 ? ('Ανέβασμα — '+out.length+' χαρτιά') : 'Ανέβασμα';
       ok.onclick=()=>done(out);
     }
   });
@@ -6667,36 +6734,73 @@ function parentUpload(pid, only){
     /* Δύο περιπτώσεις, καμία ενδιάμεση: ή ένα αρχείο ανά χαρτί, ή όλα μαζί.
        Μονοσέλιδο (ή αν δεν φόρτωσε ο αναγνώστης) → όπως πάντα, ολόκληρο.
        Πολυσέλιδο → δείχνει ο ίδιος πού είναι το κάθε χαρτί. */
-    let plan=[{code, page:null}];
+    let plan=[{pid, code, page:null}];
     if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){
       const n=await pdfPageCount(f);
       if(n&&n>1){
         const all=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
-        const res=await pdfAssign(f, all, code);
+        const mine=myKids().map(x=>x.kid);
+        const res=await pdfAssign(f, all, code, mine, pid);
         if(!res)return;                                   // άκυρο
         if(res.error)return toast('Σφάλμα: '+res.error);
         plan=res;
       }
     }
 
+    /* ── ΠΟΣΑ ΠΑΙΔΙΑ ΑΦΟΡΑ ΤΟ ΑΡΧΕΙΟ ───────────────────────────────────
+       ΕΝΑ  → ανεβαίνει ΟΛΟΚΛΗΡΟ, μία φορά, ένας δείκτης σελίδας ανά χαρτί.
+              Το πρωτότυπο μένει ακέραιο, όπως το παρέδωσε ο γονιός.
+       ΠΟΛΛΑ → πρέπει να κοπεί. Ένα αρχείο με δείκτες από τρία παιδιά δίνει
+              στους βαθμοφόρους του ενός τα ιατρικά των αδελφών του — και δεν
+              λύνεται με πολιτική πρόσβασης, γιατί το πρόβλημα είναι ΜΕΣΑ στο
+              αρχείο. Κάθε παιδί παίρνει δικό του PDF με μόνο τις σελίδες του·
+              το πρωτότυπο ανεβαίνει μία φορά, restricted, στον ΓΟΝΙΟ. */
+    const byKid={};
+    plan.forEach(a=>{ const k=a.pid||pid; (byKid[k]=byKid[k]||[]).push(a) });
+    const pids=Object.keys(byKid);
+
+    const edRow=async(kid,a,docId,page)=>{
+      const rq=(D.dr||[]).find(r=>r.code===a.code); if(!rq)return;
+      const {data,error}=await sb.from('enrollment_docs').upsert({person_id:kid,req_code:a.code,
+        scout_year:rq.cadence==='ετήσιο'?YEAR:null,received_on:new Date().toISOString().slice(0,10),
+        document_id:docId,page:page,notes:'Ανέβηκε από τον γονέα'},
+        {onConflict:'person_id,req_code,scout_year'}).select().single();
+      if(error)throw error;
+      const i=(D.ed||[]).findIndex(x=>x.id===data.id); i>=0?D.ed[i]=data:(D.ed=D.ed||[]).push(data);
+    };
+
     toast('Ανέβασμα…');
     try{
-      const multi=plan.length>1;
-      const doc=await docUpload(f,{person_id:pid,
-        kind:multi?'Δικαιολογητικά':req.label,
-        title:multi?('Δικαιολογητικά — '+YEAR):(req.label+' — '+YEAR)});
-      /* ΕΝΑ αρχείο, μία γραμμή ανά χαρτί — με τη σελίδα του. */
-      for(const a of plan){
-        const rq=(D.dr||[]).find(r=>r.code===a.code); if(!rq)continue;
-        const {data,error}=await sb.from('enrollment_docs').upsert({person_id:pid,req_code:a.code,
-          scout_year:rq.cadence==='ετήσιο'?YEAR:null,received_on:new Date().toISOString().slice(0,10),
-          document_id:doc.id,page:a.page,notes:'Ανέβηκε από τον γονέα'},
-          {onConflict:'person_id,req_code,scout_year'}).select().single();
-        if(error)throw error;
-        const i=(D.ed||[]).findIndex(x=>x.id===data.id); i>=0?D.ed[i]=data:(D.ed=D.ed||[]).push(data);
+      if(pids.length<=1){
+        const kid=pids[0]||pid, rows=byKid[kid]||plan;
+        const multi=rows.length>1;
+        const doc=await docUpload(f,{person_id:kid,
+          kind:multi?'Δικαιολογητικά':req.label,
+          title:multi?('Δικαιολογητικά — '+YEAR):(req.label+' — '+YEAR)});
+        for(const a of rows) await edRow(kid,a,doc.id,a.page);
+        toast(multi?('Τα λάβαμε — '+rows.length+' χαρτιά'):'Το λάβαμε — ευχαριστούμε');
+      }else{
+        /* Χωρίς τον συντάκτη δεν κόβουμε — και ΔΕΝ ανεβάζουμε ολόκληρο το
+           οικογενειακό αρχείο σε κανένα παιδί. Λέμε τι να κάνει. */
+        try{ await pdfWriteLib() }
+        catch(e){ return toast('Δεν φόρτωσε ο συντάκτης PDF. Ανέβασε χωριστό αρχείο για κάθε παιδί.') }
+
+        const orig=await docUpload(f,{person_id:ME.person_id, restricted:true,
+          kind:'Πρωτότυπο γονέα', title:'Πρωτότυπο — '+f.name});
+        let n=0;
+        for(const kid of pids){
+          const rows=byKid[kid].slice().sort((a,b)=>a.page-b.page);
+          const part=await pdfSplit(f, rows.map(r=>r.page), 'dikaiologitika_'+YEAR+'.pdf');
+          const doc=await docUpload(part,{person_id:kid, original_path:orig.path,
+            kind:rows.length>1?'Δικαιολογητικά':(D.dr||[]).find(r=>r.code===rows[0].code)?.label||'Δικαιολογητικά',
+            title:'Δικαιολογητικά — '+YEAR});
+          /* Η σελίδα είναι πλέον η θέση ΜΕΣΑ ΣΤΟ ΝΕΟ αρχείο, όχι στο πρωτότυπο. */
+          for(let ix=0; ix<rows.length; ix++) await edRow(kid, rows[ix], doc.id, ix+1);
+          n+=rows.length;
+        }
+        toast('Τα λάβαμε — '+n+' χαρτιά σε '+pids.length+' παιδιά · το πρωτότυπο φυλάσσεται');
       }
       saveCache();
-      toast(plan.length>1?('Τα λάβαμε — '+plan.length+' χαρτιά'):'Το λάβαμε — ευχαριστούμε');
       drw.classList.remove('on'); V.mykids();
     }catch(e){toast('Σφάλμα: '+(e.message||e))}};
 }
