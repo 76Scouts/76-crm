@@ -1202,7 +1202,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 12:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 12:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -13533,18 +13533,46 @@ function remSentBody(){
   wireVQ();
 }
 
+/* ══ ΚΑΝΟΝΑΣ ΧΩΡΙΣ ΠΑΡΑΛΗΠΤΕΣ ══════════════════════════════════════════════
+   19/09/2026: τέσσερις κανόνες είχαν κείμενο, μέρες και διακόπτη — και καμία
+   σύνδεση με το ποιος τους παίρνει. Το άναμμά τους δεν έστελνε τίποτα και δεν
+   έβγαζε σφάλμα· θα το καταλάβαινες έναν μήνα μετά, από το ότι κανείς δεν
+   ανανέωσε. Δύο κατάλογοι για το ίδιο πράγμα πάντα αποκλίνουν, οπότε η βάση
+   διαβάζει ΤΗΝ ΙΔΙΑ ΤΗΣ ΤΗ ΣΥΝΑΡΤΗΣΗ και λέει ποιοι κωδικοί λείπουν. */
+let REM_UNWIRED=null;
+async function remUnwired(){
+  if(REM_UNWIRED)return REM_UNWIRED;
+  try{ const {data}=await sb.rpc('reminder_rules_unwired'); REM_UNWIRED=data||[] }
+  catch(e){ REM_UNWIRED=[] }
+  return REM_UNWIRED;
+}
 function remRulesBody(){
   const rs=(D.rr||[]).slice().sort((a,b)=>(a.seq||0)-(b.seq||0));
   const when=r=>r.offset_days<0?`${-r.offset_days} μέρες ΠΡΙΝ τη λήξη`
              :r.offset_days===0?'την ημέρα της λήξης'
              :`${r.offset_days} ${r.offset_days===1?'μέρα':'μέρες'} ΜΕΤΑ τη λήξη`;
+  /* Ο έλεγχος τρέχει από πίσω και σημαδεύει τις κάρτες όταν γυρίσει. */
+  remUnwired().then(u=>{
+    if(!u||!u.length)return;
+    u.forEach(x=>{
+      const c=document.querySelector('[data-remcard="'+CSS.escape(x.code)+'"]');
+      if(!c||c.querySelector('.remnw'))return;
+      c.insertAdjacentHTML('afterbegin',
+        `<div class="remnw" style="background:var(--badbg);color:var(--bad);border-radius:var(--rs);
+           padding:8px 10px;font-size:12.5px;margin-bottom:8px">
+           <b>Δεν έχει παραλήπτες.</b> Το κείμενο υπάρχει, αλλά η βάση δεν ξέρει
+           σε ποιον αφορά — αν την ενεργοποιήσεις, δεν θα φύγει τίποτα.</div>`);
+      const btn=c.querySelector('[data-remrule]');
+      if(btn&&!x.active){btn.disabled=true; btn.textContent='Χωρίς παραλήπτες'}
+    });
+  });
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
       <b>Οι κανόνες</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Πότε φεύγει το καθένα και τι λέει.
         Τα κείμενα ζουν <b>στη βάση</b>, όχι στον κώδικα — οι οδηγίες αλλάζουν όταν αλλάξει η
         διαδικασία, χωρίς να περιμένεις έκδοση.</div></div>
-    ${rs.map(r=>`<div class="card pad" style="margin-bottom:9px${r.active?'':';opacity:.66'}">
+    ${rs.map(r=>`<div class="card pad" data-remcard="${esc(r.code)}" style="margin-bottom:9px${r.active?'':';opacity:.66'}">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <b>${esc(r.title)}</b>
         <span class="pill">${esc(when(r))}</span>
