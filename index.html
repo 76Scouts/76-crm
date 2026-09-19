@@ -1251,7 +1251,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 15:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 16:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -16964,7 +16964,10 @@ V.wl2=()=>{
     if(!g.sure)UNSURE.push(r);
     const k=(g.g===null||g.g===undefined)?99:g.g;
     (G.get(k)||G.set(k,[]).get(k)).push(r); });
-  const open=r=>WL_OPEN.includes(r.outcome);
+  /* «Όχι φέτος» ΔΕΝ είναι κλειστό. Ο ίδιος το λέει γαλάζιο: «απάντησαν
+     αρνητικά για φέτος ΑΛΛΑ θέλουν να παραμείνουν στη λίστα». Το πρώτο
+     ζωγράφισμα τούς έκρυβε — δηλαδή έσβηνα ανθρώπους που περιμένουν. */
+  const open=r=>WL_OPEN.includes(r.outcome)||r.outcome===WL_LATER;
   const keys=[...G.keys()].sort((a,b)=>a-b);
   /* ΑΝΟΙΓΕΙ ΕΚΕΙ ΠΟΥ ΤΟ ΑΦΗΣΕΣ — όπως το Excel. Η προεπιλογή «η πρώτη τάξη
      με ανοιχτές» σε πετούσε κάθε φορά στους ΠΙΟ ΜΙΚΡΟΥΣ, ενώ η δουλειά
@@ -17025,7 +17028,7 @@ V.wl2=()=>{
         <b style="font-size:13px">Γράφτηκαν φέτος · ${done.length}</b>
         <div style="font-size:13px;margin-top:4px">${done.map(r=>esc(wlPlain(r))).join(' · ')}</div></div>`:''}
       ${wait.length?`<div class="card" style="overflow:auto"><table class="wl2"><tbody>${
-        wait.map((r,i)=>wl2Row(r,i)).join('')}</tbody></table></div>`
+        wait.map((r,i)=>wl2Row(r,i,!q&&WL2.cls!=='?')).join('')}</tbody></table></div>`
        :`<div class="uc"><h3>Κανείς εδώ</h3><p>${q?'Η αναζήτηση δεν βρήκε κανέναν.'
           :'Καμία ανοιχτή αίτηση σε αυτή την τάξη.'}</p></div>`}`;
     body.querySelectorAll('[data-wl2p]').forEach(b=>b.onclick=async()=>{
@@ -17054,8 +17057,17 @@ V.wl2=()=>{
   const mo=$('wl2more'); if(mo)mo.onclick=()=>toast('Τα παλιά φίλτρα είναι στη «Λίστα αναμονής (παλιό)»');
 };
 
+/* Η ηλικία ΔΙΚΗ ΤΗΣ, όχι δανεική: η `age` της παλιάς οθόνης είναι τοπική
+   μέσα στη V.waitlist και δεν φαίνεται από εδώ. Την κάλεσα και η οθόνη
+   έσκαγε σε ΚΑΘΕ γραμμή με ημερομηνία γέννησης — 149 από 170 — ενώ τα 698
+   τεστ περνούσαν, γιατί τα δοκιμαστικά παιδιά μου δεν είχαν γενέθλια. */
+const wl2Age=d=>{ if(!d)return '';
+  const b=new Date(d+'T12:00:00'), t=new Date(); if(isNaN(b))return '';
+  let a=t.getFullYear()-b.getFullYear();
+  if(t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()))a--;
+  return a+' χρ.'; };
 /* Η ΓΡΑΜΜΗ. Ονομα · τάξη · τηλέφωνο · η σημείωσή ΤΟΥ ολόκληρη · πέντε κουμπιά. */
-function wl2Row(r,i){
+function wl2Row(r,i,hideCls){
   const g=wl2G(r), c=wl2Col(r);
   const ct=wlCts(r)[0];
   const numc=(ct&&WL_NOANS.has(ct.kind))?' c-num':'';
@@ -17068,16 +17080,19 @@ function wl2Row(r,i){
       <div class="wl2nm c-${c}">${esc(wlPlain(r))}${r.related_76||r.sibling_of||r.parent_leader_id
         ?'<i class="wlprio'+(wlPrio(r)?'':' said')+'">'+(wlPrio(r)?'ΠΡΟΤΕΡΑΙΟΤΗΤΑ':'ΔΗΛΩΘΗΚΕ')+'</i>':''}</div>
       <div class="dim" style="font-size:11.5px">
-        ${r.dob?fdate(r.dob)+' · '+age(r.dob):'χωρίς ημ. γέννησης'}${r.applicant_name?' · '+esc(r.applicant_name):''}</div>
+        ${r.dob?wl2Age(r.dob):'<b style="color:var(--warn)">χωρίς ημ. γέννησης</b>'}${
+          r.applicant_name?' · '+esc(r.applicant_name):''}</div>
       ${r.note?`<div class="wl2note">${esc(r.note)}</div>`:''}
     </td>
-    <td style="white-space:nowrap">
+    ${/* Μέσα στην καρτέλα «Γ΄ Δημ.» η στήλη έγραφε «Γ΄ Δημ.» έντεκα φορές.
+         Φαίνεται μόνο όπου προσθέτει: στην αναζήτηση και στους αβέβαιους. */''}
+    ${(hideCls&&g.sure)?'':`<td style="white-space:nowrap">
       ${g.sure
         ? `<span class="pill">${esc(wlClass(g.g))}</span>`
         : `<select data-wl2g="${r.id}" style="max-width:150px;font-size:12px">
              <option value="">⚠ ${esc(g.src?('δήλωσε '+g.src+(g.year?' ('+g.year+')':'')):'άγνωστη')}</option>
              ${['ΠΙΟ ΜΙΚΡΟΙ',...WLGR].map(x=>`<option${x===wlClass(g.g)?' selected':''}>${x}</option>`).join('')}
-           </select>`}</td>
+           </select>`}</td>`}
     <td style="white-space:nowrap">${ph?`<a class="btn sm wltel" href="tel:${esc(ph)}">${fphone(ph)}</a>`:'<span class="dim">—</span>'}</td>
     <td class="wl2acts">${btn('yes','Ναι')}${btn('back','Θα με πάρει')}${btn('again','Αναπάντητη')}${btn('no','Όχι')}${btn('later','Του χρόνου')}</td>
   </tr>`;
