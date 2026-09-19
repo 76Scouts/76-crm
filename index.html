@@ -698,6 +698,19 @@ tr.argrow td{background:var(--bg2)}
 .cflag{font-size:12.5px;background:var(--line);border-radius:8px;padding:6px 9px;margin-bottom:7px;line-height:1.45}
 .cflag.urg{background:var(--badbg);color:var(--bad);font-weight:500}
 .cflag.priv{background:transparent;border:1px dashed var(--line);color:var(--ink3)}
+/* Τα τέσσερα δικαιολογητικά στην οθόνη του γονέα. Το «λείπει» δεν στηρίζεται
+   μόνο στο χρώμα: έχει και σύμβολο, και τη λέξη γραμμένη. */
+.pdocs{display:flex;flex-direction:column;gap:6px;margin:4px 0 2px}
+.pdoc{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.pdoc.need{border-color:var(--warn);background:var(--warnbg,transparent)}
+.pdi{width:21px;height:21px;flex:0 0 21px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+     font-size:12px;font-weight:700;background:var(--line);color:var(--ink3)}
+.pdoc:not(.need) .pdi{background:var(--okbg,var(--line));color:var(--ok)}
+.pdoc.need .pdi{background:var(--warn);color:#fff}
+.pdl{font-size:13.5px;font-weight:600;line-height:1.3}
+.pds{font-size:11.5px;color:var(--ink3);margin-top:2px;line-height:1.35}
+.pdw{font-size:11.5px;color:var(--warn);margin-top:3px;line-height:1.35}
+@media(max-width:420px){.pdoc{flex-wrap:wrap}.pdoc .btn{width:100%;justify-content:center;margin-top:4px}}
 .crow{display:flex;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
 .crow.skip{opacity:.42}
 .crow .cn{flex:0 0 20px;height:20px;border-radius:50%;background:var(--line);color:var(--ink3);font-size:11px;display:grid;place-items:center}
@@ -1261,7 +1274,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 19:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 19:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -6115,6 +6128,46 @@ V.myprofile=()=>{
   };
 };
 
+/* ══ ΤΑ ΤΕΣΣΕΡΑ ΧΑΡΤΙΑ, ΟΠΩΣ ΤΑ ΒΛΕΠΕΙ Ο ΓΟΝΙΟΣ ══
+   Πριν: ένα κουμπί «Ανέβασμα δικαιολογητικού» και από πίσω ένα κρυφό
+   dropdown. Ο γονιός δεν μάθαινε ποτέ τι του ζητάμε, πόσο συχνά, ούτε τι
+   έχουμε ήδη. Τώρα κάθε χαρτί είναι δική του γραμμή με δικό του κουμπί. */
+const DOCCAD={'εφάπαξ':'μία φορά','ετήσιο':'κάθε χρονιά','μέχρι ανάκληση':'μέχρι να αλλάξει'};
+
+/* Στα 16 το έντυπο συγκαταθέσεων θέλει ΝΕΑ υπογραφή: από εκείνη την ηλικία
+   αποφασίζει και το ίδιο το μέλος, όχι μόνο ο κηδεμόνας. Κριτήριο: υπάρχει
+   έντυπο, αλλά υπογράφηκε ΠΡΙΝ κλείσει τα 16.
+   Χωρίς ημερομηνία γέννησης δεν μαντεύουμε — δεν ζητάμε τίποτα. */
+function docNeeds16(p,r){
+  if(r.code!=='SYGKATATHESI')return false;
+  const d=dobOf(p); if(!d)return false;
+  if(agey(d)<16)return false;
+  const e=edHas(p,r); if(!e||!e.received_on)return false;
+  const sixteen=new Date(d); sixteen.setFullYear(sixteen.getFullYear()+16);
+  return new Date(e.received_on)<sixteen;
+}
+/* Μία κατάσταση ανά χαρτί — καμία άλλη συνάρτηση δεν κρίνει το ίδιο πράγμα. */
+function docState(p,r){
+  const e=edHas(p,r);
+  if(!e)      return {ok:false, w:'λείπει',           btn:'Ανέβασμα'};
+  if(docNeeds16(p,r))
+              return {ok:false, w:'θέλει νέα υπογραφή', btn:'Νέο έντυπο', why:'Το παιδί έκλεισε τα 16 — υπογράφει πλέον και το ίδιο.'};
+  return {ok:true, w:'το λάβαμε', e, btn:r.cadence==='ετήσιο'?'Αντικατάσταση':''};
+}
+function docRowHTML(p,r){
+  const s=docState(p,r), cad=DOCCAD[r.cadence]||r.cadence;
+  return `<div class="pdoc${s.ok?'':' need'}">
+    <div class="pdi">${s.ok?'✓':'!'}</div>
+    <div style="flex:1;min-width:0">
+      <div class="pdl">${esc(r.label)}</div>
+      <div class="pds">${esc(cad)}${r.cadence==='ετήσιο'?' · '+esc(YEAR):''} · <b>${esc(s.w)}</b>${
+        s.ok&&s.e&&s.e.received_on?' '+fdate(s.e.received_on):''}</div>
+      ${s.why?`<div class="pdw">${esc(s.why)}</div>`:''}
+    </div>
+    ${s.btn?`<button class="btn sm ${s.ok?'':'p'}" data-pu="${p.id}" data-pc="${r.code}">${s.btn}</button>`:''}
+  </div>`;
+}
+
 V.mykids=()=>{
   const list=myKids();
   if(!list.length)return $('view').innerHTML=`<div class="uc"><div class="ico">${ic('home',26)}</div>
@@ -6123,6 +6176,7 @@ V.mykids=()=>{
     const y=myOf(p)||{};   // το ιατρικό ΔΕΝ διαβάζεται εδώ: η κάρτα δεν το δείχνει
     const fl=(D.mf||[]).filter(f=>f.person_id===p.id&&['Ιατρικό','Διατροφή'].includes(f.kind));
     const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
+    const miss=reqs.filter(r=>!docState(p,r).ok);   // ΜΙΑ πηγή: ό,τι λέει η γραμμή, λέει και το πλακίδιο
     const ses=D.ss.filter(s=>s.section===secOf(p)&&s.scout_year===YEAR);
     const att=D.att.filter(a=>a.person_id===p.id&&ses.some(s=>s.id===a.session_id));
     const pres=att.filter(a=>a.status==='Παρών').length;
@@ -6132,23 +6186,20 @@ V.mykids=()=>{
         <div class="dim" style="font-size:12px">${esc(secOf(p)||'')}${y.group_name?' · '+esc(y.group_name):''}${y.grade?' · '+esc(y.grade):''}</div></div></div>
       <div class="tiles" style="margin:8px 0">
         <div class="tile" style="cursor:default"><div class="k">Παρουσίες</div><div class="v">${att.length?Math.round(100*pres/att.length):'—'}${att.length?'%':''}</div><div class="s">${pres} από ${att.length}</div></div>
-        <div class="tile ${reqs.filter(r=>!edHas(p,r)).length?'warn':''}" style="cursor:default"><div class="k">Δικαιολογητικά</div>
-          <div class="v">${reqs.filter(r=>edHas(p,r)).length}<span class="dim" style="font-size:14px">/${reqs.length}</span></div>
-          <div class="s">${reqs.filter(r=>!edHas(p,r)).length?'λείπουν '+reqs.filter(r=>!edHas(p,r)).length:'πλήρης'}</div></div>
+        <div class="tile ${miss.length?'warn':''}" style="cursor:default"><div class="k">Δικαιολογητικά</div>
+          <div class="v">${reqs.length-miss.length}<span class="dim" style="font-size:14px">/${reqs.length}</span></div>
+          <div class="s">${miss.length?'λείπουν '+miss.length:'πλήρης'}</div></div>
       </div>
-      <div style="font-size:12.5px;margin-bottom:6px">${reqs.map(r=>{const has=edHas(p,r);
-        return `<div class="kv"><b style="flex:1">${esc(r.label)}</b>
-          <span class="${has?'':'dim'}" style="${has?'color:var(--ok)':''}">${has?'✓ παραλήφθηκε':'εκκρεμεί'}</span></div>`}).join('')}</div>
+      <div class="pdocs">${reqs.map(r=>docRowHTML(p,r)).join('')}</div>
       ${fl.length?`<div class="cflag">${fl.map(f=>`<b>${esc(f.kind)}:</b> ${esc(f.detail)}`).join(' · ')}</div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn sm p" data-pu="${p.id}">Ανέβασμα δικαιολογητικού</button>
         <button class="btn sm" data-pe="${p.id}">Τα στοιχεία μας</button></div>
     </div>`};
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Τα παιδιά μου</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Ό,τι αφορά τα παιδιά σου στο 76ο. Βλέπεις μόνο τα δικά σου.</div></div>
     <div class="cgrid">${list.map(card).join('')}</div>`;
-  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu));
+  document.querySelectorAll('[data-pu]').forEach(b=>b.onclick=()=>parentUpload(b.dataset.pu,b.dataset.pc));
   document.querySelectorAll('[data-pe]').forEach(b=>b.onclick=()=>parentEdit(b.dataset.pe));
 };
 
@@ -6372,14 +6423,19 @@ function docCanReplace(r,e){ return !!e && r.cadence==='ετήσιο'; }
 function parentUpload(pid, only){
   const p=D.bh.find(x=>x.id===pid);
   const reqs=(D.dr||[]).filter(r=>r.active!==false&&(only?r.code===only:!edHas(p,r)));
-  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Ανέβασμα</div>
-      <div class="dim" style="font-size:12.5px">${pn(p)}</div></div>
+  /* Ο τίτλος λέει ΠΟΙΟ χαρτί. Ο γονιός έφτασε εδώ από τη γραμμή του — δεν
+     πρέπει να ξαναδιαλέξει, ούτε να αναρωτηθεί αν πάτησε το σωστό. */
+  const one=only?reqs[0]:null;
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+      <div style="font-size:17px;font-weight:600">${one?esc(one.label):'Ανέβασμα'}</div>
+      <div class="dim" style="font-size:12.5px">${pn(p)}${one?' · '+esc(DOCCAD[one.cadence]||one.cadence)+(one.cadence==='ετήσιο'?' · '+esc(YEAR):''):''}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec">
-      <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Τι ανεβάζεις
-        <select id="puK">${reqs.map(r=>`<option value="${r.code}">${esc(r.label)}</option>`).join('')||'<option value="">— δεν εκκρεμεί τίποτα —</option>'}</select></label>
-      <input type="file" id="puF" accept=".pdf,image/*" capture="environment">
-      <div class="dim" style="font-size:11.5px;margin-top:8px">PDF ή φωτογραφία, έως 12 MB. Αν βγάλεις φωτογραφία, θα σου ζητήσω να σύρεις τις τέσσερις γωνίες ώστε να ισιώσει. Το αρχείο το βλέπουν μόνο οι υπεύθυνοι βαθμοφόροι.</div></div>`;
+      ${one?`<input type="hidden" id="puK" value="${esc(one.code)}">`
+           :`<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Τι ανεβάζεις
+        <select id="puK">${reqs.map(r=>`<option value="${r.code}">${esc(r.label)}</option>`).join('')||'<option value="">— δεν εκκρεμεί τίποτα —</option>'}</select></label>`}
+      <input type="file" id="puF" accept=".pdf,image/*">
+      <div class="dim" style="font-size:11.5px;margin-top:8px">Διάλεξε <b>αρχείο PDF</b> από το τηλέφωνο ή τον υπολογιστή σου, <b>φωτογραφία</b> που ήδη έχεις, ή <b>βγάλε φωτογραφία</b> τώρα — και τα τρία δουλεύουν. Έως 12 MB. Αν είναι φωτογραφία, θα σου ζητήσω να σύρεις τις τέσσερις γωνίες ώστε να ισιώσει. Το αρχείο το βλέπουν μόνο οι υπεύθυνοι βαθμοφόροι.</div></div>`;
   drw.classList.add('on');
   $('puF').onchange=async()=>{
     let f=$('puF').files[0]; if(!f)return;
