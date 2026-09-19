@@ -241,6 +241,8 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
   overflow:hidden;text-overflow:ellipsis}
 /* ΤΑ ΧΡΩΜΑΤΑ ΤΟΥ ΑΡΧΕΙΟΥ ΤΟΥ: το όνομα λέει τι απάντησε εκείνος. */
 .wlnm.c-ok{color:var(--ok)} .wlnm.c-warn{color:var(--warn)}
+/* ΜΠΛΕ = «να παραμείνει για του χρόνου» — η σημασία του παλιού αρχείου. */
+.wlnm.c-later{color:var(--acc);font-weight:600}
 .wlnm.c-bad{color:var(--ink3);text-decoration:line-through;text-decoration-thickness:1px}
 .wltel{padding:2px 8px !important;font-size:12px !important;flex:none;white-space:nowrap}
 .wlacts{display:flex;gap:3px;flex-wrap:wrap;flex:none}
@@ -1190,7 +1192,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 10:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 10:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -16467,8 +16469,33 @@ async function reload1(...keys){
    Το «Ενδιαφέρεται» υπάρχει επειδή ΔΕΝ είναι «Έγινε μέλος»: είπε ναι στο
    τηλέφωνο και δεν ήρθε ποτέ. Χωρίς δικό του σταθμό, το ναι κάθεται στην
    «Αναμονή» και δεν το κυνηγά κανείς. Γι' αυτό και λήγει (WL_STALE). */
-const WL_OUT=['Αναμονή','Ενδιαφέρεται','Έγινε μέλος','Δεν ενδιαφέρεται','Δεν απάντησε','Διπλοεγγραφή'];
-const WL_OPEN=['Αναμονή','Ενδιαφέρεται'];
+/* ══ ΟΙ ΕΚΒΑΣΕΙΣ — ΜΙΑ ΛΙΣΤΑ, ΟΧΙ ΤΕΣΣΕΡΙΣ ═══════════════════════════════════
+   ΤΟ ΛΑΘΟΣ ΠΟΥ ΗΤΑΝ ΗΔΗ ΕΔΩ: το WL_OUT είχε ΕΞΙ τιμές — έλειπε το «Πήγε
+   αλλού» — ενώ η βάση δέχεται επτά και τα φίλτρα το χρησιμοποιούσαν. Το
+   μενού «Κατάσταση» γραφόταν από το WL_OUT, άρα ΔΕΝ ΜΠΟΡΟΥΣΕΣ ΠΟΤΕ να
+   φιλτράρεις «Πήγε αλλού», κι ας υπήρχαν τέτοιες γραμμές. Δύο λίστες για το
+   ίδιο πράγμα αποκλίνουν — πάντα, και σιωπηλά.
+   ΑΠΟ ΔΩ ΚΑΙ ΠΕΡΑ: μία λίστα με ΚΑΤΗΓΟΡΙΑ ανά τιμή. Ό,τι χρειάζεται κάθε
+   οθόνη βγαίνει ΑΠΟ ΑΥΤΗΝ.
+
+   ΟΓΔΟΗ ΤΙΜΗ «Όχι φέτος» (19/09/2026): «ΟΧΙ φέτος, ΝΑΙ του χρόνου».
+   ΔΕΝ είναι ανοιχτή (δεν την ξαναπαίρνεις τηλέφωνο φέτος) και ΔΕΝ είναι
+   κλειστή (του χρόνου την ψάχνεις). Είναι ΑΝΑΒΟΛΗ — δικό της σκαλί. */
+const WL_OUTCOME=[
+  {v:'Αναμονή',          k:'open'},
+  {v:'Ενδιαφέρεται',     k:'open'},
+  {v:'Όχι φέτος',        k:'later'},
+  {v:'Έγινε μέλος',      k:'done'},
+  {v:'Δεν ενδιαφέρεται', k:'closed'},
+  {v:'Δεν απάντησε',     k:'closed'},
+  {v:'Διπλοεγγραφή',     k:'closed'},
+  {v:'Πήγε αλλού',       k:'closed'},
+];
+const wlOutOf=k=>WL_OUTCOME.filter(o=>o.k===k).map(o=>o.v);
+const WL_OUT   = WL_OUTCOME.map(o=>o.v);   // ό,τι δέχεται η βάση = ό,τι δείχνει το μενού
+const WL_OPEN  = wlOutOf('open');          // «ανοιχτές» = δουλειά ΦΕΤΟΣ
+const WL_CLOSED= wlOutOf('closed');        // έφυγαν
+const WL_LATER = 'Όχι φέτος';              // ούτε ανοιχτή ούτε κλειστή
 const WL_KIND=[['Κλήση'],['SMS']];
 const WL_STALE=30;   // μέρες· μετά, το «είπε ναι» γίνεται εκκρεμότητα
 
@@ -16488,6 +16515,7 @@ const wlDays=d=>d?Math.floor((new Date()-new Date(d))/86400000):null;
 function wlState(r){
   if(r.outcome==='Έγινε μέλος')   return {k:'melos',  bg:'var(--okbg)',   sw:'var(--ok)',   ln:'var(--ok)',   t:'Γράφτηκε'};
   if(r.outcome==='Ενδιαφέρεται')  return {k:'endiaf', bg:'var(--warnbg)', sw:'var(--warn)', ln:'var(--warn)', t:'Είπε ναι — δεν γράφτηκε'};
+  if(r.outcome===WL_LATER) return {k:'later', bg:'var(--accbg)', sw:'var(--acc)', ln:'var(--acc)', t:'Όχι φέτος — του χρόνου'};
   if(r.outcome&&r.outcome!=='Αναμονή') return {k:'klisto', bg:'transparent', sw:'var(--line)', ln:'var(--line)', t:'Έκλεισε', dim:true};
   if(wlCts(r).length)             return {k:'epafi',  bg:'var(--accbg)',  sw:'var(--acc)',  ln:'var(--acc)',  t:'Έγινε επικοινωνία'};
   return {k:'anamoni', bg:'transparent', sw:'transparent', ln:'transparent', t:'Καμία επαφή'};
@@ -16510,7 +16538,7 @@ V.waitlist=()=>{
   const open=list.filter(r=>r.outcome==='Αναμονή');
   const yes=list.filter(r=>r.outcome==='Ενδιαφέρεται');
   const joined=list.filter(r=>r.outcome==='Έγινε μέλος');
-  const gone=list.filter(r=>['Δεν ενδιαφέρεται','Δεν απάντησε','Διπλοεγγραφή'].includes(r.outcome));
+  const gone=list.filter(r=>WL_CLOSED.includes(r.outcome));
   const ready=open.filter(r=>(wlGrade(r)||0)>=3);
   const later=open.filter(r=>(wlGrade(r)||0)<3);
   /* Είπε ναι και ξεχάστηκε. Αυτό είναι το πιο ακριβό λάθος της λίστας: το
@@ -16708,12 +16736,13 @@ V.waitlist=()=>{
     later : r=>_op(r)&&(wlGrade(r)||0)<3,
     yes   : r=>r.outcome==='Ενδιαφέρεται',
     joined: r=>r.outcome==='Έγινε μέλος',
-    gone  : r=>['Δεν ενδιαφέρεται','Δεν απάντησε','Διπλοεγγραφή','Πήγε αλλού'].includes(r.outcome),
+    gone  : r=>WL_CLOSED.includes(r.outcome),
+    later : r=>r.outcome===WL_LATER,
     /* Οι τρεις μετρήσεις της ζώνης «Τάξη». Ήταν <span> που έμοιαζαν με
        κουμπιά και δεν ήταν: ο Α.Σ. τα πατούσε και δεν γινόταν τίποτα. */
     cold  : r=>r.outcome==='Αναμονή'&&!wlCts(r).length,
     due   : r=>_op(r)&&!!r.next_step,
-    out   : r=>['Δεν ενδιαφέρεται','Πήγε αλλού','Διπλοεγγραφή'].includes(r.outcome),
+    out   : r=>WL_CLOSED.includes(r.outcome),
   };
   const shown = list
     .filter(r=>WLPRE?PRE[WLPRE](r)
@@ -16735,6 +16764,7 @@ V.waitlist=()=>{
   const YRS={};
   rows.forEach(r=>{const y=r.scout_year||'—'; const o=(YRS[y]=YRS[y]||{n:0,m:0,w:0,x:0,ready:0,y:0});
     o.n++; if(r.outcome==='Έγινε μέλος')o.m++;
+    else if(r.outcome===WL_LATER)o.l=(o.l||0)+1;
     else if(WL_OPEN.includes(r.outcome)){o.w++; if(r.outcome==='Ενδιαφέρεται')o.y++;
       const g=wlGrade(r); if(g>=3&&g<=5)o.ready++}
     else o.x++});
@@ -16823,7 +16853,8 @@ V.waitlist=()=>{
                + F('due', r=>r.next_step&&isOpen(r),'περιμένω','acc')
                + F('yes', r=>r.outcome==='Ενδιαφέρεται','είπαν ναι','warn')
                + F('joined',r=>r.outcome==='Έγινε μέλος','γράφτηκαν','ok')
-               + F('out', r=>['Δεν ενδιαφέρεται','Πήγε αλλού','Διπλοεγγραφή'].includes(r.outcome),'έφυγαν');})()}
+               + F('later',r=>r.outcome===WL_LATER,'όχι φέτος','acc')
+               + F('out', r=>WL_CLOSED.includes(r.outcome),'έφυγαν');})()}
       </div>`;
     })():''}
 
@@ -16912,14 +16943,17 @@ V.waitlist=()=>{
       /* ΤΡΕΙΣ ΚΑΔΟΙ: «Πάρε τώρα» είναι η μόνη λίστα που χρειάζεσαι όταν
          κάθεσαι να τηλεφωνήσεις. Οι επικεφαλίδες τάξης μπαίνουν ΜΟΝΟ όταν
          κοιτάς «Όλες» — αλλιώς είναι θόρυβος πάνω από κάθε ομάδα. */
-      const BK=['Πάρε τώρα','Περιμένω απάντηση','Έκλεισαν'];
+      /* ΤΕΣΣΕΡΙΣ ΚΑΔΟΙ ΠΛΕΟΝ. Το «Του χρόνου» δεν είναι «έκλεισε»: τον
+         Σεπτέμβρη του 2027 αυτοί είναι η πρώτη σου λίστα. Διπλωμένο όπως
+         και οι κλειστοί — δεν σε απασχολεί σήμερα, αλλά υπάρχει. */
+      const BK=['Πάρε τώρα','Περιμένω απάντηση','Έκλεισαν','Του χρόνου'];
       return ord.map(g=>{
-        const l=groups[g], by=[[],[],[]];
+        const l=groups[g], by=[[],[],[],[]];
         l.forEach(r=>by[wlBucket(r)].push(r));
         return (WLTAB===null?`<div class="sec"><h3>${esc(wlClass(g===99?null:g))}</h3><span class="n">${l.length}</span></div>`:'')
         + by.map((arr,bi)=>{ if(!arr.length)return '';
-          if(bi===2)return `<details class="card pad" style="margin-bottom:8px">
-            <summary style="cursor:pointer;font-size:13px;color:var(--ink3)">${BK[2]} — ${arr.length}</summary>
+          if(bi>=2)return `<details class="card pad" style="margin-bottom:8px"${bi===3?' style="border-color:var(--acc)"':''}>
+            <summary style="cursor:pointer;font-size:13px;color:var(--${bi===3?'acc':'ink3'})">${BK[bi]} — ${arr.length}</summary>
             <div style="margin-top:8px;font-size:12.5px">${arr.map(r=>
               `<div class="kv"><b style="flex:1">${wlName(r)}</b>
                <span class="dim">${esc(r.outcome)}${r.elsewhere?' · '+esc(r.elsewhere):''}</span></div>`).join('')}</div></details>`;
@@ -17003,7 +17037,7 @@ V.waitlist=()=>{
              later:op.filter(r=>(wlGrade(r)||0)<3).length,
              yes:ys.length, stale:ys.filter(r=>(wlDays(r.outcome_at)||0)>WL_STALE).length,
              joined:l.filter(r=>r.outcome==='Έγινε μέλος').length,
-             gone:l.filter(r=>['Δεν ενδιαφέρεται','Δεν απάντησε','Διπλοεγγραφή','Πήγε αλλού'].includes(r.outcome)).length,
+             gone:l.filter(r=>WL_CLOSED.includes(r.outcome)).length,
              today:l.filter(r=>o(r)&&(r.callback_on?r.callback_on<=t0:!wlCts(r).length)).length,
              late :l.filter(r=>o(r)&&r.callback_on&&r.callback_on<t0).length,
              wait :l.filter(r=>o(r)&&r.callback_on&&r.callback_on>t0).length,
@@ -17226,6 +17260,9 @@ const WL_STEPS=[
 /* ΧΡΩΜΑ ΟΝΟΜΑΤΟΣ = Η ΑΠΑΝΤΗΣΗ ΤΟΥ. */
 function wlNameCol(r){
   if(r.outcome==='Έγινε μέλος'||r.outcome==='Ενδιαφέρεται') return 'ok';
+  /* ΜΠΛΕ = «να παραμείνει». Δεν εισάγεται νέα σημασία — ΑΠΟΚΑΘΙΣΤΑΤΑΙ η
+     παλιά: στο χειρόγραφο αρχείο του Α.Σ. το μπλε σήμαινε ήδη αυτό. */
+  if(r.outcome===WL_LATER)                                  return 'later';
   if(!WL_OPEN.includes(r.outcome))                          return 'bad';
   if(r.next_step==='Περιμένω τηλέφωνο')                     return 'warn';
   return '';
@@ -17239,6 +17276,8 @@ function wlNumCol(r){
 }
 function wlStep(r){
   if(r.outcome==='Έγινε μέλος') return WL_STEPS[3];
+  if(r.outcome===WL_LATER)
+    return {n:-1, t:'όχι φέτος', c:'acc', bg:'var(--accbg)'};
   if(!WL_OPEN.includes(r.outcome))
     return {n:-1, t:r.outcome==='Πήγε αλλού'?'πήγε αλλού':r.outcome.toLowerCase(), c:'', bg:'transparent', dim:true};
   if(r.outcome==='Ενδιαφέρεται') return WL_STEPS[2];
@@ -17317,6 +17356,7 @@ function wlDupBox(){
    περισσότερο, πρώτος. Είναι και το δίκαιο και το πρακτικό. */
 function wlBucket(r){
   const t=new Date().toISOString().slice(0,10);
+  if(r.outcome===WL_LATER) return 3;          // δικός του κάδος: «Του χρόνου»
   if(!WL_OPEN.includes(r.outcome)) return 2;
   if(r.callback_on) return r.callback_on<=t ? 0 : 1;
   if(r.next_step)   return 1;
@@ -17390,13 +17430,32 @@ const WL_PRESETS=[
    p:{outcome:'Δεν ενδιαφέρεται', next_step:null, callback_on:null}},
   {k:'else', t:'Πήγε αλλού',      cls:'bad',  ct:'Κλήση', ask:'Σε ποιο Σύστημα;',
    p:{outcome:'Πήγε αλλού', next_step:null, callback_on:null}},
+  /* ΕΒΔΟΜΟ — «ΟΧΙ ΦΕΤΟΣ, ΝΑΙ ΤΟΥ ΧΡΟΝΟΥ».
+     Δέκα γραμμές το κουβαλούσαν ήδη χειρόγραφα στη σημείωση. Χωρίς κουμπί, ο
+     Α.Σ. διάλεγε ανάμεσα σε δύο λάθος: «Αναμονή» (ξαναβγαίνουν στις φετινές
+     κλήσεις ενώ είπαν όχι) ή «Δεν ενδιαφέρεται» (χάνονται για πάντα).
+     Το `sept` βάζει προθεσμία τον Σεπτέμβρη της ΕΠΟΜΕΝΗΣ χρονιάς — ίδια
+     μηχανική με το `days`, άλλη κλίμακα. */
+  {k:'later',t:'Όχι φέτος',       cls:'',     ct:'Κλήση', sept:1,
+   p:{outcome:WL_LATER, next_step:null}},
 ];
+/* 1η Σεπτεμβρίου της επόμενης προσκοπικής χρονιάς: «2026-27» → 2027-09-01. */
+const wlNextSept=()=>(Number(String(curScoutYear()).slice(0,4))+1)+'-09-01';
 async function wlPreset(id, key){
   const P=WL_PRESETS.find(x=>x.k===key); if(!P)return;
   const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
   const v={...P.p};
   if(P.days){ const d=new Date(); d.setDate(d.getDate()+P.days);
     v.callback_on=d.toISOString().slice(0,10); }
+  if(P.sept) v.callback_on=wlNextSept();
+  /* Το «γιατί» δεν χάνεται: μπαίνει στο last_year_note, εκεί που θα το
+     διαβάσει όποιος κάνει τις κλήσεις του χρόνου — όχι σε σημείωση που
+     σβήνεται με το επόμενο πάτημα. */
+  if(P.k==='later'){
+    const a=prompt('Γιατί όχι φέτος; (θα το δεις του χρόνου)', r.last_year_note||'');
+    if(a===null)return;
+    v.last_year_note=(a.trim()||('όχι φέτος · '+curScoutYear()));
+  }
   if(P.ask){ const a=prompt(P.ask,r.elsewhere||''); if(a===null)return; v.elsewhere=a.trim()||null; }
   if(v.outcome){ v.outcome_at=new Date().toISOString(); v.outcome_by=(meRec()||{}).id||null; }
   const {error}=await sb.from('waitlist').update(v).eq('id',id);
