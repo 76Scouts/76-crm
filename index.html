@@ -452,6 +452,16 @@ table.wl2 tr:last-child td{border-bottom:0}
 /* Η σημείωσή ΤΟΥ, ολόκληρη. Δεν κόβεται — είναι ο λόγος που ανοίγει το αρχείο. */
 .wl2note{font-size:12px;color:var(--ink2);margin-top:3px;white-space:pre-wrap;
   background:var(--bg);border-radius:var(--rs);padding:4px 7px;display:inline-block;max-width:100%}
+/* Η λέξη της κατάστασης: μικρή αλλά ΔΙΑΒΑΖΕΤΑΙ χωρίς χρώμα. Πλαίσιο, ώστε
+   να ξεχωρίζει και σε ασπρόμαυρη εκτύπωση. */
+.wl2st{font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.02em;
+  border:1px solid currentColor;border-radius:4px;padding:0 5px;margin-left:6px;
+  vertical-align:2px;white-space:nowrap}
+.wl2an{display:block;font-style:normal;font-size:9.5px;font-weight:600;
+  color:var(--warn);letter-spacing:-.01em;margin-top:1px}
+/* Το πατημένο κουμπί: γέμισμα ΚΑΙ έντονο περίγραμμα ΚΑΙ ✓ — τρία σήματα,
+   ώστε να μη στηρίζεται κανένα μόνο του. */
+.btn.sm.wl2on{box-shadow:inset 0 0 0 2px var(--ink);font-weight:700}
 .wl2acts{white-space:nowrap}
 .wl2acts .btn{font-size:11px;padding:3px 8px;margin-left:3px}
 .wl2dot{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;
@@ -1251,7 +1261,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 17:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
+const BUILD='2026-09-19 17:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
@@ -16921,14 +16931,26 @@ let WL2={cls:null, q:'', closed:false};
 function wl2G(r){
   const now=curScoutYear();
   const hist=(D.wlc||[]).filter(x=>x.waitlist_id===r.id);
+  /* ΔΥΟ ΧΡΟΝΙΑ ΔΙΑΦΟΡΑ ΕΙΝΑΙ ΛΑΘΟΣ, ΟΧΙ ΙΔΙΑΙΤΕΡΟΤΗΤΑ.
+     Η Θεοδώρου Ελένη, γεννημένη 10/05/2022, είχε δήλωση «Γ΄ Τάξη Δημοτικού»
+     από τη φόρμα — ο γονιός συμπλήρωσε την τάξη της ΜΕΓΑΛΗΣ αδελφής. Τέσσερα
+     χρόνια απόκλιση, και η οθόνη την έβαζε δίπλα στην οκτάχρονη Δώνη.
+     Έβγαλα το σιωπηλό κύλισμα αλλά κρατούσα τυφλή εμπιστοσύνη στη δήλωση·
+     μισή διόρθωση. Ένα χρόνο διαφορά είναι φυσιολογικό (Σεπτέμβρης/Οκτώβρης,
+     χαμένη χρονιά). Δύο και πάνω θέλει ανθρώπινο μάτι. */
+  const dobG=wlDobGrade(r.dob);
+  const fits=g=>(dobG===null||dobG===undefined)||Math.abs(g-dobG)<2;
   const cur=hist.filter(x=>x.class_year===now)
     .sort((a,b)=>WLRANK(b.origin)-WLRANK(a.origin))[0];
   if(cur){ const g=WLDECL[String(cur.school_class||'').trim()];
-           if(g!==undefined) return {g, sure:true, src:cur.school_class} }
+           if(g!==undefined) return fits(g)
+             ? {g, sure:true, src:cur.school_class}
+             : {g:dobG, sure:false, src:cur.school_class, clash:g, dobG}; }
   if(!hist.length && r.school_class){
     const g=WLDECL[String(r.school_class).trim()];
     if(g!==undefined && (r.class_year||r.scout_year)===now)
-      return {g, sure:true, src:r.school_class};
+      return fits(g) ? {g, sure:true, src:r.school_class}
+                     : {g:dobG, sure:false, src:r.school_class, clash:g, dobG};
   }
   /* Παλιά δήλωση: ΠΡΟΤΑΣΗ με το κύλισμα, αλλά σημαδεμένη. */
   const old=hist.slice().sort((a,b)=>String(b.class_year).localeCompare(String(a.class_year)))[0]
@@ -16938,8 +16960,7 @@ function wl2G(r){
       const roll=Number(String(now).slice(0,4))-Number(String(old.class_year||'').slice(0,4));
       return {g:g0+roll, sure:false, src:old.school_class, year:old.class_year, roll};
     }}
-  const d=wlDobGrade(r.dob);
-  return {g:(d===null||d===undefined)?null:d, sure:false, src:null, dob:true};
+  return {g:(dobG===null||dobG===undefined)?null:dobG, sure:false, src:null, dob:true};
 }
 /* ΕΝΑ ΧΡΩΜΑ, ΠΕΝΤΕ ΣΗΜΑΣΙΕΣ — το υπόμνημα του Α.Σ., 19/09/2026. */
 const WL2LEG=[
@@ -16948,6 +16969,17 @@ const WL2LEG=[
   {c:'acc',  t:'όχι φέτος — μένει στη λίστα'},
   {c:'bad',  t:'δεν ενδιαφέρεται · πήγε αλλού'},
 ];
+/* ΤΟ ΧΡΩΜΑ ΔΕΝ ΕΠΙΤΡΕΠΕΤΑΙ ΝΑ ΕΙΝΑΙ Η ΜΟΝΗ ΠΛΗΡΟΦΟΡΙΑ.
+   Πράσινο/πορτοκαλί/γαλάζιο/κόκκινο πάνω σε ονόματα: για κάποιον με
+   δυσχρωματοψία είναι τέσσερις αποχρώσεις του ίδιου γκρι. Και για τον
+   καθένα που δεν κοιτάζει προσεκτικά, ένα ✓ έξι pixel δεν είναι σήμα.
+   Η κατάσταση γράφεται με ΛΕΞΗ δίπλα στο όνομα. Το χρώμα μένει — αλλά
+   ως επιτάχυνση, όχι ως το μήνυμα. */
+const WL2WORD={ok:'ναι', warn:'περιμένω', acc:'του χρόνου', bad:'όχι', dim:'έκλεισε'};
+function wl2Word(r){
+  if(r.outcome==='Έγινε μέλος')return 'γράφτηκε';
+  return WL2WORD[wl2Col(r)]||'';
+}
 function wl2Col(r){
   if(r.outcome==='Έγινε μέλος'||r.outcome==='Ενδιαφέρεται')      return 'ok';
   if(r.outcome===WL_LATER)                                        return 'acc';
@@ -17017,7 +17049,8 @@ V.wl2=()=>{
 
     <div class="card pad noprint" style="margin-top:12px;display:flex;gap:14px;flex-wrap:wrap;font-size:12px">
       <b style="font-size:12px">Το υπόμνημα:</b>
-      ${WL2LEG.map(x=>`<span><i class="wl2dot c-${x.c}"></i> ${esc(x.t)}</span>`).join('')}
+      ${WL2LEG.map(x=>`<span><i class="wl2dot c-${x.c}"></i><i class="wl2st c-${x.c}">${
+        esc(WL2WORD[x.c]||'')}</i> ${esc(x.t)}</span>`).join('')}
       <span><i class="wl2dot c-num"></i> άφησα αναπάντητη — περιμένω να με πάρουν</span>
     </div>`;
 
@@ -17037,9 +17070,44 @@ V.wl2=()=>{
         wait.map((r,i)=>wl2Row(r,i,!q&&WL2.cls!=='?')).join('')}</tbody></table></div>`
        :`<div class="uc"><h3>Κανείς εδώ</h3><p>${q?'Η αναζήτηση δεν βρήκε κανέναν.'
           :'Καμία ανοιχτή αίτηση σε αυτή την τάξη.'}</p></div>`}`;
-    body.querySelectorAll('[data-wl2p]').forEach(b=>b.onclick=async()=>{
-      await wlPreset(b.dataset.wl2p, b.dataset.pk); V.wl2(); });
-    body.querySelectorAll('[data-wl2n]').forEach(i=>{
+    bindWl2(body);
+  };
+  draw();
+
+  /* ══ ΜΙΑ ΑΛΛΑΓΗ = ΜΙΑ ΓΡΑΜΜΗ ══════════════════════════════════════════
+     Το πρώτο ζωγράφισμα καλούσε V.wl2() μετά από κάθε πάτημα: ξαναχτιζόταν
+     όλη η οθόνη, και αν ήσουν στη γραμμή 40 πεταγόσουν στην κορυφή. Ακριβώς
+     ο κανόνας που φυλάω όλη μέρα στις άλλες οθόνες, σπασμένος εδώ.
+
+     Η ΓΡΑΜΜΗ ΔΕΝ ΜΕΤΑΚΙΝΕΙΤΑΙ. Αν πατήσεις «Όχι», αλλάζει χρώμα ΕΚΕΙ ΠΟΥ
+     ΕΙΝΑΙ — δεν εξαφανίζεται κάτω από τον αντίχειρά σου. Μπαίνει στη θέση
+     της την επόμενη φορά που θα ανοίξεις την οθόνη.
+
+     Δένουμε το WLPATCH σε ΑΥΤΗ την οθόνη: έτσι και το wlPreset και η
+     ΑΝΑΙΡΕΣΗ του χτυπούν τη σωστή γραμμή, χωρίς δεύτερο μηχανισμό. */
+  WLPATCH=id=>{
+    const r=(D.wl||[]).find(x=>x.id===id);
+    const tr=document.querySelector(`tr[data-wl2r="${id}"]`);
+    if(!r||!tr)return;
+    const old=tr.querySelector('.wl2num'), num=old?old.textContent:'';
+    const box=document.createElement('tbody');
+    box.innerHTML=wl2Row(r, 0, !WL2.q && WL2.cls!=='?');
+    const fresh=box.firstElementChild; if(!fresh)return;
+    const n2=fresh.querySelector('.wl2num'); if(n2&&num)n2.textContent=num;
+    tr.replaceWith(fresh); bindWl2(fresh); wl2Counts();
+  };
+  /* Οι μετρητές των καρτελών ενημερώνονται χωρίς ξαναχτίσιμο. */
+  function wl2Counts(){
+    document.querySelectorAll('[data-wl2c]').forEach(b=>{
+      const v=b.dataset.wl2c; if(v==='?')return;
+      const L=G.get(Number(v))||[]; const nb=b.querySelector('b');
+      if(nb)nb.textContent=L.filter(open).length;
+    });
+  }
+  function bindWl2(root){
+    root.querySelectorAll('[data-wl2p]').forEach(b=>b.onclick=()=>
+      wlPreset(b.dataset.wl2p, b.dataset.pk));
+    root.querySelectorAll('[data-wl2n]').forEach(i=>{
       const id=i.dataset.wl2n, r0=(D.wl||[]).find(x=>x.id===id), was=(r0&&r0.note)||'';
       i.onblur=async()=>{ const v=i.value.trim(); if(v===was)return;
         const {error}=await sb.from('waitlist').update({note:v||null}).eq('id',id);
@@ -17047,9 +17115,9 @@ V.wl2=()=>{
         const r=(D.wl||[]).find(x=>x.id===id); if(r)r.note=v||null;
         saveCache(); i.style.borderColor='var(--ok)';
         setTimeout(()=>{i.style.borderColor=''},900); };});
-    body.querySelectorAll('[data-wl2g]').forEach(s=>s.onchange=()=>wl2SetClass(s.dataset.wl2g, s.value));
-  };
-  draw();
+    root.querySelectorAll('[data-wl2g]').forEach(s=>
+      s.onchange=()=>wl2SetClass(s.dataset.wl2g, s.value));
+  }
 
   const qi=$('wl2q');
   if(qi)qi.oninput=()=>{ WL2.q=qi.value; const p=qi.selectionStart; V.wl2();
@@ -17079,11 +17147,22 @@ function wl2Row(r,i,hideCls){
   const numc=(ct&&WL_NOANS.has(ct.kind))?' c-num':'';
   const ph=r.applicant_phone||'';
   const P=k=>WL_PRESETS.find(x=>x.k===k);
-  const btn=(k,lbl)=>`<button class="btn sm ${P(k)&&P(k).cls?P(k).cls:'gh'}" data-wl2p="${r.id}" data-pk="${k}">${lbl}</button>`;
+  /* ΠΟΙΟ ΕΙΝΑΙ ΠΑΤΗΜΕΝΟ ΤΩΡΑ. Χωρίς αυτό τα πέντε κουμπιά μοιάζουν με
+     πέντε ερωτήσεις χωρίς απάντηση — και δεν φαίνεται ότι ΑΥΤΑ βάζουν το
+     χρώμα. Το ενεργό γεμίζει· τα υπόλοιπα μένουν περιγράμματα. */
+  const nowK = r.outcome==='Ενδιαφέρεται'||r.outcome==='Έγινε μέλος' ? 'yes'
+             : r.outcome===WL_LATER                                   ? 'later'
+             : (r.outcome==='Δεν ενδιαφέρεται'||r.outcome==='Πήγε αλλού') ? 'no'
+             : r.next_step==='Περιμένω τηλέφωνο'                      ? 'back'
+             : (ct&&WL_NOANS.has(ct.kind))                            ? 'again' : '';
+  const btn=(k,lbl)=>`<button class="btn sm ${k===nowK?(P(k)&&P(k).cls?P(k).cls:'p')+' wl2on':'gh'}"
+      data-wl2p="${r.id}" data-pk="${k}" aria-pressed="${k===nowK}"
+      title="${k===nowK?'έτσι είναι τώρα':'βάλε: '+lbl}">${k===nowK?'✓ ':''}${lbl}</button>`;
   return `<tr data-wl2r="${r.id}">
-    <td class="wl2num${numc}">${r.file_seq??(i+1)}</td>
+    <td class="wl2num${numc}">${r.file_seq??(i+1)}${numc?'<i class="wl2an">αναπάντητη</i>':''}</td>
     <td>
-      <div class="wl2nm c-${c}">${esc(wlPlain(r))}${r.related_76||r.sibling_of||r.parent_leader_id
+      <div class="wl2nm c-${c}">${esc(wlPlain(r))}${(()=>{const w=wl2Word(r);
+        return w?`<i class="wl2st c-${c}">${w}</i>`:''})()}${r.related_76||r.sibling_of||r.parent_leader_id
         ?'<i class="wlprio'+(wlPrio(r)?'':' said')+'">'+(wlPrio(r)?'ΠΡΟΤΕΡΑΙΟΤΗΤΑ':'ΔΗΛΩΘΗΚΕ')+'</i>':''}</div>
       <div class="dim" style="font-size:11.5px">
         ${r.dob?wl2Age(r.dob):'<b style="color:var(--warn)">χωρίς ημ. γέννησης</b>'}${
@@ -17096,7 +17175,9 @@ function wl2Row(r,i,hideCls){
       ${g.sure
         ? `<span class="pill">${esc(wlClass(g.g))}</span>`
         : `<select data-wl2g="${r.id}" style="max-width:150px;font-size:12px">
-             <option value="">⚠ ${esc(g.src?('δήλωσε '+g.src+(g.year?' ('+g.year+')':'')):'άγνωστη')}</option>
+             <option value="">⚠ ${esc(g.clash!==undefined
+                 ? 'δήλωσε '+g.src+' — η ηλικία λέει '+wlClass(g.dobG)
+                 : (g.src?('δήλωσε '+g.src+(g.year?' ('+g.year+')':'')):'άγνωστη'))}</option>
              ${['ΠΙΟ ΜΙΚΡΟΙ',...WLGR].map(x=>`<option${x===wlClass(g.g)?' selected':''}>${x}</option>`).join('')}
            </select>`}</td>`}
     <td style="white-space:nowrap">${ph?`<a class="btn sm wltel" href="tel:${esc(ph)}">${fphone(ph)}</a>`:'<span class="dim">—</span>'}</td>
@@ -17116,7 +17197,10 @@ async function wl2SetClass(id, val){
   undoBar('Τάξη: '+wlPlain(r)+' → '+val, async()=>{
     await sb.from('waitlist_class').delete().eq('id',data.id);
     D.wlc=(D.wlc||[]).filter(x=>x.id!==data.id);
+    V.wl2();
   });
+  /* ΕΔΩ το ξαναχτίσιμο είναι σωστό: το παιδί ΑΛΛΑΖΕΙ ΚΑΡΤΕΛΑ. Δεν έχει
+     νόημα να μείνει στους «θέλουν τάξη» αφού μόλις του την έδωσες. */
   V.wl2();
 }
 
