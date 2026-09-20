@@ -1305,7 +1305,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-20 12:24'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-20 12:38'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -2743,9 +2743,19 @@ const inYear=p=>!!myOf(p);
 const secOf=p=>(myOf(p)||{}).section||p.section;
 /* Καθρέφτης της is_anixneftis() της βάσης: ενεργό ΜΕΛΟΣ της Κοινότητας αυτή
    τη χρονιά, εκτός αν του έχει ανακληθεί ρητά με κλειστό καπέλο ANIX. */
-const isAnix=p=>!!p && (p.kind||'')==='Μέλος' && p.status==='Ενεργός'
-  && secOf(p)==='Κοινότητα'
-  && !(D.ph||[]).some(h=>h.person_id===p.id&&h.role_code==='ANIX'&&h.valid_to);
+const hasOpenHat=(pid,code)=>(D.ph||[]).some(h=>h.person_id===pid&&h.role_code===code&&!h.valid_to);
+/* Δύο δρόμοι για το ίδιο καπέλο:
+   ΑΥΤΟΜΑΤΑ — ενεργό Μέλος της Κοινότητας αυτή τη χρονιά· κανείς δεν το δίνει.
+   ΡΗΤΑ    — καπέλο ANIX στο person_hats, για όποιον δεν είναι Μέλος αλλά
+             δουλεύει μέσα στην Κοινότητα (Α.Σ. που δοκιμάζει, Δίκτυο).
+   Και στις δύο περιπτώσεις ένα ΚΛΕΙΣΤΟ καπέλο ANIX το ανακαλεί. */
+const isAnix=p=>{
+  if(!p)return false;
+  const revoked=(D.ph||[]).some(h=>h.person_id===p.id&&h.role_code==='ANIX'&&h.valid_to);
+  if(hasOpenHat(p.id,'ANIX'))return true;
+  return (p.kind||'')==='Μέλος' && p.status==='Ενεργός'
+    && secOf(p)==='Κοινότητα' && !revoked;
+};
 const nm=p=>p.first_name+' '+p.last_name;
 const sdot=s=>`<span class="dot" style="background:${SC[s]||'var(--ink3)'}" title="${esc(s||'')}"></span>`;
 /* Η παλιά «guardians» ήταν δύο στήλες πάνω στην καρτέλα του παιδιού: πατέρας, μητέρα.
@@ -3908,10 +3918,12 @@ async function certPurge(certId){
 }
 async function docUpload(file,meta){
   const safe=file.name.replace(/[^\w.\-]+/g,'_');
-  const path=`${meta.person_id?'people/'+meta.person_id:'events/'+meta.event_id}/${Date.now()}_${safe}`;
+  const path=`${meta.person_id?'people/'+meta.person_id
+    :meta.synod_id?'synod/'+meta.synod_id:'events/'+meta.event_id}/${Date.now()}_${safe}`;
   const up=await sb.storage.from('e76').upload(path,file,{cacheControl:'3600',upsert:false});
   if(up.error)throw up.error;
-  const rec={person_id:meta.person_id||null,event_id:meta.event_id||null,kind:meta.kind||'Άλλο',
+  const rec={person_id:meta.person_id||null,event_id:meta.event_id||null,
+    synod_id:meta.synod_id||null,kind:meta.kind||'Άλλο',
     title:meta.title||file.name,path,mime:file.type,size_bytes:file.size,uploaded_by:ME.email};
   /* restricted: το βλέπουν μόνο ο ίδιος και ο Α.Σ. (πολιτική documents_read).
      original_path: από πού κόπηκε — «το πρωτότυπο φυλάσσεται», ίδια σύμβαση
@@ -5005,12 +5017,18 @@ function synodMinutes(id){
   const col=Math.ceil(pres.length/3)||1;
   const box=(l,v)=>`<td style="padding:3px 6px"><span class="dim" style="font-size:10.5px">${l}</span><br><b>${v||'—'}</b></td>`;
 
-  route('exports');
-  $('fout').innerHTML=`<div class="card pad prt" style="display:block">
+  /* ΟΧΙ route('exports'): τα πρακτικά ΑΥΤΗΣ της Συνόδου δεν είναι «εξαγωγές».
+     Ο Γραμματέας πατούσε «Πρακτικά» και έβγαινε σε άλλη οθόνη με άλλο URL,
+     χωρίς δρόμο επιστροφής. Μένουν εδώ, μέσα στη Σύνοδο. */
+  SYN_OPEN=id; SYN_PRINT=true; ROUTE='synod'; location.hash='synod';
+  $('view').innerHTML=`<div class="noprint" style="margin-bottom:10px">
+      <button class="btn sm" id="synBack2">← Πίσω στη Σύνοδο</button>
+      <button class="btn sm p" onclick="window.print()" style="margin-left:6px">Εκτύπωση</button></div>
+    <div class="card pad prt" style="display:block">
     ${letterhead('ΦΥΛΛΟ ΠΡΑΚΤΙΚΩΝ ΣΥΝΟΔΟΥ ΑΝΙΧΝΕΥΤΩΝ')}
     <table style="width:100%;font-size:12.5px;margin-bottom:10px"><tbody><tr>
       ${box('Σύνοδος αρ.', s.no||'')}${box('Ημερομηνία', fdate(s.held_on))}
-      ${box('Είδος', (s.kind||'')+(s.is_planning?' · Προγραμματισμού':''))}
+      ${box('Είδος', (s.kind||'')+(s.special?' · '+s.special:''))}
       ${box('Τοποθεσία', esc(s.place||''))}${box('Δύναμη', s.strength||'')}
     </tr></tbody></table>
 
@@ -5036,6 +5054,7 @@ function synodMinutes(id){
         <b>${esc(nameOf(s.secretary_id))}</b><div class="dim">Όμιλος Γραμματείας</div></td>
     </tr></tbody></table></div>
     <div class="noprint" style="margin-top:12px"><button class="btn p" onclick="window.print()">Εκτύπωση</button></div>`;
+  if($('synBack2'))$('synBack2').onclick=()=>{SYN_PRINT=false; V.synod()};
 }
 
 /* ══ ΣΥΓΚΡΟΤΗΣΗ ΟΜΙΛΩΝ — ΓΙΝΕΤΑΙ ΜΕΣΑ ΣΤΗ ΣΥΝΟΔΟ ═══════════════════════════
@@ -5139,23 +5158,44 @@ function synomHTML(){
 
 /* Η πρώτη Σύνοδος του έτους έχει ΣΥΓΚΕΚΡΙΜΕΝΗ ημερήσια διάταξη — ο Κανονισμός
    την ορίζει. Την προσυμπληρώνουμε αντί να την ξαναθυμάται κάθε χρόνο ο Α.Κ.Α. */
+/* Η ατζέντα της Συνόδου Προγραμματισμού — σπόρος, όχι δόγμα: μπαίνει μόνη
+   της και μετά τη σβήνεις ή την αλλάζεις. Η σειρά βγήκε από το πρόγραμμα της
+   πρώτης Συνόδου του 2026-27. Το δεύτερο κελί είναι ΣΗΜΕΙΩΣΗ του θέματος, όχι
+   πρακτικό: το κουτί του πρακτικού ξεκινά πάντα άδειο.
+   ΠΡΟΣΟΧΗ: το «Συγκρότηση Ομίλων» γράφεται ΑΚΡΙΒΩΣ έτσι — πάνω του κρέμεται
+   η οθόνη συγκρότησης ομίλων (synomHTML). */
 const SYNOD_PLANNING_AGENDA=[
-  ['Εκλογή Πρώτων των Ομίλων','Διά βοής ή με αξιολόγηση κατά το Παράρτημα «Α»'],
+  ['Απολογισμός περσινής χρονιάς — πώς λειτουργεί η Κοινότητα',''],
+  ['Το Η.Κ.Α.Δ.Ε., η πρότυπη συγκέντρωση και η επικοινωνία',''],
   ['Συγκρότηση Ομίλων',''],
+  ['Εκλογή Πρώτων των Ομίλων','Διά βοής ή με αξιολόγηση κατά το Παράρτημα «Α»'],
+  ['Στόχοι χρονιάς',''],
+  ['Έργα στην Κοινότητα',''],
+  ['Προγραμματισμός χρονιάς','Κατά το Παράρτημα «Γ»'],
   ['Ανάθεση καθηκόντων','Γραμματέας, Ταμίας, Ιστορικός/Δημοσιογράφος, Διαχειριστής Υλικού — τουλάχιστον 6 εβδομάδες'],
-  ['Καθορισμός στόχων και ετήσιο πρόγραμμα','Κατά το Παράρτημα «Γ»'],
 ];
 
 V.synod=()=>{
-  const list=(D.syn||[]).filter(s=>s.scout_year===YEAR)
+  /* Μία οθόνη, τρεις καταστάσεις: η λίστα, η ανοιχτή Σύνοδος, το φύλλο
+     πρακτικών. Το URL μένει #synod και στις τρεις — καμία έξοδος σε ξένη
+     οθόνη και καμία «πίσω» που σε βγάζει από τη Σύνοδο. */
+  if(SYN_OPEN&&SYN_PRINT)return synodMinutes(SYN_OPEN);
+  if(SYN_OPEN)return openSynod(SYN_OPEN);
+  const year=(D.syn||[]).filter(s=>s.scout_year===YEAR)
     .sort((a,b)=>(b.held_on||'').localeCompare(a.held_on||''));
+  const list=year.filter(s=>!s.archived_at), arch=year.filter(s=>s.archived_at);
   const mem=D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα'&&p.status==='Ενεργός');
   const led=D.bh.filter(p=>isLed(p)&&secOf(p)==='Κοινότητα');
+  /* Ο αριθμός είναι η σειρά της Συνόδου ΜΕΣΑ στη σκαυτική χρονιά: 1η, 2η, 3η.
+     Δεν είναι κωδικός και δεν συνεχίζει από πέρσι. Τον προτείνουμε εμείς —
+     κανείς δεν πρέπει να ψάχνει στα πρακτικά για να θυμηθεί πού έμεινε.
+     Μετράμε και τις αρχειοθετημένες: ο αριθμός τους πιάστηκε, μην τον ξαναδώσεις. */
+  const nextNo=year.reduce((m,s)=>Math.max(m,s.no||0),0)+1;
 
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
-        <b>Σύνοδος Κοινότητας · ${esc(YEAR)}</b><span class="dim">${list.length}</span>
+        <b>Σύνοδος Κοινότητας · ${esc(YEAR)}</b><span class="dim" id="synN">${list.length}</span>
         <span class="sp"></span>${canConveneSynod()
           ? `<button class="btn p sm" id="synNew">+ Νέα Σύνοδος</button>`
           : `<span class="dim" style="font-size:11.5px">Τη Σύνοδο τη συγκαλεί ο Α.Κ.Α., ο Υ.Κ.Α. ή ο Α.Σ.</span>`}</div>
@@ -5166,19 +5206,20 @@ V.synod=()=>{
       <div id="synBox" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
         <div class="grow">
           <label style="max-width:150px">Ημερομηνία<input type="date" id="syD" value="${new Date().toISOString().slice(0,10)}"></label>
-          <label style="max-width:110px">Αριθμός<input type="number" id="syNo" placeholder="π.χ. 3"></label>
-          <label style="max-width:150px">Είδος<select id="syK"><option>Τακτική</option><option>Έκτακτη</option></select></label>
-          <label style="max-width:180px">Τόπος<input id="syP" placeholder="Λέσχη"></label>
+          <label style="max-width:150px">Είδος<select id="syK">
+            <option>Τακτική</option><option>Έκτακτη</option><option>Ειδική</option></select>
+            <span class="dim" style="font-size:11px">Τακτική = η μηνιαία</span></label>
+          <label id="sySpL" style="max-width:210px;display:none">Ειδική<select id="sySp">
+            <option>Σύνοδος Προγραμματισμού</option><option>Σύνοδος Μ.Δ.Υ.</option><option>Απολογισμός Κατασκήνωσης</option></select></label>
+          <label style="max-width:180px">Τόπος<input id="syP" list="syPlc" placeholder="76ο ΣΠΣ">
+            <datalist id="syPlc"><option value="76ο ΣΠΣ"></option><option value="Λέσχη"></option></datalist></label>
         </div>
-        <label style="display:flex;gap:7px;align-items:center;margin-top:8px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="syPl" style="width:auto"> Σύνοδος Προγραμματισμού
-          <span class="dim" style="font-size:11.5px">— εκλογή Πρώτων, ανάθεση καθηκόντων, ετήσιο πρόγραμμα</span></label>
-        <div class="grow" style="margin-top:8px">
-          <label>Προεδρεύει<select id="syCh"><option value="">—</option>
-            ${[...led,...mem].map(p=>`<option value="${p.id}">${esc(nm(p))}${isMem(p)?' · Ανιχνευτής':''}</option>`).join('')}</select></label>
-          <label>Γραμματέας<select id="sySe"><option value="">—</option>
-            ${[...mem,...led].map(p=>`<option value="${p.id}">${esc(nm(p))}</option>`).join('')}</select></label>
-        </div>
+        <div class="dim" id="sySpH" style="font-size:11.5px;margin-top:6px"></div>
+        ${/* Τρία πεδία και τέλος. Παρόντες, προεδρεύων, γραμματέας και θέματα
+             μπαίνουν ΜΕΣΑ στη Σύνοδο, με τη σειρά που γίνονται στην αίθουσα.
+             Ο αριθμός μπαίνει μόνος του στη βάση — είναι η σειρά της χρονιάς. */''}
+        <div class="dim" style="font-size:11.5px;margin-top:8px">
+          Θα πάρει τον αρ. <b>${nextNo}</b>. Παρόντες και προεδρεύοντα τα βάζεις μόλις ανοίξει.</div>
         <button class="btn p sm" id="synSave" style="margin-top:10px">Δημιουργία</button>
         <div id="synMsg" class="dim" style="font-size:12.5px;margin-top:7px"></div>
       </div>
@@ -5191,96 +5232,292 @@ V.synod=()=>{
         const de=(D.synd||[]).filter(x=>x.synod_id===s.id).length;
         const ch=D.bh.find(b=>b.id===s.chair_id);
         return `<tr><td><b>${fdate(s.held_on)}</b></td><td>${s.no||'—'}</td>
-          <td class="hide-s dim">${esc(s.kind||'')}${s.is_planning?' · Προγραμματισμού':''}</td>
+          <td class="hide-s dim">${esc(s.kind||'')}${s.special?' · '+esc(s.special):''}</td>
           <td>${ch?esc(nm(ch))+(isMem(ch)?' <i class="dim" style="font-size:11px">Ανιχνευτής</i>':''):'<span class="dim">—</span>'}</td>
           <td>${pr||'<span class="dim">—</span>'}${s.strength?` <span class="dim">/ ${s.strength}</span>`:''}</td>
           <td>${de||'<span class="dim">—</span>'}</td>
           <td style="white-space:nowrap"><button class="btn sm" data-syn="${s.id}">Άνοιγμα</button>
-            <button class="btn sm gh" data-min="${s.id}">Πρακτικά</button></td></tr>`}).join('')}
+            <button class="btn sm gh" data-min="${s.id}">Πρακτικά</button>
+            ${canArchiveSynod(s)?`<button class="btn sm gh" data-sarc="${s.id}" title="Αρχειοθέτηση">Αρχείο</button>`:''}</td></tr>`}).join('')}
       </tbody></table></div>`
     :`<div class="uc"><div class="ico">${ic('users',26)}</div><h3>Καμία Σύνοδος φέτος</h3>
       <p>Η πρώτη Σύνοδος του έτους είναι η <b>Σύνοδος Προγραμματισμού</b>: εκλογή Πρώτων,
-      συγκρότηση Ομίλων, ανάθεση καθηκόντων και το ετήσιο πρόγραμμα.</p></div>`}`;
+      συγκρότηση Ομίλων, ανάθεση καθηκόντων και το ετήσιο πρόγραμμα.</p></div>`}
+
+    ${/* Το αρχείο δεν κρύβεται: μια Σύνοδος που αρχειοθετήθηκε κατά λάθος
+         πρέπει να φαίνεται και να γυρίζει πίσω με ένα πάτημα. */''}
+    ${arch.length?`<details class="card pad" style="margin-top:12px">
+      <summary style="cursor:pointer;font-weight:600;font-size:13.5px">Αρχειοθετημένες · ${arch.length}</summary>
+      <div style="margin-top:9px">${arch.map(s=>{
+        const by=D.bh.find(b=>b.id===s.archived_by);
+        return `<div class="kv" style="align-items:flex-start;border-top:1px solid var(--line);padding-top:8px">
+          <span style="flex:1"><b>${s.no?'αρ. '+s.no+' · ':''}${fdate(s.held_on)}</b>
+            <div class="dim" style="font-size:12px">${esc(s.archive_reason||'—')}</div>
+            <div class="dim" style="font-size:11.5px">${by?esc(nm(by))+' · ':''}${fdate((s.archived_at||'').slice(0,10))}</div></span>
+          <span style="white-space:nowrap">
+            <button class="btn sm gh" data-min="${s.id}">Πρακτικά</button>
+            ${canArchiveSynod(s)?`<button class="btn sm" data-sres="${s.id}">Επαναφορά</button>`:''}
+            ${isAdminUI()?`<button class="btn sm gh" data-sdel="${s.id}" title="Οριστική διαγραφή">✕</button>`:''}</span>
+        </div>`}).join('')}</div>
+      ${isAdminUI()?`<div class="dim" style="font-size:11.5px;margin-top:9px">
+        Το ✕ διαγράφει οριστικά και δεν αναιρείται — μόνο ο διαχειριστής το βλέπει.</div>`:''}
+    </details>`:''}`;
 
   /* Το κουμπί δεν υπάρχει όταν δεν συγκαλείς — άρα ούτε το δέσιμο. */
   if($('synNew'))$('synNew').onclick=()=>{const b=$('synBox');b.style.display=b.style.display==='none'?'':'none'};
+
+  /* Η «Ειδική» ανοίγει το δεύτερο μενού. Το παλιό checkbox «Προγραμματισμού»
+     έφυγε: ήταν τρίτο είδος μεταμφιεσμένο σε επιλογή. */
+  const SYN_SPECIAL_HINT={
+    'Σύνοδος Προγραμματισμού':'Εκλογή Πρώτων, συγκρότηση Ομίλων, ανάθεση καθηκόντων, ετήσιο πρόγραμμα.',
+    'Σύνοδος Μ.Δ.Υ.':'Για τη Μεγάλη Δράση Υπαίθρου: σχεδιασμός, ομάδες εργασίας, υλικό.',
+    'Απολογισμός Κατασκήνωσης':'Μετά την κατασκήνωση: τι πήγε καλά, τι όχι, τι κρατάμε.'};
+  const synKind=()=>{
+    const sp=$('syK')&&$('syK').value==='Ειδική';
+    if($('sySpL'))$('sySpL').style.display=sp?'':'none';
+    if($('sySpH'))$('sySpH').textContent=sp&&$('sySp')?(SYN_SPECIAL_HINT[$('sySp').value]||''):'';
+  };
+  if($('syK'))$('syK').onchange=synKind;
+  if($('sySp'))$('sySp').onchange=synKind;
+  synKind();
+
   const ss=$('synSave');
   if(ss)ss.onclick=async()=>{
     const m=$('synMsg'); m.style.color='var(--ink2)'; m.textContent='…';
-    const rec={scout_year:YEAR, held_on:$('syD').value, no:parseInt($('syNo').value)||null,
-      kind:$('syK').value, place:$('syP').value.trim()||null, is_planning:$('syPl').checked,
-      chair_id:$('syCh').value||null, secretary_id:$('sySe').value||null,
+    const rec={scout_year:YEAR, held_on:$('syD').value,
+      kind:$('syK').value, place:$('syP').value.trim()||null,
+      special:$('syK').value==='Ειδική'?$('sySp').value:null,
       strength:mem.length+led.length, klimakio_id:(meRec()||{}).klimakio_id||null};
     const {data,error}=await sb.from('synod').insert(rec).select().single();
     if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
     (D.syn=D.syn||[]).push(data);
-    if(rec.is_planning){
-      const rows=SYNOD_PLANNING_AGENDA.map(([t,d],i)=>({synod_id:data.id,seq:i+1,topic:t,decision:d||null}));
+    if(rec.special==='Σύνοδος Προγραμματισμού'){
+      const rows=SYNOD_PLANNING_AGENDA.map(([t,n],i)=>({synod_id:data.id,seq:i+1,topic:t,note:n||null}));
       const {data:dd}=await sb.from('synod_decision').insert(rows).select();
       if(dd)(D.synd=D.synd||[]).push(...dd);
     }
-    toast('Η Σύνοδος δημιουργήθηκε'); V.synod();
+    /* Ανοίγει αμέσως: το επόμενο βήμα είναι οι παρόντες, όχι μια λίστα. */
+    toast('Η Σύνοδος δημιουργήθηκε · αρ. '+(data.no||'')); V.synod(); openSynod(data.id);
   };
   document.querySelectorAll('[data-syn]').forEach(b=>b.onclick=()=>openSynod(b.dataset.syn));
   document.querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>synodMinutes(b.dataset.min));
+  document.querySelectorAll('[data-sarc]').forEach(b=>b.onclick=()=>synodArchive(b.dataset.sarc,false));
+  document.querySelectorAll('[data-sres]').forEach(b=>b.onclick=()=>synodArchive(b.dataset.sres,true));
+  document.querySelectorAll('[data-sdel]').forEach(b=>b.onclick=()=>synodDelete(b.dataset.sdel));
 };
 
-/* ── Το φύλλο της Συνόδου: παρόντες, θέματα, και οι εγκρίσεις απαιτήσεων ── */
+/* ── Αρχειοθέτηση Συνόδου ────────────────────────────────────────────
+     Μια Σύνοδος που έγινε ΔΕΝ σβήνεται. Αρχειοθετείται: φεύγει από την
+     ενεργή λίστα, κρατάει τα πρακτικά της, και γυρίζει πίσω με ένα πάτημα.
+     Η δικλείδα είναι στη ΒΑΣΗ, όχι εδώ: η synod_archive() ζητάει λόγο,
+     ελέγχει ρόλο και κλιμάκιο, και γράφει ίχνος με ονόματα πεδίων. */
+async function synodArchive(id, undo){
+  const s=(D.syn||[]).find(x=>x.id===id); if(!s)return;
+  const ttl=`${s.no?'αρ. '+s.no+' · ':''}${fdate(s.held_on)}`;
+  let reason=null;
+  if(!undo){
+    const held=(D.kap||[]).filter(g=>g.synod_id===id).length;
+    const de=(D.synd||[]).filter(x=>x.synod_id===id).length;
+    reason=prompt(`Αρχειοθέτηση της Συνόδου ${ttl}.\n\n`
+      +(held?`Προσοχή: έχει εγκρίνει ${held} απαιτήσεις Η.Κ.Α.Δ.Ε. — οι εγκρίσεις μένουν.\n`:'')
+      +`Κρατάει τα ${de} θέματά της και επαναφέρεται όποτε θες.\n\nΓιατί;`, '');
+    if(reason===null)return;
+    if(reason.trim().length<5){toast('Γράψε τον λόγο — τουλάχιστον λίγες λέξεις');return}
+  }
+  const {data,error}=await sb.rpc('synod_archive',{p_synod:id, p_reason:reason, p_undo:!!undo});
+  if(error){toast(error.message);return}
+  const row=Array.isArray(data)?data[0]:data;
+  Object.assign(s, row||{});
+  if(!row){ s.archived_at=undo?null:new Date().toISOString(); s.archive_reason=undo?null:reason; }
+  toast(undo?'Η Σύνοδος επανήλθε':'Η Σύνοδος αρχειοθετήθηκε');
+  V.synod();
+}
+
+/* ── Οριστική διαγραφή — ΜΟΝΟ ο διαχειριστής ─────────────────────────
+     Δεύτερο φράγμα της βάσης: το ξένο κλειδί αρνείται να σβήσει Σύνοδο που
+     έχει εγκρίνει απαίτηση, ακόμα και στον διαχειριστή. Μια υπογραφή δεν
+     μπορεί να δείχνει σε Σύνοδο που δεν υπάρχει. */
+async function synodDelete(id){
+  const s=(D.syn||[]).find(x=>x.id===id); if(!s)return;
+  if(!isAdminUI()){toast('Οριστική διαγραφή μόνο από τον διαχειριστή — αρχειοθέτησέ την');return}
+  if(!s.archived_at){toast('Αρχειοθέτησέ την πρώτα');return}
+  const held=(D.kap||[]).filter(g=>g.synod_id===id).length;
+  if(held){toast('Δεν διαγράφεται: έχει εγκρίνει '+held+' απαιτήσεις Η.Κ.Α.Δ.Ε.');return}
+  const de=(D.synd||[]).filter(x=>x.synod_id===id).length;
+  const pr=(D.synp||[]).filter(x=>x.synod_id===id).length;
+  if(!confirm(`ΟΡΙΣΤΙΚΗ διαγραφή της Συνόδου ${s.no?'αρ. '+s.no+' · ':''}${fdate(s.held_on)};\n\n`
+    +`Χάνονται ${de} θέματα και ${pr} παρόντες. ΔΕΝ αναιρείται.`))return;
+  const {error}=await sb.from('synod').delete().eq('id',id);
+  if(error){toast(error.code==='23503'
+    ? 'Δεν διαγράφεται: κρέμονται εγκρίσεις ή καθήκοντα από αυτή τη Σύνοδο.'
+    : error.message); return}
+  /* Το RLS αρνείται ΣΙΩΠΗΛΑ — πιάνει 0 γραμμές αντί να βγάλει σφάλμα. Άρα
+     επιβεβαιώνουμε ότι έφυγε όντως πριν πούμε ότι έφυγε. */
+  const {count}=await sb.from('synod').select('id',{count:'exact',head:true}).eq('id',id);
+  if(count){toast('Δεν επιτρέπεται η διαγραφή αυτής της Συνόδου');return}
+  D.syn=(D.syn||[]).filter(x=>x.id!==id);
+  D.synd=(D.synd||[]).filter(x=>x.synod_id!==id);
+  D.synp=(D.synp||[]).filter(x=>x.synod_id!==id);
+  toast('Η Σύνοδος διαγράφηκε οριστικά'); V.synod();
+}
+
+/* ── Η ανοιχτή Σύνοδος ─────────────────────────────────────────────────
+     ΟΛΟΣΕΛΙΔΑ, όχι συρτάρι. Μέσα στη Σύνοδο δουλεύεις μία ώρα: ρυθμίσεις,
+     παρόντες, αξιώματα, θέματα, πρακτικά. Ένα συρτάρι 380 pixels δεν είναι
+     τραπέζι εργασίας. Ζει στο route 'synod' — άρα το URL μένει σωστό. */
+let SYN_OPEN=null, SYN_PRINT=false;
 async function openSynod(id){
   const s=(D.syn||[]).find(x=>x.id===id); if(!s)return;
   const mem=D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα'&&p.status==='Ενεργός')
                 .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
   const led=D.bh.filter(p=>isLed(p)&&secOf(p)==='Κοινότητα');
   const present=new Set((D.synp||[]).filter(x=>x.synod_id===id).map(x=>x.person_id));
+  /* Η ΔΥΝΑΜΗ είναι η Κοινότητα. Η ΛΙΣΤΑ ΠΑΡΟΝΤΩΝ όμως δεν είναι η δύναμη:
+     στη Σύνοδο κάθεται και ο Α.Σ., και ο Έφορος, και όποιος κλήθηκε. Αν δεν
+     τον έχει η λίστα, ο Γραμματέας γράφει το όνομα στο περιθώριο του χαρτιού
+     — και χάνεται. Άρα: η Κοινότητα, ΣΥΝ όποιος ήδη σημειώθηκε, ΣΥΝ εγώ. */
+  const core=[...led,...mem];
+  const extra=D.bh.filter(p=>!core.some(x=>x.id===p.id)
+    && (present.has(p.id) || (ME.person_id&&p.id===ME.person_id)));
+  const rows=[...core,...extra];
+  const addable=D.bh.filter(p=>p.status==='Ενεργός'&&!rows.some(x=>x.id===p.id))
+    .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
   const decs=(D.synd||[]).filter(x=>x.synod_id===id).sort((a,b)=>(a.seq||0)-(b.seq||0));
   /* Ποιες απαιτήσεις περιμένουν διαβεβαίωση; ΔΕΔΑ 6 = έτοιμες για παρουσίαση. */
   const waiting=(D.kap||[]).filter(g=>g.deda>=6&&!g.approved_on);
 
-  drawer(`Σύνοδος ${s.no?'αρ. '+s.no+' · ':''}${fdate(s.held_on)}`, `
+  SYN_OPEN=id; SYN_PRINT=false; ROUTE='synod'; location.hash='synod';
+  /* ΠΡΟΕΤΟΙΜΑΣΙΑ = στήνεις. ΣΕ ΕΞΕΛΙΞΗ = συνεδριάζεις. Η διαφορά δεν είναι
+     διακοσμητική: πρακτικό σε Σύνοδο που δεν άρχισε είναι πρακτικό που δεν
+     ειπώθηκε ποτέ, και οι διαβεβαιώσεις θέλουν σώμα που συνεδριάζει. */
+  const st=s.status||'Προετοιμασία', live=st!=='Προετοιμασία';
+  $('ttl').textContent=`Σύνοδος ${s.no?'αρ. '+s.no:''}`;
+  $('sub').textContent=`${fdate(s.held_on)} · ${s.kind||''}${s.special?' · '+s.special:''}`;
+  $('view').innerHTML=(`
+    <div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <button class="btn sm" id="synBack">← Όλες οι Σύνοδοι</button>
+      <button class="btn sm gh" id="synPrt2">Φύλλο Πρακτικών</button>
+      <span class="sp"></span>
+      <span class="pill" style="${st==='Σε εξέλιξη'?'background:var(--okbg);color:var(--ok);border-color:transparent':''}">${esc(st)}</span>
+      ${canWriteSynod(s)&&st==='Προετοιμασία'?`<button class="btn sm p" id="synStart">Έναρξη</button>`:''}
+      ${canWriteSynod(s)&&st==='Σε εξέλιξη'?`<button class="btn sm" id="synEnd">Λήξη</button>`:''}
+      ${canWriteSynod(s)&&st==='Ολοκληρωμένη'?`<button class="btn sm gh" id="synReopen">Άνοιγμα ξανά</button>`:''}
+    </div>
+    ${st==='Προετοιμασία'?`<div class="card pad" style="margin-bottom:12px;border-left:3px solid var(--warn,#b45309)">
+      <b style="font-size:13.5px">Στήσιμο</b>
+      <div class="muted" style="margin-top:4px;font-size:13px;line-height:1.6">
+        Τρία πράγματα πριν αρχίσει: <b>ποιοι ήρθαν</b>, <b>ποιος προεδρεύει</b>, <b>ποια θέματα</b>.
+        Με την <b>Έναρξη</b> ανοίγουν τα πρακτικά, οι αποχωρήσεις και οι διαβεβαιώσεις.</div></div>`:''}
+
+    <div class="sec"><h3>Στοιχεία</h3></div>
+    <div class="card pad">
+      ${canWriteSynod(s)?`<div class="grow">
+        <label style="max-width:150px">Ημερομηνία<input type="date" id="ssD" value="${esc(s.held_on||'')}"></label>
+        <label style="max-width:150px">Είδος<select id="ssK">
+          ${['Τακτική','Έκτακτη','Ειδική'].map(k=>`<option${s.kind===k?' selected':''}>${k}</option>`).join('')}</select></label>
+        <label id="ssSpL" style="max-width:210px;display:${s.kind==='Ειδική'?'':'none'}">Ειδική<select id="ssSp">
+          ${['Σύνοδος Προγραμματισμού','Σύνοδος Μ.Δ.Υ.','Απολογισμός Κατασκήνωσης']
+            .map(k=>`<option${s.special===k?' selected':''}>${k}</option>`).join('')}</select></label>
+        <label style="max-width:180px">Τόπος<input id="ssP" list="ssPlc" value="${esc(s.place||'')}" placeholder="76ο ΣΠΣ">
+          <datalist id="ssPlc"><option value="76ο ΣΠΣ"></option><option value="Λέσχη"></option></datalist></label>
+      </div>
+      <div style="margin-top:8px"><button class="btn sm p" id="ssSave">Αποθήκευση</button>
+        <span class="dim" id="ssMsg" style="font-size:11.5px;margin-left:8px"></span></div>`
+      :`<div class="dim" style="font-size:13px">${fdate(s.held_on)} · ${esc(s.kind||'')}${s.special?' · '+esc(s.special):''}${s.place?' · '+esc(s.place):''}</div>`}
+    </div>
+
     <div class="sec"><h3>Παρόντες</h3></div>
     <div class="card pad">
       <div class="dim" style="font-size:12px;margin-bottom:8px">Δύναμη ${(mem.length+led.length)} · παρόντες <b id="prN">${present.size}</b></div>
       ${/* Τους παρόντες τους βάζει ΚΑΙ απλός Ανιχνευτής — ο κόσμος πάει κι
            έρχεται και δεν περιμένει τον Αρχηγό. */''}
       <div style="display:grid;gap:4px;max-height:230px;overflow:auto">
-        ${[...mem,...led].map(p=>`<label class="kv" style="cursor:${canMarkPresent(s)?'pointer':'default'}">
+        ${rows.map(p=>`<label class="kv" style="cursor:${canMarkPresent(s)?'pointer':'default'}">
           <input type="checkbox" class="prx" value="${p.id}"${present.has(p.id)?' checked':''}${canMarkPresent(s)?'':' disabled'} style="width:auto;margin-right:8px">
           <span style="flex:1">${pn(p)}</span>
-          <span class="dim" style="font-size:11.5px">${isMem(p)?'Ανιχνευτής':'Βαθμοφόρος'}</span></label>`).join('')}
+          <span class="dim" style="font-size:11.5px">${core.some(x=>x.id===p.id)
+            ? (isMem(p)?'Ανιχνευτής':'Βαθμοφόρος') : 'προσκεκλημένος'}</span></label>`).join('')}
       </div>
+      ${canMarkPresent(s)?`<div class="grow" style="margin-top:10px;border-top:1px solid var(--line);padding-top:9px">
+        <label style="max-width:320px">Ήρθε και κάποιος εκτός Κοινότητας
+          <select id="prAdd"><option value="">— διάλεξε —</option>
+            ${addable.map(p=>`<option value="${p.id}">${esc(nm(p))}${p.kind?' · '+esc(p.kind):''}</option>`).join('')}
+          </select></label>
+      </div>`:''}
     </div>
 
-    <div class="sec"><h3>Θέματα και αποφάσεις</h3></div>
+    ${/* ΒΗΜΑ 2: από τους παρόντες βγαίνουν τα δύο αξιώματα. Τα μενού
+         ξαναχτίζονται σε κάθε τσεκάρισμα παρουσίας, ακριβώς από πάνω. */''}
+    <div class="sec"><h3>Προεδρεύων και Γραμματέας</h3></div>
     <div class="card pad">
-      ${decs.length?decs.map(d=>`<div style="border-bottom:1px solid var(--line);padding:7px 0">
-          <b style="font-size:13.5px">${esc(d.topic)}</b>
-          <div class="dim" style="font-size:12.5px;margin-top:2px">${esc(d.decision||'—')}</div></div>`).join('')
+      ${canWriteSynod(s)?`<div class="grow">
+        <label>Προεδρεύει<select id="syCh2"></select></label>
+        <label>Γραμματέας<select id="sySe2"></select></label>
+      </div>
+      <div style="margin-top:8px"><button class="btn sm p" id="syOffSave">Καταχώρηση</button>
+        <span class="dim" id="syOffMsg" style="font-size:11.5px;margin-left:8px"></span></div>
+      <div class="dim" style="font-size:11.5px;margin-top:7px">
+        Βγαίνουν από τους παρόντες. Μόλις καταχωρηθούν, ο προεδρεύων και ο γραμματέας
+        γράφουν θέματα και πρακτικά — ακόμη κι αν είναι Ανιχνευτές.</div>`
+      :`<div style="font-size:13px">Προεδρεύει <b>${(()=>{const c=D.bh.find(b=>b.id===s.chair_id);return c?esc(nm(c)):'—'})()}</b>
+        · Γραμματέας <b>${(()=>{const c=D.bh.find(b=>b.id===s.secretary_id);return c?esc(nm(c)):'—'})()}</b></div>`}
+    </div>
+
+    <div class="sec"><h3>Θέματα και πρακτικά</h3></div>
+    <div class="card pad">
+      ${/* Το πρακτικό κάθε θέματος μπαίνει ΚΑΤΩ ΑΠΟ ΤΟ ΘΕΜΑ, όσο μιλάνε —
+           όχι σε ένα μεγάλο κουτί στο τέλος που κανείς δεν συμπληρώνει. */''}
+      ${decs.length?decs.map(d=>`<div style="border-bottom:1px solid var(--line);padding:8px 0">
+          <b style="font-size:13.5px">${d.seq||''}. ${esc(d.topic)}</b>
+          ${d.note?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(d.note)}</div>`:''}
+          ${canWriteSynod(s)&&live?`<textarea class="dcM" data-d="${d.id}" rows="2"
+              placeholder="Πρακτικό — τι ειπώθηκε, τι αποφασίστηκε"
+              style="margin-top:4px">${esc(d.decision||'')}</textarea>`
+            :`<div class="dim" style="font-size:12.5px;margin-top:2px">${esc(d.decision||'—')}</div>`}
+        </div>`).join('')
         :'<div class="dim" style="font-size:13px">Κανένα θέμα ακόμη.</div>'}
+      ${canWriteSynod(s)&&live&&decs.length?`<div style="margin-top:8px">
+        <button class="btn sm" id="dcSaveAll">Αποθήκευση πρακτικών</button>
+        <span class="dim" id="dcMsg" style="font-size:11.5px;margin-left:8px"></span></div>`:''}
       ${/* Τα πρακτικά τα γράφει ο Πρόεδρος ή ο Γραμματέας ΑΥΤΗΣ της Συνόδου.
            Το RLS αρνείται ΣΙΩΠΗΛΑ — μια εντολή που δεν επιτρέπεται πιάνει 0
            γραμμές αντί να βγάλει σφάλμα. Άρα κουμπί που δεν επιτρέπεται θα
            έδειχνε επιτυχία. Δεν το δείχνουμε καθόλου. */''}
-      ${canWriteSynod(s)?`<div style="margin-top:10px;display:grid;gap:6px">
-        <input id="dcT" placeholder="Θέμα">
-        <textarea id="dcD" rows="2" placeholder="Απόφαση"></textarea>
+      ${canWriteSynod(s)?`<div style="margin-top:12px;display:grid;gap:6px;border-top:1px solid var(--line);padding-top:10px">
+        <input id="dcT" placeholder="Νέο θέμα">
+        <textarea id="dcD" rows="2" placeholder="Πρακτικό (μπορεί και αργότερα)"></textarea>
         <div><button class="btn sm p" id="dcAdd">Προσθήκη θέματος</button></div>
       </div>`:`<div class="dim" style="font-size:11.5px;margin-top:10px">
-        Τα θέματα και τις αποφάσεις τα γράφει ο Πρόεδρος ή ο Γραμματέας αυτής της Συνόδου.</div>`}
+        Τα θέματα και τα πρακτικά τα γράφει όποιος άνοιξε τη Σύνοδο, ο Α.Κ.Α., ο Α.Σ.,
+        ή ο Πρόεδρος και ο Γραμματέας αυτής της Συνόδου.</div>`}
+    </div>
+
+    ${/* Ή στο τέλος ως συνημμένο: σαρωμένο χαρτί, φωτογραφία του τετραδίου. */''}
+    <div class="sec"><h3>Πρακτικά ως αρχείο</h3></div>
+    <div class="card pad">
+      ${(()=>{const fs=(D.doc||[]).filter(x=>x.synod_id===id);
+        return fs.length?fs.map(f=>`<div class="kv" style="border-top:1px solid var(--line);padding-top:7px">
+          <span style="flex:1;font-size:13px">${esc(f.title||'')}</span>
+          <button class="btn sm gh" data-sdoc="${f.id}">Άνοιγμα</button></div>`).join('')
+        :'<div class="dim" style="font-size:13px">Κανένα αρχείο.</div>'})()}
+      ${canWriteSynod(s)?`<div style="margin-top:9px">
+        <input type="file" id="syDocF" accept="image/*,application/pdf" style="font-size:12px">
+        <span class="dim" id="syDocMsg" style="font-size:11.5px;margin-left:8px"></span></div>`:''}
     </div>
 
     ${/* ΣΥΓΚΡΟΤΗΣΗ ΟΜΙΛΩΝ — ανοιχτή στη Σύνοδο Προγραμματισμού, διαθέσιμη
          πάντα: οι όμιλοι μπορεί να αλλάξουν και μέσα στη χρονιά, αλλά πάλι
          με απόφαση Συνόδου, ποτέ από τον Αρχηγό μόνο του. */''}
+    ${s.special!=='Σύνοδος Προγραμματισμού'?'':`
     <div class="sec"><h3>Συγκρότηση Ομίλων</h3></div>
-    <details class="card pad" id="somD"${s.is_planning?' open':''}>
+    <details class="card pad" id="somD" open>
       <summary style="cursor:pointer;font-weight:600;font-size:13.5px">
         ${(()=>{const now=KOIN_MEM().filter(p=>(myOf(p)||{}).group_name).length, tot=KOIN_MEM().length;
           return now?`Σε ομίλους: ${now} από ${tot}`:`Καμία σύνθεση φέτος — ${tot} Ανιχνευτές αδιάθετοι`})()}
       </summary>
       <div id="somBox" style="margin-top:11px">${synomHTML()}</div>
-    </details>
+    </details>`}
 
-    <div style="margin:10px 0"><button class="btn sm" id="synPrt">Φύλλο Πρακτικών</button></div>
 
     <div class="sec"><h3>Διαβεβαιώσεις απαιτήσεων</h3></div>
     <div class="card pad">
@@ -5293,10 +5530,54 @@ async function openSynod(id){
           <span style="flex:1"><b>${pn(p)}</b>
             <div class="dim" style="font-size:12px">${esc(r.code||'')} · ${esc(r.label||'')}</div>
             ${g.topic?`<div class="dim" style="font-size:11.5px">«${esc(g.topic)}»</div>`:''}</span>
-          ${canWriteSynod(s)?`<button class="btn sm p" data-appr="${g.id}">Εγκρίθηκε</button>`
-             :`<span class="dim" style="font-size:11.5px">εγκρίνει ο Πρόεδρος</span>`}</div>`}).join('')
+          ${canWriteSynod(s)&&live?`<button class="btn sm p" data-appr="${g.id}">Εγκρίθηκε</button>`
+             :`<span class="dim" style="font-size:11.5px">${live?'εγκρίνει ο Πρόεδρος':'μετά την Έναρξη'}</span>`}</div>`}).join('')
        :'<div class="dim" style="font-size:13px">Καμία απαίτηση δεν περιμένει διαβεβαίωση.</div>'}
     </div>`);
+
+  if($('synBack'))$('synBack').onclick=()=>{SYN_OPEN=null; SYN_PRINT=false; route('synod')};
+
+  /* Η Έναρξη δεν είναι διακοσμητική: απαιτεί στημένη Σύνοδο. Χωρίς παρόντες
+     και χωρίς προεδρεύοντα δεν υπάρχει σώμα που να αποφασίζει. */
+  const setStatus=async(v,extra)=>{
+    const {error}=await sb.from('synod').update(Object.assign({status:v},extra||{})).eq('id',id);
+    if(error){toast(error.message);return}
+    s.status=v; Object.assign(s, extra||{}); openSynod(id);
+  };
+  if($('synStart'))$('synStart').onclick=()=>{
+    if(!present.size)return toast('Διάλεξε πρώτα ποιοι ήρθαν.');
+    if(!s.chair_id)return toast('Η Σύνοδος θέλει προεδρεύοντα.');
+    if(!decs.length)return toast('Όρισε τουλάχιστον ένα θέμα.');
+    setStatus('Σε εξέλιξη',{started_at:new Date().toISOString()});
+  };
+  if($('synEnd'))$('synEnd').onclick=()=>{
+    if(!confirm('Λήξη της Συνόδου;\n\nΤα πρακτικά παραμένουν επεξεργάσιμα — η λήξη λέει ότι η συνεδρίαση τελείωσε.'))return;
+    setStatus('Ολοκληρωμένη',{ended_at:new Date().toISOString()});
+  };
+  if($('synReopen'))$('synReopen').onclick=()=>setStatus('Σε εξέλιξη',{ended_at:null});
+  if($('synPrt2'))$('synPrt2').onclick=()=>synodMinutes(id);
+
+  /* Ρυθμίσεις της Συνόδου, επί τόπου. Το «Ειδική» ανοίγει το υποείδος. */
+  const ssK=()=>{ if($('ssSpL'))$('ssSpL').style.display=$('ssK').value==='Ειδική'?'':'none' };
+  if($('ssK'))$('ssK').onchange=ssK;
+  if($('ssSave'))$('ssSave').onclick=async()=>{
+    const msg=$('ssMsg'); msg.textContent='…';
+    const rec={held_on:$('ssD').value, kind:$('ssK').value, place:$('ssP').value.trim()||null,
+               special:$('ssK').value==='Ειδική'?$('ssSp').value:null};
+    const {error}=await sb.from('synod').update(rec).eq('id',id);
+    if(error){msg.textContent=error.message;return}
+    Object.assign(s,rec); msg.textContent='Αποθηκεύτηκε';
+    $('sub').textContent=`${fdate(s.held_on)} · ${s.kind||''}${s.special?' · '+s.special:''}`;
+  };
+
+  /* Προσκεκλημένος: μπαίνει ως παρών και εμφανίζεται στη λίστα από κει και πέρα. */
+  if($('prAdd'))$('prAdd').onchange=async e=>{
+    const pid=e.target.value; if(!pid)return;
+    const {error}=await sb.from('synod_present').insert({synod_id:id,person_id:pid});
+    if(error){toast(error.message);e.target.value='';return}
+    (D.synp=D.synp||[]).push({synod_id:id,person_id:pid});
+    toast('Προστέθηκε στους παρόντες'); openSynod(id);
+  };
 
   document.querySelectorAll('.prx').forEach(c=>c.onchange=async()=>{
     if(c.checked)await sb.from('synod_present').insert({synod_id:id,person_id:c.value});
@@ -5304,6 +5585,65 @@ async function openSynod(id){
     D.synp=(D.synp||[]).filter(x=>!(x.synod_id===id&&x.person_id===c.value));
     if(c.checked)D.synp.push({synod_id:id,person_id:c.value});
     $('prN').textContent=document.querySelectorAll('.prx:checked').length;
+    synOff2();
+  });
+
+  /* ΒΗΜΑ 2 — τα δύο αξιώματα βγαίνουν ΜΟΝΟ από τους τσεκαρισμένους παρόντες.
+     Ένα όνομα που δεν ήρθε δεν μπορεί να προεδρεύσει, άρα δεν εμφανίζεται. */
+  function synOff2(){
+    const on=[...document.querySelectorAll('.prx:checked')];
+    const opts=on.map(c=>{const p=D.bh.find(b=>b.id===c.value)||{};
+      return `<option value="${c.value}">${esc(nm(p))}${isMem(p)?' · Ανιχνευτής':''}</option>`}).join('');
+    [['syCh2',s.chair_id],['sySe2',s.secretary_id]].forEach(([k,cur])=>{
+      const el=$(k); if(!el)return;
+      const keep=el.value||cur||'';
+      el.innerHTML='<option value="">—</option>'+opts;
+      if(on.some(c=>c.value===keep))el.value=keep;
+      el.disabled=!on.length;
+    });
+    const msg=$('syOffMsg');
+    if(msg&&!on.length)msg.textContent='Σημείωσε πρώτα τους παρόντες.';
+    else if(msg&&msg.textContent==='Σημείωσε πρώτα τους παρόντες.')msg.textContent='';
+  }
+  synOff2();
+
+  if($('syOffSave'))$('syOffSave').onclick=async()=>{
+    const ch=$('syCh2').value||null, se=$('sySe2').value||null, msg=$('syOffMsg');
+    if(!ch){msg.textContent='Η Σύνοδος θέλει προεδρεύοντα.';return}
+    msg.textContent='…';
+    const {error}=await sb.from('synod').update({chair_id:ch, secretary_id:se}).eq('id',id);
+    if(error){msg.textContent=error.message;return}
+    s.chair_id=ch; s.secretary_id=se;
+    msg.textContent='Καταχωρήθηκε';
+    toast('Προεδρεύων και Γραμματέας καταχωρήθηκαν');
+  };
+
+  /* ΒΗΜΑ 3 — τα πρακτικά ανά θέμα. Ένα κουμπί για όλα: μέσα στη Σύνοδο
+     γράφεις σε τρία κουτιά μαζί, δεν πατάς αποθήκευση σε κάθε ένα. */
+  if($('dcSaveAll'))$('dcSaveAll').onclick=async()=>{
+    const msg=$('dcMsg'); msg.textContent='…'; let n=0, bad=0;
+    for(const t of document.querySelectorAll('.dcM')){
+      const d=(D.synd||[]).find(x=>x.id===t.dataset.d); if(!d)continue;
+      const v=t.value.trim()||null; if(v===(d.decision||null))continue;
+      const {error}=await sb.from('synod_decision').update({decision:v}).eq('id',t.dataset.d);
+      if(error){bad++;continue}
+      d.decision=v; n++;
+    }
+    msg.textContent=bad?`${n} αποθηκεύτηκαν, ${bad} όχι`:(n?`${n} αποθηκεύτηκαν`:'Καμία αλλαγή');
+  };
+
+  if($('syDocF'))$('syDocF').onchange=async e=>{
+    const f=e.target.files&&e.target.files[0]; if(!f)return;
+    const msg=$('syDocMsg'); msg.textContent='Ανεβαίνει…';
+    try{ await docUpload(f,{synod_id:id, kind:'Πρακτικά', title:'Πρακτικά · '+fdate(s.held_on)});
+      msg.textContent='Ανέβηκε'; openSynod(id);
+    }catch(err){ msg.textContent=(err&&err.message)||'Δεν ανέβηκε' }
+  };
+  document.querySelectorAll('[data-sdoc]').forEach(b=>b.onclick=async()=>{
+    const d=(D.doc||[]).find(x=>x.id===b.dataset.sdoc); if(!d)return;
+    const {data,error}=await sb.storage.from('e76').createSignedUrl(d.path,300);
+    if(error||!data)return toast('Δεν άνοιξε το αρχείο');
+    window.open(data.signedUrl,'_blank');
   });
   /* ── Συγκρότηση Ομίλων: όλα μέσα στο #somBox, ξαναζωγραφίζεται μόνο αυτό.
        Το drawer ΔΕΝ ξαναχτίζεται σε κάθε πάτημα — θα έχανες τη θέση σου μέσα
@@ -5344,7 +5684,6 @@ async function openSynod(id){
   }
   somWire();
 
-  const sp=$('synPrt'); if(sp)sp.onclick=()=>{$('drw').classList.remove('on'); synodMinutes(id)};
   if($('dcAdd'))$('dcAdd').onclick=async()=>{
     const t=$('dcT').value.trim(); if(!t)return toast('Γράψε θέμα');
     const rec={synod_id:id, seq:decs.length+1, topic:t, decision:$('dcD').value.trim()||null};
@@ -6349,7 +6688,9 @@ function wireDocs(after){
 V.mykids=()=>{
   const list=myKids();
   if(!list.length)return $('view').innerHTML=`<div class="uc"><div class="ico">${ic('home',26)}</div>
-    <h3>Δεν βρέθηκαν παιδιά</h3><p>Ο λογαριασμός σου δεν είναι συνδεδεμένος με μέλος του Συστήματος. Αν νομίζεις ότι είναι λάθος, γράψε στο <b>as@76.life</b>.</p></div>`;
+    <h3>Δεν βρέθηκαν παιδιά</h3><p>${(VIEWAS&&VIEWAS.role==='parent')
+      ? 'Αυτό το άτομο δεν έχει συνδεδεμένα παιδιά.'
+      : 'Ο λογαριασμός σου δεν είναι συνδεδεμένος με μέλος του Συστήματος. Αν νομίζεις ότι είναι λάθος, γράψε στο <b>as@76.life</b>.'}</p></div>`;
   const card=({kid:p,l})=>{
     const y=myOf(p)||{};   // το ιατρικό ΔΕΝ διαβάζεται εδώ: η κάρτα δεν το δείχνει
     const fl=(D.mf||[]).filter(f=>f.person_id===p.id&&['Ιατρικό','Διατροφή'].includes(f.kind));
@@ -6371,11 +6712,19 @@ V.mykids=()=>{
       <div class="pdocs">${reqs.map(r=>docRowHTML(p,r)).join('')}${docOrphansHTML(p)}</div>
       ${fl.length?`<div class="cflag">${fl.map(f=>`<b>${esc(f.kind)}:</b> ${esc(f.detail)}`).join(' · ')}</div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn sm" data-pe="${p.id}">Τα στοιχεία μας</button></div>
+        <button class="btn sm" data-pe="${p.id}">${(VIEWAS&&VIEWAS.role==='parent')?'Στοιχεία επικοινωνίας':'Τα στοιχεία μας'}</button></div>
     </div>`};
+  /* ΜΕ ΦΑΚΟ «Γονέας · Χ» αυτή η οθόνη δείχνει τα παιδιά ΤΟΥ Χ, όχι τα δικά
+     σου. Ο τίτλος «Τα παιδιά μου» από πάνω τους ήταν ψέμα — και το χειρότερο
+     είδος ψέματος: σε κάνει να νομίζεις ότι κοιτάς δικό σου φάκελο ενώ
+     κοιτάς ξένο παιδί. Ο τίτλος ακολουθεί τον φακό. */
+  const lensP=(VIEWAS&&VIEWAS.role==='parent'&&VIEWAS.pid)
+    ? D.bh.find(b=>b.id===VIEWAS.pid) : null;
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
-      <b>Τα παιδιά μου</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px">Ό,τι αφορά τα παιδιά σου στο 76ο. Βλέπεις μόνο τα δικά σου.</div></div>
+      <b>${lensP?'Παιδιά · '+esc(nm(lensP)):'Τα παιδιά μου'}</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">${lensP
+        ? 'Η πύλη γονέα όπως τη βλέπει '+esc(nm(lensP))+'. Δεν είναι δικά σου παιδιά — τα δικαιώματά σου δεν άλλαξαν.'
+        : 'Ό,τι αφορά τα παιδιά σου στο 76ο. Βλέπεις μόνο τα δικά σου.'}</div></div>
     <div class="cgrid">${list.map(card).join('')}</div>`;
   wireDocs(V.mykids);
   document.querySelectorAll('[data-pe]').forEach(b=>b.onclick=()=>parentEdit(b.dataset.pe));
@@ -11329,11 +11678,90 @@ function meSimpleHTML(p){
   </div>`;
 }
 
+/* ══ ΠΡΟΣΚΟΠΙΚΗ ΠΡΟΟΔΟΣ — Η ΔΙΚΗ ΜΟΥ ══════════════════════════════════════
+   Ο Πρόσκοπος δεν χρειάζεται τον πίνακα ΟΛΟΥ του τμήματος. Χρειάζεται τη
+   ΔΙΚΗ του πορεία, και μάλιστα ΟΛΗ: το παιδί που πέρασε από Αγέλη σε Ομάδα
+   σε Κοινότητα δεν παύει να έχει κερδίσει τα Αστέρια του. Μία καρτέλα ανά
+   κλάδο ΠΟΥ ΠΕΡΑΣΕ — όχι ανά κλάδο που υπάρχει.
+   ΧΩΡΙΣ ηλικίες: το κριτήριο είναι «υπήρξε Μέλος σε κλάδο», που είναι και
+   ακριβέστερο και δεν απαιτεί να διαβάσουμε ημερομηνία γέννησης. */
+const YOUTH_SECS=['Αγέλη','Ομάδα','Κοινότητα'];
+function mySections(p){
+  const seen=[];
+  (D.my||[]).filter(y=>y.person_id===p.id&&!y.voided_at)
+    .sort((a,b)=>(a.scout_year||'').localeCompare(b.scout_year||''))
+    .forEach(y=>{ if(y.section&&YOUTH_SECS.includes(y.section)&&!seen.includes(y.section))seen.push(y.section) });
+  return YOUTH_SECS.filter(x=>seen.includes(x));   // πάντα με τη σειρά της πορείας
+}
+function myProgBody(p, sec){
+  const stages=(D.pcat||[]).filter(x=>x.section===sec&&x.item_kind==='στάδιο'&&x.ordinal<50)
+    .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+  const won=(D.mprog||[]).filter(x=>x.person_id===p.id);
+  const wonIn=k=>won.filter(x=>x.item_kind===k
+    && (D.pcat||[]).some(c=>c.id===x.catalog_id&&c.section===sec));
+  const done=rid=>(D.mreq||[]).find(x=>x.person_id===p.id&&x.requirement_id===rid);
+  const years=(D.my||[]).filter(y=>y.person_id===p.id&&!y.voided_at&&y.section===sec)
+    .map(y=>y.scout_year).sort();
+
+  const stageHTML=stages.map(st=>{
+    const reqs=(D.rc2||[]).filter(r=>r.section===sec&&r.stage_catalog_id===st.id&&!r.retired_at)
+      .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+    const got=won.find(x=>x.catalog_id===st.id);
+    const n=reqs.filter(r=>done(r.id)).length;
+    return `<details class="card pad" style="margin-bottom:9px"${got?'':(n?' open':'')}>
+      <summary style="cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b style="font-size:13.5px;flex:1;min-width:140px">${esc(st.label||'')}</b>
+        ${got?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">απονεμήθηκε${got.date?' · '+fdate(got.date):''}</span>`
+             :reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span>`
+             :'<span class="dim" style="font-size:12px">—</span>'}
+      </summary>
+      ${reqs.length?`<div style="margin-top:9px">${reqs.map(r=>{
+        const d=done(r.id);
+        return `<div class="kv" style="padding:3px 0;font-size:12.5px">
+          <span class="dot" style="background:${d?'var(--ok)':'var(--line2)'}"></span>
+          <span style="flex:1;min-width:0;${d?'':'color:var(--ink3)'}">${esc(r.code||'')} ${esc(r.label||'')}</span>
+          <span class="dim" style="font-size:11.5px">${d&&d.date?fdate(d.date):''}</span></div>`}).join('')}</div>`
+      :'<div class="dim" style="margin-top:8px;font-size:12.5px">Δεν υπάρχουν καταγεγραμμένες απαιτήσεις για αυτό το στάδιο.</div>'}
+    </details>`}).join('');
+
+  const spec=wonIn('ειδικότητα'), badge=wonIn('πτυχίο');
+  const pills=(t,arr)=>arr.length?`<div class="card pad" style="margin-bottom:9px">
+    <div class="dim" style="font-size:12px;margin-bottom:6px">${t}</div>
+    ${arr.map(x=>`<span class="pill" style="margin:3px 3px 0 0">${esc(x.label||'')}
+      ${x.date?`<span class="dim">${fdate(x.date)}</span>`:''}</span>`).join('')}</div>`:'';
+
+  return `<div class="dim" style="font-size:12px;margin-bottom:9px">
+      ${esc(sec)}${years.length?' · '+esc(years[0])+(years.length>1?' έως '+esc(years[years.length-1]):''):''}
+    </div>
+    ${sec==='Κοινότητα'
+      ? `<div class="card pad" style="margin-bottom:9px"><b style="font-size:13.5px">Η.Κ.Α.Δ.Ε.</b>
+          <div class="muted" style="margin-top:5px;font-size:13px">Η Κοινότητα δεν έχει αστέρια ούτε τρίφυλλα:
+            η πορεία γράφεται στο Ημερολόγιο και επικυρώνεται από τη Σύνοδο.</div>
+          <button class="btn sm p" data-go="progKA" style="margin-top:9px">Άνοιγμα Η.Κ.Α.Δ.Ε.</button></div>`
+      : ''}
+    ${stageHTML||'<div class="dim" style="font-size:13px">Δεν φορτώθηκε ο κατάλογος αυτού του κλάδου.</div>'}
+    ${pills('Ειδικότητες', spec)}${pills('Πτυχία', badge)}`;
+}
+
 V.me=()=>{
   const M=mePieces(); if(!M)return meGone();
   const p=M.p;
   /* Όχι μόνο «είναι βαθμοφόρος;» αλλά και «με ποιο μάτι κοιτάζει τώρα;».
      Αλλιώς ο Α.Σ. στον φακό του Γονέα βλέπει ακόμη τα βαθμοφορικά του. */
+  /* ΤΟ ΜΕΛΟΣ ΔΕΝ ΕΙΝΑΙ ΓΟΝΙΟΣ ΜΕ ΛΙΓΟΤΕΡΑ. Έπαιρνε την καρτέλα του γονιού —
+     «τα στοιχεία μου» και «τα παιδιά μου» — δηλαδή δύο κουτιά που δεν τον
+     αφορούν και ούτε μία γραμμή για την πορεία του, που είναι ο λόγος που
+     μπαίνει. Πρώτη καρτέλα: η Προσκοπική του Πρόοδος. Μετά, ένας κλάδος ανά
+     καρτέλα — μόνο όσοι πέρασε. */
+  const secs=mySections(p);
+  if(!isLed(p) && secs.length && lensRole()!=='parent'){
+    tabView('me_prog', secs.map(sec=>({
+      k:'s_'+sec, t:sec, i:'award', d:'η πορεία μου στον κλάδο',
+      fn:box=>{ box.innerHTML=myProgBody(p,sec);
+        box.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go)); }
+    })), M.head+`<div class="sec"><h3>Προσκοπική Πρόοδος</h3></div>`);
+    return;
+  }
   if(!isLed(p) || LENS_PERSONAL.includes(lensRole())){
     $('view').innerHTML=M.head+meSimpleHTML(p);
     document.querySelectorAll('#view [data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go));
@@ -16841,6 +17269,13 @@ const canWriteSynod=s=>canConveneSynod()
   ||!!(s&&ME.person_id&&(s.chair_id===ME.person_id||s.secretary_id===ME.person_id));
 /* Τους παρόντες τους βάζει και απλός Ανιχνευτής — ο κόσμος πάει κι έρχεται
    και δεν περιμένει τον Αρχηγό. Αλλά μόνο του τμήματος της Συνόδου. */
+/* Σύνοδος που ΔΕΝ έγινε ακόμη: ο Υ.Α.Σ./Υ.Κ.Α. μπορεί να την αρχειοθετήσει —
+   δεν είναι ιστορικό, είναι ραντεβού που δεν κλείστηκε. Ό,τι έγινε, το
+   αρχειοθετεί ο Α.Σ. ή ο Α.Κ.Α. Καθρέφτης της can_archive_synod(). */
+const synFuture=s=>!!(s&&s.held_on)&&s.held_on>new Date().toISOString().slice(0,10);
+const canArchiveSynod=s=>isAdminUI()
+  ||myHats().some(h=>['AS','AKA'].includes(h.role_code))
+  ||(synFuture(s)&&myHats().some(h=>['YAS','YKA'].includes(h.role_code)));
 const canMarkPresent=s=>canWriteSynod(s)
   ||!!(s&&ME.person_id&&secOf((D.bh||[]).find(p=>p.id===ME.person_id)||{})===s.section);
 
