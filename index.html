@@ -1302,7 +1302,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-19 21:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-20 09:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -5128,7 +5128,9 @@ V.synod=()=>{
     <div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
         <b>Σύνοδος Κοινότητας · ${esc(YEAR)}</b><span class="dim">${list.length}</span>
-        <span class="sp"></span><button class="btn p sm" id="synNew">+ Νέα Σύνοδος</button></div>
+        <span class="sp"></span>${canConveneSynod()
+          ? `<button class="btn p sm" id="synNew">+ Νέα Σύνοδος</button>`
+          : `<span class="dim" style="font-size:11.5px">Τη Σύνοδο τη συγκαλεί ο Α.Κ.Α., ο Υ.Κ.Α. ή ο Α.Σ.</span>`}</div>
       <div class="muted" style="margin-top:6px;font-size:13.5px;line-height:1.6">
         Η Σύνοδος είναι το <b>κυρίαρχο όργανο</b> της Κοινότητας. Οι απαιτήσεις εγκρίνονται
         εδώ, με απόφαση — όχι από τον Αρχηγό μόνο του. Προεδρεύει ο Α.Κ.Α., Υ.Κ.Α.,
@@ -5172,7 +5174,8 @@ V.synod=()=>{
       <p>Η πρώτη Σύνοδος του έτους είναι η <b>Σύνοδος Προγραμματισμού</b>: εκλογή Πρώτων,
       συγκρότηση Ομίλων, ανάθεση καθηκόντων και το ετήσιο πρόγραμμα.</p></div>`}`;
 
-  $('synNew').onclick=()=>{const b=$('synBox');b.style.display=b.style.display==='none'?'':'none'};
+  /* Το κουμπί δεν υπάρχει όταν δεν συγκαλείς — άρα ούτε το δέσιμο. */
+  if($('synNew'))$('synNew').onclick=()=>{const b=$('synBox');b.style.display=b.style.display==='none'?'':'none'};
   const ss=$('synSave');
   if(ss)ss.onclick=async()=>{
     const m=$('synMsg'); m.style.color='var(--ink2)'; m.textContent='…';
@@ -16783,6 +16786,27 @@ function personMatch(p,q){
   return false;
 }
 const canSeeSensitive=()=>ME.role==='admin'||ME.platform_admin;
+
+/* ══ ΠΟΙΟΣ ΣΥΓΚΑΛΕΙ, ΠΟΙΟΣ ΓΡΑΦΕΙ ΣΤΗ ΣΥΝΟΔΟ ═════════════════════════════
+   Καθρέφτης των can_convene_synod() / can_write_synod() της βάσης. Η βάση
+   είναι ο φύλακας· αυτό εδώ υπάρχει ώστε η οθόνη να μη δείχνει κουμπί που
+   θα απορριφθεί. Κουμπί που σκάει είναι χειρότερο από κουμπί που λείπει:
+   ο χρήστης νομίζει ότι έκανε κάτι.
+   ΔΕΝ είναι «μόνο ο αρχηγός»: προεδρεύει και Ανιχνευτής, και τα πρακτικά τα
+   γράφει ο Γραμματέας — που είναι μέλος. Ο κανόνας είναι ρόλος ΑΝΑ ΣΥΝΟΔΟ. */
+const SYN_CONVENE=['AS','YAS','AKA','YKA'];
+function myHats(){
+  const fromD=(D.ph||[]).filter(h=>h.person_id===ME.person_id&&!h.valid_to);
+  return fromD.length?fromD:((ME.hats||[]).filter(h=>!h.valid_to));
+}
+const canConveneSynod=()=>ME.role==='admin'||!!ME.platform_admin
+  ||myHats().some(h=>SYN_CONVENE.includes(h.role_code));
+const canWriteSynod=s=>canConveneSynod()
+  ||!!(s&&ME.person_id&&(s.chair_id===ME.person_id||s.secretary_id===ME.person_id));
+/* Τους παρόντες τους βάζει και απλός Ανιχνευτής — ο κόσμος πάει κι έρχεται
+   και δεν περιμένει τον Αρχηγό. Αλλά μόνο του τμήματος της Συνόδου. */
+const canMarkPresent=s=>canWriteSynod(s)
+  ||!!(s&&ME.person_id&&secOf((D.bh||[]).find(p=>p.id===ME.person_id)||{})===s.section);
 
 /* ══ ΑΝΑΖΗΤΗΣΗ ΜΕ ΑΡΙΘΜΟ ΤΑΥΤΟΤΗΤΑΣ ═══════════════════════════════════════
    Το Α.Δ.Τ. είναι άρθρο 9· δεν κατεβαίνει στον φυλλομετρητή και δεν μπαίνει
