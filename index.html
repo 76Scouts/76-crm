@@ -1305,7 +1305,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-20 10:06'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-20 10:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -5240,9 +5240,11 @@ async function openSynod(id){
     <div class="sec"><h3>Παρόντες</h3></div>
     <div class="card pad">
       <div class="dim" style="font-size:12px;margin-bottom:8px">Δύναμη ${(mem.length+led.length)} · παρόντες <b id="prN">${present.size}</b></div>
+      ${/* Τους παρόντες τους βάζει ΚΑΙ απλός Ανιχνευτής — ο κόσμος πάει κι
+           έρχεται και δεν περιμένει τον Αρχηγό. */''}
       <div style="display:grid;gap:4px;max-height:230px;overflow:auto">
-        ${[...mem,...led].map(p=>`<label class="kv" style="cursor:pointer">
-          <input type="checkbox" class="prx" value="${p.id}"${present.has(p.id)?' checked':''} style="width:auto;margin-right:8px">
+        ${[...mem,...led].map(p=>`<label class="kv" style="cursor:${canMarkPresent(s)?'pointer':'default'}">
+          <input type="checkbox" class="prx" value="${p.id}"${present.has(p.id)?' checked':''}${canMarkPresent(s)?'':' disabled'} style="width:auto;margin-right:8px">
           <span style="flex:1">${pn(p)}</span>
           <span class="dim" style="font-size:11.5px">${isMem(p)?'Ανιχνευτής':'Βαθμοφόρος'}</span></label>`).join('')}
       </div>
@@ -5254,11 +5256,16 @@ async function openSynod(id){
           <b style="font-size:13.5px">${esc(d.topic)}</b>
           <div class="dim" style="font-size:12.5px;margin-top:2px">${esc(d.decision||'—')}</div></div>`).join('')
         :'<div class="dim" style="font-size:13px">Κανένα θέμα ακόμη.</div>'}
-      <div style="margin-top:10px;display:grid;gap:6px">
+      ${/* Τα πρακτικά τα γράφει ο Πρόεδρος ή ο Γραμματέας ΑΥΤΗΣ της Συνόδου.
+           Το RLS αρνείται ΣΙΩΠΗΛΑ — μια εντολή που δεν επιτρέπεται πιάνει 0
+           γραμμές αντί να βγάλει σφάλμα. Άρα κουμπί που δεν επιτρέπεται θα
+           έδειχνε επιτυχία. Δεν το δείχνουμε καθόλου. */''}
+      ${canWriteSynod(s)?`<div style="margin-top:10px;display:grid;gap:6px">
         <input id="dcT" placeholder="Θέμα">
         <textarea id="dcD" rows="2" placeholder="Απόφαση"></textarea>
         <div><button class="btn sm p" id="dcAdd">Προσθήκη θέματος</button></div>
-      </div>
+      </div>`:`<div class="dim" style="font-size:11.5px;margin-top:10px">
+        Τα θέματα και τις αποφάσεις τα γράφει ο Πρόεδρος ή ο Γραμματέας αυτής της Συνόδου.</div>`}
     </div>
 
     ${/* ΣΥΓΚΡΟΤΗΣΗ ΟΜΙΛΩΝ — ανοιχτή στη Σύνοδο Προγραμματισμού, διαθέσιμη
@@ -5286,7 +5293,8 @@ async function openSynod(id){
           <span style="flex:1"><b>${pn(p)}</b>
             <div class="dim" style="font-size:12px">${esc(r.code||'')} · ${esc(r.label||'')}</div>
             ${g.topic?`<div class="dim" style="font-size:11.5px">«${esc(g.topic)}»</div>`:''}</span>
-          <button class="btn sm p" data-appr="${g.id}">Εγκρίθηκε</button></div>`}).join('')
+          ${canWriteSynod(s)?`<button class="btn sm p" data-appr="${g.id}">Εγκρίθηκε</button>`
+             :`<span class="dim" style="font-size:11.5px">εγκρίνει ο Πρόεδρος</span>`}</div>`}).join('')
        :'<div class="dim" style="font-size:13px">Καμία απαίτηση δεν περιμένει διαβεβαίωση.</div>'}
     </div>`);
 
@@ -5337,7 +5345,7 @@ async function openSynod(id){
   somWire();
 
   const sp=$('synPrt'); if(sp)sp.onclick=()=>{$('drw').classList.remove('on'); synodMinutes(id)};
-  $('dcAdd').onclick=async()=>{
+  if($('dcAdd'))$('dcAdd').onclick=async()=>{
     const t=$('dcT').value.trim(); if(!t)return toast('Γράψε θέμα');
     const rec={synod_id:id, seq:decs.length+1, topic:t, decision:$('dcD').value.trim()||null};
     const {data,error}=await sb.from('synod_decision').insert(rec).select().single();
