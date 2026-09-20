@@ -1305,7 +1305,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-20 12:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-20 13:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -4427,7 +4427,14 @@ function ledLabel(p,full){
 }
 function ledCode(p){
   if(!p) return '';
-  const hat=(D.ph||[]).find(h=>h.person_id===p.id&&!h.valid_to&&h.role_code);
+  /* ΠΟΛΛΑ ΑΝΟΙΧΤΑ ΚΑΠΕΛΑ, ΕΝΑ ΣΥΜΒΟΛΟ. Το .find() έπαιρνε όποιο έτυχε να
+     είναι πρώτο στον πίνακα: ο Α.Σ. που καλύπτει προσωρινά την Αγέλη
+     εμφανιζόταν «ΑΑΛ». Διαλέγουμε το ΑΝΩΤΕΡΟ — μικρότερο role_catalog.seq —
+     γιατί αυτό απαντά στο «ποιος είναι αυτός;». Τα υπόλοιπα υπάρχουν και
+     φαίνονται στην καρτέλα του. */
+  const open=(D.ph||[]).filter(h=>h.person_id===p.id&&!h.valid_to&&h.role_code);
+  const seqOf=h=>{const r=(D.rc||[]).find(x=>x.code===h.role_code); return r&&r.seq!=null?r.seq:9999};
+  const hat=open.slice().sort((a,b)=>seqOf(a)-seqOf(b))[0];
   const rc=hat&&(D.rc||[]).find(r=>r.code===hat.role_code);
   let base = rc ? rc.short : ledCodeFallback(p);
   if(!base) return '';
@@ -5010,9 +5017,13 @@ function dedaBar(step){
 function synodMinutes(id){
   const s=(D.syn||[]).find(x=>x.id===id); if(!s)return;
   const nameOf=i=>{const b=D.bh.find(x=>x.id===i); return b?nm(b):'—'};
-  const pres=(D.synp||[]).filter(x=>x.synod_id===id)
-    .map(x=>D.bh.find(b=>b.id===x.person_id)).filter(Boolean)
-    .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
+  /* Στο χαρτί ο καλεσμένος μετράει όσο και το μέλος: ήταν εκεί. */
+  const prRows2=(D.synp||[]).filter(x=>x.synod_id===id);
+  const pres=prRows2.map(x=>x.person_id?(D.bh.find(b=>b.id===x.person_id)||null)
+                                       :{__guest:x.guest_name}).filter(Boolean)
+    .map(x=>x.__guest?{__guest:x.__guest}:x)
+    .sort((a,b)=>(a.__guest||nm(a)).localeCompare(b.__guest||nm(b),'el'));
+  const presName=x=>x.__guest?x.__guest+' (καλεσμένος)':nm(x);
   const decs=(D.synd||[]).filter(x=>x.synod_id===id).sort((a,b)=>(a.seq||0)-(b.seq||0));
   const col=Math.ceil(pres.length/3)||1;
   const box=(l,v)=>`<td style="padding:3px 6px"><span class="dim" style="font-size:10.5px">${l}</span><br><b>${v||'—'}</b></td>`;
@@ -5035,7 +5046,7 @@ function synodMinutes(id){
     <div style="font-weight:600;font-size:12.5px;margin:10px 0 4px">ΠΑΡΟΝΤΕΣ (${pres.length})</div>
     <table style="width:100%;font-size:12px"><tbody>
       ${Array.from({length:col},(_,r)=>`<tr>${[0,1,2].map(c=>{
-        const p=pres[c*col+r]; return `<td style="padding:2px 6px;width:33%">${p?esc(nm(p)):''}</td>`}).join('')}</tr>`).join('')}
+        const p=pres[c*col+r]; return `<td style="padding:2px 6px;width:33%">${p?esc(presName(p)):''}</td>`}).join('')}</tr>`).join('')}
     </tbody></table>
 
     <div style="font-weight:600;font-size:12.5px;margin:14px 0 4px">ΘΕΜΑΤΑ ΚΑΙ ΑΠΟΦΑΣΕΙΣ</div>
@@ -5077,8 +5088,26 @@ const KOIN_MEM=()=>D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα'&&p.s
 /* Η περσινή χρονιά ως συμβολοσειρά: «2026-27» → «2025-26». */
 const prevYear=y=>{const a=Number(String(y).slice(0,4))-1; return a+'-'+String((a+1)%100).padStart(2,'0')};
 
+/* Η ΦΕΤΙΝΗ σύνθεση, όπως είναι γραμμένη στο μητρώο. Χρειάζεται σε δύο
+   σημεία: για να τη ΔΕΙΞΟΥΜΕ αντί να ζητάμε να ξαναγίνει, και ως αφετηρία
+   όταν όντως θέλουν να την αλλάξουν. */
+function synomNow(){
+  const mem=KOIN_MEM();
+  const gs=(D.sg||[]).filter(g=>g.scout_year===YEAR&&g.section==='Κοινότητα'&&g.active!==false)
+    .sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const of=g=>mem.filter(p=>(myOf(p)||{}).group_name===g.name).map(p=>p.id);
+  const placed=new Set(gs.flatMap(g=>of(g)));
+  return {gs, of, pool:mem.filter(p=>!placed.has(p.id)).map(p=>p.id),
+          any:gs.some(g=>of(g).length)};
+}
 function synomSeed(kind, n){
   const mem=KOIN_MEM(), ids=mem.map(p=>p.id);
+  if(kind==='fetini'){
+    const N=synomNow();
+    return {groups:N.gs.map(g=>({name:g.name, first:g.leader_id||null,
+                                second:g.second_id||null, ids:N.of(g)})),
+            pool:N.pool};
+  }
   if(kind==='perisini'){
     /* Η ΠΕΡΣΙΝΗ ΣΥΝΘΕΣΗ ΩΣ ΑΦΕΤΗΡΙΑ — όχι ως απόφαση. Όποιος ήρθε φέτος από
        την Ομάδα μένει ΑΔΙΑΘΕΤΟΣ: δεν τον χώνουμε κάπου για να βγει ο αριθμός. */
@@ -5102,7 +5131,42 @@ function synomSeed(kind, n){
 let SYNOMPICK=new Set();   // ποιους κρατάω στο χέρι αυτή τη στιγμή
 
 function synomHTML(){
-  if(!SYNOM)return `
+  if(!SYNOM){
+    /* ΗΤΑΝ ΤΟ ΧΕΙΡΟΤΕΡΟ ΕΙΔΟΣ ΛΑΘΟΥΣ: επικύρωνες τη σύνθεση, γραφόταν στο
+       μητρώο, και η οθόνη ξαναζητούσε «ξεκίνα από πρόταση ή από το μηδέν».
+       Φαινόταν σαν να χάθηκε η δουλειά μιας ώρας. Δεν είχε χαθεί — απλώς η
+       οθόνη δεν κοιτούσε ποτέ το μητρώο. Τώρα το κοιτάει πρώτα. */
+    const N=synomNow();
+    if(N.any)return `
+      <div class="muted" style="font-size:13px;line-height:1.6;margin-bottom:10px">
+        Η φετινή σύνθεση, όπως επικυρώθηκε. Αλλάζει μόνο με νέα απόφαση Συνόδου.</div>
+      <div style="display:grid;gap:7px">
+        ${N.gs.map(g=>{const ids=N.of(g);
+          const who=i=>{const p=D.bh.find(b=>b.id===i);return p?pn(p):''};
+          const R=sgRoles('Κοινότητα');
+          const t1=(R.find(r=>r[0]===1)||[1,'Ομιλάρχης'])[1];
+          const t2=(R.find(r=>r[0]===2)||[2,'Υπομιλάρχης'])[1];
+          return `<div class="card pad" style="padding:11px">
+            <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+              <b style="font-size:13.5px;flex:1">${esc(g.name)}</b>
+              <span class="dim" style="font-size:12px">${ids.length}</span></div>
+            ${g.leader_id||g.second_id?`<div class="dim" style="font-size:11.5px;margin-top:3px">
+              ${g.leader_id?esc(t1)+': '+who(g.leader_id):''}${g.second_id?' · '+esc(t2)+': '+who(g.second_id):''}</div>`:''}
+            <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+              ${ids.map(who).join('')||'<span class="dim" style="font-size:12px">— κενός —</span>'}</div>
+          </div>`}).join('')}
+        ${N.pool.length?`<div class="card pad" style="padding:11px;background:var(--bg)">
+          <b style="font-size:13.5px">Αδιάθετοι</b> <span class="dim">${N.pool.length}</span>
+          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+            ${N.pool.map(i=>{const p=D.bh.find(b=>b.id===i);return p?pn(p):''}).join('')}</div></div>`:''}
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn sm" data-som="fetini">Αλλαγή σύνθεσης</button>
+        <button class="btn sm gh" data-som="keno">Από το μηδέν</button>
+        <label style="max-width:120px;margin:0"><input type="number" id="somN" value="4" min="1" max="12"
+          style="font-size:13px" title="Πόσοι όμιλοι"></label>
+      </div>`;
+    return `
     <div class="muted" style="font-size:13px;line-height:1.6;margin-bottom:10px">
       Ξεκίνα από πρόταση ή από το μηδέν. <b>Τίποτα δεν γράφεται</b> μέχρι την επικύρωση —
       μέχρι τότε αλλάζεις όσο θέλεις μπροστά στη Σύνοδο.</div>
@@ -5113,6 +5177,7 @@ function synomHTML(){
       <label style="max-width:120px;margin:0"><input type="number" id="somN" value="4" min="1" max="12"
         style="font-size:13px" title="Πόσοι όμιλοι"></label>
     </div>`;
+  }
   /* ΔΥΟ διαφορετικά πράγματα, και μπερδεύτηκαν: το pn() φτιάχνει ΣΗΜΑ HTML
      (κλικ → καρτέλα), το nm() δίνει σκέτο όνομα. Μέσα σε <option> το HTML δεν
      ζωγραφίζεται — φαίνεται η ίδια η ετικέτα. Γι' αυτό ο Ομιλάρχης έδειχνε
@@ -5384,7 +5449,9 @@ async function openSynod(id){
   const mem=D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα'&&p.status==='Ενεργός')
                 .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
   const led=D.bh.filter(p=>isLed(p)&&secOf(p)==='Κοινότητα');
-  const present=new Set((D.synp||[]).filter(x=>x.synod_id===id).map(x=>x.person_id));
+  const prRows=(D.synp||[]).filter(x=>x.synod_id===id);
+  const present=new Set(prRows.filter(x=>x.person_id).map(x=>x.person_id));
+  const guests=prRows.filter(x=>x.guest_name);
   /* Η ΔΥΝΑΜΗ είναι η Κοινότητα. Η ΛΙΣΤΑ ΠΑΡΟΝΤΩΝ όμως δεν είναι η δύναμη:
      στη Σύνοδο κάθεται και ο Α.Σ., και ο Έφορος, και όποιος κλήθηκε. Αν δεν
      τον έχει η λίστα, ο Γραμματέας γράφει το όνομα στο περιθώριο του χαρτιού
@@ -5399,8 +5466,12 @@ async function openSynod(id){
   const extra=D.bh.filter(p=>!core.some(x=>x.id===p.id)
     && (present.has(p.id) || (ME.person_id&&p.id===ME.person_id)));
   const rows=[...core,...extra];
+  /* ΦΙΛΤΡΟ ΠΡΩΤΑ. Ένα μενού με 400 ονόματα δεν είναι επιλογή, είναι λίστα.
+     Ο καλεσμένος είναι σχεδόν πάντα βαθμοφόρος ΑΛΛΟΥ τμήματος — αυτό είναι
+     η προεπιλογή· οι γονείς μπαίνουν μόνο αν τους ζητήσεις ρητά. */
   const addable=D.bh.filter(p=>p.status==='Ενεργός'&&!rows.some(x=>x.id===p.id))
     .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
+  const addKind=p=>isLed(p)?'led':isMem(p)?'mem':'other';
   const decs=(D.synd||[]).filter(x=>x.synod_id===id).sort((a,b)=>(a.seq||0)-(b.seq||0));
   /* Ποιες απαιτήσεις περιμένουν διαβεβαίωση; ΔΕΔΑ 6 = έτοιμες για παρουσίαση. */
   const waiting=(D.kap||[]).filter(g=>g.deda>=6&&!g.approved_on);
@@ -5447,22 +5518,58 @@ async function openSynod(id){
 
     <div class="sec"><h3>Παρόντες</h3></div>
     <div class="card pad">
-      <div class="dim" style="font-size:12px;margin-bottom:8px">Δύναμη ${(mem.length+led.length)} · παρόντες <b id="prN">${present.size}</b></div>
+      <div class="dim" style="font-size:12px;margin-bottom:8px">Δύναμη ${(mem.length+led.length)} · παρόντες <b id="prN">${present.size+guests.length}</b>
+        ${live?'<span style="margin-left:8px">Ώρα άφιξης και αποχώρησης — για όποιον ήρθε αργότερα ή έφυγε νωρίτερα.</span>':''}</div>
       ${/* Τους παρόντες τους βάζει ΚΑΙ απλός Ανιχνευτής — ο κόσμος πάει κι
            έρχεται και δεν περιμένει τον Αρχηγό. */''}
       <div style="display:grid;gap:4px;max-height:230px;overflow:auto">
-        ${rows.map(p=>`<label class="kv" style="cursor:${canMarkPresent(s)?'pointer':'default'}">
-          <input type="checkbox" class="prx" value="${p.id}"${present.has(p.id)?' checked':''}${canMarkPresent(s)?'':' disabled'} style="width:auto;margin-right:8px">
-          <span style="flex:1">${pn(p)}</span>
-          <span class="dim" style="font-size:11.5px">${
+        ${rows.map(p=>{const r=prRows.find(x=>x.person_id===p.id);
+          return `<div class="kv">
+          <label style="display:flex;align-items:center;flex:1;min-width:0;cursor:${canMarkPresent(s)?'pointer':'default'}">
+            <input type="checkbox" class="prx" value="${p.id}"${r?' checked':''}${canMarkPresent(s)?'':' disabled'} style="width:auto;margin-right:8px">
+            <span style="flex:1;min-width:0">${pn(p)}</span></label>
+          <span class="dim" style="font-size:11.5px;margin-right:6px">${
             ledCode(p) || (core.some(x=>x.id===p.id)
-              ? (isMem(p)?'Ανιχνευτής':'Βαθμοφόρος') : 'προσκεκλημένος')}</span></label>`).join('')}
+              ? (isMem(p)?'Ανιχνευτής':'Βαθμοφόρος') : 'προσκεκλημένος')}</span>
+          ${r&&canMarkPresent(s)?`<input type="time" class="prT" data-r="${r.id}" data-f="joined_at"
+              value="${esc(String(r.joined_at||'').slice(0,5))}" title="Ήρθε"
+              style="width:92px;font-size:12px;margin-right:4px">
+            <input type="time" class="prT" data-r="${r.id}" data-f="left_at"
+              value="${esc(String(r.left_at||'').slice(0,5))}" title="Έφυγε"
+              style="width:92px;font-size:12px">`
+           :r?`<span class="dim" style="font-size:11.5px">${esc(String(r.joined_at||'').slice(0,5))}${r.left_at?' → '+esc(String(r.left_at).slice(0,5)):''}</span>`:''}
+        </div>`}).join('')}
       </div>
-      ${canMarkPresent(s)?`<div class="grow" style="margin-top:10px;border-top:1px solid var(--line);padding-top:9px">
-        <label style="max-width:320px">Ήρθε και κάποιος εκτός Κοινότητας
-          <select id="prAdd"><option value="">— διάλεξε —</option>
-            ${addable.map(p=>`<option value="${p.id}">${esc(nm(p))}${p.kind?' · '+esc(p.kind):''}</option>`).join('')}
-          </select></label>
+      ${guests.length?`<div style="margin-top:9px;display:grid;gap:3px">
+        ${guests.map(g=>`<div class="kv" style="font-size:13px">
+          <span style="flex:1">${esc(g.guest_name)}</span>
+          <span class="dim" style="font-size:11.5px;margin-right:6px">εκτός μητρώου</span>
+          ${canMarkPresent(s)?`<input type="time" class="prT" data-r="${g.id}" data-f="joined_at"
+              value="${esc(String(g.joined_at||'').slice(0,5))}" title="Ήρθε"
+              style="width:92px;font-size:12px;margin-right:4px">
+            <input type="time" class="prT" data-r="${g.id}" data-f="left_at"
+              value="${esc(String(g.left_at||'').slice(0,5))}" title="Έφυγε"
+              style="width:92px;font-size:12px;margin-right:4px">
+            <button class="btn sm gh" data-gdel="${g.id}" title="Αφαίρεση">✕</button>`:''}
+        </div>`).join('')}</div>`:''}
+      ${canMarkPresent(s)?`<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:9px">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:5px">Ήρθε και κάποιος άλλος</div>
+        <div class="grow">
+          <label style="max-width:190px">Ποιοι
+            <select id="prKind">
+              <option value="led">Βαθμοφόροι άλλων τμημάτων</option>
+              <option value="mem">Μέλη άλλων τμημάτων</option>
+              <option value="other">Γονείς και λοιποί</option>
+              <option value="all">Όλοι</option>
+            </select></label>
+          <label style="max-width:190px">Αναζήτηση<input id="prQ" placeholder="όνομα ή επίθετο"></label>
+          <label style="max-width:280px">Πρόσωπο<select id="prAdd"></select></label>
+        </div>
+        <div class="grow" style="margin-top:6px">
+          <label style="max-width:320px">…ή γράψε όνομα εκτός μητρώου
+            <input id="prGuest" placeholder="π.χ. Έφορος Επαρχίας — ονοματεπώνυμο"></label>
+          <label style="max-width:120px;align-self:end"><button class="btn sm" id="prGuestAdd">Προσθήκη</button></label>
+        </div>
       </div>`:''}
     </div>
 
@@ -5591,20 +5698,65 @@ async function openSynod(id){
   };
 
   /* Προσκεκλημένος: μπαίνει ως παρών και εμφανίζεται στη λίστα από κει και πέρα. */
-  if($('prAdd'))$('prAdd').onchange=async e=>{
-    const pid=e.target.value; if(!pid)return;
-    const {error}=await sb.from('synod_present').insert({synod_id:id,person_id:pid});
-    if(error){toast(error.message);e.target.value='';return}
-    (D.synp=D.synp||[]).push({synod_id:id,person_id:pid});
-    toast('Προστέθηκε στους παρόντες'); openSynod(id);
+  /* Το μενού γεμίζει ΜΕΤΑ το φίλτρο, και κόβεται στους 40: παραπάνω δεν
+     διαβάζεται — γράφεις δυο γράμματα στην αναζήτηση και τελειώνει. */
+  const prFill=()=>{
+    const el=$('prAdd'); if(!el)return;
+    const k=($('prKind')||{}).value||'led';
+    const q=(($('prQ')||{}).value||'').trim().toLowerCase();
+    const hit=addable.filter(p=>(k==='all'||addKind(p)===k)
+      && (!q||nm(p).toLowerCase().includes(q)));
+    el.innerHTML='<option value="">— διάλεξε —</option>'
+      +hit.slice(0,40).map(p=>`<option value="${p.id}">${esc(nm(p))}${
+        ledCode(p)?' · '+esc(ledCode(p)):(p.kind?' · '+esc(p.kind):'')}</option>`).join('')
+      +(hit.length>40?`<option value="" disabled>… ${hit.length-40} ακόμη — γράψε στην αναζήτηση</option>`:'');
   };
+  if($('prKind'))$('prKind').onchange=prFill;
+  if($('prQ'))$('prQ').oninput=prFill;
+  prFill();
+
+  /* Η ώρα γράφεται με το που φεύγει το βλέμμα από το κουτί — καμία
+     «αποθήκευση»: μέσα στη Σύνοδο κανείς δεν πατάει δεύτερο κουμπί. */
+  document.querySelectorAll('.prT').forEach(t=>t.onchange=async()=>{
+    const v=t.value||null, f=t.dataset.f;
+    const {error}=await sb.from('synod_present').update({[f]:v}).eq('id',t.dataset.r);
+    if(error){toast(error.message);return}
+    const r=(D.synp||[]).find(x=>x.id===t.dataset.r); if(r)r[f]=v;
+  });
+
+  const prPut=async rec=>{
+    const {data,error}=await sb.from('synod_present').insert(rec).select().single();
+    if(error){toast(error.message);return false}
+    (D.synp=D.synp||[]).push(data); toast('Προστέθηκε στους παρόντες');
+    openSynod(id); return true;
+  };
+  if($('prAdd'))$('prAdd').onchange=e=>{
+    const pid=e.target.value; if(!pid)return;
+    prPut({synod_id:id, person_id:pid});
+  };
+  if($('prGuestAdd'))$('prGuestAdd').onclick=()=>{
+    const v=($('prGuest').value||'').trim();
+    if(v.length<2)return toast('Γράψε ονοματεπώνυμο.');
+    prPut({synod_id:id, guest_name:v});
+  };
+  document.querySelectorAll('[data-gdel]').forEach(b=>b.onclick=async()=>{
+    const {error}=await sb.from('synod_present').delete().eq('id',b.dataset.gdel);
+    if(error){toast(error.message);return}
+    D.synp=(D.synp||[]).filter(x=>x.id!==b.dataset.gdel); openSynod(id);
+  });
 
   document.querySelectorAll('.prx').forEach(c=>c.onchange=async()=>{
-    if(c.checked)await sb.from('synod_present').insert({synod_id:id,person_id:c.value});
-    else await sb.from('synod_present').delete().eq('synod_id',id).eq('person_id',c.value);
+    if(c.checked){
+      const {data,error}=await sb.from('synod_present')
+        .insert({synod_id:id,person_id:c.value}).select().single();
+      if(error){toast(error.message);c.checked=false;return}
+      (D.synp=D.synp||[]).push(data);
+      /* Η γραμμή απέκτησε id — χωρίς ξαναζωγράφισμα δεν θα υπήρχαν κουτιά ώρας. */
+      openSynod(id); return;
+    }
+    await sb.from('synod_present').delete().eq('synod_id',id).eq('person_id',c.value);
     D.synp=(D.synp||[]).filter(x=>!(x.synod_id===id&&x.person_id===c.value));
-    if(c.checked)D.synp.push({synod_id:id,person_id:c.value});
-    $('prN').textContent=document.querySelectorAll('.prx:checked').length;
+    $('prN').textContent=document.querySelectorAll('.prx:checked').length+guests.length;
     synOff2();
   });
 
