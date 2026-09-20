@@ -1305,7 +1305,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-20 13:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-20 14:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -5228,7 +5228,8 @@ function synomHTML(){
       <button class="btn sm gh" id="somAdd">+ Όμιλος</button>
       <button class="btn sm gh" id="somReset">Ξεκίνα ξανά</button>
       <span class="sp"></span>
-      <button class="btn p" id="somOk">Επικύρωση από τη Σύνοδο</button>
+      ${canConveneSynod()?`<button class="btn p" id="somOk">Επικύρωση από τη Σύνοδο</button>`
+        :`<span class="dim" style="font-size:11.5px">Την επικύρωση τη γράφει ο Α.Κ.Α., ο Υ.Κ.Α. ή ο Α.Σ.</span>`}
     </div>
     ${SYNOM.pool.length?`<div class="dim" style="font-size:12px;margin-top:7px">
       Μπορείς να επικυρώσεις και με αδιάθετους — θα μείνουν χωρίς όμιλο μέχρι την επόμενη Σύνοδο.</div>`:''}`;
@@ -5913,9 +5914,16 @@ async function somRatify(sid, s){
       if(error)return fail('Όμιλος «'+nmx+'»: '+error.message);
       Object.assign(ex,patch); idOf[nmx]=ex.id;
     }else{
+      /* ΤΟ ΚΛΙΜΑΚΙΟ. Ο νέος όμιλος γεννιόταν χωρίς αυτό, και η πολιτική
+         ζητά «ανήκει στα κλιμάκιά μου» — με NULL η σύγκριση βγάζει NULL,
+         που δεν είναι «ναι». Το παίρνουμε από τη ΣΥΝΟΔΟ που τον γεννά. */
+      const kl=s.klimakio_id||(meRec()||{}).klimakio_id||null;
       const {data,error}=await sb.from('subgroups')
-        .insert({scout_year:YEAR, section:'Κοινότητα', name:nmx, ...patch}).select().single();
-      if(error)return fail('Όμιλος «'+nmx+'»: '+error.message);
+        .insert({scout_year:YEAR, section:'Κοινότητα', name:nmx, klimakio_id:kl, ...patch})
+        .select().single();
+      if(error)return fail('Όμιλος «'+nmx+'»: '+(/row-level/i.test(error.message)
+        ? 'δεν επιτρέπεται — τη σύνθεση την επικυρώνει ο Α.Κ.Α., ο Υ.Κ.Α. ή ο Α.Σ.'
+        : error.message));
       (D.sg=D.sg||[]).push(data); idOf[nmx]=data.id;
     }
   }
