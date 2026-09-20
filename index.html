@@ -1201,6 +1201,9 @@ const NAV_MINE_ANY=['me','myforms'];
    και οι οθόνες. Όσο ήταν γραμμένο μόνο μέσα στο μενού, η «Καρτέλα μου»
    δεν ήξερε ότι ο χρήστης κοιτάζει ως γονιός και έδειχνε παρουσίες,
    σχολές και οχήματα σε άνθρωπο που δεν έχει κανένα από τα τρία. */
+/* Φακοί που δείχνουν ΔΙΚΑ ΜΟΥ δεδομένα. Ο Ανιχνευτής ΔΕΝ είναι προσωπικός
+   φακός — κοιτάζει την Κοινότητα, όχι τον εαυτό του· γι' αυτό ο φάκελός του
+   (πιστοποιητικά, οχήματα, σχολές) μένει στο καπέλο «Μέλος». */
 const LENS_PERSONAL=['member','parent'];
 const lensRole=()=>VIEWAS ? (VIEWAS.role==='section_head'?'head':VIEWAS.role)
                           : (PA?(PA.role||PA.k):'leader');
@@ -1302,7 +1305,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-20 09:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-20 09:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -1975,7 +1978,20 @@ let PERSONAS=[], PA=null;
 const NAV_SELF=['me','myatt','myforms'];   // ο καθένας, για τον εαυτό του
 /* Οι σχολές αφορούν ΜΟΝΟ βαθμοφόρους — δεν μπαίνουν στο NAV_SELF, που το
    κληρονομεί και το μέλος. */
-const NAV_MEMBER=[...NAV_SELF,'progKA','synod'];
+/* ══ ΜΕΛΟΣ ΚΑΙ ΑΝΙΧΝΕΥΤΗΣ ΕΙΝΑΙ ΔΥΟ ΚΑΠΕΛΑ, ΟΧΙ ΕΝΑ ═══════════════════════
+   Ο Α.Σ., 20/09/2026: «δεν θέλω να τα βλέπει όλα μιξ στην ίδια οθόνη — όπως
+   τα βλέπουν οι βαθμοφόροι, Α.Κ.Α. και Μέλος».
+
+   ΜΕΛΟΣ      = ό,τι αφορά ΕΜΕΝΑ. Η καρτέλα μου, οι παρουσίες μου, οι φόρμες
+                μου, το δικό μου Η.Κ.Α.Δ.Ε.
+   ΑΝΙΧΝΕΥΤΗΣ = ό,τι κάνω ΓΙΑ ΤΗΝ ΚΟΙΝΟΤΗΤΑ. Σύνοδος, Όμιλοι, παρουσίες,
+                πρόοδος των άλλων (μόνο ανάγνωση), πρόγραμμα.
+
+   Η Σύνοδος ΕΦΥΓΕ από το μενού του Μέλους: δεν είναι κάτι που με αφορά ως
+   άτομο, είναι το σώμα στο οποίο συμμετέχω. Ένα Λυκόπουλο ούτως ή άλλως δεν
+   την είχε· τώρα δεν την έχει ούτε ο Ανιχνευτής όταν κοιτάζει «ως Μέλος». */
+const NAV_MEMBER=[...NAV_SELF,'progKA'];
+const NAV_ANIX=['synod','groups','attend','progress','members','cal','events'];
 const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile'];
 /* Ο απλός βαθμοφόρος: το τμήμα του και το πρόγραμμα. Όχι μητρώο, όχι χρήματα. */
 const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
@@ -2019,6 +2035,7 @@ function progDate(x){
 function navFor(role, sec){
   const base = role==='parent' ? NAV_PARENT
        : role==='member' ? NAV_MEMBER
+       : role==='anix'   ? NAV_ANIX
        : role==='dev'    ? NAV_DEV
        : role==='leader' ? NAV_LEADER
        : role==='head' || role==='section_head' ? NAV_HEAD
@@ -2098,6 +2115,12 @@ function buildPersonas(subject){
     }
     if(me.is_commissioner)out.push({id:'com',t:'Έφορος',k:'leader',role:'commissioner',sc:'ΟΛΑ'});
     out.push({id:'member',t:'Μέλος · η καρτέλα μου',k:'member',role:'member',sc:'ΕΓΩ'});
+    /* Το καπέλο του Ανιχνευτή ΔΕΝ είναι γραμμή στο person_hats — βγαίνει από
+       τον κλάδο της χρονιάς, ίδιος κανόνας με την is_anixneftis() της βάσης.
+       25 χειροκίνητες αναθέσεις θα έμεναν πίσω στην επόμενη αλλαγή χρονιάς,
+       όπως ακριβώς έμεινε πίσω το badgeholders.section. Ρητή ανάκληση = ένα
+       ΚΛΕΙΣΤΟ καπέλο ANIX· η απουσία γραμμής δεν σημαίνει τίποτα. */
+    if(isAnix(me))out.push({id:'anix',t:'Ανιχνευτής · Κοινότητα',k:'anix',role:'anix',sc:'Κοινότητα'});
   }
   const kids=childrenOf(me);
   if(kids.length)out.push({id:'parent',t:`Γονέας · ${kids.length} ${kids.length===1?'παιδί':'παιδιά'}`,k:'parent',role:'parent',sc:'ΠΑΙΔΙΑ'});
@@ -2718,6 +2741,11 @@ function uc(m){
 const myOfRef={fn:p=>D.my.find(x=>x.person_id===p.id&&x.scout_year===YEAR&&!x.voided_at)}; const myOf=p=>myOfRef.fn(p);
 const inYear=p=>!!myOf(p);
 const secOf=p=>(myOf(p)||{}).section||p.section;
+/* Καθρέφτης της is_anixneftis() της βάσης: ενεργό ΜΕΛΟΣ της Κοινότητας αυτή
+   τη χρονιά, εκτός αν του έχει ανακληθεί ρητά με κλειστό καπέλο ANIX. */
+const isAnix=p=>!!p && (p.kind||'')==='Μέλος' && p.status==='Ενεργός'
+  && secOf(p)==='Κοινότητα'
+  && !(D.ph||[]).some(h=>h.person_id===p.id&&h.role_code==='ANIX'&&h.valid_to);
 const nm=p=>p.first_name+' '+p.last_name;
 const sdot=s=>`<span class="dot" style="background:${SC[s]||'var(--ink3)'}" title="${esc(s||'')}"></span>`;
 /* Η παλιά «guardians» ήταν δύο στήλες πάνω στην καρτέλα του παιδιού: πατέρας, μητέρα.
