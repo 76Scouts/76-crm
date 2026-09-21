@@ -1339,7 +1339,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-21 12:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-21 13:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -1949,10 +1949,17 @@ async function loadAll(){
     if(loadCache()&&(D.bh||[]).length){banner();return}
   }
   LOADED=true;
+  let KROSTER=null;
+  try{ const me0=((r[0]&&r[0].data)||[]).find(b=>b.id===(ME&&ME.person_id));
+    if(me0&&(me0.kind||'')==='Μέλος'){ const {data:kr}=await sb.rpc('koinotita_roster'); KROSTER=kr||null; } }catch(e){}
   const assign=()=>{
   D.bh=r[0]?.data||D.bh||[]; D.my=r[1]?.data||[]; D.ss=r[2]?.data||[]; D.att=r[3]?.data||[]; D.cert=r[4]?.data||[]; D.gu=r[5]?.data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
   D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[]; D.mb=r[41]?.data||[]; D.kl=r[42]?.data||[]; D.inv=r[43]?.data||[]; /* 44 tr2 · 45 tp · 47 au → τεμπέλικα */ D.am=r[46]?.data||[]; D.ac=r[48]?.data||[]; D.cons=r[49]?.data||[];
   D.syn=r[50]?.data||[]; D.synp=r[51]?.data||[]; D.synd=r[52]?.data||[];
+  /* Ο ΑΝΙΧΝΕΥΤΗΣ ΒΛΕΠΕΙ ΤΗΝ ΚΟΙΝΟΤΗΤΑ ΤΟΥ (21/09): ποιοι είναι φέτος και σε
+     ποιον όμιλο — τίποτα από οικονομικά. Η βάση του δίνει μόνο αυτές τις
+     στήλες (koinotita_roster). Χωρίς αυτό η οθόνη ομίλων του ήταν άδεια. */
+  (KROSTER||[]).forEach(x=>{ if(!D.my.some(y=>y.person_id===x.person_id&&y.scout_year===x.scout_year)) D.my.push(x) });
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
@@ -2708,7 +2715,7 @@ const NAV_KW={
   mysys:'ρυθμισεις συστημα τμηματα ταξεις κατωφλια',
   inbox:'εγκρισεις επιβεβαιωση εκκρεμη πιστοποιητικα μοτ ασφαλεια',
   ledfile:'εντολες σχολες εκπαιδευση ν91 ποινικο μητρωο',
-  dataqa:'υγεια δεδομενων ιστορικο audit αλλαγες διπλα εξαγωγες excel csv',
+  dataqa:'υγεια δεδομενων ιστορικο audit αλλαγες διπλα εξαγωγες excel csv διαγραφη διαγραφες gdpr παγωμα',
   comms:'υπενθυμισεις email φορμες smartespot',
   missing:'ιατρικα ιατρικο δελτιο επαφες εκτακτης email',
   imports:'εισαγωγη escouts e-scouts επικολληση',
@@ -2935,6 +2942,7 @@ function routeAliasRaw(r){
     case 'viewas':    return ['access','viewas'];
     case 'audit':     return ['dataqa','audit'];
     case 'dedupe':    return ['dataqa','dedupe'];
+    case 'deletions': return ['dataqa','del'];
   }
   return null;
 }
@@ -5298,7 +5306,128 @@ const DEDA_COL=['var(--ink3)','#9aa3ae','#9aa3ae','#f4c20d','#f4c20d','#f39c12',
 
 const kaReqs=()=>(D.rc2||[]).filter(r=>r.section==='Κοινότητα'&&r.active!==false)
   .sort((a,b)=>(a.stage_ordinal||0)-(b.stage_ordinal||0)||(a.ordinal||0)-(b.ordinal||0));
+/* ══ ΘΕΜΑΤΟΛΟΓΙΑ ΑΠΟ ΑΡΧΕΙΟ ═════════════════════════════════════════════
+   Ο Α.Σ., 21/09: «πρέπει να μπορώ να τα ανεβάζω εύκολα όταν έχει σύνοδο».
+   Το πρόγραμμα υπάρχει ήδη σε Word ή PDF — δεν ξαναγράφεται θέμα-θέμα.
+   Επικολλάς ή ανεβάζεις, βλέπεις τη λίστα, διορθώνεις, και μπαίνει. Η ώρα
+   (09:00–09:30) κρατιέται ως σημείωση του θέματος, όχι μέσα στον τίτλο.
+   Τα .docx και .pdf διαβάζονται ΣΤΗ ΣΥΣΚΕΥΗ (mammoth / pdf.js) — το αρχείο
+   δεν ανεβαίνει πουθενά. */
+const loadScript=src=>new Promise((ok,no)=>{ if(document.querySelector(`script[src="${src}"]`))return ok();
+  const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('δεν φορτώθηκε '+src)); document.head.appendChild(s); });
+async function fileText(f){
+  const n=(f.name||'').toLowerCase();
+  if(n.endsWith('.docx')){
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+    const r=await window.mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()}); return r.value||''; }
+  if(n.endsWith('.pdf')){
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    const L=window.pdfjsLib; L.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await L.getDocument({data:await f.arrayBuffer()}).promise; let out=[];
+    for(let i=1;i<=pdf.numPages;i++){ const pg=await pdf.getPage(i), tc=await pg.getTextContent();
+      let line='', lastY=null;
+      tc.items.forEach(it=>{ const y=Math.round(it.transform[5]); if(lastY!==null&&Math.abs(y-lastY)>3){out.push(line);line=''} line+=(line&&!line.endsWith(' ')?' ':'')+it.str; lastY=y; });
+      if(line)out.push(line); }
+    return out.join('\n'); }
+  return await f.text();
+}
+function parseAgenda(txt){
+  const TIME=/^\s*(\d{1,2}[:.]\d{2})(\s*[-–—]\s*(\d{1,2}[:.]\d{2}))?\s*[-–—:·]?\s*/;
+  return String(txt||'').split(/\r?\n/).map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean).map(l=>{
+    let note=null; const m=l.match(TIME);
+    if(m){ note=m[1].replace('.',':')+(m[3]?'–'+m[3].replace('.',':'):''); l=l.slice(m[0].length); }
+    l=l.replace(/^(\d{1,2}[.)]|[-•▪●*])\s+/,'').trim();
+    return {topic:l, note};
+  }).filter(x=>x.topic.length>1&&!['ΠΡΟΓΡΑΜΜΑ','ΘΕΜΑΤΟΛΟΓΙΑ','ΗΜΕΡΗΣΙΑ ΔΙΑΤΑΞΗ','ΘΕΜΑΤΑ']
+      .includes(nameKey(x.topic).replace(/[:\s]+$/,'')));
+}
+function synAgendaImport(id, decs){
+  let items=[];
+  drawer('Εισαγωγή προγράμματος',`
+    <p class="dim" style="font-size:12.5px;margin-top:0">Επικόλλησε το πρόγραμμα ή ανέβασε το αρχείο (Word, PDF, κείμενο).
+      Κάθε γραμμή γίνεται θέμα· η ώρα μπαίνει ως σημείωση. Το αρχείο διαβάζεται εδώ — δεν ανεβαίνει πουθενά.</p>
+    <input type="file" id="aiF" accept=".docx,.pdf,.txt,.md">
+    <textarea id="aiT" rows="8" placeholder="09:00 Προσευχή και έπαρση&#10;09:30–10:30 Εκλογή Πρώτων&#10;…" style="margin-top:8px"></textarea>
+    <div id="aiP" style="margin-top:10px"></div>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12.5px;margin-top:8px;max-width:none">
+      <input type="checkbox" id="aiR" style="width:auto"${decs.some(d=>!d.decision)&&decs.length?'':' disabled'}>
+      Αντικατάσταση των θεμάτων που δεν έχουν ακόμη πρακτικό (${decs.filter(d=>!d.decision).length})</label>
+    <button class="btn p" id="aiGo" style="margin-top:10px" disabled>Προσθήκη θεμάτων</button>`);
+  const draw=()=>{ items=parseAgenda($('aiT').value);
+    $('aiP').innerHTML=items.length?`<div class="dim" style="font-size:12px;margin-bottom:4px">${items.length} θέματα — ξε-τσέκαρε ό,τι δεν είναι θέμα</div>`
+      +items.map((x,i)=>`<label class="kv" style="padding:4px 0;border-top:1px solid var(--line);gap:8px;font-size:13px;max-width:none">
+        <input type="checkbox" class="aiC" data-i="${i}" checked style="width:auto;margin:0">
+        <span style="flex:1">${esc(x.topic)}</span>${x.note?`<span class="dim" style="font-size:11.5px">${esc(x.note)}</span>`:''}</label>`).join('')
+      :'';
+    $('aiGo').disabled=!items.length; };
+  $('aiT').oninput=draw;
+  $('aiF').onchange=async e=>{ const f=e.target.files[0]; if(!f)return;
+    $('aiP').innerHTML='<span class="dim">Διαβάζεται…</span>';
+    try{ $('aiT').value=await fileText(f); draw(); }catch(err){ $('aiP').innerHTML=''; toast('Δεν διαβάστηκε: '+(err.message||err)+' — επικόλλησε το κείμενο'); } };
+  $('aiGo').onclick=async()=>{
+    const pick=items.filter((x,i)=>{const c=document.querySelector(`.aiC[data-i="${i}"]`); return !c||c.checked});
+    if(!pick.length)return toast('Δεν διάλεξες θέμα');
+    $('aiGo').disabled=true;
+    let keep=decs;
+    if($('aiR').checked){
+      const empty=decs.filter(d=>!d.decision).map(d=>d.id);
+      if(empty.length){ const {error}=await sb.from('synod_decision').delete().in('id',empty);
+        if(error){ $('aiGo').disabled=false; return toast('Δεν σβήστηκαν τα παλιά: '+error.message) }
+        D.synd=(D.synd||[]).filter(x=>!empty.includes(x.id)); keep=decs.filter(d=>d.decision); }
+    }
+    const base=keep.reduce((m,d)=>Math.max(m,d.seq||0),0);
+    const rows=pick.map((x,i)=>({synod_id:id, seq:base+i+1, topic:x.topic, note:x.note}));
+    const {data,error}=await sb.from('synod_decision').insert(rows).select();
+    if(error){ $('aiGo').disabled=false; return toast('Σφάλμα: '+error.message) }
+    (D.synd=D.synd||[]).push(...(data||[])); saveCache();
+    drw.classList.remove('on'); toast(rows.length+' θέματα μπήκαν'); openSynod(id);
+  };
+}
 const kaProg=(pid)=>(D.kap||[]).filter(g=>g.person_id===pid);
+/* ══ Η.Κ.Α.Δ.Ε. ΣΕ ΧΑΡΤΙ ══════════════════════════════════════════════════
+   Ένα φύλλο ανά Ανιχνευτή: στάδιο, απαίτηση, πού βρίσκεται στο ΔΕΔΑ, πότε
+   διαβεβαιώθηκε και ποιος υπέγραψε. Η μορφή είναι προσωρινή — όταν έρθουν
+   τα επίσημα πρότυπα, αλλάζει μόνο αυτή η συνάρτηση. Χωρίς τηλέφωνα,
+   διευθύνσεις ή ιατρικά: δεν ανήκουν σε ημερολόγιο προόδου. */
+function hkadePrint(people){
+  const w=window.open('','_blank'); if(!w)return toast('Ο φυλλομετρητής μπλόκαρε το παράθυρο');
+  const reqs=(D.rc2||[]).filter(r=>r.section==='Κοινότητα'&&r.active!==false)
+    .sort((a,b)=>(a.stage_ordinal||0)-(b.stage_ordinal||0)||(a.ordinal||0)-(b.ordinal||0));
+  const stages=[...new Map(reqs.map(r=>[r.stage_label,r.stage_label])).keys()];
+  const today=fdate(new Date().toISOString().slice(0,10));
+  const sheet=p=>{
+    const prog=kaProg(p.id), entry=(D.my||[]).find(y=>y.person_id===p.id&&y.section==='Κοινότητα');
+    const done=reqs.filter(r=>prog.some(g=>g.requirement_id===r.id&&g.approved_on)).length;
+    const acts=(D.pa||[]).filter(x=>x.person_id===p.id).map(x=>(D.ev||[]).find(v=>v.id===x.event_id)).filter(Boolean)
+      .sort((a,b)=>String(a.event_date).localeCompare(String(b.event_date)));
+    return `<section class="sheet">
+      <header><div><h1>Η.Κ.Α.Δ.Ε.</h1><div class="sub">Ημερολόγιο Κοινότητας Ανιχνευτών · 76ο Σύστημα Προσκόπων Στροβόλου</div></div>
+        <div class="who"><b>${esc(nm(p))}</b>${p.scout_name?` <i>${esc(p.scout_name)}</i>`:''}
+          <div class="sub">${entry&&entry.start_date?'Εισδοχή '+fdate(entry.start_date)+' · ':''}${done} από ${reqs.length} απαιτήσεις</div></div></header>
+      ${stages.map(stl=>{ const rs=reqs.filter(r=>r.stage_label===stl);
+        return `<h2>${esc(stl||'')}</h2><table><thead><tr><th style="width:34px"></th><th>Απαίτηση</th>
+          <th style="width:130px">ΔΕΔΑ</th><th style="width:110px">Διαβεβαίωση</th><th style="width:200px">Υπογραφές</th></tr></thead><tbody>
+          ${rs.map(r=>{ const g=prog.find(x=>x.requirement_id===r.id), st=g?g.deda:0;
+            const sig=g?kaSig(g.id).map(s=>{const b=D.bh.find(x=>x.id===s.signer_id); return esc(s.role)+(b?': '+esc(nm(b)):'')}).join('<br>'):'';
+            return `<tr><td class="c">${esc(r.code||'')}</td><td>${esc(r.label||'')}</td>
+              <td>${st?st+' · '+esc(DEDA[st-1].t):'—'}</td><td>${g&&g.approved_on?fdate(g.approved_on):''}</td><td class="s">${sig}</td></tr>`}).join('')}
+          </tbody></table>`}).join('')}
+      <h2>Δράσεις</h2>${acts.length?`<table><tbody>${acts.map(e=>`<tr><td>${esc(e.title||'')}</td><td style="width:140px">${fdate(e.event_date)}${e.nights?' · '+e.nights+' διαν.':''}</td></tr>`).join('')}</tbody></table>`:'<p class="sub">Καμία καταχωρημένη.</p>'}
+      <footer>Εκτυπώθηκε ${today} από το e76 · Υπογραφή Α.Κ.Α. ____________________</footer>
+    </section>`};
+  w.document.write(`<!doctype html><html lang="el"><head><meta charset="utf-8"><title>Η.Κ.Α.Δ.Ε. ${people.length===1?esc(nm(people[0])):'— '+people.length+' Ανιχνευτές'}</title>
+    <style>body{font:12.5px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;color:#111;margin:0}
+    .sheet{padding:18mm 16mm;page-break-after:always}.sheet:last-child{page-break-after:auto}
+    header{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #1d4ed8;padding-bottom:8px;margin-bottom:6px}
+    h1{margin:0;font-size:22px;letter-spacing:.04em;color:#1d4ed8}h2{font-size:13px;margin:16px 0 5px;text-transform:uppercase;letter-spacing:.05em}
+    .sub{color:#555;font-size:11.5px}.who{text-align:right;font-size:14px}
+    table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}
+    th{background:#f2f4f8;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em}td.c{font-weight:700;text-align:center}td.s{font-size:11px}
+    footer{margin-top:18px;font-size:11px;color:#555;display:flex;justify-content:space-between}
+    @media print{.sheet{padding:10mm 8mm}}</style></head><body>${people.map(sheet).join('')}
+    <script>setTimeout(()=>print(),300)<\/script></body></html>`);
+  w.document.close();
+}
 const kaSig =(gid)=>(D.kasig||[]).filter(s=>s.progress_id===gid);
 
 /* Η μπάρα των επτά βημάτων. Χωρίς ποσοστό — θέση, όχι βαθμός. */
@@ -5913,7 +6042,8 @@ async function openSynod(id){
       ${canWriteSynod(s)?`<div style="margin-top:12px;display:grid;gap:6px;border-top:1px solid var(--line);padding-top:10px">
         <input id="dcT" placeholder="Νέο θέμα">
         <textarea id="dcD" rows="2" placeholder="Πρακτικό (μπορεί και αργότερα)"></textarea>
-        <div><button class="btn sm p" id="dcAdd">Προσθήκη θέματος</button></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm p" id="dcAdd">Προσθήκη θέματος</button>
+          <button class="btn sm" id="dcImp" title="Επικόλληση ή αρχείο (.docx, .pdf, .txt) — κάθε γραμμή γίνεται θέμα">${ic('down',14)} Εισαγωγή προγράμματος</button></div>
       </div>`:`<div class="dim" style="font-size:11.5px;margin-top:10px">
         Τα θέματα και τα πρακτικά τα γράφει όποιος άνοιξε τη Σύνοδο, ο Α.Κ.Α., ο Α.Σ.,
         ή ο Πρόεδρος και ο Γραμματέας αυτής της Συνόδου.</div>`}
@@ -6159,6 +6289,7 @@ async function openSynod(id){
   }
   somWire();
 
+  if($('dcImp'))$('dcImp').onclick=()=>synAgendaImport(id, decs);
   if($('dcAdd'))$('dcAdd').onclick=async()=>{
     const t=$('dcT').value.trim(); if(!t)return toast('Γράψε θέμα');
     const rec={synod_id:id, seq:decs.length+1, topic:t, decision:$('dcD').value.trim()||null};
@@ -6362,6 +6493,8 @@ function hkadeBody(){
             entry&&entry.start_date?' · Εισδοχή '+fdate(entry.start_date):''}</div></div>
         ${!isMe&&anix.length>1?`<select id="kaPick2" style="max-width:200px">
           ${anix.map(p=>`<option value="${p.id}"${p.id===who.id?' selected':''}>${esc(nm(p))}</option>`).join('')}</select>`:''}
+        <button class="btn sm" id="kaPrint" title="Το Η.Κ.Α.Δ.Ε. σε χαρτί — για τη Σύνοδο ή για το αρχείο">${ic('down',14)} Εκτύπωση</button>
+        ${!isMe&&anix.length>1?`<button class="btn sm gh" id="kaPrintAll" title="Ένα φύλλο ανά Ανιχνευτή">Όλοι (${anix.length})</button>`:''}
       </div>
       <div class="muted" style="margin-top:9px;font-size:12.5px;line-height:1.6">
         ${isMe?'Το ημερολόγιό σου. <b>Το γράφεις εσύ</b> — ο Αρχηγός επικυρώνει, δεν συμπληρώνει αντί για σένα.'
@@ -6394,6 +6527,8 @@ function hkadeBody(){
     </div>`;
 
   const pk=$('kaPick2'); if(pk)pk.onchange=e=>{KAWHO=e.target.value; route(ROUTE)};
+  $('kaPrint').onclick=()=>hkadePrint([who]);
+  const pa=$('kaPrintAll'); if(pa)pa.onclick=()=>hkadePrint(anix);
   document.querySelectorAll('[data-deda]').forEach(b=>b.onclick=()=>openDeda(who, b.dataset.deda));
 };
 
@@ -8886,7 +9021,7 @@ let AUQ='';
    ανακαλυφθεί ότι 33 σεξόχαρτα έληγαν τον ίδιο μήνα. */
 function expiryItems(){
   const out=[], today=new Date().toISOString().slice(0,10);
-  const add=(d,kind,who,what,todo,go)=>{if(d)out.push({d,kind,who,what,todo,go})};
+  const add=(d,kind,who,what,todo,go,extra)=>{if(d)out.push({d,kind,who,what,todo,go,...(extra||{})})};
 
   D.bh.filter(p=>p.status==='Ενεργός').forEach(p=>{
     if(isLed(p)){
@@ -8931,7 +9066,8 @@ function expiryItems(){
     const veh=(D.veh||[]).find(x=>x.id===v.vid)||{};
     const lk=(D.vl||[]).find(x=>x.vehicle_id===v.vid)||{};
     const p=D.bh.find(x=>x.id===(veh.owner_id||lk.person_id));
-    add(v.d,v.kind,p,'Όχημα '+(veh.plate||'—'),VTODO[v.kind],'certs')});
+    add(v.d,v.kind,p,'Όχημα '+(veh.plate||'—'),VTODO[v.kind],'certs',
+        {vid:v.vid, vkind:{'Ασφάλεια':'ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ','ΜΟΤ':'ΜΟΤ','Άδεια κυκλ.':'ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'}[v.kind]})});
 
   (D.gr||[]).filter(g=>!g.revoked_at&&g.valid_to).forEach(g=>{
     const p=D.bh.find(x=>x.id===g.person_id);
@@ -11970,6 +12106,9 @@ function mePieces(){
               ${ins?`<span class="pill" style="background:var(--${d<0?'bad':d<=45?'warn':'ok'}bg);color:var(--${d<0?'bad':d<=45?'warn':'ok'});border-color:transparent">
                  Ασφάλεια ${d<0?'έληξε':'ως'} ${fdate(ins.expires_on)}</span>`
                 :'<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">χωρίς ασφάλεια</span>'}
+              ${(D.vpi||[]).some(i=>i.vehicle_id===v.id&&!i.resolved_at&&!i.declined_at)
+                ?'<span class="pill">νέο χαρτί · περιμένει έλεγχο</span>'
+                :`<button class="btn sm${!ins||d<0?' p':''}" data-vup="${v.id}" data-vk="ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ">${!ins||d<0?'Ανέβασε νέα ασφάλεια':'Ανέβασε χαρτί'}</button>`}
             </div>
             ${links.length?`<div class="dim" style="font-size:11.5px;margin-top:3px">${links.map(l=>{
               const q=D.bh.find(b=>b.id===l.person_id);
@@ -12015,8 +12154,8 @@ function mePieces(){
          το OCR μαντεύει την πινακίδα, εσύ την ξέρεις. Πάει στην ίδια ουρά
          που βλέπει ο Α.Σ. («Χαρτιά οχημάτων») — ένας δρόμος έγκρισης, όχι
          δεύτερος για τους «προχωρημένους». */''}
-    <div class="sec"><h3>Πιστοποιητικά Οχημάτων</h3></div>
-    <div class="card pad">
+    <div class="sec" id="vcSec"><h3>Πιστοποιητικά Οχημάτων</h3></div>
+    <div class="card pad" id="vcCard">
       <div class="dim" style="font-size:12.5px;margin-bottom:10px">Ασφάλεια, άδεια κυκλοφορίας ή ΜΟΤ.
         Πάει στον Α.Σ. για έλεγχο και μετά μετράει για τις μεταφορές δράσης.</div>
       <div style="padding:12px;border:1px dashed var(--line2);border-radius:var(--rs)">
@@ -12024,10 +12163,13 @@ function mePieces(){
           <input type="file" id="vcF" accept="application/pdf,image/*" style="margin-top:5px"></label></div>
       <div class="grow" style="margin-top:10px">
         <label style="max-width:210px">Τι<select id="vcT">
-          ${['Ασφάλεια','Άδεια κυκλοφορίας','ΜΟΤ','Άλλο'].map(k=>`<option>${k}</option>`).join('')}</select></label>
+          ${/* Οι τιμές είναι ΑΚΡΙΒΩΣ ό,τι δέχεται η ουρά (έλεγχος στη βάση).
+               Πριν έστελνε «Ασφάλεια» και η βάση το απέρριπτε — το χαρτί
+               ανέβαινε, η ουρά όχι, και κανείς δεν το έβλεπε ποτέ. */''}
+          ${Object.entries(VP_KIND).map(([k,t])=>`<option value="${k}"${VEHPRE&&VEHPRE.k===k?' selected':''}>${t}</option>`).join('')}</select></label>
         <label style="max-width:240px">Ποιο όχημα<select id="vcV">
           ${(D.veh||[]).filter(v=>v.owner_id===p.id||(D.vl||[]).some(l=>l.vehicle_id===v.id&&l.person_id===p.id))
-            .map(v=>`<option value="${v.id}">${esc(v.plate)}</option>`).join('')}
+            .map(v=>`<option value="${v.id}"${VEHPRE&&VEHPRE.v===v.id?' selected':''}>${esc(v.plate)}</option>`).join('')}
           <option value="NEW">➕ Νέο όχημα…</option></select></label>
         <label id="vcNewWrap" style="max-width:170px;display:none">Πινακίδα<input id="vcNew" placeholder="ΚΑΑ 123" style="text-transform:uppercase"></label>
         <label style="max-width:160px">Λήγει<input type="date" id="vcE"></label>
@@ -12121,9 +12263,16 @@ function mePieces(){
   const vcv=$('vcV'); const vcw=$('vcNewWrap');
   const vcToggle=()=>{if(vcw)vcw.style.display = (vcv&&vcv.value==='NEW')?'':'none'};
   if(vcv){vcv.onchange=vcToggle; vcToggle()}
+  /* «Ανέβασε νέο» από οπουδήποτε: διαλέγει όχημα και είδος και σε φέρνει εδώ. */
+  document.querySelectorAll('[data-vup]').forEach(b=>b.onclick=()=>vehUpload(b.dataset.vup,b.dataset.vk));
+  if(VEHPRE){ const c=$('vcCard'); if(c){ setTimeout(()=>{ c.scrollIntoView({block:'center',behavior:'smooth'});
+      c.style.outline='2px solid var(--acc)'; setTimeout(()=>c.style.outline='',2200); },60); } VEHPRE=null; }
   const vca=$('vcAdd'); if(vca)vca.onclick=async()=>{
     const f=$('vcF').files[0], kind=$('vcT').value, exp=$('vcE').value;
     if(!f)return vcm('Διάλεξε αρχείο — χωρίς χαρτί δεν υπάρχει τι να ελεγχθεί.');
+    if(!VP_KIND[kind])return vcm('Διάλεξε είδος χαρτιού.');
+    /* «0007-07-14» πέρασε μία φορά από πληκτρολόγηση χρονιάς με δύο ψηφία. */
+    if(exp&&(exp<'2000-01-01'||exp>'2100-01-01'))return vcm('Η ημερομηνία λήξης δεν φαίνεται σωστή ('+exp+') — έλεγξε τη χρονιά.');
     let vid=vcv?vcv.value:'';
     vca.disabled=true; vcm('Ανεβάζω…');
     if(vid==='NEW'){
@@ -12148,12 +12297,17 @@ function mePieces(){
     if(de){vca.disabled=false;return vcm('Σφάλμα εγγράφου: '+de.message)}
     /* ΜΙΑ ΟΥΡΑ. Το χαρτί μπαίνει στο vehicle_paper_inbox με το όχημα ΗΔΗ
        διαλεγμένο — ο Α.Σ. επιβεβαιώνει, δεν μαντεύει πινακίδα από OCR. */
-    const {error}=await sb.from('vehicle_paper_inbox').insert({document_id:dd.id,
-      person_id:p.id, kind, vehicle_id:vid||null, ocr_expires:exp||null});
-    if(error){vca.disabled=false;return vcm('Δεν μπήκε στην ουρά: '+error.message)}
-    D.doc=[...(D.doc||[]),dd]; saveCache();
+    const {data:ib,error}=await sb.from('vehicle_paper_inbox').insert({document_id:dd.id,
+      person_id:p.id, kind, vehicle_id:vid||null, ocr_expires:exp||null}).select().single();
+    if(error){
+      /* ΟΧΙ ΜΙΣΟ ΑΝΕΒΑΣΜΑ: αν η ουρά αρνηθεί, φεύγει και το έγγραφο — αλλιώς
+         μένει ένα χαρτί που δεν το βλέπει κανείς, κι εσύ νομίζεις ότι στάλθηκε. */
+      await sb.from('documents').delete().eq('id',dd.id);
+      await sb.storage.from('e76').remove([path]);
+      vca.disabled=false; return vcm('Δεν στάλθηκε για έλεγχο: '+error.message+' — δοκίμασε ξανά ή πες στον Α.Σ.'); }
+    D.doc=[...(D.doc||[]),dd]; (D.vpi=D.vpi||[]).push(ib); saveCache();
     toast('Ανέβηκε — περιμένει έλεγχο από τον Α.Σ.');
-    await loadAll(); route(ROUTE);
+    stay();
   };
   };
 
@@ -17017,6 +17171,8 @@ V.dash=()=>{
    πίνακας που ξέρει και σωπαίνει είναι χειρότερος από πίνακα που δεν ξέρει,
    γιατί σου δίνει την ψευδαίσθηση ότι κάποιος παρακολουθεί.
    Ό,τι αφορά ΕΣΕΝΑ έρχεται πρώτο, πριν από ο,τιδήποτε του Συστήματος. */
+let VEHPRE=null;
+function vehUpload(vid, kind){ VEHPRE={v:vid, k:kind||'ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'}; if(ROUTE==='myveh')stay(); else route('myveh'); }
 function mineHTML(){
   const me=meRec(); if(!me)return '';
   const today=new Date().toISOString().slice(0,10);
@@ -17028,13 +17184,25 @@ function mineHTML(){
   const n=late.length+miss.length+soon.length;
   if(!n)return '';
   const days=d=>Math.abs(Math.round((new Date(d+'T12:00:00')-new Date())/864e5));
-  const line=(x,k)=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
-      <span class="pill" style="background:var(--${k}bg);color:var(--${k});border-color:transparent">${esc(x.kind)}</span>
+  /* ΤΟ ΚΟΥΜΠΙ ΔΙΠΛΑ ΣΤΟ ΠΡΟΒΛΗΜΑ (ο Α.Σ., 21/09): «δεν μου βγάζει δίπλα
+     από το ληγμένο ασφάλιστρο να ανεβάσω καινούργιο». Όποιος βλέπει «έληξε»
+     θέλει να το λύσει ΤΩΡΑ — όχι να ψάξει σε ποια οθόνη ανεβαίνει.
+     Κι αν έχει ήδη ανεβάσει το νέο και περιμένει έλεγχο, το λέμε: δεν
+     φωνάζουμε «έληξε» σε κάποιον που έκανε ό,τι του αναλογούσε. */
+  const waiting=x=>x.vid&&(D.vpi||[]).some(i=>i.vehicle_id===x.vid&&i.kind===x.vkind&&!i.resolved_at&&!i.declined_at);
+  const act=x=>x.vid
+      ? (waiting(x)?'<span class="pill" style="font-size:11.5px">νέο ανέβηκε · περιμένει έλεγχο</span>'
+          :`<button class="btn sm${x.d<today?' p':''}" data-vup="${x.vid}" data-vk="${esc(x.vkind||'')}">Ανέβασε νέο</button>`)
+      : x.kind==='Ν.91(Ι)'?`<button class="btn sm${x.d<today||x.d==='9999-12-31'?' p':''}" data-go="mycerts">Ανέβασε</button>`:'';
+  const line=(x,k)=>{ const w=waiting(x), kk=w?'warn':k;
+    return `<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+      <span class="pill" style="background:var(--${kk}bg);color:var(--${kk});border-color:transparent">${esc(x.kind)}</span>
       <b style="font-size:13.5px;flex:1;min-width:150px">${esc(x.what)}</b>
-      <span style="font-size:12.5px;color:var(--${k})">${x.d==='9999-12-31'?'δεν καταχωρήθηκε ποτέ'
+      <span style="font-size:12.5px;color:var(--${kk})">${x.d==='9999-12-31'?'δεν καταχωρήθηκε ποτέ'
         :(x.d<today?'έληξε '+fdate(x.d)+' · πριν '+days(x.d)+' μέρες'
                    :'λήγει '+fdate(x.d)+' · σε '+days(x.d)+' μέρες')}</span>
-      <span class="dim" style="font-size:12px">${esc(x.todo)}</span></div>`;
+      ${w?'':`<span class="dim" style="font-size:12px">${esc(x.todo)}</span>`}
+      ${act(x)}</div>`};
   const hard=late.length+miss.length;
   return `<div class="sec"><h3>Δικά σου</h3><span class="n">${n}</span></div>
     <div class="card pad" style="border-left:3px solid var(--${hard?'bad':'warn'})">
@@ -17072,7 +17240,7 @@ function bdayHTML(){
         <span class="dim">${String(b.day).padStart(2,'0')}/${String(m+1).padStart(2,'0')}${b.age?' · '+b.age+' χρ.':''}${b.day===today?' · σήμερα':''}</span></span>`).join('')}</div>`;
 }
 function avgAtt(){const ids=new Set(D.ss.filter(s=>s.scout_year===YEAR).map(s=>s.id));const a=D.att.filter(x=>ids.has(x.session_id));return a.length?Math.round(100*a.filter(x=>x.status==='Παρών').length/a.length):0}
-function bindTiles(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
+function bindTiles(){document.querySelectorAll('[data-vup]').forEach(b=>b.onclick=()=>vehUpload(b.dataset.vup,b.dataset.vk));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
   const s=b.dataset.sec, t=b.dataset.tab, ch=b.dataset.chip;
   /* Πλακίδιο που δείχνει σε ανύπαρκτη οθόνη ΔΕΝ πρέπει να αποτυγχάνει σιωπηλά:
      ο χρήστης πατά, δεν γίνεται τίποτα, και νομίζει ότι χάλασε η εφαρμογή. */
@@ -18318,16 +18486,7 @@ const wlGrade=r=>wlG(r).g;
    Διαφωνία = δύο δηλώσεις που, μεταφερμένες στη ΦΕΤΙΝΗ χρονιά, δίνουν
    διαφορετική τάξη. Ο Οικονόμου: 2026-27 Γ΄ (χειρόγραφο) και 2026-27 Ε΄
    (χέρι) — εκεί θέλεις να δεις και τα δύο. */
-function wlHistConflict(r){
-  const h=(D.wlc||[]).filter(x=>x.waitlist_id===r.id)
-    .sort((a,b)=>String(a.class_year).localeCompare(String(b.class_year))||(WLRANK(a.origin)-WLRANK(b.origin)));
-  if(h.length<2)return null;
-  const now=Number(String(curScoutYear()).slice(0,4));
-  const norm=x=>{const d=WLDECL[String(x.school_class||'').trim()];
-    return d===undefined?null:d+(now-Number(String(x.class_year||'').slice(0,4)))};
-  const vs=h.map(norm).filter(v=>v!==null);
-  return new Set(vs).size>1 ? h : null;
-}
+
 /* ΕΝΑ ΚΟΥΤΙ ΑΝΑ ΕΤΙΚΕΤΑ. Το wlClass λέει «Δεν πάει σχολείο ακόμη» για ΚΑΘΕ
    αριθμό κάτω από το 1 — αλλά το φίλτρο ομαδοποιεί με τον ΑΡΙΘΜΟ. Έτσι το
    0 (δήλωσαν «ΠΙΟ ΜΙΚΡΟΙ», 10 παιδιά) και το −1 (παιδί του 2022 χωρίς
@@ -18335,10 +18494,10 @@ function wlHistConflict(r){
    Ο κάδος βγαίνει τώρα από την ετικέτα, όχι από τον αριθμό. */
 const wlBk=g=>(g===null||g===undefined)?99:(g<1?0:(g>12?13:g));
 const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
-let WLY='', WLED=null, WLSORT='arxeio', WLCLS='', WLST='open', WLQ='', WLPRE='', WLYRS=false, WLMORE=false;
+
 /* '' = όλοι · 'prio' = μόνο επιβεβαιωμένη προτεραιότητα · 'said' = δηλώθηκε
    από τον γονιό και ΔΕΝ έχει διασταυρωθεί ακόμη (η ουρά δουλειάς του Α.Σ.). */
-let WLPRIO='';
+
 /* ══ ΔΥΟ ΟΘΟΝΕΣ ΓΙΑ ΔΥΟ ΔΟΥΛΕΙΕΣ ═══════════════════════════════════════════
    Ο πίνακας απαντά «τι έχουμε». Το ΦΥΛΛΟ ΚΛΗΣΕΩΝ απαντά «ποιον παίρνω
    τώρα» — και αυτό κάνεις κρατώντας το τηλέφωνο: δεν θέλεις έξι στήλες,
@@ -18351,24 +18510,16 @@ try{WLVIEW=localStorage.getItem('e76:wlview')||'list'}catch(e){}
    ΕΧΕΙ Η Γ΄ ΦΕΤΟΣ» — και εκεί μετράνε και τα παιδιά που είναι ΗΔΗ μέλη.
    Στη Γ΄ είναι μόλις 1 (η Εύη)· στη Δ΄ είναι 27. Χωρίς αυτόν τον αριθμό
    δεν ξέρεις αν η τάξη είναι άδεια ή γεμάτη. */
-function wlYearTotal(grade){
-  const lbl=wlClass(grade);
-  const mem=(D.my||[]).filter(y=>y.scout_year===YEAR&&!y.voided_at&&y.grade===lbl).length;
-  return {mem, lbl};
-}
+
 /* Δεν παίρνει πάντα ο Α.Σ. Η Κασσιόπεια πήρε δύο· αν δεν το κρατήσουμε,
    η επόμενη ερώτηση («τι σου είπε;») πάει σε λάθος άνθρωπο. */
-let WLBY=null;
-const wlByName=()=>{const p=(D.bh||[]).find(b=>b.id===(WLBY||(meRec()||{}).id));
-  return p?nm(p):'—'};
+
+
 /* ΑΔΕΛΦΙΑ: τα βρίσκει το ΤΗΛΕΦΩΝΟ, όχι το επώνυμο. Ο Κωνσταντίνος Κυπριανού
    και η Άρτεμις έχουν το ίδιο· η Ρένα Κανάρη και ο Ανδρέας επίσης. Και τα
    τρία αδέλφια Θεοδώρου γράφτηκαν χωριστά. Όταν λέει ναι ο ένας, θέλεις να
    δεις τον άλλον ΤΗΝ ΙΔΙΑ ΣΤΙΓΜΗ — αλλιώς τον παίρνεις δεύτερη φορά. */
-function wlSibs(r, all){
-  const ph=digits(r.applicant_phone||''); if(ph.length<8)return [];
-  return all.filter(x=>x.id!==r.id && digits(x.applicant_phone||'')===ph);
-}
+
 /* Η δουλειά της λίστας είναι ΤΗΛΕΦΩΝΑ. 165 εγγραφές χωρίς αναζήτηση σημαίνει
    ότι για να βρεις έναν Παπαδόπουλο αλλάζεις ταξινόμηση και σαρώνεις με το
    μάτι· και το τηλέφωνο ήταν γκρίζο κείμενο, όχι σύνδεσμος — από κινητό δεν
@@ -18450,14 +18601,14 @@ const WL_OUTCOME=[
 const wlOutOf=k=>WL_OUTCOME.filter(o=>o.k===k).map(o=>o.v);
 const WL_OUT   = WL_OUTCOME.map(o=>o.v);   // ό,τι δέχεται η βάση = ό,τι δείχνει το μενού
 const WL_OPEN  = wlOutOf('open');          // «ανοιχτές» = δουλειά ΦΕΤΟΣ
-const WL_CLOSED= wlOutOf('closed');        // έφυγαν
+        // έφυγαν
 const WL_LATER = 'Όχι φέτος';              // ούτε ανοιχτή ούτε κλειστή
-const WL_KIND=[['Κλήση'],['SMS']];
+
 const WL_STALE=30;   // μέρες· μετά, το «είπε ναι» γίνεται εκκρεμότητα
 
 const wlCts=r=>(D.wlct||[]).filter(x=>x.waitlist_id===r.id).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
-const wlCt =(r,k)=>wlCts(r).filter(x=>x.kind===k);
-const wlDays=d=>d?Math.floor((new Date()-new Date(d))/86400000):null;
+
+
 
 /* Το χρώμα της γραμμής απαντά στο «τι κάνω μ' αυτόν», με μία ματιά:
      πράσινο = τελείωσε καλά · κίτρινο = ΠΕΡΙΜΕΝΕΙ ΕΜΕΝΑ · μπλε = μίλησα,
@@ -18468,19 +18619,11 @@ const wlDays=d=>d?Math.floor((new Date()-new Date(d))/86400000):null;
    έντονα φόντα δεν διαβάζεται. Το υπόμνημα θέλει ΕΝΤΟΝΟ, γιατί ένα τετράγωνο
    11 pixel σε απαλή απόχρωση είναι αόρατο: ο Α.Σ. έβλεπε τέσσερις λέξεις
    χωρίς κουκκίδες και δεν καταλάβαινε τι εξηγούν. */
-function wlState(r){
-  if(r.outcome==='Έγινε μέλος')   return {k:'melos',  bg:'var(--okbg)',   sw:'var(--ok)',   ln:'var(--ok)',   t:'Γράφτηκε'};
-  if(r.outcome==='Ενδιαφέρεται')  return {k:'endiaf', bg:'var(--warnbg)', sw:'var(--warn)', ln:'var(--warn)', t:'Είπε ναι — δεν γράφτηκε'};
-  if(r.outcome===WL_LATER) return {k:'later', bg:'var(--accbg)', sw:'var(--acc)', ln:'var(--acc)', t:'Όχι φέτος — του χρόνου'};
-  if(r.outcome&&r.outcome!=='Αναμονή') return {k:'klisto', bg:'transparent', sw:'var(--line)', ln:'var(--line)', t:'Έκλεισε', dim:true};
-  if(wlCts(r).length)             return {k:'epafi',  bg:'var(--accbg)',  sw:'var(--acc)',  ln:'var(--acc)',  t:'Έγινε επικοινωνία'};
-  return {k:'anamoni', bg:'transparent', sw:'transparent', ln:'transparent', t:'Καμία επαφή'};
-}
+
 /* Οι σημάνσεις προέλευσης ημερομηνίας ήταν χρήσιμες ΜΙΑ ΦΟΡΑ, όταν έγινε η
    συγχώνευση. Τώρα επαναλαμβάνονται σε 18 γραμμές και θορυβούν — η απόφαση
    πάρθηκε, δεν ξαναπαίρνεται. Μένουν στη βάση ως ίχνος· δεν τυπώνονται. */
-const wlFlag=f=>{const s=String(f||'').trim();
-  return /^ημερομηνία:/.test(s)?'':s};
+
 /* ══════════════════════════════════════════════════════════════════════════
    ΛΙΣΤΑ ΑΝΑΜΟΝΗΣ — ΞΑΝΑΓΡΑΜΜΕΝΗ, 19 September 2026
    ──────────────────────────────────────────────────────────────────────────
@@ -18626,7 +18769,9 @@ V.wl2=()=>{
       <span class="sp"></span>
       <label style="display:flex;gap:6px;align-items:center;font-size:12.5px;cursor:pointer;max-width:none">
         <input type="checkbox" id="wl2cl" style="width:auto"${WL2.closed?' checked':''}> και όσοι έκλεισαν</label>
+      <button class="btn sm gh" id="wl2prio" title="Ποιοι μπορεί να είναι αδέλφια μελών ή παιδιά βαθμοφόρων — προτάσεις, όχι συνδέσεις">Πιθανές σχέσεις</button>
     </div>
+    <div id="wl2dup"></div>
 
     ${q?`<div class="card pad" style="margin-bottom:10px">
         <b>${hits.length}</b> ${hits.length===1?'αποτέλεσμα':'αποτελέσματα'} για «${esc(q)}»
@@ -18733,8 +18878,19 @@ V.wl2=()=>{
         setTimeout(()=>{i.style.borderColor=''},900); };});
     root.querySelectorAll('[data-wl2g]').forEach(s=>
       s.onchange=()=>wl2SetClass(s.dataset.wl2g, s.value));
+    root.querySelectorAll('[data-wl2up]').forEach(b=>b.onclick=()=>{
+      const r=(D.wl||[]).find(x=>x.id===b.dataset.wl2up);
+      if(!confirm('Να γίνει καρτέλα μέλους: '+(r?wlPlain(r):'')+';\n\nΑνοίγει αμέσως για Α.Μ., ιατρικό και συγκαταθέσεις.'))return;
+      wlElevate(b.dataset.wl2up); });
+    root.querySelectorAll('[data-wl2info]').forEach(a=>a.onclick=e=>{ e.preventDefault(); wl2Info(a.dataset.wl2info); });
   }
 
+  const pr=$('wl2prio'); if(pr)pr.onclick=wlPrioScan;
+  /* Τα πιθανά διπλά έρχονται ΜΕΤΑ τη ζωγραφική, όπως στην παλιά οθόνη. */
+  sb.rpc('waitlist_dups').then(({data,error})=>{
+    if(error||!data||!data.length||ROUTE!=='wl2')return;
+    WLDUPS=data; const box=$('wl2dup'); if(!box)return;
+    box.innerHTML=wlDupBox(); wlDupWire(); }).catch(()=>{});
   const qi=$('wl2q');
   if(qi)qi.oninput=()=>{ WL2.q=qi.value; const p=qi.selectionStart; V.wl2();
     const n=$('wl2q'); if(n){n.focus(); try{n.setSelectionRange(p,p)}catch(e){}} };
@@ -18761,6 +18917,26 @@ const wl2Age=d=>{ if(!d)return '';
   if(t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()))a--;
   return a+' χρ.'; };
 /* Η ΓΡΑΜΜΗ. Ονομα · τάξη · τηλέφωνο · η σημείωσή ΤΟΥ ολόκληρη · πέντε κουμπιά. */
+/* ΣΤΟΙΧΕΙΑ ΠΑΙΔΙΟΥ ΣΤΗ ΛΙΣΤΑ — ό,τι ζούσε στην «ανοιγμένη γραμμή» της παλιάς
+   οθόνης: σχέση με το Σύστημα (αδέλφι, παιδί βαθμοφόρου) και «έγινε μέλος».
+   Χωρίς αυτό, με το σβήσιμο της παλιάς, θα χάνονταν. */
+function wl2Info(id){
+  const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
+  const g=wl2G(r);
+  drawer(wlPlain(r),`
+    <div class="dim" style="font-size:12.5px;line-height:1.7">
+      ${esc(wlClass(g.g))}${r.dob?' · '+wl2Age(r.dob):''}${r.scout_year?' · στη λίστα από '+esc(r.scout_year):''}<br>
+      ${r.applicant_name?'Αιτητής: '+esc(r.applicant_name)+'<br>':''}
+      ${r.applicant_phone?`<a href="tel:${esc(r.applicant_phone)}">${fphone(r.applicant_phone)}</a>`:''}${r.applicant_email?' · '+esc(r.applicant_email):''}</div>
+    ${r.note?`<div class="wl2note" style="margin-top:8px">${esc(r.note)}</div>`:''}
+    <h4 style="margin:16px 0 6px">Σχέση με το Σύστημα</h4>
+    <div id="wl2rel">${wlRelHTML(r)}</div>
+    ${!r.person_id&&r.outcome!=='Έγινε μέλος'?`<button class="btn p" id="wl2upD" style="margin-top:16px">→ Έγινε μέλος — άνοιγμα καρτέλας</button>`
+      :(r.person_id?`<button class="btn" id="wl2prof" style="margin-top:16px">Άνοιγμα καρτέλας μέλους</button>`:'')}`);
+  wlRelWire($('wl2rel'));
+  const up=$('wl2upD'); if(up)up.onclick=()=>{ if(confirm('Να γίνει καρτέλα μέλους;')){ drw.classList.remove('on'); wlElevate(id);} };
+  const pf=$('wl2prof'); if(pf)pf.onclick=()=>openProfile(r.person_id);
+}
 function wl2Row(r,i,hideCls){
   const g=wl2G(r), c=wl2Col(r);
   const ct=wlCts(r)[0];
@@ -18781,7 +18957,7 @@ function wl2Row(r,i,hideCls){
   return `<tr data-wl2r="${r.id}">
     <td class="wl2num${numc}">${r.file_seq??(i+1)}${numc?'<i class="wl2an">αναπάντητη</i>':''}</td>
     <td>
-      <div class="wl2nm c-${c}">${esc(wlPlain(r))}${(()=>{const w=wl2Word(r);
+      <div class="wl2nm c-${c}"><a href="#" data-wl2info="${r.id}" style="color:inherit;text-decoration:none" title="Στοιχεία, σχέση με το Σύστημα, «έγινε μέλος»">${esc(wlPlain(r))}</a>${(()=>{const w=wl2Word(r);
         return w?`<i class="wl2st c-${c}">${w}</i>`:''})()}${r.related_76||r.sibling_of||r.parent_leader_id
         ?'<i class="wlprio'+(wlPrio(r)?'':' said')+'">'+(wlPrio(r)?'ΠΡΟΤΕΡΑΙΟΤΗΤΑ':'ΔΗΛΩΘΗΚΕ')+'</i>':''}</div>
       <div class="dim" style="font-size:11.5px">
@@ -18801,7 +18977,8 @@ function wl2Row(r,i,hideCls){
              ${['ΠΙΟ ΜΙΚΡΟΙ',...WLGR].map(x=>`<option${x===wlClass(g.g)?' selected':''}>${x}</option>`).join('')}
            </select>`}</td>`}
     <td style="white-space:nowrap">${ph?`<a class="btn sm wltel" href="tel:${esc(ph)}">${fphone(ph)}</a>`:'<span class="dim">—</span>'}</td>
-    <td class="wl2acts">${btn('yes','Ναι')}${btn('back','Θα με πάρει')}${btn('again','Αναπάντητη')}${btn('no','Όχι')}${btn('later','Του χρόνου')}</td>
+    <td class="wl2acts">${btn('yes','Ναι')}${btn('back','Θα με πάρει')}${btn('again','Αναπάντητη')}${btn('no','Όχι')}${btn('later','Του χρόνου')}${
+      nowK==='yes'&&!r.person_id&&r.outcome!=='Έγινε μέλος'?`<button class="btn sm p" data-wl2up="${r.id}" title="Γίνεται καρτέλα μέλους — ανοίγει για Α.Μ., ιατρικό, συγκαταθέσεις">→ Μέλος</button>`:''}</td>
   </tr>`;
 }
 /* Η τάξη γράφεται ΩΣ ΔΗΛΩΣΗ ΤΗΣ ΦΕΤΙΝΗΣ ΧΡΟΝΙΑΣ — μία γραμμή στο ιστορικό,
@@ -18824,704 +19001,8 @@ async function wl2SetClass(id, val){
   V.wl2();
 }
 
-V.waitlist=()=>{
-  const rows=(D.wl||[]).slice();
-  if(!rows.length){
-    $('view').innerHTML=`<div class="uc"><div class="ico">${ic('users',26)}</div>
-      <h3>Καμία εγγραφή στη λίστα αναμονής</h3>
-      <p>Είτε δεν έχει υποβληθεί τίποτα, είτε δεν έχεις δικαίωμα να τη δεις —
-         τη λίστα τη βλέπει μόνο ο Αρχηγός Συστήματος.</p></div>`;return}
-
-  const years=[...new Set(rows.map(r=>r.scout_year))].sort().reverse();
-  const list=rows.filter(r=>!WLY||r.scout_year===WLY);
-  const open=list.filter(r=>r.outcome==='Αναμονή');
-  const yes=list.filter(r=>r.outcome==='Ενδιαφέρεται');
-  const joined=list.filter(r=>r.outcome==='Έγινε μέλος');
-  const gone=list.filter(r=>WL_CLOSED.includes(r.outcome));
-  const ready=open.filter(r=>(wlGrade(r)||0)>=3);
-  const later=open.filter(r=>(wlGrade(r)||0)<3);
-  /* Είπε ναι και ξεχάστηκε. Αυτό είναι το πιο ακριβό λάθος της λίστας: το
-     παιδί ήταν πρόθυμο και το χάσαμε επειδή κανείς δεν ξαναπήρε. */
-  const stale=yes.filter(r=>(wlDays(r.outcome_at)||0)>WL_STALE);
-
-  const age=d=>{if(!d)return '';const b=new Date(d+'T12:00:00'),t=new Date();
-    let a=t.getFullYear()-b.getFullYear();
-    if(t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()))a--;
-    return a+' χρ.'};
-  const OUT=WL_OUT;
-  const SECS=['Αγέλη','Ομάδα','Κοινότητα'];
-
-  /* Η γραμμή επεξεργασίας ανοίγει ΚΑΤΩ από την εγγραφή, όχι σε παράθυρο:
-     διορθώνεις κοιτώντας τα διπλανά παιδιά, που είναι και ο λόγος που
-     κατάλαβες ότι κάτι δεν πάει καλά. */
-  const edit=r=>`<tr data-wledrow="${r.id}"><td colspan="6" style="background:var(--bg)">
-    <div class="grow">
-      <label>Επίθετο<input data-f="last_name" value="${esc(r.last_name||'')}"></label>
-      <label>Όνομα<input data-f="first_name" value="${esc(r.first_name||'')}"></label>
-      <label style="max-width:130px">Φύλο<select data-f="gender">
-        ${['','Αγόρι','Κορίτσι'].map(g=>`<option${g===(r.gender||'')?' selected':''}>${g}</option>`).join('')}</select></label>
-      <label style="max-width:170px">Ημ. γέννησης<input type="date" data-f="dob" value="${esc(r.dob||'')}"></label>
-      <label style="max-width:150px">Τμήμα<select data-f="section"><option value=""></option>
-        ${SECS.map(x=>`<option${x===r.section?' selected':''}>${x}</option>`).join('')}</select></label>
-    </div>
-    <div class="grow">
-      <label style="max-width:200px">Τάξη ${esc(curScoutYear())}<select data-wlcls="${r.id}"><option value="">— χωρίς αλλαγή —</option>
-        ${['ΠΙΟ ΜΙΚΡΟΙ',...WLGR].map(x=>`<option>${x}</option>`).join('')}</select></label>
-      <label style="max-width:200px">Φτάνει στη Γ΄ Δημοτικού<input data-f="eligible_year_declared" value="${esc(r.eligible_year_declared||'')}" placeholder="π.χ. 2029-30"></label>
-      <label style="flex:2">&nbsp;<div class="dim" style="font-size:11.5px;padding-top:7px">Η νέα τάξη <b>προστίθεται</b> στο ιστορικό ως δήλωση «χέρι» —
-        δεν σβήνει ό,τι είπε η φόρμα. Η χρονιά της Γ΄ στέκεται μόνη της.</div></label>
-    </div>
-    <div class="grow">
-      <label>Αιτητής<input data-f="applicant_name" value="${esc(r.applicant_name||'')}"></label>
-      <label>Email<input data-f="applicant_email" value="${esc(r.applicant_email||'')}"></label>
-      <label style="max-width:170px">Τηλέφωνο<input data-f="applicant_phone" value="${esc(r.applicant_phone||'')}"></label>
-    </div>
-    <div class="grow">
-      <label style="flex:2">Ποιος τον έφερε<input data-f="referred_by" value="${esc(r.referred_by||'')}" placeholder="π.χ. αδελφός Χ, συνάδελφος Υ"></label>
-      <label style="flex:2">Τι έγινε πέρσι<input data-f="last_year_note" value="${esc(r.last_year_note||'')}"></label>
-    </div>
-    ${wlRelHTML(r)}
-    ${(()=>{const c=wlCts(r); if(!c.length)return '';
-      /* Το ημερολόγιο ΕΔΩ και όχι στη γραμμή: στη γραμμή θέλεις να πατήσεις,
-         εδώ θέλεις να δεις και να διορθώσεις. */
-      return `<div class="dim" style="font-size:12px;margin:6px 0">Επαφές:
-        ${c.map(x=>`<span class="pill" style="margin:2px">${esc(x.kind)} · ${fdate(x.at)}
-          <button class="btn sm gh" data-wlctdel="${x.id}" title="Διαγραφή" style="padding:0 5px">✕</button></span>`).join('')}</div>`})()}
-    <div class="grow"><label style="flex:3">Σημείωση<input data-f="note" value="${esc(r.note||'')}"></label>
-      <label style="max-width:150px">&nbsp;<button class="btn p sm" data-wlsave="${r.id}">Αποθήκευση</button></label>
-      <label style="max-width:110px">&nbsp;<button class="btn sm gh" data-wlcancel="1">Άκυρο</button></label></div>
-    <div class="dim" style="font-size:11.5px;margin-top:4px">Η τάξη βγαίνει από τη <b>δηλωμένη τάξη</b> (μεταφερμένη μπροστά)·
-      αν δεν υπάρχει, από την ημερομηνία γέννησης. Όταν οι δύο διαφωνούν κρατάμε τη δηλωμένη
-      και το γράφουμε με ⚠ — δεν διορθώνεται σιωπηλά.</div></td></tr>`;
-
-  const row=(r,i)=>{const gi=wlG(r), g=gi.g, st=wlState(r);
-    return `<tr data-wlrow="${r.id}" style="background:${st.bg};border-left:3px solid ${st.ln}${st.dim?';opacity:.62':''}" title="${esc(st.t)}">
-    ${/* ΤΑ ΒΕΛΑΚΙΑ ΔΙΠΛΑ ΣΤΟΝ ΑΡΙΘΜΟ, όχι σε μενού: η σειρά είναι κάτι που
-         βλέπεις και διορθώνεις στο ίδιο βλέμμα. Το ✋ λέει ότι αυτή η θέση
-         δόθηκε με το χέρι — αλλιώς δεν ξεχωρίζει από την αυτόματη. */''}
-    <td style="white-space:nowrap;text-align:right;padding-right:2px;vertical-align:top">
-      <div class="dim"><b style="font-size:15px">${i+1}</b>${r.priority!=null
-        ? '<span title="χειροκίνητη θέση" style="font-size:10px">✋</span>':''}</div>
-      <div style="display:flex;flex-direction:column;gap:1px;margin-top:2px">
-        <button class="btn gh sm wlup" data-id="${r.id}" title="Πιο πάνω"
-          style="padding:0 4px;line-height:1.15;font-size:11px"${i?'':' disabled'}>▲</button>
-        <button class="btn gh sm wldn" data-id="${r.id}" title="Πιο κάτω"
-          style="padding:0 4px;line-height:1.15;font-size:11px">▼</button></div></td>
-    <td><b>${wlName(r)}</b>${wlPrio(r)
-        ? `<i class="wlprio" title="${esc(wlPrioWhy(r))} — δημοσιευμένος κανόνας προτεραιότητας">ΠΡΟΤΕΡΑΙΟΤΗΤΑ</i>`
-        : (r.related_76?'<i class="wlprio said" title="Ο γονιός το δήλωσε στη φόρμα — δεν έχει διασταυρωθεί">ΔΗΛΩΘΗΚΕ</i>':'')}
-      <div class="dim" style="font-size:11.5px">${esc(wlClass(g))}${gi.src?' <span title="'+(gi.src==='δήλωση'?'όπως το δήλωσε ο γονιός, μεταφερμένο μπροστά':'από την ημερομηνία γέννησης')+'">('+gi.src+')</span>':''}${r.dob?' · '+fdate(r.dob)+' · '+age(r.dob):' · χωρίς ημ. γέννησης'}${r.gender?' · '+esc(r.gender):''}</div>
-      ${(()=>{const h=wlHistConflict(r); if(!h)return '';
-        /* ΜΟΝΟ ΟΤΑΝ ΔΙΑΦΩΝΟΥΝ. «2025-26: Β΄ → 2026-27: Γ΄» δεν είναι είδηση,
-           είναι το ημερολόγιο: το παιδί μεγάλωσε. Σε 168 γραμμές αυτή η
-           αράδα επαναλαμβανόταν παντού και έκρυβε τις τρεις που λένε κάτι. */
-        return `<div style="font-size:11px;color:var(--warn)">⚠ ${h.map(x=>
-          `${esc(x.class_year)}: <b>${esc(x.school_class)}</b> <span style="opacity:.7">${esc(x.origin)}</span>`).join(' → ')}</div>`})()}
-      ${r.eligible_year_declared?`<div class="dim" style="font-size:11px">Γ΄ Δημοτικού: <b>${esc(r.eligible_year_declared)}</b> (δηλωμένο)</div>`:''}
-      ${wlFlag(r.flag)?`<div style="font-size:11.5px;color:var(--warn)">⚠ ${esc(wlFlag(r.flag))}</div>`:''}
-      ${r.last_year_note?`<div class="dim" style="font-size:11.5px">${esc(r.last_year_note)}</div>`:''}
-      ${r.note?`<div class="dim" style="font-size:11.5px">${esc(r.note)}</div>`:''}</td>
-    <td style="white-space:nowrap">${r.section?sdot(r.section)+esc(r.section):'<span class="dim">—</span>'}
-      <div class="dim" style="font-size:11.5px">δήλωσε: ${esc(r.school_class||'—')}</div></td>
-    ${/* ΤΟ ΤΗΛΕΦΩΝΟ ΕΙΝΑΙ ΚΟΥΜΠΙ, ΟΧΙ ΚΕΙΜΕΝΟ. Η μόνη πράξη αυτής της οθόνης
-         είναι «πάρ’ τον τηλέφωνο». Ήταν γκρίζο κείμενο 11.5px — από κινητό
-         έπρεπε να το διαβάσεις και να το πληκτρολογήσεις αλλού. */''}
-    <td>${esc(r.applicant_name||'—')}
-      <div style="font-size:12.5px;margin-top:2px">${r.applicant_phone
-        ? `<a href="tel:${esc(String(r.applicant_phone).replace(/\s/g,''))}" class="lnk"
-             style="font-weight:600">${ic('phone',12)} ${fphone(r.applicant_phone)}</a>`
-        : '<span class="dim">χωρίς τηλέφωνο</span>'}</div>
-      ${r.applicant_email?`<div style="font-size:11.5px"><a href="mailto:${esc(r.applicant_email)}" class="lnk">${esc(r.applicant_email)}</a></div>`:''}
-      ${r.referred_by?`<div class="dim" style="font-size:11.5px">${ic('users',11)} ${esc(r.referred_by)}</div>`:''}</td>
-    <td class="hide-s dim" style="font-size:12px;white-space:nowrap">${r.submitted_on?fdate(String(r.submitted_on).slice(0,10)):'—'}
-      <div style="font-size:11px">${esc(r.scout_year)}${(()=>{
-        if(!r.submitted_on)return '';
-        const m=Math.round((new Date()-new Date(r.submitted_on))/2628000000);
-        return m>=12?` · <b>${Math.floor(m/12)} ${Math.floor(m/12)===1?'χρόνο':'χρόνια'}</b>`:(m>0?` · ${m} μήνες`:'')})()}</div></td>
-    <td style="white-space:nowrap">
-      <!-- ΕΠΑΦΗ ΠΑΝΩ, ΕΚΒΑΣΗ ΚΑΤΩ. Πρώτα «τι έκανα», μετά «τι είπε» —
-           με αυτή τη σειρά γίνονται και στην πραγματικότητα. -->
-      ${/* ΛΕΞΕΙΣ, ΟΧΙ ΣΥΜΒΟΛΑ. Το ☎ και το ✉ έβγαιναν λεπτά γκρίζα γλυφικά
-           χωρίς περίγραμμα — δεν φαινόταν καν ότι πατιούνται. Δύο μικρά
-           κουμπιά με όνομα και μετρητή: «Κλήση 2» λέει και τι είναι και
-           πόσες φορές έγινε, χωρίς να χρειάζεται να ακουμπήσεις τίποτα. */''}
-      <div style="display:flex;gap:5px;margin-bottom:6px">${WL_KIND.map(([k])=>{
-        const c=wlCt(r,k), on=c.length>0;
-        return `<button class="btn sm" data-wlct="${r.id}" data-k="${k}"
-          style="font-size:11.5px;padding:3px 9px;border-radius:999px;${on
-            ?'background:var(--accbg);color:var(--acc);border:1px solid var(--accln);font-weight:600'
-            :'background:transparent;color:var(--ink2);border:1px dashed var(--line)'}"
-          title="${on?k+' × '+c.length+' · τελευταία '+fdate(c[0].at)+' — πάτα για ακόμη μία':'Δεν έχει γίνει — πάτα για να καταγράψεις '+k.toLowerCase()}">${esc(k)}${on&&c.length>1?' '+c.length:''}${on?' ✓':''}</button>`}).join('')}
-        ${wlCts(r).length?`<span class="dim" style="font-size:11px;align-self:center">${fdate(wlCts(r)[0].at)}</span>`:''}</div>
-      ${/* ΕΞΙ ΚΟΥΜΠΙΑ = ΟΙ ΕΞΙ ΑΠΑΝΤΗΣΕΙΣ ΠΟΥ ΠΑΙΡΝΕΙΣ. Το μενού έκβασης
-           μένει για τα υπόλοιπα — αλλά δεν είναι πια ο κύριος δρόμος. */''}
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px">
-        ${WL_PRESETS.map(P=>`<button class="btn sm${P.cls?' '+P.cls:' gh'}" data-wlp="${r.id}" data-pk="${P.k}"
-          style="font-size:11px;padding:2px 7px">${esc(P.t)}</button>`).join('')}</div>
-      ${/* ΤΙ ΧΡΩΣΤΑΩ ΕΓΩ — ο τέταρτος άξονας. Χωρίς αυτόν το «θα με πάρει
-           η μητέρα σε 48 ώρες» ζούσε στο κεφάλι σου, και σε τρεις μέρες
-           δεν θυμόσουν ποιοι ήταν οι πέντε που περίμενες. */''}
-      ${r.next_step?`<div style="font-size:11.5px;margin-bottom:4px;color:var(--${
-          r.callback_on&&r.callback_on<new Date().toISOString().slice(0,10)?'bad':'acc'})">
-        ⏳ ${esc(r.next_step)}${r.callback_on?` · ${fdate(r.callback_on)}${
-          r.callback_on<new Date().toISOString().slice(0,10)?' <b>πέρασε</b>':''}`:''}
-        <button class="btn gh sm" data-wlclr="${r.id}" title="Τακτοποιήθηκε" style="padding:0 5px">✓</button></div>`:''}
-      ${r.elsewhere?`<div class="dim" style="font-size:11.5px">→ ${esc(r.elsewhere)}</div>`:''}
-      <select data-wlo="${r.id}" style="min-width:135px">${OUT.map(o=>
-        `<option${o===r.outcome?' selected':''}>${o}</option>`).join('')}</select>
-      <button class="btn sm gh" data-wledit="${r.id}" title="Επεξεργασία">✎</button>
-      ${(()=>{
-        /* ΤΟ ΑΝΕΒΑΣΜΑ ΕΙΝΑΙ ΠΡΑΞΗ, ΟΧΙ ΛΕΞΗ ΣΕ ΜΕΝΟΥ. Αν το «Έγινε μέλος»
-           ήταν απλώς επιλογή, θα ξαναπληκτρολογούσες όνομα, ημερομηνία και
-           γονιό στο μητρώο — και τα δύο αρχεία θα άρχιζαν να διαφωνούν. */
-        if(r.person_id){const p=(D.bh||[]).find(x=>x.id===r.person_id);
-          return `<div style="font-size:11.5px;margin-top:5px;color:var(--ok)">✓ ${p?`<a href="#" class="pn" data-p="${p.id}">${esc(nm(p))}</a>`:'στο μητρώο'}</div>`}
-        if(r.outcome==='Έγινε μέλος')
-          return `<div style="font-size:11.5px;margin-top:5px;color:var(--warn)">⚠ χωρίς καρτέλα —
-            <button class="btn sm p" data-wlup="${r.id}">Δημιουργία</button></div>`;
-        if(r.outcome==='Ενδιαφέρεται'){
-          const d=wlDays(r.outcome_at);
-          return `<div style="margin-top:5px"><button class="btn sm p" data-wlup="${r.id}">Εγγραφή →</button>
-            ${d>WL_STALE?`<div style="font-size:11px;color:var(--bad);margin-top:3px">είπε ναι πριν ${d} μέρες</div>`:''}</div>`}
-        return ''})()}</td></tr>`
-    + (WLED===r.id?edit(r):'')};
-
-  /* Ομαδοποίηση κατά ΦΕΤΙΝΗ τάξη — έτσι βλέπεις «πέντε παιδιά στη Γ΄», που
-     είναι και η ερώτηση όταν σκέφτεσαι πόσους χωράει η Αγέλη. */
-  const groups={};
-  /* ΠΡΟΕΠΙΛΟΓΗ: ΣΕΙΡΑ ΚΛΗΣΕΩΝ, ΟΧΙ ΑΛΦΑΒΗΤΙΚΗ. Πρώτος όποιος περιμένει
-     ΠΕΡΙΣΣΟΤΕΡΟ — είναι και το δίκαιο και το πρακτικό: ο γονιός που έκανε
-     αίτηση πριν δύο χρόνια είναι αυτός που θα ρωτήσει «με ξεχάσατε;».
-     Αλλά η προεπιλογή δεν είναι κανόνας: μερικές φορές ψάχνεις όνομα, και
-     τότε η αλφαβητική είναι η μόνη χρήσιμη. */
-  const D_=x=>String(x||'').trim();
-  /* ΚΑΘΕ ΤΑΞΙΝΟΜΗΣΗ ΤΕΛΕΙΩΝΕΙ ΜΕ ΣΤΑΘΕΡΟ ΚΡΙΤΗΡΙΟ. Χωρίς αυτό, οι 40
-     εγγραφές του xlsx (ίδιο created_at, κενό submitted_on) έβγαιναν σε
-     ισοπαλία και η βάση επέστρεφε άλλη σειρά κάθε φορά — «δεν είναι με τη
-     σειρά που ήταν στο αρχείο». Η σειρά του αρχείου είναι το file_seq. */
-  const TIE=(a,b)=>((a.file_seq??9999)-(b.file_seq??9999))
-    || D_(a.created_at).localeCompare(D_(b.created_at))
-    || D_(a.id).localeCompare(D_(b.id));
-  const WLSORTS={
-    anamoni:['Σειρά αναμονής (παλαιότερη αίτηση πρώτα)', (a,b)=>
-      D_(a.scout_year).localeCompare(D_(b.scout_year)) ||
-      (a.submitted_on||'9999').localeCompare(b.submitted_on||'9999') || TIE(a,b)],
-    /* ΠΡΟΕΠΙΛΟΓΗ. Ο Α.Σ. δουλεύει με τη σειρά του αρχείου του εδώ και χρόνια
-       — το Α/Α δεν είναι διακόσμηση, είναι η σειρά που θα πάρει τηλέφωνο. */
-    arxeio:['Σειρά λίστας (Α/Α αρχείου)', TIE],
-    neoteri:['Πρόσφατη αίτηση πρώτα', (a,b)=>
-      D_(b.scout_year).localeCompare(D_(a.scout_year)) ||
-      (b.submitted_on||'').localeCompare(a.submitted_on||'') || TIE(a,b)],
-    onoma:['Αλφαβητικά', (a,b)=>
-      nameKey(a.last_name+' '+a.first_name).localeCompare(nameKey(b.last_name+' '+b.first_name),'el')||TIE(a,b)],
-    ilikia:['Μεγαλύτερο παιδί πρώτα', (a,b)=>(a.dob||'9999').localeCompare(b.dob||'9999')||TIE(a,b)],
-    mikroteros:['Μικρότερο παιδί πρώτα', (a,b)=>(b.dob||'').localeCompare(a.dob||'')||TIE(a,b)],
-    /* ΞΕΧΩΡΙΣΤΗ ΕΠΙΛΟΓΗ, ΟΧΙ ΠΡΟΕΠΙΛΟΓΗ. Ο δημοσιευμένος κανόνας δίνει
-       δικαίωμα, αλλά η σειρά του αρχείου είναι η σειρά που ο Α.Σ. παίρνει
-       τηλέφωνο εδώ και χρόνια. Να του την αλλάζαμε σιωπηλά θα ήταν σαν να
-       του ανακατέψαμε τον ντοσιέ. Το δικαίωμα φαίνεται πάντα ως σήμανση·
-       ανεβαίνει μόνο όταν το ζητήσει. */
-    proto:['Προτεραιότητα πρώτα (αδέλφια · παιδιά βαθμοφόρων)', (a,b)=>
-      (wlPrio(b)?1:0)-(wlPrio(a)?1:0) || TIE(a,b)],
-  };
-  /* ΤΑ ΦΙΛΤΡΑ ΚΟΒΟΥΝ ΤΟΝ ΠΙΝΑΚΑ, ΟΧΙ ΤΑ ΠΛΑΚΙΔΙΑ. Οι μετρήσεις πρέπει να
-     λένε πάντα «πόσοι είναι», αλλιώς φιλτράρεις και νομίζεις ότι μειώθηκαν.
-     Προεπιλογή «ανοιχτές»: όποιος έκλεισε δεν σε απασχολεί σήμερα — αλλά δεν
-     σβήνεται ποτέ, γιατί χωρίς αυτόν δεν βγαίνει το ποσοστό της χρονιάς. */
-  /* Η ΧΕΙΡΟΚΙΝΗΤΗ ΣΕΙΡΑ ΝΙΚΑ ΠΑΝΤΑ, ΣΕ ΚΑΘΕ ΤΑΞΙΝΟΜΗΣΗ. Αν έβγαινε μόνο στη
-     «σειρά αναμονής», ο Α.Σ. θα άλλαζε ταξινόμηση για να ψάξει ένα όνομα και
-     η δουλειά που έκανε θα εξαφανιζόταν — και δεν θα καταλάβαινε γιατί. */
-  const auto=(WLSORTS[WLSORT]||WLSORTS.anamoni)[1];
-  /* Το πλακίδιο είναι ΕΤΟΙΜΟΣ ΣΥΝΔΥΑΣΜΟΣ, όχι δεύτερο φίλτρο: πατώντας το
-     «Έχουν την ηλικία» παίρνεις ανοιχτές ΚΑΙ Γ΄+ με μία κίνηση. */
-  const _T0=new Date().toISOString().slice(0,10), _op=r=>WL_OPEN.includes(r.outcome);
-  const PRE={
-    /* Οι τέσσερις της ζώνης «Σήμερα» — η μόνη διαλογή που κάνεις κάθε πρωί. */
-    today : r=>_op(r)&&(r.callback_on?r.callback_on<=_T0:!wlCts(r).length),
-    late  : r=>_op(r)&&r.callback_on&&r.callback_on<_T0,
-    wait  : r=>_op(r)&&r.callback_on&&r.callback_on>_T0,
-    gaps  : r=>_op(r)&&r.next_step==='Λείπουν στοιχεία',
-    ready : r=>_op(r)&&(wlGrade(r)||0)>=3,
-    /* ΔΥΟ ΚΟΥΜΠΙΑ ΕΙΧΑΝ ΤΟ ΙΔΙΟ ΚΛΕΙΔΙ «later» ΚΑΙ ΑΛΛΟ ΝΟΗΜΑ: το ένα
-       «περιμένουν να μεγαλώσουν» (τάξη < Γ΄), το άλλο «όχι φέτος» (έκβαση).
-       Το δεύτερο σκέπαζε το πρώτο — δηλαδή το «περιμένουν να μεγαλώσουν»
-       μετρούσε άλλους από όσους έδειχνε όταν το πατούσες. Χωριστά κλειδιά. */
-    young : r=>_op(r)&&(wlGrade(r)||0)<3,
-    yes   : r=>r.outcome==='Ενδιαφέρεται',
-    joined: r=>r.outcome==='Έγινε μέλος',
-    gone  : r=>WL_CLOSED.includes(r.outcome),
-    later : r=>r.outcome===WL_LATER,
-    /* Οι τρεις μετρήσεις της ζώνης «Τάξη». Ήταν <span> που έμοιαζαν με
-       κουμπιά και δεν ήταν: ο Α.Σ. τα πατούσε και δεν γινόταν τίποτα. */
-    cold  : r=>r.outcome==='Αναμονή'&&!wlCts(r).length,
-    due   : r=>_op(r)&&!!r.next_step,
-    out   : r=>WL_CLOSED.includes(r.outcome),
-  };
-  const shown = list
-    .filter(r=>WLPRE?PRE[WLPRE](r)
-      :(WLST==='all' || (WLST==='open'?WL_OPEN.includes(r.outcome):r.outcome===WLST)))
-    .filter(r=>wlHit(r,WLQ))
-    .filter(r=>{if(!WLCLS)return true;
-      return WLCLS==='?' ? wlBk(wlGrade(r))===99 : String(wlBk(wlGrade(r)))===WLCLS})
-    /* ΑΝΕΞΑΡΤΗΤΟΣ ΔΙΑΚΟΠΤΗΣ, όχι δέκατος κάδος. Οι εννέα κάδοι είναι
-       διαλογή («τι κάνω σήμερα»)· η προτεραιότητα είναι δικαίωμα και
-       συνδυάζεται με τον καθένα τους — «ποιοι από όσους θα πάρω σήμερα
-       έχουν προτεραιότητα» είναι πραγματική ερώτηση. */
-    .filter(r=>!WLPRIO || (WLPRIO==='said' ? (r.related_76&&!wlPrio(r)) : wlPrio(r)))
-    .sort((a,b)=>{
-      const pa=a.priority??9999, pb=b.priority??9999;
-      return pa!==pb ? pa-pb : auto(a,b)});
-  shown.forEach(r=>{const k=wlBk(wlGrade(r));(groups[k]=groups[k]||[]).push(r)});
-  /* Οι τάξεις για το φίλτρο βγαίνουν από ΤΑ ΔΕΔΟΜΕΝΑ, όχι από τη λίστα των
-     δώδεκα: δεν προσφέρουμε «Γ΄ Γυμνασίου» αν δεν υπάρχει κανείς εκεί. */
-  const clsOpts=[...new Set(list.map(r=>wlBk(wlGrade(r))))].sort((a,b)=>a-b);
-
-  /* ΤΙ ΑΠΕΔΩΣΕ ΚΑΘΕ ΧΡΟΝΙΑ. Χωρίς αυτό η λίστα είναι σωρός ονομάτων: δεν
-     ξέρεις αν αξίζει να τηλεφωνείς, ούτε ποια χρονιά έμεινε ανοιχτή. */
-  const YRS={};
-  rows.forEach(r=>{const y=r.scout_year||'—'; const o=(YRS[y]=YRS[y]||{n:0,m:0,w:0,x:0,ready:0,y:0});
-    o.n++; if(r.outcome==='Έγινε μέλος')o.m++;
-    else if(r.outcome===WL_LATER)o.l=(o.l||0)+1;
-    else if(WL_OPEN.includes(r.outcome)){o.w++; if(r.outcome==='Ενδιαφέρεται')o.y++;
-      const g=wlGrade(r); if(g>=3&&g<=5)o.ready++}
-    else o.x++});
-  const ordAll=Object.keys(groups).map(Number).sort((a,b)=>a-b);
-  /* Η καρτέλα κόβει ΜΟΝΟ το τι ζωγραφίζεται — οι μετρήσεις και οι άλλες
-     καρτέλες μένουν σωστές, αλλιώς διαλέγεις τάξη και «χάθηκαν» οι άλλοι. */
-  const ord = WLTAB===null ? ordAll : ordAll.filter(g=>g===WLTAB);
-
-  /* Η ΑΡΙΘΜΗΣΗ ΞΕΚΙΝΑ ΑΠΟ ΤΟ 1 ΣΕ ΚΑΘΕ ΤΑΞΗ. Δεν είναι διακόσμηση: είναι η
-     σειρά που θα πάρεις τηλέφωνο. «Ο τέταρτος στη Γ΄» είναι πρόταση που
-     λέγεται· «ο 47ος στη λίστα» δεν είναι. */
-  const table=l=>`<div class="card" style="overflow:auto"><table>
-      <thead><tr><th style="width:1%">#</th><th>Παιδί</th><th>Τμήμα</th><th>Αιτητής</th><th class="hide-s">Υποβλήθηκε</th><th>Επαφή &amp; έκβαση</th></tr></thead>
-      <tbody>${l.map((r,i)=>row(r,i)).join('')}</tbody></table></div>`;
-
-  /* ══ ΤΡΕΙΣ ΖΩΝΕΣ, ΜΕ ΣΕΙΡΑ ═════════════════════════════════════════════
-       1. ΣΗΜΕΡΑ — τι ζητά εμένα, τώρα. Πάνω πάνω, πατιέται.
-       2. ΤΑΞΗ   — ποια δουλεύω, και πόσο γεμάτη είναι.
-       3. ΛΙΣΤΑ  — τα παιδιά, σε δύο γραμμές το καθένα.
-     Ό,τι δεν απαντά σε αυτές τις τρεις ερωτήσεις πάει πίσω από το «⋯».
-     Πριν, οκτώ μπλοκ στέκονταν ανάμεσα στον Α.Σ. και το πρώτο τηλέφωνο. */
-  const T0=new Date().toISOString().slice(0,10);
-  const isOpen=r=>WL_OPEN.includes(r.outcome);
-  const NOW={
-    today : list.filter(r=>isOpen(r)&&(r.callback_on?r.callback_on<=T0:!wlCts(r).length)),
-    late  : list.filter(r=>isOpen(r)&&r.callback_on&&r.callback_on<T0),
-    wait  : list.filter(r=>isOpen(r)&&r.callback_on&&r.callback_on>T0),
-    gaps  : list.filter(r=>isOpen(r)&&r.next_step==='Λείπουν στοιχεία'),
-  };
-  const chip=(k,n,t,c)=>`<button class="btn sm${WLPRE===k?' p':(c?' '+c:' gh')}" data-wlpre="${k}"
-      style="padding:6px 12px;font-size:13px${n?'':';opacity:.45'}">
-      <b style="font-size:15px" data-wltile="${k}">${n}</b> ${esc(t)}</button>`;
-
-  $('view').innerHTML=`
-    ${/* ── ΖΩΝΗ 1: ΣΗΜΕΡΑ ───────────────────────────────────────────── */''}
-    <div class="card pad" style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <b style="font-size:14px;margin-right:4px">Σήμερα</b>
-      ${chip('today',NOW.today.length,'να πάρω','p')}
-      ${chip('late',NOW.late.length,'πέρασε η προθεσμία','bad')}
-      ${chip('wait',NOW.wait.length,'περιμένω')}
-      ${chip('gaps',NOW.gaps.length,'λείπουν στοιχεία','warn')}
-      <span class="sp"></span>
-      ${chip('yes',yes.length,'είπαν ναι','warn')}<span class="dim" data-wltile="stalesub"
-        style="font-size:11.5px">${stale.length?`<b>${stale.length}</b> πάνω από ${WL_STALE} μέρες`:'δεν γράφτηκαν ακόμη'}</span>
-      ${chip('joined',joined.length,'γράφτηκαν','ok')}
-      <button class="btn gh sm" id="wlMore" title="Φίλτρα, εξαγωγή, διπλοεγγραφές, ανάλυση">⋯</button>
-      ${/* ΜΕΝΕΙ ΟΡΑΤΟ: ο βαθμοφόρος που βλέπει άδεια οθόνη πρέπει να ξέρει ότι
-           δεν είναι σφάλμα — δεν έχει το δικαίωμα. Μία γραμμή αρκεί. */''}
-      <div class="dim" style="width:100%;font-size:11.5px;margin-top:2px">
-        Τη βλέπει ο Αρχηγός Συστήματος και όποιος πάρει ρητά το δικαίωμα «λίστα αναμονής».</div>
-    </div>
-
-    ${/* ── ΖΩΝΗ 2: ΤΑΞΗ ─────────────────────────────────────────────── */''}
-    ${(()=>{
-      if(!ordAll.length)return '';
-      if(WLTAB!==null && !ordAll.includes(WLTAB))WLTAB=null;
-      return `<div class="subtabs" style="margin-bottom:8px">
-        <button class="btn sm${WLTAB===null?' p':''}" data-wltab="">Όλες <span class="dim">${shown.length}</span></button>
-        ${ordAll.map(g=>{const n=groups[g].length;
-          return `<button class="btn sm${WLTAB===g?' p':''}" data-wltab="${g}"
-            >${esc(wlClass(g===99?null:g))} <span class="dim">${n}</span></button>`}).join('')}</div>`;
-    })()}
-
-    ${WLTAB!==null?(()=>{
-      const all=list.filter(r=>{const gg=wlGrade(r);return (gg===null?99:gg)===WLTAB});
-      const {mem}=wlYearTotal(WLTAB===99?null:WLTAB);
-      const got=all.filter(r=>r.outcome==='Έγινε μέλος').length;
-      const y2=all.filter(r=>r.outcome==='Ενδιαφέρεται').length;
-      const open2=all.filter(isOpen).length-y2;
-      return `<div class="card pad" style="margin-bottom:10px;background:var(--bg);
-          display:flex;gap:16px;flex-wrap:wrap;align-items:baseline">
-        <b style="font-size:15px">${esc(wlClass(WLTAB===99?null:WLTAB))}</b>
-        <span title="${mem} μέλη + ${got} γράφτηκαν + ${y2} είπαν ναι"><b style="font-size:18px">${mem+got+y2}</b>
-          <span class="dim">προβλεπόμενα</span></span>
-        <span class="dim" style="font-size:12.5px">${mem} ήδη μέλη <span style="opacity:.7">(δεν είναι σε αυτή τη λίστα)</span></span>
-        ${/* ΜΕΤΡΙΚΕΣ ΑΝΑ ΤΑΞΗ = ΦΙΛΤΡΑ. Ήταν <span class="pill"> — έμοιαζαν με
-             κουμπιά, πατιούνταν, δεν έκαναν τίποτα. Ό,τι δείχνει αριθμό
-             ανθρώπων πρέπει να μπορεί να τους δείξει κιόλας. Ο αριθμός μένει
-             ΤΗΣ ΤΑΞΗΣ (δεν μικραίνει όταν φιλτράρεις) — αλλιώς φιλτράρεις
-             και νομίζεις ότι μειώθηκαν. */''}
-        ${(()=>{const F=(k,fn,t,c)=>{const n=all.filter(fn).length; if(!n)return '';
-            return `<button class="btn sm${WLPRE===k?' p':' gh'}" data-wlpre="${k}"
-              style="padding:4px 10px;font-size:12.5px${WLPRE===k?'':(c?';color:var(--'+c+')':'')}"
-              title="Δείξε μόνο αυτούς">${n} ${esc(t)}</button>`};
-          return F('cold',r=>r.outcome==='Αναμονή'&&!wlCts(r).length,'δεν πήρα ακόμη')
-               + F('due', r=>r.next_step&&isOpen(r),'περιμένω','acc')
-               + F('yes', r=>r.outcome==='Ενδιαφέρεται','είπαν ναι','warn')
-               + F('joined',r=>r.outcome==='Έγινε μέλος','γράφτηκαν','ok')
-               + F('later',r=>r.outcome===WL_LATER,'όχι φέτος','acc')
-               + F('out', r=>WL_CLOSED.includes(r.outcome),'έφυγαν');})()}
-      </div>`;
-    })():''}
-
-    ${/* ── ΕΡΓΑΛΕΙΟΘΗΚΗ ─────────────────────────────────────────────── */''}
-    <div class="grow" style="margin-bottom:8px">
-      <label style="flex:2;min-width:190px">&nbsp;<input id="wlq" value="${esc(WLQ)}"
-        placeholder="🔎 όνομα, γονιός, τηλέφωνο, σημείωση"></label>
-      <label style="max-width:230px">&nbsp;<select id="wlsort">${Object.entries(WLSORTS)
-        .map(([k,[t]])=>`<option value="${k}"${k===WLSORT?' selected':''}>${esc(t)}</option>`).join('')}</select></label>
-      <label style="max-width:200px">&nbsp;<select id="wlview">
-        <option value="calls"${WLVIEW==='calls'?' selected':''}>Κάρτες — για τηλέφωνα</option>
-        <option value="list"${WLVIEW==='list'?' selected':''}>Πίνακας — πυκνός</option>
-      </select></label>
-      <label style="max-width:130px">&nbsp;<span class="dim" style="font-size:12px;padding-top:8px;display:block"
-        >δείχνει <b id="wlcount">${shown.length}</b>/${list.length}</span></label>
-    </div>
-
-    ${/* ══ Η ΛΕΖΑΝΤΑ ΜΠΡΟΣΤΑ, ΟΧΙ ΠΙΣΩ ΑΠΟ ΤΟ «⋯» ═══════════════════════════
-         Τα χρώματα είναι ΤΟΥ ΑΡΧΕΙΟΥ ΤΟΥ — τα διαβάσαμε από το Excel του.
-         Αλλά χρώμα που δεν εξηγείται είναι διακόσμηση: αν πρέπει να θυμηθείς
-         τι σημαίνει το πορτοκαλί, θα σταματήσεις να το κοιτάς. Δύο κελιά,
-         δύο ερωτήσεις: το ΟΝΟΜΑ λέει τι απάντησε εκείνος, το ΝΟΥΜΕΡΟ τι
-         έκανα εγώ — γι' αυτό μπορεί να είναι και τα δύο χρωματιστά. */''}
-    ${WLVIEW==='calls'?`<div class="dim" style="font-size:11.5px;margin:-2px 0 8px;
-        display:flex;gap:14px;flex-wrap:wrap;align-items:center">
-      <span><b>Όνομα</b> = τι απάντησε:</span>
-      <span style="color:var(--ok);font-weight:600">πράσινο</span><span style="margin-left:-11px">απάντησαν θετικά</span>
-      <span style="color:var(--warn);font-weight:600">πορτοκαλί</span><span style="margin-left:-11px">περιμένουμε να μας πάρουν πίσω</span>
-      <span style="color:var(--ink3);text-decoration:line-through">γκρι</span><span style="margin-left:-11px">έκλεισε</span>
-      <span style="opacity:.5">·</span>
-      <span><b>Νούμερο</b> = τι έκανα:</span>
-      <span style="color:var(--warn);font-weight:600">πορτοκαλί</span><span style="margin-left:-11px">αφήσαμε αναπάντητη / κλειστό</span>
-    </div>`:''}
-
-    ${/* ── ΠΙΣΩ ΑΠΟ ΤΟ «⋯»: ό,τι χρειάζεσαι σπάνια ───────────────────── */''}
-    <div id="wlMoreBox" style="display:${WLMORE?'block':'none'}">
-      <div class="card pad" style="margin-bottom:10px">
-        <div class="grow">
-          <label style="max-width:190px">Χρονιά φόρμας<select id="wly"><option value="">Όλες</option>
-            ${years.map(y=>`<option${y===WLY?' selected':''}>${esc(y)}</option>`).join('')}</select></label>
-          <label style="max-width:230px">Κατάσταση<select id="wlst">
-            <option value="open"${WLST==='open'?' selected':''}>Ανοιχτές (αναμονή + ναι)</option>
-            <option value="all"${WLST==='all'?' selected':''}>Όλες</option>
-            ${WL_OUT.map(o=>`<option value="${esc(o)}"${WLST===o?' selected':''}>${esc(o)}</option>`).join('')}</select></label>
-          <label style="max-width:150px">&nbsp;<button class="btn sm" id="wlExp">Εξαγωγή</button></label>
-        </div>
-        ${/* ΔΕΝ ΧΑΝΟΝΤΑΙ: «έχουν την ηλικία» / «περιμένουν να μεγαλώσουν» είναι
-             η διαλογή του ΣΕΠΤΕΜΒΡΗ — σπάνια, αλλά όταν τη θέλεις τη θέλεις. */''}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-          ${chip('ready',ready.length,'έχουν την ηλικία','warn')}
-          ${chip('young',later.length,'περιμένουν να μεγαλώσουν')}
-          ${chip('gone',gone.length,'έκλεισαν')}
-          ${/* Η προτεραιότητα ΔΕΝ είναι chip διαλογής — δικός της διακόπτης,
-               γιατί συνδυάζεται με όλους τους κάδους αντί να τους αντικαθιστά. */''}
-          ${(()=>{const p=list.filter(wlPrio).length, s=list.filter(r=>r.related_76&&!wlPrio(r)).length;
-            const b=(k,n,t,c)=>`<button class="btn sm${WLPRIO===k?' p':' gh'}" data-wlprio="${k}"
-              style="padding:6px 12px;font-size:13px${n?'':';opacity:.45'}${WLPRIO===k?'':(c?';color:var(--'+c+')':'')}">
-              <b style="font-size:15px">${n}</b> ${esc(t)}</button>`;
-            return b('prio',p,'προτεραιότητα','ok')+b('said',s,'δηλώθηκε, χωρίς έλεγχο','warn')})()}
-          <button class="btn sm gh" id="wlPrioScan" title="Ψάχνει κοινά τηλέφωνα, email και αναφορές σε αδέλφι">🔎 Πιθανές σχέσεις</button>
-          ${list.some(r=>r.priority!=null)?`<label style="max-width:220px">&nbsp;<button class="btn gh sm" id="wlClrPri"
-            >✋ Καθαρισμός σειράς (${list.filter(r=>r.priority!=null).length})</button></label>`:''}
-        </div>
-        <div class="dim" style="font-size:11.5px;margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
-          <span class="dim">Πόσο κοντά στην εγγραφή:</span>
-          ${WL_STEPS.map(s=>`<span><span style="display:inline-block;width:13px;height:13px;border-radius:3px;
-            background:${s.c?'var(--'+s.c+')':'transparent'};border:1px solid var(--${s.c||'ink2'});
-            vertical-align:-2px"></span> ${s.n} · ${s.t}</span>`).join('')}
-        </div>
-        <div class="dim" style="font-size:12px;margin-top:8px;line-height:1.6">
-          Παιδιά που ζήτησαν θέση και <b>δεν είναι μέλη</b> — χωρίς Α.Μ., δεν μετρούν πουθενά αλλού·
-          ο γονιός συναίνεσε μόνο σε επικοινωνία. Χωρισμένα κατά <b>φετινή τάξη</b>, υπολογισμένη από
-          την ημερομηνία γέννησης. Τη βλέπει ο Α.Σ. και όποιος πάρει ρητά το δικαίωμα «λίστα αναμονής».
-        </div>
-      </div>
-      ${wlDupBox()}
-      <details class="card pad" id="wlyrsD" style="margin-bottom:10px"${WLYRS?' open':''}>
-        <summary style="cursor:pointer;font-weight:600;font-size:14px">Τι απέδωσε κάθε χρονιά</summary>
-        <div style="overflow:auto;margin-top:10px"><table>
-          <thead><tr><th>Χρονιά αίτησης</th><th>Μπήκαν</th><th>Ήρθαν</th><th>Ποσοστό</th>
-            <th>Περιμένουν</th><th>Έχουν την ηλικία</th><th>Έκλεισαν</th></tr></thead>
-          <tbody>${Object.keys(YRS).sort().map(y=>{const o=YRS[y];
-            return `<tr><td><b>${esc(y)}</b></td><td>${o.n}</td>
-              <td style="color:var(--ok)"><b>${o.m}</b></td>
-              <td class="dim">${o.n?Math.round(100*o.m/o.n)+'%':'—'}</td>
-              <td>${o.w}${o.y?` <span style="color:var(--warn)">(${o.y} ναι)</span>`:''}</td>
-              <td>${o.ready?`<b style="color:var(--warn)">${o.ready}</b>`:'0'}</td>
-              <td class="dim">${o.x}</td></tr>`}).join('')}</tbody></table></div>
-      </details>
-    </div>
-
-    ${/* ── ΖΩΝΗ 3: Η ΛΙΣΤΑ ──────────────────────────────────────────── */''}
-    ${WLVIEW==='calls' ? (()=>{
-      /* ΤΡΕΙΣ ΚΑΔΟΙ: «Πάρε τώρα» είναι η μόνη λίστα που χρειάζεσαι όταν
-         κάθεσαι να τηλεφωνήσεις. Οι επικεφαλίδες τάξης μπαίνουν ΜΟΝΟ όταν
-         κοιτάς «Όλες» — αλλιώς είναι θόρυβος πάνω από κάθε ομάδα. */
-      /* ΤΕΣΣΕΡΙΣ ΚΑΔΟΙ ΠΛΕΟΝ. Το «Του χρόνου» δεν είναι «έκλεισε»: τον
-         Σεπτέμβρη του 2027 αυτοί είναι η πρώτη σου λίστα. Διπλωμένο όπως
-         και οι κλειστοί — δεν σε απασχολεί σήμερα, αλλά υπάρχει. */
-      const BK=['Πάρε τώρα','Περιμένω απάντηση','Έκλεισαν','Του χρόνου'];
-      return ord.map(g=>{
-        const l=groups[g], by=[[],[],[],[]];
-        l.forEach(r=>by[wlBucket(r)].push(r));
-        return (WLTAB===null?`<div class="sec"><h3>${esc(wlClass(g===99?null:g))}</h3><span class="n">${l.length}</span></div>`:'')
-        + by.map((arr,bi)=>{ if(!arr.length)return '';
-          if(bi>=2)return `<details class="card pad" style="margin-bottom:8px"${bi===3?' style="border-color:var(--acc)"':''}>
-            <summary style="cursor:pointer;font-size:13px;color:var(--${bi===3?'acc':'ink3'})">${BK[bi]} — ${arr.length}</summary>
-            <div style="margin-top:8px;font-size:12.5px">${arr.map(r=>
-              `<div class="kv"><b style="flex:1">${wlName(r)}</b>
-               <span class="dim">${esc(r.outcome)}${r.elsewhere?' · '+esc(r.elsewhere):''}</span></div>`).join('')}</div></details>`;
-          return `<div style="font-size:11.5px;color:var(--ink3);text-transform:uppercase;
-              letter-spacing:.06em;margin:12px 0 5px">${BK[bi]} · ${arr.length}</div>
-            <div class="card" style="overflow:hidden;margin-bottom:8px" data-wlgrp="${g}-${bi}">${arr.map((r,i)=>wlCard(r,i,list)).join('')}</div>`}).join('');
-      }).join('');
-    })() : ord.map(g=>{const l=groups[g], w=g>=3&&g<=12;
-      return (WLTAB===null?`<div class="sec"><h3>${esc(wlClass(g===99?null:g))}</h3><span class="n">${l.length}</span></div>`:'')
-        + (w?'':`<div class="dim" style="font-size:12.5px;margin:-4px 0 8px">Δεν έχει ακόμη την τάξη για την Αγέλη του 76ου (ξεκινά από Γ΄ Δημοτικού).</div>`)
-        + `<div data-wlgrp="${g}">${table(l)}</div>`}).join('')}`;
-
-  /* ══ ΜΙΑ ΑΛΛΑΓΗ = ΜΙΑ ΓΡΑΜΜΗ ══════════════════════════════════════════════
-     Το route('waitlist') μετά από κάθε γράψιμο ξαναέχτιζε 160 γραμμές για να
-     αλλάξει ένα pill: η οθόνη πεταγόταν στην κορυφή και χανόταν το πού
-     κοίταζες. Ολόκληρη οθόνη ΜΟΝΟ όταν αλλάζει το ΣΥΝΟΛΟ (φίλτρο, σειρά,
-     μαζική ενέργεια). Για ένα παιδί, ξαναζωγραφίζεται το <tr> του.
-     Ο δείκτης βγαίνει από την ομάδα, όχι από κλεισμένο index — αλλιώς μετά
-     τη δεύτερη αλλαγή η αρίθμηση θα έλεγε ψέματα. */
-  function bindRow(tr){
-    if(!tr)return;
-    wlRelWire(tr);
-    tr.querySelectorAll('[data-wlct]').forEach(b=>b.onclick=()=>wlContact(b.dataset.wlct,b.dataset.k));
-    tr.querySelectorAll('[data-wlp]').forEach(b=>b.onclick=()=>wlPreset(b.dataset.wlp,b.dataset.pk));
-    tr.querySelectorAll('[data-wlopen]').forEach(b=>b.onclick=()=>{
-      const id=b.dataset.wlopen, was=WLOPEN_ID;
-      WLOPEN_ID = was===id ? null : id;
-      if(was && was!==id) WLPATCH(was);
-      WLPATCH(id);});
-    tr.querySelectorAll('[data-wlnote]').forEach(i=>{
-      const id=i.dataset.wlnote, r0=(D.wl||[]).find(x=>x.id===id), was=(r0&&r0.note)||'';
-      i.onblur=async()=>{
-        const v=i.value.trim(); if(v===was)return;
-        const {error}=await sb.from('waitlist').update({note:v||null}).eq('id',id);
-        if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
-        const r=(D.wl||[]).find(x=>x.id===id); if(r)r.note=v||null;
-        saveCache(); i.style.borderColor='var(--ok)';
-        setTimeout(()=>{i.style.borderColor=''},900);};});
-    tr.querySelectorAll('[data-wlclr]').forEach(b=>b.onclick=async()=>{
-      const id=b.dataset.wlclr;
-      const {error}=await sb.from('waitlist').update({next_step:null,callback_on:null}).eq('id',id);
-      if(error)return toast('Δεν έγινε: '+error.message);
-      const r=(D.wl||[]).find(x=>x.id===id); if(r)Object.assign(r,{next_step:null,callback_on:null});
-      saveCache(); WLPATCH(id);});
-    tr.querySelectorAll('[data-wlup]').forEach(b=>b.onclick=()=>wlElevate(b.dataset.wlup));
-    tr.querySelectorAll('[data-wlctdel]').forEach(b=>b.onclick=()=>wlContactDel(b.dataset.wlctdel));
-    tr.querySelectorAll('.wlup').forEach(b=>b.onclick=()=>move(b.dataset.id,-1));
-    tr.querySelectorAll('.wldn').forEach(b=>b.onclick=()=>move(b.dataset.id, 1));
-    tr.querySelectorAll('[data-wledit]').forEach(b=>b.onclick=()=>{
-      WLED = WLED===b.dataset.wledit ? null : b.dataset.wledit; WLPATCH(b.dataset.wledit)});
-    tr.querySelectorAll('[data-wlcancel]').forEach(b=>b.onclick=()=>{
-      const id=WLED; WLED=null; if(id)WLPATCH(id)});
-    tr.querySelectorAll('[data-wlo]').forEach(s=>s.onchange=async e=>{
-      await wlSave(s.dataset.wlo,{outcome:e.target.value})});
-    tr.querySelectorAll('[data-wlsave]').forEach(b=>b.onclick=async()=>{
-      const td=b.closest('td'), patch={};
-      td.querySelectorAll('[data-f]').forEach(i=>{
-        let v=i.value; if(v==='')v=null; patch[i.dataset.f]=v});
-      const cs=td.querySelector('[data-wlcls]'), cls=cs&&cs.value;
-      WLED=null;
-      if(cls){
-        /* ΠΡΟΣΘΗΚΗ, όχι αντικατάσταση. Ο έλεγχος «τι έλεγε τότε» πρέπει να
-           δουλεύει και μετά από δέκα διορθώσεις. */
-        const row={waitlist_id:b.dataset.wlsave, class_year:curScoutYear(), school_class:cls, origin:'χέρι'};
-        const {error}=await sb.from('waitlist_class').upsert(row,{onConflict:'waitlist_id,class_year,origin'});
-        if(error)toast('Η τάξη δεν αποθηκεύτηκε: '+error.message);
-        else{const ex=(D.wlc||[]).find(x=>x.waitlist_id===row.waitlist_id&&x.class_year===row.class_year&&x.origin==='χέρι');
-          if(ex)ex.school_class=cls; else (D.wlc=D.wlc||[]).push(row)}
-      }
-      await wlSave(b.dataset.wlsave,patch)});
-  }
-  /* Τα ΠΛΑΚΙΔΙΑ ξαναϋπολογίζονται από το D.wl, ΟΧΙ από το παγωμένο `list`.
-     Αυτή ήταν η παγίδα στους Λογαριασμούς: η γραμμή ανανεωνόταν, οι μετρητές
-     έμεναν πίσω, και ο Α.Σ. έβλεπε δύο αλήθειες στην ίδια οθόνη. */
-  /* ΜΙΑ ΠΗΓΗ ΓΙΑ ΤΟΥΣ ΜΕΤΡΗΤΕΣ. Μετά από κάθε preset η γραμμή ανανεώνεται
-     — αν οι αριθμοί πάνω έμεναν πίσω, η οθόνη θα έλεγε δύο διαφορετικές
-     αλήθειες ταυτόχρονα. Ξαναμετράει ΑΠΟ ΤΟ D.wl, όχι από κλεισμένες τιμές. */
-  function wlTiles(){ const l=(D.wl||[]).filter(r=>!WLY||r.scout_year===WLY);
-    const op=l.filter(r=>r.outcome==='Αναμονή'), ys=l.filter(r=>r.outcome==='Ενδιαφέρεται');
-    const t0=new Date().toISOString().slice(0,10), o=r=>WL_OPEN.includes(r.outcome);
-    const v={ready:op.filter(r=>(wlGrade(r)||0)>=3).length,
-             later:op.filter(r=>(wlGrade(r)||0)<3).length,
-             yes:ys.length, stale:ys.filter(r=>(wlDays(r.outcome_at)||0)>WL_STALE).length,
-             joined:l.filter(r=>r.outcome==='Έγινε μέλος').length,
-             gone:l.filter(r=>WL_CLOSED.includes(r.outcome)).length,
-             today:l.filter(r=>o(r)&&(r.callback_on?r.callback_on<=t0:!wlCts(r).length)).length,
-             late :l.filter(r=>o(r)&&r.callback_on&&r.callback_on<t0).length,
-             wait :l.filter(r=>o(r)&&r.callback_on&&r.callback_on>t0).length,
-             gaps :l.filter(r=>o(r)&&r.next_step==='Λείπουν στοιχεία').length};
-    Object.entries(v).forEach(([k,n])=>{const el=document.querySelector(`[data-wltile="${k}"]`); if(el)el.textContent=n});
-    const st=document.querySelector('[data-wltile="stalesub"]');
-    if(st)st.innerHTML=v.stale?`<b>${v.stale}</b> πάνω από ${WL_STALE} μέρες`:'δεν γράφτηκαν ακόμη';
-  }
-  WLPATCH=id=>{
-    const r=(D.wl||[]).find(x=>x.id===id);
-    /* ΤΟ ΦΥΛΛΟ ΚΛΗΣΕΩΝ ΞΑΝΑΖΩΓΡΑΦΙΖΕΤΑΙ ΚΑΙ ΑΥΤΟ ΑΝΑ ΓΡΑΜΜΗ. Η κάρτα
-       μπορεί να αλλάξει κάδο (από «Πάρε τώρα» σε «Περιμένω») — δεν τη
-       μετακινούμε: θα εξαφανιζόταν κάτω από τον αντίχειρά σου. Αλλάζει
-       χρώμα και περιεχόμενο εκεί που είναι, και μπαίνει στη θέση της την
-       επόμενη φορά που θα ανοίξεις την οθόνη. */
-    if(WLVIEW==='calls'){
-      const card=document.querySelector(`div[data-wlrow="${id}"]`);
-      if(!r||!card)return;
-      const box=document.createElement('div');
-      box.innerHTML=wlCard(r, 0, list);
-      const fresh=box.firstElementChild;
-      /* Ο αριθμός σειράς μένει αυτός που ήταν — δεν ξαναμετράμε. */
-      const n=card.querySelector('b'); const keep=n?n.textContent:'';
-      const nn=fresh.querySelector('b'); if(nn&&keep)nn.textContent=keep;
-      card.replaceWith(fresh); bindRow(fresh); wlTiles(); return;
-    }
-    const tr=document.querySelector(`tr[data-wlrow="${id}"]`);
-    if(!r||!tr)return;
-    const g=wlGrade(r), arr=groups[g===null||g===undefined?99:g]||[];
-    const nx=tr.nextElementSibling;
-    if(nx&&nx.dataset&&nx.dataset.wledrow===id)nx.remove();
-    const box=document.createElement('tbody');
-    box.innerHTML=row(r, Math.max(0,arr.indexOf(r)));
-    tr.replaceWith(...box.children);
-    bindRow(document.querySelector(`tr[data-wlrow="${id}"]`));
-    const ed=document.querySelector(`tr[data-wledrow="${id}"]`); if(ed)bindRow(ed);
-    wlTiles();
-  };
-
-  const ys=$('wly'); if(ys)ys.onchange=e=>{WLY=e.target.value;WLED=null;route('waitlist')};
-  const so=$('wlsort'); if(so)so.onchange=e=>{WLSORT=e.target.value;WLED=null;route('waitlist')};
-  document.querySelectorAll('[data-wlprio]').forEach(b=>b.onclick=()=>{
-    WLPRIO = WLPRIO===b.dataset.wlprio ? '' : b.dataset.wlprio;   // ξαναπάτημα = καθάρισμα
-    WLED=null; route('waitlist')});
-  const pb=$('wlPrioScan'); if(pb)pb.onclick=wlPrioScan;
-  const cf=$('wlcls'); if(cf)cf.onchange=e=>{WLCLS=e.target.value;WLED=null;route('waitlist')};
-  /* Το χειροκίνητο φίλτρο κατάστασης ΣΒΗΝΕΙ το πλακίδιο: δύο πράγματα που
-     λένε «τι δείχνω» ταυτόχρονα, και το ένα κρυφό, είναι σίγουρη σύγχυση. */
-  const sf=$('wlst');  if(sf)sf.onchange=e=>{WLST=e.target.value;WLPRE='';WLED=null;route('waitlist')};
-  const pd=$('wlyrsD'); if(pd)pd.ontoggle=()=>{WLYRS=pd.open};
-  /* Οι προτάσεις έρχονται ΜΕΤΑ τη ζωγραφική: δεν κρατάμε την οθόνη για
-     έναν έλεγχο συνέπειας. Αν αργήσει, απλώς δεν εμφανίζεται το κουτί. */
-  sb.rpc('waitlist_dups').then(({data,error})=>{
-    if(error||!data||!data.length)return;
-    if(JSON.stringify(data)===JSON.stringify(WLDUPS))return;   // ίδιο = μη ξαναζωγραφίζεις
-    WLDUPS=data;
-    const cur=$('wlDupD'), open=cur&&cur.open;
-    const box=document.createElement('div'); box.innerHTML=wlDupBox();
-    const fresh=box.firstElementChild; if(!fresh)return;
-    if(open)fresh.open=true;
-    if(cur)cur.replaceWith(fresh); else $('wlyrsD')?.before(fresh);
-    wlDupWire();
-  });
-  document.querySelectorAll('[data-wltab]').forEach(b=>b.onclick=()=>{
-    const v=b.dataset.wltab; WLTAB=v===''?null:+v; WLED=null; route('waitlist')});
-  /* Το άνοιγμα λεπτομερειών είναι ΜΙΑ γραμμή, όχι ξαναχτίσιμο. */
-  document.querySelectorAll('[data-wlopen]').forEach(b=>b.onclick=()=>{
-    const id=b.dataset.wlopen, was=WLOPEN_ID;
-    WLOPEN_ID = was===id ? null : id;
-    if(was && was!==id) WLPATCH(was);
-    WLPATCH(id);});
-  const mb=$('wlMore'); if(mb)mb.onclick=()=>{WLMORE=!WLMORE;
-    const box=$('wlMoreBox'); if(box)box.style.display=WLMORE?'block':'none';
-    mb.classList.toggle('p',WLMORE);};
-  const vw=$('wlview'); if(vw)vw.onchange=e=>{WLVIEW=e.target.value;
-    try{localStorage.setItem('e76:wlview',WLVIEW)}catch(x){} WLED=null; route('waitlist')};
-  /* Η σημείωση αποθηκεύεται στο blur, όχι σε κάθε πλήκτρο — και ΔΕΝ
-     ξαναζωγραφίζει: γράφεις κοιτώντας τον άνθρωπο, δεν θες να πηδήξει. */
-  document.querySelectorAll('[data-wlnote]').forEach(i=>{
-    const id=i.dataset.wlnote, r0=(D.wl||[]).find(x=>x.id===id), was=(r0&&r0.note)||'';
-    i.onblur=async()=>{
-      const v=i.value.trim(); if(v===was)return;
-      const {error}=await sb.from('waitlist').update({note:v||null}).eq('id',id);
-      if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
-      const r=(D.wl||[]).find(x=>x.id===id); if(r)r.note=v||null;
-      saveCache(); i.style.borderColor='var(--ok)';
-      setTimeout(()=>{i.style.borderColor=''},900);
-    };});
-  document.querySelectorAll('[data-wlpre]').forEach(b=>b.onclick=()=>{
-    WLPRE = WLPRE===b.dataset.wlpre ? '' : b.dataset.wlpre;   // ξαναπάτημα = καθάρισμα
-    WLED=null; route('waitlist')});
-  /* Η αναζήτηση ΔΕΝ ξαναχτίζει την οθόνη σε κάθε πλήκτρο — κρύβει γραμμές.
-     Με 165 εγγραφές το route() σε κάθε γράμμα έχανε τον δρομέα. */
-  const qf=$('wlq'); if(qf)qf.oninput=e=>{
-    WLQ=e.target.value;
-    let n=0;
-    document.querySelectorAll('[data-wlrow]').forEach(tr=>{
-      const r=(D.wl||[]).find(x=>x.id===tr.dataset.wlrow);
-      const ok=!r||wlHit(r,WLQ); tr.style.display=ok?'':'none'; if(ok)n++;
-      const ed=document.querySelector(`[data-wledrow="${tr.dataset.wlrow}"]`);
-      if(ed)ed.style.display=ok?'':'none';
-    });
-    /* Και οι άδειες ομάδες φεύγουν — αλλιώς μένουν δέκα επικεφαλίδες χωρίς
-       τίποτα από κάτω και φαίνεται σαν σφάλμα. */
-    document.querySelectorAll('[data-wlgrp]').forEach(g=>{
-      const vis=[...g.querySelectorAll('[data-wlrow]')].some(tr=>tr.style.display!=='none');
-      g.style.display=vis?'':'none';
-      const sec=g.previousElementSibling;
-      if(sec&&sec.classList.contains('sec'))sec.style.display=vis?'':'none';
-    });
-    const c=$('wlcount'); if(c)c.textContent=n;
-  };
-
-  /* ══ ΜΕΤΑΚΙΝΗΣΗ ΜΕΣΑ ΣΤΗΝ ΤΑΞΗ ══════════════════════════════════════════
-     Ανεβάζοντας έναν, αριθμούμε ΟΛΗ την ομάδα. Αλλιώς η πρώτη μετακίνηση θα
-     έδινε priority μόνο σε δύο και οι υπόλοιποι θα κρέμονταν στο «αυτόματο» —
-     δηλαδή η σειρά θα άλλαζε σε σημεία που δεν άγγιξε κανείς.
-     Ξαναζωγραφίζεται ΜΟΝΟ ο πίνακας της τάξης: οι άλλες τάξεις δεν άλλαξαν. */
-  const move=async(id,dir)=>{
-    const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
-    const key=(()=>{const g=wlGrade(r);return g===null||g===undefined?99:g})();
-    const arr=groups[key]; if(!arr)return;
-    const i=arr.indexOf(r), j=i+dir;
-    if(i<0||j<0||j>=arr.length)return;
-    arr.splice(j,0,arr.splice(i,1)[0]);
-    const rows=arr.map((x,n)=>({id:x.id, priority:n+1}));
-    const {error}=await sb.from('waitlist').upsert(rows,{onConflict:'id'});
-    if(error)return toast('Δεν αποθηκεύτηκε η σειρά: '+error.message);
-    rows.forEach(x=>{const t=(D.wl||[]).find(y=>y.id===x.id); if(t)t.priority=x.priority});
-    saveCache();
-    const tb=document.querySelector(`[data-wlgrp="${key}"] tbody`);
-    if(!tb)return route('waitlist');
-    tb.innerHTML=arr.map((x,n)=>row(x,n)).join('');
-    tb.querySelectorAll('tr[data-wlrow]').forEach(bindRow);
-  };
-  const cp=$('wlClrPri'); if(cp)cp.onclick=async()=>{
-    const ids=list.filter(r=>r.priority!=null).map(r=>r.id);
-    if(!confirm(`Επιστροφή στην αυτόματη σειρά για ${ids.length};\n\nΟι ημερομηνίες αίτησης δεν αλλάζουν — μόνο η χειροκίνητη θέση σβήνεται.`))return;
-    const {error}=await sb.from('waitlist').update({priority:null}).in('id',ids);
-    if(error)return toast('Δεν καθαρίστηκε: '+error.message);
-    ids.forEach(id=>{const t=(D.wl||[]).find(y=>y.id===id); if(t)t.priority=null});
-    /* Εδώ ΝΑΙ ολόκληρη: άλλαξε η σειρά ΟΛΩΝ των τάξεων. */
-    saveCache(); toast('Αυτόματη σειρά'); route('waitlist')};
-  /* Και οι δύο οθόνες δένονται με τον ΙΔΙΟ bindRow: ο πίνακας δίνει <tr>,
-     το φύλλο κλήσεων <div>. Δύο συνδέσεις θα απέκλιναν στην πρώτη αλλαγή. */
-  document.querySelectorAll('[data-wlrow]').forEach(bindRow);
-  const ed0=document.querySelector('tr[data-wledrow]'); if(ed0)bindRow(ed0);
-  const ex=$('wlExp'); if(ex)ex.onclick=()=>{
-    const R=[['Χρονιά','Επίθετο','Όνομα','Φύλο','Ημ. γέννησης','Φετινή τάξη','Πηγή τάξης','Δήλωσε','Χρονιά δήλωσης',
-              'Τμήμα','Αιτητής','Τηλέφωνο','Email','Ποιος τον έφερε','Τι έγινε πέρσι','Καμπανάκι','Έκβαση','Σημείωση','Προέλευση']];
-    list.forEach(r=>{const gi=wlG(r);
-      R.push([r.scout_year,r.last_name,r.first_name,r.gender||'',r.dob||'',
-        wlClass(gi.g),gi.src||'',r.school_class||'',r.class_year||'',r.section||'',r.applicant_name||'',
-        r.applicant_phone||'',r.applicant_email||'',r.referred_by||'',r.last_year_note||'',r.flag||'',
-        r.outcome,r.note||'',r.source||''])});
-    exportRows(R,'lista-anamonis'+(WLY?'-'+WLY:''),'Λίστα Αναμονής'+(WLY?' '+WLY:''));
-  };
-};
+/* Η παλιά οθόνη «Λίστα αναμονής» έφυγε 21/09 — η νέα (V.wl2) κέρδισε τη σύγκριση·
+   ό,τι είχε μόνο εκείνη (διπλά, σχέσεις, «έγινε μέλος») μεταφέρθηκε στη νέα. */
 /* Μία πόρτα για κάθε γράψιμο: αν αλλάξει η έκβαση, κρατά ΠΟΙΟΣ και ΠΟΤΕ. */
 async function wlSave(id,patch){
   const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
@@ -19581,44 +19062,15 @@ function wlDupWire(){
    Το μπλε και το κίτρινο δεν μπαίνουν: το κίτρινο στο αρχείο σήμαινε
    «πήρε κάποιος άλλος» (Βραχίμης, Αχιλλέας — τους πήρε η Κασσιόπεια),
    και αυτό το λέει πλέον το ίδιο το ιστορικό επαφών με όνομα. */
-const WL_STEPS=[
-  {n:0, t:'δεν τον πήρα',  c:'',     bg:'transparent'},
-  {n:1, t:'μιλήσαμε',      c:'acc',  bg:'var(--accbg)'},
-  {n:2, t:'είπε ναι',      c:'ok',   bg:'var(--okbg)'},
-  {n:3, t:'γράφτηκε',      c:'ok',   bg:'var(--okbg)'},
-];
+
 /* ΧΡΩΜΑ ΟΝΟΜΑΤΟΣ = Η ΑΠΑΝΤΗΣΗ ΤΟΥ. */
-function wlNameCol(r){
-  if(r.outcome==='Έγινε μέλος'||r.outcome==='Ενδιαφέρεται') return 'ok';
-  /* ΜΠΛΕ = «να παραμείνει». Δεν εισάγεται νέα σημασία — ΑΠΟΚΑΘΙΣΤΑΤΑΙ η
-     παλιά: στο χειρόγραφο αρχείο του Α.Σ. το μπλε σήμαινε ήδη αυτό. */
-  if(r.outcome===WL_LATER)                                  return 'later';
-  /* ΑΡΝΗΘΗΚΕ ≠ ΔΕΝ ΤΟΝ ΒΡΗΚΑ. Κόκκινο μόνο σε όποιον ΑΠΑΝΤΗΣΕ και είπε όχι
-     ή πήγε αλλού. Το «δεν απάντησε» και η διπλοεγγραφή μένουν γκρίζα —
-     εκεί δεν υπάρχει απόφαση ανθρώπου, υπάρχει κενό. */
-  if(r.outcome==='Δεν ενδιαφέρεται'||r.outcome==='Πήγε αλλού') return 'no';
-  if(!WL_OPEN.includes(r.outcome))                          return 'bad';
-  if(r.next_step==='Περιμένω τηλέφωνο')                     return 'warn';
-  return '';
-}
+
 /* ΧΡΩΜΑ ΝΟΥΜΕΡΟΥ = Η ΔΙΚΗ ΜΟΥ ΤΕΛΕΥΤΑΙΑ ΑΠΟΠΕΙΡΑ. Ξεχωριστό κανάλι:
    μπορεί να άφησα αναπάντητη σε κάποιον που έχει ήδη πει ναι. */
 const WL_NOANS=new Set(['Αναπάντητη','Κλειστό','Μήνυμα']);
-function wlNumCol(r){
-  const c=wlCts(r)[0];
-  return (c && WL_NOANS.has(c.kind)) ? 'warn' : '';
-}
-function wlStep(r){
-  if(r.outcome==='Έγινε μέλος') return WL_STEPS[3];
-  if(r.outcome===WL_LATER)
-    return {n:-1, t:'όχι φέτος', c:'acc', bg:'var(--accbg)'};
-  if(!WL_OPEN.includes(r.outcome))
-    return {n:-1, t:r.outcome==='Πήγε αλλού'?'πήγε αλλού':r.outcome.toLowerCase(), c:'', bg:'transparent', dim:true};
-  if(r.outcome==='Ενδιαφέρεται') return WL_STEPS[2];
-  return wlCts(r).length?WL_STEPS[1]:WL_STEPS[0];
-}
-const wlStepPill=s=>`<span class="pill" style="background:${s.bg};color:var(--${s.c||'ink3'});border-color:transparent${
-  s.dim?';opacity:.7':''}">${s.n>=0?s.n+' · ':''}${esc(s.t)}</span>`;
+
+
+
 
 /* ══ ΠΟΙΟΣ ΕΙΝΑΙ ΔΙΚΟΣ ΜΑΣ ΗΔΗ ════════════════════════════════════════════
    «Αδελφός υφιστάμενου μέλους» και «παιδί βαθμοφόρου» ΔΙΝΟΥΝ ΠΡΟΤΕΡΑΙΟΤΗΤΑ
@@ -19626,24 +19078,8 @@ const wlStepPill=s=>`<span class="pill" style="background:${s.bg};color:var(--${
    δεν το έδειχνε πουθενά, οπότε ο Α.Σ. το κουβαλούσε στο κεφάλι του.
    Το βρίσκει το ΤΗΛΕΦΩΝΟ του αιτητή και το επώνυμο — με αυτή τη σειρά
    εμπιστοσύνης, και πάντα λέει ΠΟΙΟΝ βρήκε. */
-function wlRel(r){
-  const ph=digits(r.applicant_phone||'');
-  if(ph.length>=8){
-    const led=(D.bh||[]).find(b=>isLed(b)&&b.status==='Ενεργός'&&digits(b.phone||'')===ph);
-    if(led) return {t:'παιδί βαθμοφόρου', who:nm(led), c:'ok'};
-    const g=(D.gu||[]).find(x=>digits(x.father_mobile||'')===ph||digits(x.mother_mobile||'')===ph);
-    if(g){ const kid=(D.bh||[]).find(b=>b.registry_no===g.registry_no&&b.status==='Ενεργός');
-      if(kid) return {t:'αδελφός μέλους', who:nm(kid), c:'ok'}; }
-  }
-  const ln=nameKey(r.last_name||''); if(ln.length<4) return null;
-  const sib=(D.bh||[]).find(b=>(b.kind||'')==='Μέλος'&&b.status==='Ενεργός'
-    &&nameKey(b.last_name||'')===ln);
-  if(sib) return {t:'ίδιο επώνυμο με μέλος', who:nm(sib), c:'warn'};
-  return null;
-}
-const wlRelPill=r=>{const x=wlRel(r); if(!x)return '';
-  return `<span class="pill" style="background:var(--${x.c}bg);color:var(--${x.c});border-color:transparent"
-    title="${esc(x.who)}">${esc(x.t)}</span>`};
+
+
 
 /* ══ ΠΙΘΑΝΕΣ ΔΙΠΛΟΕΓΓΡΑΦΕΣ ═══════════════════════════════════════════════
    Η ΜΗΧΑΝΗ ΠΡΟΤΕΙΝΕΙ, Ο ΑΝΘΡΩΠΟΣ ΑΠΟΦΑΣΙΖΕΙ — και αυτό δεν είναι ευγένεια,
@@ -19688,66 +19124,20 @@ function wlDupBox(){
      ΕΚΛΕΙΣΑΝ     ναι, όχι, αλλού — μαζεμένα, δεν σε απασχολούν σήμερα
    Η σειρά μέσα στο «Πάρε τώρα» είναι η σειρά αναμονής: όποιος περιμένει
    περισσότερο, πρώτος. Είναι και το δίκαιο και το πρακτικό. */
-function wlBucket(r){
-  const t=new Date().toISOString().slice(0,10);
-  if(r.outcome===WL_LATER) return 3;          // δικός του κάδος: «Του χρόνου»
-  if(!WL_OPEN.includes(r.outcome)) return 2;
-  if(r.callback_on) return r.callback_on<=t ? 0 : 1;
-  if(r.next_step)   return 1;
-  return wlCts(r).length ? 1 : 0;
-}
+
 /* ΤΟ «? ?» ΔΕΝ ΕΙΝΑΙ ΣΚΟΥΠΙΔΙ — ΕΙΝΑΙ ΚΡΑΤΗΜΕΝΗ ΘΕΣΗ.
    Στο φύλλο του Andreas τρεις σειρές της Β΄ έχουν αριθμό αλλά όχι όνομα:
    η θέση είναι πιασμένη, το όνομα θα έρθει. Αν το δείξουμε «? ?» μοιάζει με
    χαλασμένη εγγραφή και κάποιος θα τη σβήσει. Το λέμε με λέξεις.
    Όταν λείπει ΜΟΝΟ το επώνυμο (Ελεάνα, Κυριάκος, Σεραφείμ Άγγελος) κρατάμε
    το μικρό — είναι αναγνωρίσιμοι στο τηλέφωνο. */
-const wlQ=v=>{const s=String(v||'').trim(); return (!s||s==='?')?'':s;};
-const wlIsHold=r=>!wlQ(r.first_name)&&!wlQ(r.last_name);
-function wlName(r){
-  const f=wlQ(r.first_name), l=wlQ(r.last_name);
-  if(!f&&!l) return '<i>Κρατημένη θέση</i>';
-  if(!l)     return esc(f)+' <span class="dim">(χωρίς επώνυμο)</span>';
-  if(!f)     return esc(l);
-  return esc(l)+' '+esc(f);
-}
+
+
+
 /* ΓΡΑΜΜΗ, ΟΧΙ ΚΑΡΤΑ. Με 30 παιδιά σε μία τάξη κάθε επιπλέον σειρά κοστίζει
    μια οθόνη κύλισης. Μία γραμμή: νούμερο, όνομα, τηλέφωνο, έξι κουμπιά.
    Τα χρώματα είναι ΤΟΥ ΑΡΧΕΙΟΥ ΤΟΥ — όνομα = τι είπε, νούμερο = τι έκανα. */
-function wlCard(r, i, all){
-  const ph=String(r.applicant_phone||'').replace(/\s/g,'');
-  const sibs=wlSibs(r,all), s=wlStep(r), cts=wlCts(r);
-  const nc=wlNameCol(r), numc=wlNumCol(r);
-  const late=r.callback_on&&r.callback_on<new Date().toISOString().slice(0,10);
-  const open=WLOPEN_ID===r.id;
-  const seq=r.file_seq??(i+1);
-  return `<div class="wlrow" data-wlrow="${r.id}"${s.dim?' style="opacity:.5"':''}>
-    <b class="wlnum"${numc?` style="color:var(--${numc})" title="Τελευταία απόπειρα: ${esc(cts[0]?cts[0].kind:'')}"`:''}>${seq}</b>
-    <b class="wlnm${nc?' c-'+nc:''}" data-wlopen="${r.id}" title="${esc(r.applicant_name||'')} — λεπτομέρειες">${wlName(r)}</b>
-    ${wlRelPill(r)}
-    ${sibs.length?`<span class="pill" title="Ίδιο τηλέφωνο — πάρ’ τους μαζί">+${sibs.length}</span>`:''}
-    ${r.next_step?`<span class="pill" style="background:var(--${late?'bad':'warn'}bg);color:var(--${late?'bad':'warn'});border-color:transparent"
-      title="${esc(r.next_step)}">${r.callback_on?fdate(r.callback_on):'⏳'}${late?'!':''}</span>`:''}
-    ${ph?`<a class="btn p sm wltel" href="tel:${esc(ph)}">${ic('phone',12)} ${fphone(r.applicant_phone)}</a>`
-      :'<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">χωρίς τηλ.</span>'}
-    <span class="wlacts">${wlIsHold(r)?'<span class="dim" style="font-size:11.5px">κρατημένη — λείπει το όνομα</span>'
-      :WL_PRESETS.map(P=>`<button class="btn sm${P.cls?' '+P.cls:' gh'}" data-wlp="${r.id}" data-pk="${P.k}"
-      title="${esc(P.t)}">${esc(P.t)}</button>`).join('')}${r.next_step
-      ?`<button class="btn gh sm" data-wlclr="${r.id}" title="Τακτοποιήθηκε">✓</button>`:''}</span>
-    ${open?`<div class="wldet">
-      <div class="dim">${esc(r.applicant_name||'—')}${r.applicant_email?' · '+esc(r.applicant_email):''}${
-        r.dob?' · γενν. '+fdate(r.dob):' · χωρίς ημ. γέννησης'}${
-        sibs.length?' · αδέλφια: '+sibs.map(x=>esc(x.first_name)).join(', '):''}</div>
-      ${cts.length?`<div class="dim">${cts.slice(0,6).map(c=>{const by=(D.bh||[]).find(b=>b.id===(c.by_person||c.by_id));
-        return esc(c.kind)+' '+fdate(c.at)+(by&&by.id!==(meRec()||{}).id?' ('+esc(by.first_name)+')':'')}).join(' · ')}</div>`:''}
-      ${r.elsewhere?`<div class="dim">→ ${esc(r.elsewhere)}</div>`:''}
-      <input data-wlnote="${r.id}" value="${esc(r.note||'')}" placeholder="Σημείωση">
-    ${/* Το «…» έκρυβε τα δύο τρίτα των σημειώσεων. Ολόκληρη στο title:
-         διαβάζεται με το ποντίκι από πάνω, χωρίς να ανοίξεις την καρτέλα. */''}
-    </div>`:(r.note?`<span class="wlnote" data-wlopen="${r.id}" title="${esc(r.note)}${
-      r.last_year_note?'\n\nΠέρσι: '+esc(r.last_year_note):''}">${esc(r.note.slice(0,70))}${r.note.length>70?'…':''}</span>`:'')}
-  </div>`;
-}
+
 
 /* ══ PRESETS — ΟΙ ΕΞΙ ΑΠΑΝΤΗΣΕΙΣ ΠΟΥ ΠΑΙΡΝΕΙΣ ΣΤΟ ΤΗΛΕΦΩΝΟ ═══════════════
    Ένα απόγευμα, τριάντα κλήσεις: οι απαντήσεις είναι λίγες και οι ίδιες.
@@ -20043,12 +19433,7 @@ async function wlContact(id,kind,quiet){
   toast(kind+' — καταγράφηκε'); WLPATCH(id);
   return data;
 }
-async function wlContactDel(cid){
-  const c=(D.wlct||[]).find(x=>x.id===cid); const wid=c&&c.waitlist_id;
-  const {error}=await sb.from('waitlist_contact').delete().eq('id',cid);
-  if(error)return toast('Δεν διαγράφηκε: '+error.message);
-  D.wlct=(D.wlct||[]).filter(x=>x.id!==cid); saveCache(); if(wid)WLPATCH(wid);
-}
+
 
 /* ══ ΑΠΟ ΤΗ ΛΙΣΤΑ ΣΤΟ ΜΗΤΡΩΟ ══════════════════════════════════════════════
    Το «Έγινε μέλος» ΔΕΝ είναι λέξη σε μενού. Αν ήταν, θα το διάλεγες εδώ και
@@ -20139,7 +19524,7 @@ const vpapersBody=V.vpapers, warrantsBody=V.warrants, formcatBody=V.formcat,
 const feesBody=V.fees, medicalBody=V.medical, mailsBody=V.mails,
       esimportBody=V.esimport, fimportBody=V.fimport, matrixBody=V.matrix,
       viewasBody=V.viewas, auditBody=V.audit, dedupeBody=V.dedupe,
-      regBody=V.reg, waitlistOldBody=V.waitlist;
+      regBody=V.reg;
 
 /* Ό,τι ΠΕΡΙΜΕΝΕΙ ΑΝΘΡΩΠΟ — ένας αριθμός, μία πηγή, για μενού και οθόνη. */
 function inboxCounts(){
@@ -20182,7 +19567,9 @@ V.dataqa=()=>tabView('dataqa',[
   {k:'filled', t:'Συμπληρωμένα',    i:'book',   fn:formsBody,        d:'με τα δικά μας δεδομένα'},
   {k:'spk',    t:'Σ.Π.Κ.',          i:'down',   fn:spkExportBody,    d:'στη μορφή που τα ζητούν'},
   {k:'audit',  t:'Ιστορικό αλλαγών',i:'book',   fn:()=>auditBody(),  d:'ποιος άλλαξε τι και πότε — χωρίς τιμές', nav:'audit'},
-  {k:'dedupe', t:'Διπλά πρόσωπα',   i:'users',  fn:()=>dedupeBody(), d:'πρόσωπα που μοιάζουν διπλά — κρίνονται μία φορά', nav:'dedupe'}]);
+  {k:'dedupe', t:'Διπλά πρόσωπα',   i:'users',  fn:()=>dedupeBody(), d:'πρόσωπα που μοιάζουν διπλά — κρίνονται μία φορά', nav:'dedupe'},
+  /* nav:'deletion' δεν υπάρχει σε καμία λίστα ρόλων — άρα μόνο ο admin. */
+  {k:'del',    t:'Διαγραφές',       i:'lock',   fn:deletionBody,     d:'αιτήματα διαγραφής, παγώματα και τι έγινε κάθε νύχτα', nav:'deletion'}]);
 
 /* ══ ΕΓΓΡΑΦΕΣ: ΕΠΤΑ ΘΕΣΕΙΣ ΑΝΤΙ ΓΙΑ ΕΝΤΕΚΑ ═══════════════════════════════ */
 V.reg=()=>tabView('reg',[
@@ -20215,6 +19602,123 @@ V.matrix=()=>{ const a=routeAlias('matrix'); SUBTAB[a[0]]=a[1]; V[a[0]]() };  /*
 V.viewas=()=>{ const a=routeAlias('viewas'); SUBTAB[a[0]]=a[1]; V[a[0]]() };  /*@alias*/
 V.audit=()=>{ const a=routeAlias('audit'); SUBTAB[a[0]]=a[1]; V[a[0]]() };  /*@alias*/
 V.dedupe=()=>{ const a=routeAlias('dedupe'); SUBTAB[a[0]]=a[1]; V[a[0]]() };  /*@alias*/
+
+
+/* ══ ΑΙΤΗΜΑΤΑ ΔΙΑΓΡΑΦΗΣ ═══════════════════════════════════════════════════
+   Η Πολιτική Απορρήτου υπόσχεται διαγραφή μέσα σε έναν μήνα. Μέχρι σήμερα
+   η βάση την έκανε (νυχτερινό πέρασμα 01:20) αλλά ΚΑΝΕΙΣ δεν την έβλεπε:
+   ούτε τα αιτήματα, ούτε τι έγινε τη νύχτα. Μόνο ο Α.Σ. — η βάση το
+   ελέγχει ούτως ή άλλως (deletion_guard).
+   ΠΡΟΣΟΧΗ ΠΟΥ ΛΕΓΕΤΑΙ ΣΤΗΝ ΟΘΟΝΗ: αίτημα που φτάνει στην προθεσμία του
+   εκτελείται αυτόματα, είτε το ενέκρινες είτε όχι — εκτός αν το απορρίψεις
+   ή υπάρχει πάγωμα. Αυτή είναι η υπόσχεση προς τον άνθρωπο. */
+async function deletionBody(){
+  $('view').innerHTML='<div class="card pad dim">Φόρτωση…</div>';
+  const [pq,rq,hq]=await Promise.all([
+    sb.rpc('deletion_pending'), sb.rpc('deletion_runs',{p_days:60}),
+    sb.from('deletion_hold').select('*').is('lifted_on',null)]);
+  if(ROUTE!=='dataqa')return;
+  const pend=pq.data||[], runs=rq.data||[], holds=hq.data||[];
+  const err=pq.error||rq.error||hq.error;
+  const who=pid=>{const b=D.bh.find(x=>x.id===pid); return b?nm(b):'—'};
+  const left=n=>n<=0?'<b style="color:var(--bad)">σήμερα</b>':n<=7?`<b style="color:var(--warn)">σε ${n} μέρες</b>`:`σε ${n} μέρες`;
+  $('view').innerHTML=`
+    <p class="lede">Αίτημα που φτάνει στην προθεσμία του <b>εκτελείται αυτόματα τη νύχτα</b> — είτε το ενέκρινες είτε όχι —
+      εκτός αν το <b>απορρίψεις με λόγο</b> ή βάλεις <b>πάγωμα</b> (π.χ. εκκρεμεί υπόθεση που χρειάζεται τα στοιχεία).
+      Αυτή είναι η υπόσχεση της Πολιτικής Απορρήτου: έναν μήνα.</p>
+    ${err?`<div class="card pad" style="margin-bottom:12px;color:var(--bad)">Δεν φορτώθηκαν όλα: ${esc(err.message)}</div>`:''}
+    <div class="sec"><h3>Σε εκκρεμότητα</h3><span class="n">${pend.length}</span><span class="sp"></span>
+      <button class="btn sm p" id="delNew">${ic('users',14)} Νέο αίτημα</button></div>
+    ${pend.length?`<div class="card" style="overflow:auto;margin-bottom:16px"><table>
+      <thead><tr><th>Πρόσωπο</th><th>Κατατέθηκε</th><th>Εκτελείται</th><th>Κατάσταση</th><th></th></tr></thead>
+      <tbody>${pend.map(x=>`<tr>
+        <td><b>${esc(x.onoma||'—')}</b>${x.note?`<div class="dim" style="font-size:12px">${esc(x.note)}</div>`:''}</td>
+        <td class="dim" style="font-size:12.5px">${fdate(x.requested_on)}</td>
+        <td style="font-size:12.5px">${x.pagoma?'<span class="pill">παγωμένο</span>':fdate(x.review_by)+' · '+left(x.meres_menoun)}</td>
+        <td><span class="pill">${esc(x.status)}</span></td>
+        <td style="white-space:nowrap;text-align:right">
+          ${x.status==='εκκρεμεί'?`<button class="btn sm" data-delok="${x.id}">Έγκριση</button>`:''}
+          <button class="btn sm" data-delno="${x.id}">Απόρριψη</button>
+          <button class="btn sm" style="color:var(--bad)" data-delrun="${x.id}" data-n="${esc(x.onoma||'')}">Εκτέλεση τώρα</button></td>
+      </tr>`).join('')}</tbody></table></div>`
+     :'<div class="card pad dim" style="margin-bottom:16px">Κανένα αίτημα διαγραφής σε εκκρεμότητα.</div>'}
+
+    <div class="sec"><h3>Παγώματα</h3><span class="n">${holds.length}</span><span class="sp"></span>
+      <button class="btn sm" id="delHold">Νέο πάγωμα</button></div>
+    ${holds.length?`<div class="card" style="margin-bottom:16px">${holds.map(h=>`<div class="kv" style="padding:9px 14px;border-top:1px solid var(--line)">
+        <span style="flex:1"><b>${esc(who(h.person_id))}</b> <span class="dim" style="font-size:12px">· από ${fdate(h.placed_on)} · ${esc(h.reason)}</span></span>
+        <button class="btn sm" data-dellift="${h.id}">Άρση</button></div>`).join('')}</div>`
+     :'<div class="card pad dim" style="margin-bottom:16px">Κανένα πάγωμα σε ισχύ.</div>'}
+
+    <div class="sec"><h3>Τι έγινε τις νύχτες</h3><span class="n">${runs.length}</span><span class="dim" style="font-size:12px;margin-left:8px">τελευταίες 60 μέρες · κάθε βράδυ 01:20</span></div>
+    <div class="card" style="overflow:auto">${runs.length?`<table><tbody>${runs.map(r=>`<tr>
+        <td class="dim" style="font-size:12.5px;white-space:nowrap">${fdate(r.run_at)} ${esc(String(r.run_at).slice(11,16))}</td>
+        <td>${esc(r.onoma)}</td><td><span class="pill">${esc(r.outcome)}</span></td>
+        <td class="dim" style="font-size:12px">${esc(r.detail||'')}${r.arxeia_gia_sbisimo?` · ${r.arxeia_gia_sbisimo} αρχεία προς σβήσιμο`:''}</td></tr>`).join('')}</tbody></table>`
+      :'<div class="pad dim">Δεν έχει καταγραφεί πέρασμα ακόμη.</div>'}</div>`;
+
+  const personPick=(id)=>`<input id="${id}q" placeholder="Γράψε όνομα…" autocomplete="off">
+    <select id="${id}" size="6" style="margin-top:6px;width:100%"></select>`;
+  const wirePick=id=>{ const q=$(id+'q'), s=$(id);
+    const fill=()=>{ const k=nameKey(q.value||'');
+      s.innerHTML=D.bh.filter(b=>!k||nameKey(nm(b)).includes(k)).slice(0,40)
+        .map(b=>`<option value="${b.id}">${esc(nm(b))} · ${esc(b.kind||'')}${b.section?' · '+esc(b.section):''}</option>`).join(''); };
+    q.oninput=fill; fill(); };
+
+  $('delNew').onclick=()=>{
+    const d=new Date(); d.setDate(d.getDate()+30);
+    drawer('Νέο αίτημα διαγραφής',`
+      <label>Ποιος${personPick('dnP')}</label>
+      <label>Πώς ήρθε<select id="dnC"><option>αίτημα υποκειμένου</option><option>αίτημα γονέα/κηδεμόνα</option>
+        <option>αποχώρηση</option><option>άλλο</option></select></label>
+      <label>Τι σβήνεται<select id="dnS"><option value="πλήρης">Όλα (πλήρης διαγραφή)</option>
+        <option value="ευαίσθητα">Μόνο τα ευαίσθητα (ιατρικά, ταυτότητα)</option><option value="αρχείο">Αρχείο — κρατά ό,τι ορίζει ο νόμος</option></select></label>
+      <label>Προθεσμία (εκτέλεση)<input id="dnR" type="date" value="${d.toISOString().slice(0,10)}"></label>
+      <label>Σημείωση <span class="dim">— χωρίς ευαίσθητα στοιχεία</span><input id="dnN" placeholder="π.χ. email γονέα 21/09"></label>
+      <button class="btn p" id="dnGo" style="margin-top:10px">Καταχώρηση αιτήματος</button>`);
+    wirePick('dnP');
+    $('dnGo').onclick=async()=>{
+      const pid=$('dnP').value; if(!pid)return toast('Διάλεξε πρόσωπο');
+      const {error}=await sb.from('deletion_queue').insert({person_id:pid, requested_by:ME.person_id||null,
+        channel:$('dnC').value, scope:$('dnS').value, review_by:$('dnR').value, note:$('dnN').value.trim()||null});
+      if(error)return toast('Σφάλμα: '+error.message);
+      drw.classList.remove('on'); toast('Καταχωρήθηκε — εκτελείται στις '+fdate($('dnR').value)); stay(); };
+  };
+  $('delHold').onclick=()=>{
+    drawer('Πάγωμα διαγραφής',`<p class="dim" style="font-size:12.5px">Όσο ισχύει, κανένα αίτημα γι' αυτό το πρόσωπο δεν εκτελείται.</p>
+      <label>Ποιος${personPick('dhP')}</label>
+      <label>Λόγος<input id="dhR" placeholder="π.χ. εκκρεμεί διαδικασία που χρειάζεται τα στοιχεία"></label>
+      <button class="btn p" id="dhGo" style="margin-top:10px">Πάγωμα</button>`);
+    wirePick('dhP');
+    $('dhGo').onclick=async()=>{
+      const pid=$('dhP').value, r=$('dhR').value.trim();
+      if(!pid||!r)return toast('Πρόσωπο και λόγος');
+      const {error}=await sb.from('deletion_hold').insert({person_id:pid, reason:r, placed_by:ME.person_id||null});
+      if(error)return toast('Σφάλμα: '+error.message);
+      drw.classList.remove('on'); toast('Μπήκε πάγωμα'); stay(); };
+  };
+  const upd=async(id,patch,msg)=>{ const {error}=await sb.from('deletion_queue')
+      .update({...patch, decided_by:ME.person_id||null, decided_on:new Date().toISOString()}).eq('id',id);
+    if(error)return toast('Σφάλμα: '+error.message); toast(msg); stay(); };
+  document.querySelectorAll('[data-delok]').forEach(b=>b.onclick=()=>upd(b.dataset.delok,{status:'εγκρίθηκε'},'Εγκρίθηκε'));
+  document.querySelectorAll('[data-delno]').forEach(b=>b.onclick=()=>{
+    const why=prompt('Λόγος απόρριψης (θα τον δει όποιος ρωτήσει — χωρίς ευαίσθητα στοιχεία):'); if(!why||!why.trim())return;
+    upd(b.dataset.delno,{status:'απορρίφθηκε', decision_note:why.trim()},'Απορρίφθηκε'); });
+  document.querySelectorAll('[data-dellift]').forEach(b=>b.onclick=async()=>{
+    const why=prompt('Λόγος άρσης:'); if(!why||!why.trim())return;
+    const {error}=await sb.from('deletion_hold').update({lifted_on:new Date().toISOString(), lifted_by:ME.person_id||null, lifted_reason:why.trim()}).eq('id',b.dataset.dellift);
+    if(error)return toast('Σφάλμα: '+error.message); toast('Έγινε άρση'); stay(); });
+  document.querySelectorAll('[data-delrun]').forEach(b=>b.onclick=async()=>{
+    const n=b.dataset.n;
+    const typed=prompt(`ΟΡΙΣΤΙΚΗ ΔΙΑΓΡΑΦΗ — δεν αναιρείται.\n\nΓράψε το επίθετο όπως φαίνεται («${n.split(' ')[0]}») για να συνεχίσεις:`);
+    if(typed===null)return;
+    if(nameKey(typed.trim())!==nameKey(n.split(' ')[0]))return toast('Δεν ταιριάζει — δεν έγινε τίποτα');
+    b.disabled=true;
+    const {data,error}=await sb.rpc('deletion_execute',{p_queue:b.dataset.delrun});
+    if(error){b.disabled=false; return toast('Σφάλμα: '+error.message)}
+    toast(data&&data.apotelesma==='παγωμένο'?'Δεν έγινε — υπάρχει πάγωμα':'Εκτελέστηκε');
+    await loadAll(); stay(); });
+}
 
 /* ══ ΕΓΚΡΙΣΕΙΣ · ΟΛΑ ═════════════════════════════════════════════════════
    Τρεις ουρές, μία ερώτηση: «τι περιμένει εμένα;». Από το παλιότερο, γιατί
