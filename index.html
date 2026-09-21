@@ -107,6 +107,12 @@ button{font:inherit;color:inherit}
    κολλά στο περιεχόμενο: αυτό εδώ κάτω είναι η καρτέλα που διάλεξες. */
 .subtabs{display:flex;gap:2px;margin:-4px 0 16px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
 .subtabs::-webkit-scrollbar{display:none}
+/* Στο κινητό οι καρτέλες κυλάνε οριζόντια — το σβήσιμο δεξιά λέει «έχει κι άλλες». */
+.subtabs.more-r{-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent);mask-image:linear-gradient(90deg,#000 82%,transparent)}
+.subtabs.more-l.more-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 82%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 82%,transparent)}
+.subtabs.more-l:not(.more-r){-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%);mask-image:linear-gradient(90deg,transparent,#000 12%)}
+.hsbar{position:sticky;top:58px;z-index:5}
+@media (max-width:760px){.hsbar{position:static}}
 .stab{display:inline-flex;align-items:center;gap:6px;padding:9px 12px 10px;border:0;border-bottom:2px solid transparent;
   margin-bottom:-1px;background:none;color:var(--ink3);font-size:13.5px;cursor:pointer;font-weight:500;white-space:nowrap}
 .stab:hover{color:var(--ink)}
@@ -1333,7 +1339,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-21 12:07'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-21 12:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -2537,7 +2543,17 @@ function modeBar(){
    Ο μηχανισμός δεν ξαναγράφει τις οθόνες — τις τυλίγει. */
 let SUBTAB={}; try{SUBTAB=JSON.parse(localStorage.getItem('e76:subtab')||'{}')}catch(e){SUBTAB={}}
 let ROUTE_KEY_NOW=null;
+/* Η ενεργή καρτέλα ΦΑΙΝΕΤΑΙ πάντα — στο κινητό έμενε κρυμμένη δεξιά. */
+function fitTabs(){
+  const bar=document.querySelector('#view > .subtabs, #view .subtabs'); if(!bar)return;
+  const on=bar.querySelector('.stab.on');
+  if(on&&bar.scrollWidth>bar.clientWidth) bar.scrollLeft=Math.max(0,on.offsetLeft-bar.clientWidth/2+on.offsetWidth/2);
+  const mark=()=>{ bar.classList.toggle('more-l', bar.scrollLeft>4);
+    bar.classList.toggle('more-r', bar.scrollLeft+bar.clientWidth<bar.scrollWidth-4); };
+  mark(); bar.onscroll=mark;
+}
 function bindVtabs(key){
+  setTimeout(fitTabs,0);
   document.querySelectorAll('[data-vtab]').forEach(b=>b.onclick=()=>{
     SUBTAB[key]=b.dataset.vtab;
     try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){}
@@ -2599,7 +2615,7 @@ function tabView(key, tabs, head){
   }
   /* ΟΧΙ data-st: το χρησιμοποιεί ήδη ο επιλογέας σταδίου στην Πρόοδο, και το
      δεύτερο δέσιμο έσβηνε το πρώτο — οι καρτέλες φαίνονταν «νεκρές». */
-  ROUTE_KEY_NOW=key; bindVtabs(key);
+  ROUTE_KEY_NOW=key; bindVtabs(key); LASTTAB={route:ROUTE, key, k};
   /* ΥΠΟΤΙΤΛΟΣ = Η ΚΑΡΤΕΛΑ, όχι «οθόνη · καρτέλα». Η οθόνη φαίνεται ήδη στον
      τίτλο και στη μπάρα· δύο περιγραφές κολλημένες έσπαγαν σε δύο γραμμές. */
   const sub=$('sub'); if(sub&&t.d){
@@ -2727,7 +2743,30 @@ function navSearch(raw){
   }));
   return out.sort((a,b)=>b.sc-a.sc);
 }
-let NAVQ='';
+let NAVQ='', NAVFOCUS=false;
+/* ══ ΠΡΟΣΦΑΤΑ ══ Τις περισσότερες μέρες ανοίγεις τις ίδιες τρεις-τέσσερις
+   οθόνες. Με άδειο πεδίο, η αναζήτηση τις δείχνει πρώτες — μαζί με την
+   καρτέλα όπου ήσουν. Μόνο σε αυτή τη συσκευή (localStorage). */
+let RECENT=[]; try{RECENT=JSON.parse(localStorage.getItem('e76:recent')||'[]')}catch(e){RECENT=[]}
+let LASTTAB=null;
+function recentPush(id){
+  if(!id||id==='dash'||!MOD[id])return;
+  const tb=LASTTAB&&LASTTAB.route===id?LASTTAB:null;
+  const k=id+'|'+(tb?tb.key+'|'+tb.k:'');
+  RECENT=[k,...RECENT.filter(x=>x.split('|')[0]!==id)].slice(0,6);
+  try{localStorage.setItem('e76:recent',JSON.stringify(RECENT))}catch(e){}
+}
+function recentItems(){
+  const out=[];
+  RECENT.forEach(k=>{ const [id,key,tk]=k.split('|');
+    const g=NAV_FIND.find(g=>g.items.some(m=>m.id===id)); if(!g)return;
+    const m=g.items.find(m=>m.id===id);
+    const ti=tabIndex()[id], tab=ti&&tk?ti.tabs.find(x=>x.k===tk):null;
+    out.push({lvl:tab?'tab':'screen', id, crumb:tab?[g.g,m.t,tab.t]:[g.g,m.t], d:'πρόσφατο',
+      go:()=>{ if(tab&&key){ SUBTAB[key]=tk; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} } route(id); }});
+  });
+  return out.slice(0,5);
+}
 function navHitsHTML(hits){
   if(!hits.length) return `<div class="dim" style="padding:10px 18px;font-size:12px;color:var(--sidein2)">Καμία οθόνη ή καρτέλα. Για πρόσωπα, δράσεις, οχήματα: ⌘K.</div>`;
   const hl=t=>esc(t);
@@ -2810,13 +2849,16 @@ function renderNav(){
       <div id="navlist"></div>`;
     const qi=$('navq'); qi.value=NAVQ;
     qi.addEventListener('input',()=>{ NAVQ=qi.value; renderNav(); });
+    qi.addEventListener('focus',()=>{ NAVFOCUS=true; if(!NAVQ.trim())renderNav(); });
+    qi.addEventListener('blur',()=>setTimeout(()=>{ NAVFOCUS=false; if(!NAVQ.trim())renderNav(); },180));
     qi.addEventListener('keydown',e=>{
       if(e.key==='Escape'){ NAVQ=''; qi.value=''; renderNav(); qi.blur(); }
       if(e.key==='Enter'){ const h=navSearch(NAVQ)[0]; if(h){ NAVQ=''; qi.value=''; h.go(); } }
     });
   }
-  if(NAVQ.trim().length>=2){
-    const hits=navSearch(NAVQ);
+  const showRecent=!NAVQ.trim()&&NAVFOCUS&&recentItems().length;
+  if(NAVQ.trim().length>=2||showRecent){
+    const hits=showRecent?recentItems():navSearch(NAVQ);
     $('navlist').innerHTML=navHitsHTML(hits);
     $('navlist').querySelectorAll('[data-nh]').forEach(b=>b.onclick=()=>{
       const h=hits[+b.dataset.nh]; NAVQ=''; $('navq').value='';
@@ -2912,7 +2954,15 @@ function route(r){
   if(m.s==='live'){
     // Αν μια οθόνη σκάσει, ΔΕΝ αφήνουμε την προηγούμενη στη θέση της — φαίνεται σαν παλιό αρχείο.
     if(VIEWAS&&vaHidesRoute(ROUTE)){ vaBlocked(m); return; }
-    try{ (V[ROUTE]||V.dash)(); const lg=legendHTML(ROUTE); if(lg)$('view').insertAdjacentHTML('beforeend',lg);
+    paint(m);
+  } else { uc(m); }
+  recentPush(ROUTE);
+}
+/* Το σώμα της οθόνης + οι μπάρες που κάθονται πάνω του. Το καλούν και το
+   route() και το stay() — αλλιώς το stay θα έχανε τη μπάρα φίλτρου. */
+function paint(m){
+    let r; LASTTAB=null;
+    try{ r=(V[ROUTE]||V.dash)(); const lg=legendHTML(ROUTE); if(lg)$('view').insertAdjacentHTML('beforeend',lg);
          const vb=viewAsBar(); if(vb){$('view').insertAdjacentHTML('afterbegin',vb);
            const off=$('vaOff'); if(off)off.onclick=()=>setViewAs('')}
          const mb2=modeBar(); if(mb2){$('view').insertAdjacentHTML('afterbegin',mb2);
@@ -2925,7 +2975,29 @@ function route(r){
         <div class="dim" style="font-size:12px;margin-top:8px">Έκδοση ${esc(BUILD)}. Τα δεδομένα είναι εντάξει — το σφάλμα είναι στην εμφάνιση.</div>
         <pre class="dim" style="font-size:11px;white-space:pre-wrap;margin-top:8px;max-height:180px;overflow:auto">${esc(String(e&&e.stack||''))}</pre></div>`;
     }
-  } else { uc(m); }
+    return r;
+}
+/* ══ ΜΕΝΕΙΣ ΕΚΕΙ ΠΟΥ ΗΣΟΥΝ ════════════════════════════════════════════════
+   Μετά από γράψιμο ΕΝΟΣ πράγματος (επιβεβαίωση χαρτιού, μετακίνηση παιδιού
+   σε όμιλο, κλείσιμο αναφοράς), το route() ξαναέχτιζε την οθόνη και
+   σε πετούσε στην κορυφή — και έκλεινε ό,τι είχες ανοιχτό. Το stay()
+   ξαναζωγραφίζει την ίδια οθόνη ΚΡΑΤΩΝΤΑΣ: τη θέση κύλισης, τα ανοιχτά
+   <details>, το πεδίο που είχε την εστίαση. Ό,τι έφυγε (π.χ. χαρτί που
+   εγκρίθηκε) απλώς λείπει, και τα από κάτω ανεβαίνουν στη θέση του. */
+function stay(){
+  const m=MOD[ROUTE]; if(!m||m.s!=='live')return route(ROUTE);
+  const y=window.scrollY;
+  const open=[...document.querySelectorAll('#view details')].map((d,i)=>d.open?i:-1).filter(i=>i>=0);
+  const ae=document.activeElement, aid=ae&&ae.id&&document.getElementById('view').contains(ae)?ae.id:null;
+  const back=()=>{
+    const ds=document.querySelectorAll('#view details');
+    ds.forEach((d,i)=>{ d.open=open.includes(i) });
+    window.scrollTo(0,y);
+    if(aid){ const el=document.getElementById(aid); if(el)try{el.focus({preventScroll:true})}catch(e){} }
+  };
+  const r=paint(m); back();
+  if(r&&typeof r.then==='function')r.then(back).catch(()=>{});
+  renderNav();
 }
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(h.includes('=')) return; if(h&&h!==ROUTE)route(h)});
 
@@ -3303,7 +3375,7 @@ async function openProfile(id){
       qAdd({k:'upd',tb:'badgeholders',id:p.id,v:bh}); if(myv)qAdd({k:'my',pid:p.id,yr:YEAR,v:myv});
       toast('Χωρίς σύνδεση — μπήκε σε ουρά');
     }
-    saveCache(); openProfile(p.id); route(ROUTE);
+    saveCache(); openProfile(p.id); stay();
   };
 }
 function histHTML(p){
@@ -4906,7 +4978,7 @@ function wireFixAM(){
     const {error}=await sb.from('badgeholders').update({registry_no:v}).eq('id',TARGET.id);
     $('fxGo').disabled=false;
     if(error) return toast('Δεν επιτράπηκε: '+error.message);
-    TARGET.registry_no=v; saveCache(); toast('Άλλαξε — γράφτηκε στο Ιστορικό'); V.intake();
+    TARGET.registry_no=v; saveCache(); toast('Άλλαξε — γράφτηκε στο Ιστορικό'); stay();
   };
 }
 V.intake=()=>{
@@ -4977,7 +5049,7 @@ V.intake=()=>{
     const {error}=await sb.from('badgeholders').update({status:'Ενεργός'}).eq('id',b.dataset.act);
     if(error)return toast('Σφάλμα: '+error.message);
     const p=D.bh.find(x=>x.id===b.dataset.act); if(p)p.status='Ενεργός';
-    saveCache(); toast('Ενεργοποιήθηκε'); V.intake();});
+    saveCache(); toast('Ενεργοποιήθηκε'); stay();});
   document.querySelectorAll('[data-am]').forEach(inp=>inp.onchange=async()=>{
     const v=inp.value.trim(); if(!v)return;
     if(D.bh.some(x=>x.registry_no===v))return toast('Το Α.Μ. χρησιμοποιείται ήδη');
@@ -4985,7 +5057,7 @@ V.intake=()=>{
       .eq('id',inp.dataset.am).is('registry_no',null);   // ποτέ πάνω σε υπάρχον
     if(error)return toast('Σφάλμα: '+error.message);
     const p=D.bh.find(x=>x.id===inp.dataset.am); if(p)p.registry_no=v;
-    saveCache(); toast('Καταχωρήθηκε'); V.intake();});
+    saveCache(); toast('Καταχωρήθηκε'); stay();});
 };
 
 /* ══ ΠΑΡΑΛΑΒΗ ΦΑΚΕΛΟΥ ΣΤΗΝ ΑΛΛΑΓΗ ΚΛΑΔΟΥ ══ */
@@ -5016,7 +5088,7 @@ V.handover=()=>{
     if(error)return toast('Σφάλμα: '+error.message);
     const x=(D.ho2||[]).find(y=>y.id===b.dataset.hv);
     if(x){x.received_at=new Date().toISOString();x.received_by=ME.email}
-    saveCache(); toast('Παραλήφθηκε'); V.handover();});
+    saveCache(); toast('Παραλήφθηκε'); stay();});
 };
 
 /* ══ ΑΚΥΡΩΣΗ / ΔΙΟΡΘΩΣΗ ΕΓΓΡΑΦΗΣ ══ */
@@ -6441,7 +6513,7 @@ async function openDeda(who, reqId){
     D.kastep=D.kastep||[]; D.kastep.push({progress_id:g.id,deda:n,on_date:data.date});
     return true;
   };
-  $('dSave').onclick=async()=>{ if(await save()){toast('Αποθηκεύτηκε'); route(ROUTE)} };
+  $('dSave').onclick=async()=>{ if(await save()){toast('Αποθηκεύτηκε'); stay()} };
   const nx=$('dNext');
   if(nx)nx.onclick=async()=>{ const n=Math.min(7,(g.deda||1)+1);
     if(n===2)return toast('Το βήμα 2 περνά από τη Σύνοδο — καταχωρείται εκεί.');
@@ -9451,9 +9523,10 @@ const GRMONTH=['Ιανουάριος','Φεβρουάριος','Μάρτιος',
 const fmonthYear=d=>{if(!d)return '';const x=new Date(d+'T00:00:00Z');
   return GRMONTH[x.getUTCMonth()]+' '+x.getUTCFullYear()};
 const hasReq=(pid,rid)=>(D.mreq||[]).some(x=>x.person_id===pid&&x.requirement_id===rid);
-const badgesOf=pid=>(D.mprog||[]).filter(x=>x.person_id===pid&&x.item_kind==='ειδικότητα')
-  .map(x=>({label:x.label,cat:(PCAT().find(c=>c.item_kind==='ειδικότητα'&&c.label===x.label)||{}).category}))
-  .filter(x=>x.cat);
+/* ΑΝΑ ΚΑΤΑΛΟΓΟ, όχι ανά λέξη: η ειδικότητα «Κατασκηνωτή» της Αγέλης ΔΕΝ
+   μετράει για τις Δάφνες της Ομάδας — έχουν το ίδιο όνομα, όχι το ίδιο πτυχίο. */
+const badgesOf=pid=>PCAT().filter(c=>c.item_kind==='ειδικότητα'&&heldItem(pid,c))
+  .map(c=>({label:c.label,cat:c.category})).filter(x=>x.cat);
 
 /* Ίδια λογική με τη συνάρτηση omada_diakriseis στη βάση: κανένα πτυχίο δύο φορές,
    και οι Δάφνες προηγούνται του Εξειδικεύσεως. */
@@ -9639,6 +9712,33 @@ let PGEXAM=null;
    έψαχνε βιβλίο που δεν κρατά κανείς. */
 const BOOK={'Αγέλη':'το βιβλιάριο','Ομάδα':'το ΚΑΝΕ','Κοινότητα':'το Η.Κ.Α.Δ.Ε.'};
 const bookOf=sec=>BOOK[sec]||'το βιβλίο';
+/* ══ ΚΑΘΕ ΟΘΟΝΗ ΠΡΟΟΔΟΥ = ΤΑ ΠΑΙΔΙΑ ΤΟΥ ΤΜΗΜΑΤΟΣ ΤΗΣ ═══════════════════════
+   Ο Α.Σ., 21/09: «γιατί στο Η.Κ.Α.Δ.Ε. έχει λυκόπουλα;». Το «Πέρασμα
+   απαιτήσεων» έπαιρνε ΟΛΑ τα μέλη όλων των τμημάτων. Ο κανόνας:
+     λυκόπουλο  → μόνο Αγέλη
+     πρόσκοπος  → Κ.Α.Ν.Ε. (και, ως ιστορικό, Αγέλη)
+     ανιχνευτής → Η.Κ.Α.Δ.Ε. (και, ως ιστορικό, Κ.Α.Ν.Ε. και Αγέλη)
+   Ο ΑΝΘΡΩΠΟΣ ανήκει στην οθόνη του τωρινού του τμήματος. Το ΒΙΒΛΙΟ μπορεί
+   να είναι παλιότερο — μόνο στο ιστορικό, ποτέ μπροστά. */
+const BOOKN={'Αγέλη':'Βιβλιάριο Αγέλης','Ομάδα':'Κ.Α.Ν.Ε.','Κοινότητα':'Η.Κ.Α.Δ.Ε.'};
+const booksUpTo=sec=>{ const Y=['Αγέλη','Ομάδα','Κοινότητα']; const i=Y.indexOf(sec); return i<0?[sec]:Y.slice(0,i+1); };
+let HBOOK={};
+function curBook(){ const ok=booksUpTo(PSEC); return ok.includes(HBOOK[PSEC])?HBOOK[PSEC]:PSEC; }
+function bookBar(){
+  const ok=booksUpTo(PSEC); if(ok.length<2)return '';
+  const cb=curBook();
+  return `<div class="card pad noprint" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    <span class="dim" style="font-size:12.5px;margin-right:4px">Βιβλίο</span>${ok.slice().reverse().map(x=>
+      `<button class="btn sm${x===cb?' p':''}" data-hbook="${esc(x)}">${esc(BOOKN[x]||x)}${x!==PSEC?' · παλιό':''}</button>`).join('')}</div>`;
+}
+function wireBookBar(){ document.querySelectorAll('[data-hbook]').forEach(b=>b.onclick=()=>{HBOOK[PSEC]=b.dataset.hbook; route(ROUTE)}); }
+/* Απονομή που έχει ή δεν έχει ο άνθρωπος — ΑΝΑ ΚΑΤΑΛΟΓΟ, όχι ανά λέξη:
+   «Υπόσχεση» υπάρχει και στην Αγέλη και στην Ομάδα. Χωρίς catalog_id
+   (παλιές εισαγωγές) ταιριάζει με τη λέξη ΜΟΝΟ αν η λέξη είναι μοναδική. */
+function heldItem(pid, c){
+  return (D.mprog||[]).find(x=>x.person_id===pid && (x.catalog_id ? x.catalog_id===c.id
+    : x.label===c.label && (D.pcat||[]).filter(y=>y.label===c.label).length===1));
+}
 /* Κάθε τμήμα λέει αλλιώς την υποομάδα του. Ο κανόνας ήταν γραμμένος inline σε
    μία οθόνη· εδώ γίνεται μία πηγή, γιατί τον θέλουν πλέον δύο. */
 const SUBG={'Αγέλη':['Εξάδα','εξάδες'],'Ομάδα':['Ενωμοτία','ενωμοτίες'],'Κοινότητα':['Όμιλος','όμιλοι']};
@@ -9647,13 +9747,13 @@ const subgPl=sec=>(SUBG[sec]||['Υποομάδα','υποομάδες'])[1];
 let PSSESS=null;
 let PSMODE='now', PSWHO=null, PSSTAGE=null, PSYEAR=null, PSSEL=new Set();
 const pol=sec=>(D.ppol||[]).find(p=>p.section===sec)||{grant_by:'βαθμοφόροι'};
-const psKids=()=>D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&secOf(p))
+const psKids=()=>D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&secOf(p)&&(!PSEC||secOf(p)===PSEC))
                      .sort((a,b)=>(secOf(a)||'').localeCompare(secOf(b)||'','el')||nm(a).localeCompare(nm(b),'el'));
 /* Συγκεντρώσεις με ΠΑΡΟΝΤΕΣ. Χωρίς παρουσίες δεν έχει νόημα — δεν ξέρουμε
    σε ποιον να δώσουμε. */
 const psSessions=()=>(D.ss||[]).map(x=>({...x,
     parontes:(D.att||[]).filter(a=>a.session_id===x.id&&a.status==='Παρών').length}))
-  .filter(x=>x.parontes>0)
+  .filter(x=>x.parontes>0&&(!PSEC||x.section===PSEC))
   .sort((a,b)=>String(b.session_date).localeCompare(String(a.session_date)))
   .slice(0,60);
 const psStages=sec=>(D.pcat||[]).filter(x=>x.section===sec&&x.item_kind==='στάδιο'&&x.ordinal<50)
@@ -9662,18 +9762,21 @@ const psReqs=st=>(D.rc2||[]).filter(r=>r.stage_catalog_id===st.id&&r.item_kind!=
                      .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
 const psDone=(pid,rid)=>(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id===rid);
 const psPend=(pid,rid)=>(D.prq||[]).find(x=>x.subject_id===pid&&x.requirement_id===rid&&x.status==='υποβλήθηκε');
-const psQueue=()=>(D.prq||[]).filter(x=>x.status==='υποβλήθηκε');
+const psQueue=()=>(D.prq||[]).filter(x=>x.status==='υποβλήθηκε'
+  &&(!PSEC||secOf(D.bh.find(b=>b.id===x.subject_id)||{})===PSEC));
 /* Είμαι μέλος; Τότε δεν «περνώ», ζητώ. */
 const psIamKid=()=>{const me=D.bh.find(b=>b.id===mePid()); return me&&isMem(me)};
 
 function passBody(){
   const kid=psIamKid();
   if(kid&&PSMODE==='now')PSMODE='ask';
+  if(PSMODE==='kane'&&!canHistory())PSMODE='now';
   if(kid&&!PSWHO)PSWHO=mePid();
   /* Το «who» δηλωνόταν 70 γραμμές πιο κάτω, αλλά διαβαζόταν εδώ πάνω στα
      κουμπιά — temporal dead zone, και η οθόνη πέθαινε ολόκληρη με
      «Cannot access 'who' before initialization». Ό,τι διαβάζεται πρώτο,
      δηλώνεται πρώτο. */
+  if(!kid&&PSWHO&&!psKids().some(p=>p.id===PSWHO)){PSWHO=null; PSSEL.clear(); PSSTAGE=null;}
   const who=PSWHO?D.bh.find(b=>b.id===PSWHO):null;
   const q=psQueue().length;
 
@@ -9684,13 +9787,13 @@ function passBody(){
            :`<button class="btn sm${PSMODE==='now'?' p':''}" data-m="now">Τώρα</button>
              <button class="btn sm${PSMODE==='queue'?' p':''}" data-m="queue">Ουρά${q?' · '+q:''}</button>
              <button class="btn sm${PSMODE==='sess'?' p':''}" data-m="sess">Από συγκέντρωση</button>
-             <button class="btn sm${PSMODE==='kane'?' p':''}" data-m="kane">Από ${esc(bookOf(secOf(who||{})||'Ομάδα'))}</button>`}
+             ${canHistory()?`<button class="btn sm${PSMODE==='kane'?' p':''}" data-m="kane">Από ${esc(bookOf(PSMODE==='kane'?curBook():PSEC))}</button>`:''}`}
     </div>
     <div class="muted" style="margin-top:8px;font-size:12.5px;line-height:1.65">${
       PSMODE==='now'  ? 'Το παιδί μπροστά σου. Τσέκαρε και αποθήκευσε — <b>δεν υπάρχει δεύτερο έντυπο</b>.'
     : PSMODE==='queue'? 'Όταν έχεις γραμμή, καταχωρούν <b>τα ίδια τα παιδιά</b> ή ο Ενωμοτάρχης τους όσο περιμένουν. Εσύ επιβεβαιώνεις — έχεις ήδη υπογράψει.'
     : PSMODE==='sess' ? 'Διάλεξε <b>συγκέντρωση ή δράση</b> και τι πέρασαν. Παίρνουν <b>όσοι ήταν παρόντες</b>, με την ημερομηνία της ίδιας της συγκέντρωσης. Οι απόντες δεν παίρνουν τίποτα.'
-    : PSMODE==='kane' ? 'Για όσα υπογράφτηκαν σε '+esc(bookOf(secOf(who||{})||'Ομάδα'))+' και δεν καταγράφηκαν ποτέ. Διάλεξε <b>χρονιά</b>, όχι ημερομηνία — δεν την ξέρουμε και δεν την επινοούμε.'
+    : PSMODE==='kane' ? 'Για όσα υπογράφτηκαν σε '+esc(bookOf(curBook()))+' και δεν καταγράφηκαν ποτέ. Διάλεξε <b>χρονιά</b>, όχι ημερομηνία — δεν την ξέρουμε και δεν την επινοούμε.'
     :                   'Δήλωσε τι πέρασες. Πάει στον βαθμοφόρο που σου υπέγραψε, για επιβεβαίωση.'}</div></div>`;
 
   if(PSMODE==='queue'){
@@ -9743,7 +9846,9 @@ function passBody(){
   const kids=psKids();
   const sess=PSSESS?(D.ss||[]).find(x=>x.id===PSSESS):null;
   /* Στο «Από συγκέντρωση» το τμήμα το ορίζει η ΣΥΓΚΕΝΤΡΩΣΗ, όχι το παιδί. */
-  const sec=PSMODE==='sess' ? (sess?sess.section:null) : (who?secOf(who):null);
+  /* Τώρα/Ζητώ: ΠΑΝΤΑ το βιβλίο του τμήματος. Από βιβλίο (ιστορικό): και τα
+     παλιότερα — ο ανιχνευτής έχει ΚΑΝΕ που δεν πέρασε ποτέ. */
+  const sec=PSMODE==='sess' ? (sess?sess.section:null) : (who?(PSMODE==='kane'?curBook():PSEC):null);
   const stages=sec?psStages(sec):[];
   if(stages.length&&(!PSSTAGE||!stages.some(s=>s.id===PSSTAGE)))PSSTAGE=stages[0].id;
   const st=stages.find(s=>s.id===PSSTAGE);
@@ -9751,7 +9856,7 @@ function passBody(){
   const years=[...new Set((D.my||[]).map(x=>x.scout_year).filter(Boolean))].sort().reverse();
   if(!PSYEAR)PSYEAR=years[1]||YEAR;
 
-  $('view').innerHTML=head+`
+  $('view').innerHTML=head+(PSMODE==='kane'&&!kid?bookBar():'')+`
     <div class="card pad" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       ${PSMODE==='sess'
         ? `<select id="psSess" style="max-width:340px"><option value="">— διάλεξε συγκέντρωση ή δράση —</option>
@@ -9803,6 +9908,7 @@ function passBody(){
   document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{PSMODE=b.dataset.m;PSSEL.clear();route(ROUTE)});
   document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{PSSTAGE=b.dataset.st;route(ROUTE)});
   if($('psWho'))$('psWho').onchange=e=>{PSWHO=e.target.value||null;PSSEL.clear();PSSTAGE=null;route(ROUTE)};
+  wireBookBar();
   if($('psSess'))$('psSess').onchange=e=>{PSSESS=e.target.value||null;PSSEL.clear();PSSTAGE=null;route(ROUTE)};
   /* ΜΕΤΡΗΣΙΜΕΣ ΑΠΑΙΤΗΣΕΙΣ: «2 διήμερα», «1 κατασκήνωση ≥7 ημ.», «12 μήνες».
      Το σύστημα ΜΕΤΡΑΕΙ, ο άνθρωπος ΕΓΚΡΙΝΕΙ. Δεν περνιούνται μόνες τους:
@@ -9869,7 +9975,7 @@ function passBody(){
     if(!res)return toast('Δεν πέρασε — δες τα δικαιώματα');
     toast(`${res.perasan} πέρασαν${res.idi_eixan?' · '+res.idi_eixan+' ήταν ήδη':''}${
            res.den_epitrapike?' · '+res.den_epitrapike+' δεν επιτράπηκαν':''}`);
-    PSSEL.clear(); await reloadProgress(); route(ROUTE);
+    PSSEL.clear(); await reloadProgress(); stay();
   };
 };
 
@@ -10024,7 +10130,7 @@ function honoursBody(){
     const {data,error}=await sb.from('honors').insert({person_id:pick,title:t,award_date:$('hD').value||null,source:'e76'}).select().single();
     if(error)return toast('Σφάλμα: '+error.message);
     (D.ho=D.ho||[]).push(data); saveCache(); pick=null;
-    $('hT').value='';$('hP').value='';$('hSug').textContent=''; toast('Καταχωρήθηκε'); route(ROUTE);};
+    $('hT').value='';$('hP').value='';$('hSug').textContent=''; toast('Καταχωρήθηκε'); stay();};
   $('hExp').onclick=()=>exportRows([['Τίτλος','Πρόσωπο','Α.Μ.','Τμήμα','Ημερομηνία']]
     .concat(hs.map(x=>[x.h.title,nm(x.p),x.p.registry_no||'',secOf(x.p)||'',x.h.award_date||''])),
     '76-ptyxia-dafnes','Πτυχία & Δάφνες');
@@ -10136,7 +10242,7 @@ V.groups=()=>{
     const {error}=await sb.from('member_year').update({group_name:SGTO})
       .eq('person_id',pid).eq('scout_year',YEAR);
     if(error){el.style.opacity='1'; return toast('Σφάλμα: '+error.message)}
-    y.group_name=SGTO; saveCache(); V.groups()});
+    y.group_name=SGTO; saveCache(); stay()});
   document.querySelectorAll('[data-sg]').forEach(b=>b.onclick=()=>{SGSEC=b.dataset.sg;V.groups()});
   $('sgAdd').onclick=async()=>{const n=$('sgNew').value.trim(); if(!n)return;
     const {data,error}=await sb.from('subgroups').insert({scout_year:YEAR,section:SGSEC,name:n,kind:kindOf}).select().single();
@@ -10193,7 +10299,7 @@ function sgLeaders(id){
     sgRoles(g.section).forEach(([slot])=>{const el=$('sgS'+slot); if(el)v[SG_SLOTCOL[slot]]=el.value||null});
     const {error}=await sb.from('subgroups').update(v).eq('id',id);
     if(error)return toast('Σφάλμα: '+error.message);
-    Object.assign(g,v); saveCache(); drw.classList.remove('on'); V.groups();};
+    Object.assign(g,v); saveCache(); drw.classList.remove('on'); stay();};
 }
 
 /* ══ Η ΧΡΟΝΙΑ ΠΟΥ ΕΡΧΕΤΑΙ ══ */
@@ -11972,7 +12078,7 @@ function mePieces(){
        ξανακατεβεί ολόκληρη η βάση. */
     if(newDoc)D.doc=[...(D.doc||[]),newDoc];
     if(row)D.pc=[...(D.pc||[]),row];
-    saveCache(); V.me();
+    saveCache(); stay();
     toast('Ανέβηκε — περιμένει έλεγχο από τον Α.Σ.');
   };
   };
@@ -12007,7 +12113,7 @@ function mePieces(){
     const {error}=await sb.from('vehicles').update(patch).eq('id',b.dataset.v);
     if(error){b.disabled=false;return toast('Δεν αποθηκεύτηκε: '+error.message)}
     const v=(D.veh||[]).find(x=>x.id===b.dataset.v); if(v)Object.assign(v,patch);
-    saveCache(); toast('Αποθηκεύτηκε'); route(ROUTE);
+    saveCache(); toast('Αποθηκεύτηκε'); stay();
   });
 
   /* Ανέβασμα χαρτιού οχήματος — ίδια ουρά με του Α.Σ. */
@@ -12118,7 +12224,7 @@ function myProgBody(p, sec){
   const stageHTML=stages.map(st=>{
     const reqs=(D.rc2||[]).filter(r=>r.section===sec&&r.stage_catalog_id===st.id&&!r.retired_at)
       .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
-    const got=won.find(x=>x.catalog_id===st.id);
+    const got=heldItem(p.id, st);
     const n=reqs.filter(r=>done(r.id)).length;
     return `<details class="card pad" style="margin-bottom:9px"${got?'':(n?' open':'')}>
       <summary style="cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -12451,12 +12557,12 @@ V.reports=()=>{
   document.querySelectorAll('[data-rack]').forEach(b=>b.onclick=async()=>{
     await sb.from('reports').update({status:'σε εξέταση'}).eq('id',b.dataset.rack);
     await sb.from('report_log').insert({report_id:b.dataset.rack,actor:ME.email,action:'επιβεβαίωση παραλαβής'});
-    const r=(D.rp||[]).find(x=>x.id===b.dataset.rack); if(r)r.status='σε εξέταση'; saveCache(); V.reports();});
+    const r=(D.rp||[]).find(x=>x.id===b.dataset.rack); if(r)r.status='σε εξέταση'; saveCache(); stay();});
   document.querySelectorAll('[data-rcl]').forEach(b=>b.onclick=async()=>{
     const o=prompt('Έκβαση:'); if(!o)return;
     await sb.from('reports').update({status:'έκλεισε',outcome:o,closed_at:new Date().toISOString()}).eq('id',b.dataset.rcl);
     await sb.from('report_log').insert({report_id:b.dataset.rcl,actor:ME.email,action:'κλείσιμο'});
-    const r=(D.rp||[]).find(x=>x.id===b.dataset.rcl); if(r){r.status='έκλεισε';r.outcome=o} saveCache(); V.reports();});
+    const r=(D.rp||[]).find(x=>x.id===b.dataset.rcl); if(r){r.status='έκλεισε';r.outcome=o} saveCache(); stay();});
 };
 
 /* ── Εγγραφές & εισπράξεις ── */
@@ -12841,7 +12947,7 @@ function wireSaAdmin(){
       .eq('id',s.dataset.id);
     if(error)return toast('Σφάλμα: '+error.message);
     const a=(D.sapp||[]).find(x=>x.id===s.dataset.id); if(a)a.status=s.value;
-    saveCache(); toast('Ενημερώθηκε'); V.training();
+    saveCache(); toast('Ενημερώθηκε'); stay();
   });
   document.querySelectorAll('.sapass').forEach(b=>b.onclick=async()=>{
     /* Ο κωδικός σχολής και ο Α/Α έρχονται με τη βεβαίωση της Γ.Ε. Χωρίς αυτά
@@ -13253,7 +13359,7 @@ function issuesBody(){
     const {data,error}=await sb.rpc('identity_review_decide',{p_id:id,p_ok:ok});
     if(error||(data&&data.error)){btn.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
     D.idrev=(D.idrev||[]).filter(x=>x.id!==id); saveCache();
-    toast(ok?'Ενημερώθηκε':'Κρατήθηκε η παλιά τιμή'); V.issues();
+    toast(ok?'Ενημερώθηκε':'Κρατήθηκε η παλιά τιμή'); stay();
   };
   document.querySelectorAll('[data-idok]').forEach(b=>b.onclick=()=>idDecide(b.dataset.idok,true,b));
   document.querySelectorAll('[data-idno]').forEach(b=>b.onclick=()=>idDecide(b.dataset.idno,false,b));
@@ -13746,7 +13852,7 @@ V.vpapers=()=>{
     if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
     D.vpi=(D.vpi||[]).map(x=>x.id===id
       ?Object.assign({},x,{declined_at:new Date().toISOString(),decline_reason:reason,resolved_at:'now'}):x);
-    saveCache(); toast('Απορρίφθηκε — ο λόγος καταγράφηκε'); V.vpapers();
+    saveCache(); toast('Απορρίφθηκε — ο λόγος καταγράφηκε'); stay();
   });
   document.querySelectorAll('.vpundo').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id;
@@ -13754,7 +13860,7 @@ V.vpapers=()=>{
     if(error)return toast('Σφάλμα: '+error.message);
     D.vpi=(D.vpi||[]).map(x=>x.id===id
       ?Object.assign({},x,{declined_at:null,decline_reason:null,resolved_at:null}):x);
-    saveCache(); toast('Επέστρεψε στην ουρά'); V.vpapers();
+    saveCache(); toast('Επέστρεψε στην ουρά'); stay();
   });
   document.querySelectorAll('.vpok').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id;
@@ -13788,7 +13894,7 @@ V.vpapers=()=>{
     if(sel.value==='NEW'){ await loadAll(); }
     else { D.vpi=(D.vpi||[]).map(y=>y.id===id
              ?Object.assign({},y,{resolved_at:'now',vehicle_id:sel.value}):y); saveCache(); }
-    V.vpapers();
+    stay();
   });
 };
 
@@ -13920,7 +14026,7 @@ async function certToVehicle(certId, vehId){
   const del=await sb.from('person_certificates').delete().eq('id',certId);
   if(del.error)return toast('Μπήκε στο όχημα, αλλά δεν έφυγε από το πρόσωπο: '+del.error.message);
   D.pc=(D.pc||[]).filter(x=>x.id!==certId); saveCache();
-  toast('Μεταφέρθηκε στο '+v.plate); V.certq();
+  toast('Μεταφέρθηκε στο '+v.plate); stay();
 }
 function certqBody(){
   const pend=(D.pc||[]).filter(c=>!c.confirmed_on&&!VEH_TYPES.includes(c.type_code));
@@ -14129,7 +14235,7 @@ function certqBody(){
       const c=(D.pc||[]).find(x=>x.id===id);
       if(c)Object.assign(c,p,{confirmed_on:today, confirmed_by:ME.person_id});
     }
-    saveCache(); toast(ids.length>1?ids.length+' επιβεβαιώθηκαν':'Επιβεβαιώθηκε'); V.certq();
+    saveCache(); toast(ids.length>1?ids.length+' επιβεβαιώθηκαν':'Επιβεβαιώθηκε'); stay();
   };
   document.querySelectorAll('.qcok').forEach(b=>b.onclick=()=>{
     if(!confirm('Επιβεβαιώνεις ότι είδες το πιστοποιητικό; Από εδώ και πέρα μετράει για τις δράσεις.'))return;
@@ -14207,17 +14313,17 @@ function certqBody(){
     if(v===null)return;
     const {data,error}=await sb.rpc('cert_doc_rename',{p_id:a.dataset.id,p_label:v});
     if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
-    if(cur)cur.label=v.trim()||null; saveCache(); V.certq();
+    if(cur)cur.label=v.trim()||null; saveCache(); stay();
   });
   document.querySelectorAll('.qdocedit').forEach(a=>a.onclick=e=>{
     e.preventDefault(); e.stopPropagation();
     const f=(D.doc||[]).find(x=>x.id===a.dataset.id);
-    if(f)docEdit(f, ()=>V.certq());
+    if(f)docEdit(f, ()=>stay());
   });
   document.querySelectorAll('.qdocrev').forEach(a=>a.onclick=e=>{
     e.preventDefault(); e.stopPropagation();
     const f=(D.doc||[]).find(x=>x.id===a.dataset.id);
-    if(f)docRevert(f, ()=>V.certq());
+    if(f)docRevert(f, ()=>stay());
   });
   document.querySelectorAll('.cdfirst').forEach(a=>a.onclick=async e=>{
     e.preventDefault();
@@ -14233,14 +14339,14 @@ function certqBody(){
       const pc=(D.pc||[]).find(x=>x.id===me.cert_id);
       if(pc)pc.document_id=me.document_id;
     }
-    saveCache(); toast('Μπήκε πρώτη'); V.certq();
+    saveCache(); toast('Μπήκε πρώτη'); stay();
   });
   bindOrfana();
   document.querySelectorAll('.qcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή αυτής της καταχώρησης; Το αρχείο μένει στα έγγραφα του ατόμου.'))return;
     const {error}=await sb.from('person_certificates').delete().eq('id',b.dataset.id);
     if(error)return toast('Σφάλμα: '+error.message);
-    D.pc=(D.pc||[]).filter(x=>x.id!==b.dataset.id); saveCache(); V.certq();});
+    D.pc=(D.pc||[]).filter(x=>x.id!==b.dataset.id); saveCache(); stay();});
   /* Στην ουρά επιβεβαίωσης η προεπισκόπηση μετράει διπλά: κρίνεις είκοσι
      χαρτιά στη σειρά και δεν θέλεις να χάνεις τη θέση σου σε κάθε ένα. */
   document.querySelectorAll('.qdocopen').forEach(a=>a.onclick=e=>{
@@ -14483,7 +14589,7 @@ V.network=async()=>{
       : 'Το Δίκτυο γίνεται ΤΥΠΙΚΟ.\n\nΤα μέλη του θα πρέπει να έχουν τμήμα «Δίκτυο».\nΚαμία καρτέλα δεν αλλάζει τώρα — αλλάζει μόνο ο κανόνας ελέγχου.'))return;
     const {error}=await sb.from('app_settings').update({v:{...cfg,formal:!formal}}).eq('k','network');
     if(error)return toast('Δεν άλλαξε: '+error.message);
-    toast(!formal?'Τυπικό Δίκτυο':'Άτυπο Δίκτυο'); V.network();
+    toast(!formal?'Τυπικό Δίκτυο':'Άτυπο Δίκτυο'); stay();
   };
   nwWire();
 };
@@ -14799,7 +14905,7 @@ V.formcat=async()=>{
       : sb.from('form_catalog').update(v).eq('id',b.dataset.fcsave);
     const {error}=await q;
     if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
-    FCED=null; toast('Αποθηκεύτηκε'); V.formcat()});
+    FCED=null; toast('Αποθηκεύτηκε'); stay()});
 };
 
 /* ══ ΥΠΕΝΘΥΜΙΣΕΙΣ ═════════════════════════════════════════════════════════
@@ -14965,7 +15071,7 @@ function remRulesBody(){
     const {error}=await sb.from('reminder_rules').update({active:on}).eq('code',b.dataset.remrule);
     if(error)return toast('Δεν άλλαξε: '+error.message);
     const r=(D.rr||[]).find(x=>x.code===b.dataset.remrule); if(r)r.active=on;
-    saveCache(); route('reminders');});
+    saveCache(); stay();});
   document.querySelectorAll('[data-remedit]').forEach(b=>b.onclick=()=>remRuleEdit(b.dataset.remedit));
 }
 
@@ -15027,7 +15133,7 @@ function remRuleEdit(code){
       const {error}=await sb.from('reminder_rules').update(v).eq('code',code);
       if(error){sv.disabled=false;return toast('Δεν σώθηκε: '+error.message)}
       Object.assign(r,v); saveCache(); toast('Αποθηκεύτηκε');
-      $('drw').classList.remove('on'); route('reminders');
+      $('drw').classList.remove('on'); stay();
     };
   };
   draw();
@@ -15329,7 +15435,7 @@ async function medForm(id){
         else{kept.forEach(k=>saved[k]=null); saveCache(); toast('Σβήστηκαν')}
       }
     }else toast('Αποθηκεύτηκε');
-    drw.classList.remove('on'); V.medical();
+    drw.classList.remove('on'); stay();
   };
   $('ecAdd').onclick=async()=>{
     const n=$('ecN').value.trim(); if(!n)return toast('Θέλει όνομα');
@@ -16055,7 +16161,7 @@ function enrollBody(){
     else{const rec={person_id:pid,req_code:code,scout_year:req.cadence==='ετήσιο'?YEAR:null,received_on:new Date().toISOString().slice(0,10)};
       const {data,error}=await sb.from('enrollment_docs').insert(rec).select().single();
       if(error)return toast('Σφάλμα: '+error.message); (D.ed=D.ed||[]).push(data);}
-    saveCache(); V.enroll();});
+    saveCache(); stay();});
 };
 
 
@@ -16172,13 +16278,13 @@ function templatesBody(){
     if(up.error)return toast('Σφάλμα: '+up.error.message);
     const {error}=await sb.from('form_templates').update({file_path:path,file_name:f.name}).eq('id',t.id);
     if(error)return toast('Σφάλμα: '+error.message);
-    t.file_path=path; t.file_name=f.name; saveCache(); toast('Ανέβηκε'); V.templates();});
+    t.file_path=path; t.file_name=f.name; saveCache(); toast('Ανέβηκε'); stay();});
   document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=async()=>{
     const t=(D.ft||[]).find(x=>x.id===b.dataset.rm);
     if(!confirm('Αφαίρεση του δικού σου αρχείου; Θα ξαναχρησιμοποιηθεί το παραγόμενο.'))return;
     await sb.storage.from('e76').remove([t.file_path]);
     await sb.from('form_templates').update({file_path:null,file_name:null}).eq('id',t.id);
-    t.file_path=null; saveCache(); V.templates();});
+    t.file_path=null; saveCache(); stay();});
 };
 function tplEdit(id){
   const t=(D.ft||[]).find(x=>x.id===id); if(!t)return;
@@ -17432,7 +17538,9 @@ function palDraw(q){
      στην ίδια εφαρμογή διδάσκουν ότι «καμιά φορά δεν βρίσκει». */
   const res = q.trim().length>=2
     ? gsHits(q).map(h=>({t:h.label, g:h.kind+(h.sub?' · '+h.sub:''), go:h.act}))
-    : Object.values(MOD).map(m=>({t:m.t, g:m.s==='live'?'Ενότητα':'Σύντομα', go:()=>route(m.id)}));
+    : [...recentItems().map(h=>({t:h.crumb.slice(1).join(' › '), g:'Πρόσφατο', go:h.go})),
+       ...Object.values(MOD).filter(m=>!RECENT.some(k=>k.split('|')[0]===m.id))
+         .map(m=>({t:m.t, g:m.s==='live'?'Ενότητα':'Σύντομα', go:()=>route(m.id)}))];
   $('palres').innerHTML=res.slice(0,12).map((r,i)=>`<div class="palr${i===0?' on':''}" data-i="${i}">${esc(r.t)}<span class="g">${esc(r.g)}</span></div>`).join('')
     ||'<div class="palr dim">Τίποτα. Δοκίμασε λιγότερα γράμματα — ψάχνει και λατινικά, Α.Μ., τηλέφωνο και πινακίδα.</div>';
   $('palres').querySelectorAll('.palr').forEach(el=>el.onclick=()=>{const r=res[+el.dataset.i];if(r){closePal();r.go()}});
@@ -17446,19 +17554,21 @@ function palDraw(q){
    η οθόνη θα έλεγε «δεν το πήρε» για παιδί που το φοράει στη στολή. */
 let SPWHO=null, SPDATE='', SPSEL={};
 function stagePassBody(){
+  if(!canHistory()) return $('view').innerHTML=`<div class="uc"><h3>Τις απονομές ιστορικού τις περνούν ο Α.Σ. και ο Αρχηγός τμήματος</h3></div>`;
   const kids=opKids();
   if(!kids.length) return $('view').innerHTML=
     `<div class="uc"><h3>Κανένα μέλος στο τμήμα</h3><p>Διάλεξε άλλον κλάδο.</p></div>`;
   if(!SPWHO||!kids.some(k=>k.id===SPWHO)){SPWHO=kids[0].id; SPSEL={};}
   const who=kids.find(k=>k.id===SPWHO);
-  const items=PCAT().filter(x=>x.item_kind==='στάδιο'||x.item_kind==='ειδικότητα')
+  const book=curBook();
+  const items=(D.pcat||[]).filter(x=>x.section===book&&!x.retired_at).filter(x=>x.item_kind==='στάδιο'||x.item_kind==='ειδικότητα')
     .sort((a,b)=>(a.item_kind===b.item_kind?0:a.item_kind==='στάδιο'?-1:1)
                  ||(a.ordinal||0)-(b.ordinal||0)
                  ||String(a.label).localeCompare(String(b.label),'el'));
-  const held=l=>(D.mprog||[]).find(x=>x.person_id===SPWHO&&x.label===l);
+  const held=x=>heldItem(SPWHO, x);
   const grp=k=>items.filter(x=>x.item_kind===k);
 
-  const row=x=>{const h=held(x.label);
+  const row=x=>{const h=held(x);
     return `<tr${h?' style="opacity:.55"':''}>
       <td>${h?'':`<input type="checkbox" class="sp-c" data-l="${esc(x.label)}"${SPSEL[x.label]!==undefined?' checked':''} style="width:auto">`}</td>
       <td style="font-size:13px">${esc(x.label)}</td>
@@ -17469,7 +17579,7 @@ function stagePassBody(){
              :'<span class="dim" style="font-size:12px">—</span>'}</td></tr>`};
 
   const table=(k,t,note)=>{const l=grp(k); if(!l.length)return '';
-    return `<div class="sec"><h3>${t}</h3><span class="n">${l.filter(x=>held(x.label)).length}/${l.length}</span></div>
+    return `<div class="sec"><h3>${t}</h3><span class="n">${l.filter(x=>held(x)).length}/${l.length}</span></div>
       ${note?`<div class="card pad" style="margin-bottom:8px"><div class="muted" style="font-size:12.5px">${note}</div></div>`:''}
       <div class="card" style="overflow:auto"><table>
         <thead><tr><th style="width:34px"></th><th>${t}</th><th style="width:170px">Πότε απονεμήθηκε</th><th style="width:110px"></th></tr></thead>
@@ -17477,7 +17587,7 @@ function stagePassBody(){
 
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
-      <b>Στάδια & πτυχία — ${esc(SECWORD[PSEC]||PSEC)}</b>
+      <b>Στάδια & πτυχία — ${esc(BOOKN[book]||book)}</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px;line-height:1.6">
         Η <b>απονομή</b> είναι το γεγονός· οι απαιτήσεις είναι ο δρόμος. Καταχώρησε
         ό,τι φοράει το παιδί, ακόμη κι αν δεν έχεις τις απαιτήσεις του.
@@ -17489,12 +17599,13 @@ function stagePassBody(){
         <label style="max-width:200px">Ημερομηνία για όλα
           <input id="spDate" value="${esc(SPDATE)}" placeholder="π.χ. 2024 ή 12/03/2024"></label>
       </div></div>
-    ${table('στάδιο','Στάδια', PSEC==='Αγέλη'
+    ${bookBar()}
+    ${table('στάδιο','Στάδια', book==='Αγέλη'
         ? 'Υπόσχεση, Αστέρια, Πτυχίο Προόδου. Τα περισσότερα ήρθαν ήδη από το e-Scouts.'
-        : PSEC==='Ομάδα'
+        : book==='Ομάδα'
         ? 'Υπόσχεση, Τρίφυλλα, Δάφνες. Οι Δάφνες <b>συντίθενται</b> από πτυχία — αλλά αν απονεμήθηκαν, καταχώρησέ τες.'
         : 'Εισδοχή, Πτυχία, Μαίανδρος, Ένταξη στο Δίκτυο.')}
-    ${table('ειδικότητα', PSEC==='Αγέλη'?'Ειδικότητες':'Πτυχία',
+    ${table('ειδικότητα', book==='Αγέλη'?'Ειδικότητες':'Πτυχία',
         'Ένα-ένα, με την ημερομηνία απονομής του καθενός αν τη θυμάσαι.')}
     <div class="card pad">
       <button class="btn p" id="spSave">Καταχώρηση</button>
@@ -17504,6 +17615,7 @@ function stagePassBody(){
     </div>`;
 
   $('spWho').onchange=e=>{SPWHO=e.target.value; SPSEL={}; route(ROUTE)};
+  wireBookBar();
   $('spDate').oninput=e=>{SPDATE=e.target.value};
   document.querySelectorAll('.sp-c').forEach(c=>c.onchange=()=>{
     if(c.checked)SPSEL[c.dataset.l]=SPSEL[c.dataset.l]||''; else delete SPSEL[c.dataset.l]});
@@ -17521,13 +17633,13 @@ function stagePassBody(){
     let ok=0, bad=0;
     for(const [d,ls] of Object.entries(byDate)){
       const {data,error}=await sb.rpc('grant_stages_hist',
-        {p_person:SPWHO, p_labels:ls, p_when:d||null});
+        {p_person:SPWHO, p_labels:ls, p_when:d||null, p_section:book});
       if(error){bad++; console.error(error)} else ok+=(data&&data.perasan)||0;
     }
     btn.disabled=false; SPSEL={};
     await reloadProgress();
     toast(bad?`${ok} πέρασαν · ${bad} ομάδες απέτυχαν`:`${ok} πέρασαν`);
-    route(ROUTE);
+    stay();
   };
 }
 
@@ -17537,95 +17649,109 @@ function stagePassBody(){
    Εδώ διαλέγεις παιδί, τσεκάρεις όσα έχει, και δίνεις ημερομηνία — **ανά
    απαίτηση** αν τη θυμάσαι, ή μία για όλες. Σκέτη χρονιά αρκεί: μπαίνει
    31 Δεκεμβρίου με σήμανση «κατά προσέγγιση», όπως και στο αντιτετανικό. */
-let HSWHO=null, HSSTAGE=null, HSDATE='', HSSEL={};
+let HSWHO=null, HSSTAGE=null, HSDATE='', HSSEL={}, HSOPEN={};
+/* ΠΟΙΟΣ ΠΕΡΝΑ ΙΣΤΟΡΙΚΟ: ο Α.Σ./Υ.Σ. και ο Αρχηγός του τμήματος. Καθρέφτης
+   της may_enter_history() — η βάση το ελέγχει ούτως ή άλλως. */
+const HEADCODE={'Αγέλη':'AAL','Ομάδα':'AOP','Κοινότητα':'AKA'};
+const canHistory=()=>ME.role==='admin'||!!ME.platform_admin
+  ||myHats().some(h=>['AS','YAS'].includes(h.role_code)||h.role_code===HEADCODE[PSEC]);
+/* ══ ΑΠΟ ΤΟ ΒΙΒΛΙΟ, ΕΝΑ ΠΑΙΔΙ ΤΗ ΦΟΡΑ ═════════════════════════════════════
+   Ο Α.Σ., 21/09: «θα τα βάλω — δώσε μου τρόπο να τα βάλω εγώ ή οι Α.Τ.».
+   Κρατάς το βιβλίο του παιδιού ανοιχτό και περνάς ΟΛΟ το βιβλίο σε μία
+   σελίδα: κάθε στάδιο με τις απαιτήσεις του, «όλο το στάδιο» με ένα κλικ,
+   μία ημερομηνία (ή σκέτη χρονιά) για όλα, μία Καταχώρηση — και «Επόμενο
+   παιδί». Όχι στάδιο-στάδιο με ξαναφόρτωμα ανάμεσα. */
 function histPassBody(){
+  if(!canHistory()) return $('view').innerHTML=`<div class="uc"><h3>Το ιστορικό το περνούν ο Α.Σ. και ο Αρχηγός τμήματος</h3>
+    <p>Αν έχεις το βιβλίο κάποιου παιδιού, δώσ' το στον Αρχηγό σου — ή ζήτα πρόσβαση.</p></div>`;
   const kids=opKids();
-  const stages=opStages();
+  const book=curBook();
+  const stages=psStages(book);
   if(!kids.length) return $('view').innerHTML=
     `<div class="uc"><h3>Κανένα μέλος στο τμήμα</h3><p>Διάλεξε άλλον κλάδο.</p></div>`;
   if(!HSWHO||!kids.some(k=>k.id===HSWHO)){HSWHO=kids[0].id; HSSEL={};}
-  const who=kids.find(k=>k.id===HSWHO);
-  if(!HSSTAGE||!stages.some(x=>x.id===HSSTAGE))HSSTAGE=stages[0]&&stages[0].id;
-  const st=stages.find(x=>x.id===HSSTAGE);
-  const reqs=st?opReqs(st):[];
+  const idx=kids.findIndex(k=>k.id===HSWHO), who=kids[idx];
   const already=r=>(D.mreq||[]).find(x=>x.person_id===HSWHO&&x.requirement_id===r.id);
+  const withHist=kids.filter(k=>(D.mreq||[]).some(x=>x.person_id===k.id)).length;
+  const all=stages.map(st=>({st, reqs:psReqs(st)})).filter(x=>x.reqs.length);
+  const tot=all.reduce((n,x)=>n+x.reqs.length,0), got=all.reduce((n,x)=>n+x.reqs.filter(already).length,0);
+  const sel=Object.keys(HSSEL).length;
 
-  const doneN=reqs.filter(already).length;
+  const block=({st,reqs})=>{
+    const d=reqs.filter(already).length, open=HSOPEN[st.id]!==undefined?HSOPEN[st.id]:(d<reqs.length&&d>0);
+    return `<details class="card" style="margin-bottom:9px" data-hsblk="${st.id}"${open?' open':''}>
+      <summary style="cursor:pointer;display:flex;gap:10px;align-items:center;padding:12px 16px;flex-wrap:wrap">
+        <b style="flex:1;min-width:150px;font-size:14px">${esc(st.label)}</b>
+        <span class="dim" style="font-size:12px">${d} από ${reqs.length}</span>
+        ${d<reqs.length?`<button class="btn sm" data-hsall="${st.id}" title="Τσέκαρε όσα λείπουν σε αυτό το στάδιο">Όλο το στάδιο</button>`
+          :'<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">πλήρες</span>'}
+      </summary>
+      <div style="padding:0 16px 10px">${reqs.map(r=>{const a=already(r);
+        return `<label class="kv" style="padding:6px 0;border-top:1px solid var(--line);gap:10px;align-items:center;cursor:${a?'default':'pointer'}${a?';opacity:.6':''}">
+          ${a?'<span style="width:18px;text-align:center;color:var(--ok)">✓</span>'
+             :`<input type="checkbox" class="hs-c" data-r="${r.id}" data-st="${st.id}"${HSSEL[r.id]!==undefined?' checked':''} style="width:auto;margin:0">`}
+          <span style="flex:1;min-width:0;font-size:13px">${esc(r.code?r.code+' ':(r.ordinal?r.ordinal+'. ':''))}${esc(r.label||r.text||'')}</span>
+          ${a?`<span class="dim" style="font-size:11.5px">${a.date?fdate(a.date):'—'}${a.date_approx?' · κατά προσ.':''}</span>`
+             :`<input class="hs-d" data-r="${r.id}" value="${esc(HSSEL[r.id]||'')}" placeholder="ημ/νία" style="font-size:12px;padding:3px 6px;max-width:110px">`}
+        </label>`}).join('')}</div></details>`};
+
   $('view').innerHTML=`
-    <div class="card pad" style="margin-bottom:14px">
-      <b>Πέρασμα ιστορικού — ${esc(SECWORD[PSEC]||PSEC)}</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px;line-height:1.6">
-        Για ό,τι υπογράφτηκε στο <b>ΚΑΝΕ</b> και δεν μπήκε ποτέ στο σύστημα.
-        Γράψε την ημερομηνία που <b>πραγματικά</b> πέρασε — όχι τη σημερινή.
-        Αν θυμάσαι μόνο τη χρονιά, γράψε <b>2024</b> και μπαίνει ως «κατά προσέγγιση».</div>
-      <div class="grow" style="margin-top:11px">
-        <label style="flex:1;max-width:280px">Ποιος
-          <select id="hsWho">${kids.map(k=>`<option value="${k.id}"${k.id===HSWHO?' selected':''}
-            >${esc(nm(k))}</option>`).join('')}</select></label>
-        <label style="max-width:200px">Ημερομηνία για όλα
-          <input id="hsDate" value="${esc(HSDATE)}" placeholder="π.χ. 2024 ή 12/03/2024"></label>
-        <label style="max-width:150px">&nbsp;<button class="btn sm" id="hsAll">Σε όσα λείπουν</button></label>
-      </div></div>
-
-    <div class="card pad noprint" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">
-      ${stages.map(x=>`<button class="btn sm${x.id===HSSTAGE?' p':''}" data-hst="${x.id}">${esc(x.label)}</button>`).join('')}
-    </div>
-
-    <div class="card" style="overflow:auto"><table>
-      <thead><tr><th style="width:34px"></th><th>Απαίτηση</th>
-        <th style="width:170px">Πότε πέρασε</th><th style="width:120px">Κατάσταση</th></tr></thead>
-      <tbody>${reqs.map((r,i)=>{const a=already(r);
-        return `<tr${a?' style="opacity:.55"':''}>
-          <td>${a?'':`<input type="checkbox" class="hs-c" data-r="${r.id}"${HSSEL[r.id]!==undefined?' checked':''} style="width:auto">`}</td>
-          <td style="font-size:13px">${esc(r.ordinal?r.ordinal+'. ':'')}${esc(r.label||r.text||'')}</td>
-          <td>${a?`<span class="dim" style="font-size:12px">${a.date?fdate(a.date):'—'}${a.date_approx?' <i>(κατά προσ.)</i>':''}</span>`
-                 :`<input class="hs-d" data-r="${r.id}" value="${esc(HSSEL[r.id]||'')}" placeholder="κενό = το πάνω"
-                     style="font-size:12.5px;padding:4px 7px">`}</td>
-          <td>${a?'<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">πέρασε</span>'
-                 :'<span class="dim" style="font-size:12px">εκκρεμεί</span>'}</td></tr>`}).join('')
-        ||'<tr><td colspan="4" class="dim" style="padding:20px;text-align:center">Καμία απαίτηση σε αυτό το στάδιο</td></tr>'}
-      </tbody></table></div>
-
-    <div class="card pad">
-      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
-        <button class="btn p" id="hsSave">Καταχώρηση</button>
-        <span class="dim" id="hsMsg" style="font-size:12.5px">${doneN} από ${reqs.length} έχουν ήδη περάσει</span>
+    <p class="lede">Κράτα ${esc(bookOf(book))} του παιδιού ανοιχτό και τσέκαρε ό,τι είναι υπογεγραμμένο. Γράψε την ημερομηνία που
+      <b>πραγματικά</b> πέρασε — αν θυμάσαι μόνο τη χρονιά, γράψε <b>2024</b> και μπαίνει ως «κατά προσέγγιση».
+      Ό,τι έχει ήδη περάσει δεν ξαναγράφεται.</p>
+    ${bookBar()}
+    <div class="card pad hsbar" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn sm gh" id="hsPrev"${idx<=0?' disabled':''} title="Προηγούμενο παιδί">‹</button>
+        <select id="hsWho" style="max-width:260px">${kids.map(k=>{
+          const n=(D.mreq||[]).filter(x=>x.person_id===k.id).length;
+          return `<option value="${k.id}"${k.id===HSWHO?' selected':''}>${esc(nm(k))}${n?' · '+n+' ✓':''}</option>`}).join('')}</select>
+        <button class="btn sm gh" id="hsNext"${idx>=kids.length-1?' disabled':''} title="Επόμενο παιδί">›</button>
+        <span class="dim" style="font-size:12px">${idx+1}/${kids.length} · ${withHist} παιδιά έχουν ήδη ιστορικό</span>
+        <span class="sp"></span>
+        <input id="hsDate" value="${esc(HSDATE)}" placeholder="Ημ/νία για όλα, π.χ. 2024" style="max-width:190px">
+        <button class="btn p" id="hsSave"${sel?'':' disabled'}>Καταχώρηση${sel?' · '+sel:''}</button>
       </div>
-      <div class="muted" style="font-size:12px;margin-top:8px">
-        Ό,τι έχει ήδη περάσει <b>δεν ξαναγράφεται</b> — κρατά την αρχική του ημερομηνία.
-        Οι καταχωρήσεις σημειώνονται ως <b>ιστορικές</b>, ώστε να ξεχωρίζουν από τις σημερινές.</div>
-    </div>`;
+      <div class="dim" id="hsMsg" style="font-size:12px;margin-top:6px">${esc(nm(who))}: ${got} από ${tot} απαιτήσεις ${esc(BOOKN[book]||book)}</div>
+    </div>
+    ${all.map(block).join('')||'<div class="card pad dim">Δεν υπάρχουν απαιτήσεις σε αυτό το βιβλίο.</div>'}`;
 
-  $('hsWho').onchange=e=>{HSWHO=e.target.value; HSSEL={}; route(ROUTE)};
+  const selUI=()=>{ const n=Object.keys(HSSEL).length, b=$('hsSave');
+    b.disabled=!n; b.textContent='Καταχώρηση'+(n?' · '+n:''); };
+  const go=id=>{ if(Object.keys(HSSEL).length&&!confirm('Έχεις τσεκαρισμένα που δεν καταχωρήθηκαν. Να χαθούν;'))return;
+    HSWHO=id; HSSEL={}; HSOPEN={}; stay(); };
+  $('hsWho').onchange=e=>go(e.target.value);
+  $('hsPrev').onclick=()=>idx>0&&go(kids[idx-1].id);
+  $('hsNext').onclick=()=>idx<kids.length-1&&go(kids[idx+1].id);
   $('hsDate').oninput=e=>{HSDATE=e.target.value};
-  document.querySelectorAll('[data-hst]').forEach(b=>b.onclick=()=>{HSSTAGE=b.dataset.hst; route(ROUTE)});
+  wireBookBar();
+  document.querySelectorAll('[data-hsblk]').forEach(d=>d.addEventListener('toggle',()=>{HSOPEN[d.dataset.hsblk]=d.open}));
   document.querySelectorAll('.hs-c').forEach(c=>c.onchange=()=>{
-    if(c.checked)HSSEL[c.dataset.r]=HSSEL[c.dataset.r]||''; else delete HSSEL[c.dataset.r]});
+    if(c.checked)HSSEL[c.dataset.r]=HSSEL[c.dataset.r]||''; else delete HSSEL[c.dataset.r]; selUI()});
   document.querySelectorAll('.hs-d').forEach(i=>i.oninput=()=>{
     HSSEL[i.dataset.r]=i.value;
     const c=document.querySelector(`.hs-c[data-r="${i.dataset.r}"]`);
-    if(c&&i.value&&!c.checked)c.checked=true});
-  $('hsAll').onclick=()=>{document.querySelectorAll('.hs-c').forEach(c=>{
-    c.checked=true; HSSEL[c.dataset.r]=HSSEL[c.dataset.r]||''})};
+    if(c&&i.value&&!c.checked)c.checked=true; selUI()});
+  document.querySelectorAll('[data-hsall]').forEach(b=>b.onclick=e=>{
+    e.preventDefault(); e.stopPropagation();
+    const d=b.closest('details'); d.open=true; HSOPEN[b.dataset.hsall]=true;
+    d.querySelectorAll('.hs-c').forEach(c=>{c.checked=true; HSSEL[c.dataset.r]=HSSEL[c.dataset.r]||''}); selUI()});
 
   $('hsSave').onclick=async()=>{
     const ids=Object.keys(HSSEL);
     if(!ids.length)return toast('Δεν διάλεξες τίποτα');
-    /* Ομαδοποιούμε ανά ημερομηνία: μία κλήση για κάθε διαφορετική ημέρα,
-       αντί για μία ανά απαίτηση. */
     const byDate={};
     ids.forEach(r=>{const d=(HSSEL[r]||HSDATE||'').trim(); (byDate[d]=byDate[d]||[]).push(r)});
     const btn=$('hsSave'); btn.disabled=true; $('hsMsg').textContent='…';
-    let ok=0, bad=0;
+    let ok=0, bad=0, why='';
     for(const [d,rs] of Object.entries(byDate)){
-      const {data,error}=await sb.rpc('grant_requirements_hist',
-        {p_person:HSWHO, p_reqs:rs, p_when:d||null});
-      if(error){bad++; console.error(error)} else ok+=(data&&data.perasan)||0;
+      const {data,error}=await sb.rpc('grant_requirements_hist',{p_person:HSWHO, p_reqs:rs, p_when:d||null});
+      if(error){bad++; why=error.message; console.error(error)} else ok+=(data&&data.perasan)||0;
     }
-    btn.disabled=false; HSSEL={};
+    HSSEL={};
     await reloadProgress();
-    toast(bad?`${ok} πέρασαν · ${bad} ομάδες απέτυχαν`:`${ok} πέρασαν`);
-    route(ROUTE);
+    toast(bad?`${ok} πέρασαν · ${bad} ομάδες απέτυχαν: ${why}`:`${ok} πέρασαν — ${nm(who)}`);
+    stay();
   };
 }
 
@@ -18088,7 +18214,7 @@ function deskKidsBody(){
     const {error}=await sb.from('badgeholders').update({email:v}).eq('id',i.dataset.p);
     if(error)return toast('Σφάλμα: '+error.message);
     const p=D.bh.find(x=>x.id===i.dataset.p); if(p)p.email=v; saveCache();
-    toast('Καταχωρήθηκε'); route(ROUTE);});
+    toast('Καταχωρήθηκε'); stay();});
   document.querySelectorAll('[data-kinv]').forEach(b=>b.onclick=async()=>{
     const p=D.bh.find(x=>x.id===b.dataset.kinv);
     if(!p||!p.email)return toast('Πρώτα email');
@@ -18381,7 +18507,7 @@ const wlFlag=f=>{const s=String(f||'').trim();
    Γραμμένοι πάνω από τους αναμένοντες, χρώμα που διαβάζεται με τη μία.
    ΤΙ ΔΙΝΟΥΜΕ ΠΑΝΩ ΑΠ' ΑΥΤΟ: μία αναζήτηση σε ΟΛΕΣ τις τάξεις μαζί.
    ══════════════════════════════════════════════════════════════════════════ */
-let WL2={cls:null, q:'', closed:false};
+let WL2={cls:null, q:'', closed:false, future:false};
 
 /* Η ΤΑΞΗ ΤΟΥ ΦΕΤΟΥΣ — ΔΗΛΩΜΕΝΗ, ΟΧΙ ΜΑΝΤΕΜΕΝΗ.
    sure=true μόνο όταν η δήλωση είναι ΤΗΣ ΦΕΤΙΝΗΣ χρονιάς. Οτιδήποτε άλλο
@@ -18456,15 +18582,24 @@ V.wl2=()=>{
 
   const G=new Map();            // τάξη → παιδιά
   const UNSURE=[];              // θέλουν επιβεβαίωση τάξης
+  const UNSURE_FUT=[];           // ίδιο, αλλά κάτω από Γ΄ — φαίνονται με τους μελλοντικούς
   all.forEach(r=>{ const g=wl2G(r);
-    if(!g.sure)UNSURE.push(r);
+    if(!g.sure)(wlBk(g.g)<3?UNSURE_FUT:UNSURE).push(r);
     const k=wlBk(g.g);
     (G.get(k)||G.set(k,[]).get(k)).push(r); });
   /* «Όχι φέτος» ΔΕΝ είναι κλειστό. Ο ίδιος το λέει γαλάζιο: «απάντησαν
      αρνητικά για φέτος ΑΛΛΑ θέλουν να παραμείνουν στη λίστα». Το πρώτο
      ζωγράφισμα τούς έκρυβε — δηλαδή έσβηνα ανθρώπους που περιμένουν. */
   const open=r=>WL_OPEN.includes(r.outcome)||r.outcome===WL_LATER;
-  const keys=[...G.keys()].sort((a,b)=>a-b);
+  const keysAll=[...G.keys()].sort((a,b)=>a-b);
+  /* ΑΠΟ Γ΄ ΤΑΞΗ ΚΑΙ ΠΑΝΩ (ο Α.Σ., 21/09). Όσοι είναι μικρότεροι είναι
+     ΜΕΛΛΟΝΤΙΚΟΙ: δεν τους σβήνουμε, απλώς δεν ανοίγουν από την αρχή. Μία
+     καρτέλα «Μελλοντικοί» τους φέρνει όταν τους χρειαστείς· η αναζήτηση
+     τους βρίσκει πάντα. */
+  const isFut=k=>typeof k==='number'&&k<3;
+  if(WL2.future)UNSURE.push(...UNSURE_FUT);
+  const FUT=keysAll.filter(isFut);
+  const keys=keysAll.filter(k=>!isFut(k)||WL2.future);
   /* ΑΝΟΙΓΕΙ ΕΚΕΙ ΠΟΥ ΤΟ ΑΦΗΣΕΣ — όπως το Excel. Η προεπιλογή «η πρώτη τάξη
      με ανοιχτές» σε πετούσε κάθε φορά στους ΠΙΟ ΜΙΚΡΟΥΣ, ενώ η δουλειά
      γίνεται από τη Γ΄ και πάνω. */
@@ -18474,6 +18609,7 @@ V.wl2=()=>{
     WL2.cls = (n==='?'&&UNSURE.length) || keys.includes(n) ? n
             : (keys.find(k=>G.get(k).some(open)) ?? keys[0] ?? 99);
   }
+  if(isFut(WL2.cls)&&!WL2.future)WL2.future=true;   // θυμάται ότι δούλευες σε μικρή τάξη
 
   /* Αναζήτηση: κόβει ΟΛΕΣ τις τάξεις μαζί — αυτό δεν το κάνει το Excel. */
   const q=WL2.q.trim();
@@ -18490,7 +18626,6 @@ V.wl2=()=>{
       <span class="sp"></span>
       <label style="display:flex;gap:6px;align-items:center;font-size:12.5px;cursor:pointer;max-width:none">
         <input type="checkbox" id="wl2cl" style="width:auto"${WL2.closed?' checked':''}> και όσοι έκλεισαν</label>
-      <button class="btn gh sm" id="wl2more">⋯</button>
     </div>
 
     ${q?`<div class="card pad" style="margin-bottom:10px">
@@ -18501,6 +18636,9 @@ V.wl2=()=>{
         ${keys.map(k=>{const L=G.get(k); const o=L.filter(open).length;
           return tab(k, o, wlClass(k===99?null:(k===13?13:k)), o!==L.length?`<span class="dim" style="font-weight:400"> /${L.length}</span>`:'')}).join('')}
         ${UNSURE.length?tab('?',UNSURE.length,'⚠ θέλουν τάξη'):''}
+        ${FUT.length?`<button class="wl2t" data-wl2fut="${WL2.future?0:1}" style="opacity:.75">${WL2.future
+          ?'Κρύψε τους μελλοντικούς'
+          :`Μελλοντικοί <b>${FUT.reduce((n,k)=>n+G.get(k).filter(open).length,0)}</b> <span class="dim" style="font-weight:400">· κάτω από Γ΄</span>`}</button>`:''}
        </div>`}
 
     <div id="wl2body"></div>
@@ -18606,7 +18744,11 @@ V.wl2=()=>{
     const v=b.dataset.wl2c; WL2.cls = v==='?' ? '?' : Number(v);
     try{ localStorage.setItem('e76:wl2cls', String(WL2.cls)) }catch(e){}
     V.wl2(); });
-  const mo=$('wl2more'); if(mo)mo.onclick=()=>toast('Τα παλιά φίλτρα είναι στη «Λίστα αναμονής (παλιό)»');
+  document.querySelectorAll('[data-wl2fut]').forEach(b=>b.onclick=()=>{
+    WL2.future=b.dataset.wl2fut==='1';
+    if(!WL2.future&&isFut(WL2.cls)){ WL2.cls=keysAll.find(k=>!isFut(k)&&G.get(k).some(open)) ?? 99;
+      try{ localStorage.setItem('e76:wl2cls', String(WL2.cls)) }catch(e){} }
+    V.wl2(); });
 };
 
 /* Η ηλικία ΔΙΚΗ ΤΗΣ, όχι δανεική: η `age` της παλιάς οθόνης είναι τοπική
@@ -20417,7 +20559,7 @@ async function molaToggleSes(yr,iso,sec){
     const {data,error}=await sb.from('sessions').insert(row).select().single();
     if(error)return toast('Δεν μπήκε: '+error.message);
     D.ss.push(data); toast('Συγκέντρωση — '+sec); }
-  saveCache(); V.cal();
+  saveCache(); stay();
 }
 
 /* ══ ΑΡΓΙΕΣ ΩΣ ΕΥΚΑΙΡΙΕΣ ══════════════════════════════════════════════════
@@ -21320,8 +21462,10 @@ function progScreen(sec, extra){
   return tabView('prog_'+sec, [
     {k:'lvl', t:'Στάδια ανέλιξης',    i:'trend', fn:progressBody, d:'πού βρίσκεται καθένας'},
     {k:'req', t:'Πέρασμα απαιτήσεων', i:'check', fn:passBody,     d:'καταχώρηση'},
-    {k:'old', t:'Ιστορικό: απαιτήσεις', i:'book',  fn:histPassBody,  d:'ό,τι υπογράφτηκε στο ΚΑΝΕ'},
-    {k:'stg', t:'Ιστορικό: στάδια & πτυχία', i:'award', fn:stagePassBody, d:'ό,τι απονεμήθηκε'},
+    /* Το ιστορικό το περνούν ο Α.Σ. και ο Α.Τ. — οι άλλοι δεν βλέπουν καρτέλα που θα τους έλεγε «όχι». */
+    ...(canHistory()?[
+    {k:'old', t:'Από το βιβλίο', i:'book',  fn:histPassBody,  d:'ιστορικό — ό,τι είναι υπογεγραμμένο στο βιβλίο του παιδιού'},
+    {k:'stg', t:'Απονομές (ιστορικό)', i:'award', fn:stagePassBody, d:'στάδια και πτυχία που ήδη φοράει'}]:[]),
     ...(extra||[])]);
 }
 V.honours=()=>honoursBody();
