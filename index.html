@@ -1229,7 +1229,8 @@ const NAV=[
    {id:'inbox',t:'Εγκρίσεις',i:'check',s:'live'},
    {id:'ledfile',t:'Φάκελος βαθμοφόρων',i:'award',s:'live'},
    {id:'comms',t:'Επικοινωνία',i:'mail',s:'live'},
-   {id:'dataqa',t:'Έλεγχος δεδομένων',i:'shield',s:'live'}]},
+   {id:'dataqa',t:'Έλεγχος δεδομένων',i:'shield',s:'live'},
+   {id:'outputs',t:'Εξαγωγές & έντυπα',i:'down',s:'live'}]},
 
  {g:'Εγγραφές', d:'Ποιος μπαίνει, ποιος πλήρωσε, τι τυπώνεται', items:[
    /* ΕΝΤΕΚΑ ΕΓΙΝΑΝ ΕΠΤΑ. Η παλιά λίστα αναμονής έφυγε (η νέα κέρδισε τη
@@ -1367,7 +1368,8 @@ const SUBS={
  inbox:'Ό,τι περιμένει εσένα να το δεις και να το κρίνεις — από το παλιότερο',
  ledfile:'Εντολές, επίπεδο εκπαίδευσης, σχολές και Ν.91(Ι) — το μητρώο των βαθμοφόρων',
  comms:'Υπενθυμίσεις και φόρμες — ό,τι φεύγει προς τον κόσμο',
- dataqa:'Υγεία δεδομένων, ποιος διάβασε τι, εξαγωγές και έντυπα Σ.Π.Κ.',
+ dataqa:'Υγεία δεδομένων, ποιος διάβασε τι, ιστορικό, διπλά, διαγραφές',
+ outputs:'Ό,τι βγαίνει προς τα έξω — εξαγωγές, έντυπα, αρχεία για το Σ.Π.Κ.',
  certq:'Χαρτιά που περιμένουν να τα δεις — και η δοκιμή του Ν.91(Ι) ως προϋπόθεση',
  reminders:'Τι φεύγει αυτόματα με email, σε ποιον, και τι έφυγε ήδη',
  formcat:'Οι ζωντανές φόρμες του Smartespot — ποια, σε ποιους, πότε ανοίγει και κλείνει',
@@ -1400,7 +1402,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-21 14:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-21 14:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -2011,6 +2013,7 @@ async function loadAll(){
   }
   LOADED=true;
   let KROSTER=null;
+  try{ const {data:pl}=await sb.from('person_labels').select('*'); D.plab=pl||[]; }catch(e){ D.plab=D.plab||[]; }
   try{ const me0=((r[0]&&r[0].data)||[]).find(b=>b.id===(ME&&ME.person_id));
     if(me0&&(me0.kind||'')==='Μέλος'){ const {data:kr}=await sb.rpc('koinotita_roster'); KROSTER=kr||null; } }catch(e){}
   const assign=()=>{
@@ -2107,13 +2110,13 @@ const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
 /* Ο φάκελος δράσης ανήκει σε όποιον ΤΡΕΧΕΙ τη δράση: τηλέφωνα, πιστοποιητικά
    συνοδών, τοποθεσία. Ήταν μόνο του Α.Σ., που δεν είναι εκεί την ημέρα. */
 const NAV_HEAD=[...NAV_LEADER,'efolder','access','viewas','approvals','inbox','intake','desk',
-  'handover','mails','year','dataqa','reports'];
+  'handover','mails','year','dataqa','outputs','reports'];
 /* Το «πέρασμα ιστορικού» είναι καρτέλα μέσα στην Πρόοδο — δεν χρειάζεται
    δική της θέση, αλλά ούτε και να λείπει από κανέναν που περνά απαιτήσεις. */
 /* Ο Τεχνικός: η υγεία της εφαρμογής — και το μητρώο, γιατί σε αυτόν ανήκει
    η διόρθωση του Α.Μ. Χωρίς πρόσβαση στις καρτέλες, του δώσαμε ευθύνη που
    δεν μπορεί να ασκήσει. */
-const NAV_DEV=['audit','access','roles','dataqa','mysys',
+const NAV_DEV=['audit','access','roles','dataqa','outputs','mysys',
   'members','leaders','dedupe','intake'];
 /* Ο Α.Σ. και ο Έφορος τα βλέπουν όλα — γι' αυτό επιστρέφουμε null. */
 /* Η πρόοδος είναι ΤΟΥ ΚΛΑΔΟΥ. Ο Αρχηγός Κοινότητας δεν έχει δουλειά με το
@@ -2776,7 +2779,8 @@ const NAV_KW={
   mysys:'ρυθμισεις συστημα τμηματα ταξεις κατωφλια',
   inbox:'εγκρισεις επιβεβαιωση εκκρεμη πιστοποιητικα μοτ ασφαλεια',
   ledfile:'εντολες σχολες εκπαιδευση ν91 ποινικο μητρωο',
-  dataqa:'υγεια δεδομενων ιστορικο audit αλλαγες διπλα εξαγωγες excel csv διαγραφη διαγραφες gdpr παγωμα',
+  dataqa:'υγεια δεδομενων ιστορικο audit αλλαγες διπλα διαγραφη διαγραφες gdpr παγωμα ορφανα αρχεια',
+  outputs:'εξαγωγες excel csv εντυπα προτυπα σπκ escouts',
   comms:'υπενθυμισεις email φορμες smartespot',
   missing:'ιατρικα ιατρικο δελτιο επαφες εκτακτης email',
   imports:'εισαγωγη escouts e-scouts επικολληση',
@@ -2966,7 +2970,7 @@ $('mbtn').onclick=()=>{const s=$('side');s.classList.toggle('open');
 const WIDE_VIEWS=new Set(['efolder','staff','cal','attend','members','leaders','guardians',
   'progAL','progOP','progKA','progress','exports','audit','reg','desk','year',
   'rollover','training','warrants','events','groups','forms','dedupe','intake',
-  'inbox','ledfile','comms','dataqa','missing','access','imports','wl2']);
+  'inbox','ledfile','comms','dataqa','outputs','missing','access','imports','wl2']);
 /* ΚΑΘΕ ΠΑΛΙΑ ΔΙΑΔΡΟΜΗ ΞΕΡΕΙ ΠΟΥ ΠΗΓΕ. Κουμπιά σε δεκάδες σημεία λένε
    route('certq') ή route('reminders') — δεν τα κυνηγάμε ένα-ένα· η διαδρομή
    μεταφράζεται εδώ, με την ίδια καρτέλα που θα άνοιγε και πριν. */
@@ -2990,9 +2994,9 @@ function routeAliasRaw(r){
     case 'formcat':   return ['comms','forms'];
     case 'health':    return ['dataqa','health'];
     case 'reads':     return ['dataqa','reads'];
-    case 'exports':   return ['dataqa','exp'];
-    case 'forms':     return ['dataqa', sub('forms')||'blank'];
-    case 'templates': return ['dataqa','blank'];
+    case 'exports':   return ['outputs','exp'];
+    case 'forms':     return ['outputs', sub('forms')||'blank'];
+    case 'templates': return ['outputs','blank'];
     case 'waitlist':  return ['wl2', null];
     case 'fees':      return ['reg','fees'];
     case 'medical':   return ['missing','med'];
@@ -3216,6 +3220,66 @@ function gsHits(raw){
   window.addEventListener('scroll',sc,{passive:true});
   b.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});})();
 document.addEventListener('click',e=>{const t=e.target.closest('[data-p]');if(t){e.preventDefault();openProfile(t.dataset.p)}});
+/* ══ ΕΤΙΚΕΤΕΣ ══ «Πρώτος Βοηθός»: βλέπει ιατρικά (στο τμήμα του ή σε όλο το
+   Σύστημα) — πάντα πίσω από την πύλη Ν.91(Ι). Δεν είναι θέση ευθύνης, δεν
+   αλλάζει ιδιότητα· τη δίνει και την παίρνει μόνο ο Α.Σ., με λήξη αν θέλει. */
+const labelsOf=pid=>(D.plab||[]).filter(l=>l.person_id===pid&&(!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10)));
+function labelsHTML(p){
+  const mine=labelsOf(p.id), admin=ME.role==='admin'||!!ME.platform_admin;
+  if(!admin&&!mine.length)return '';
+  if(!isLed(p)&&!mine.length)return '';
+  const fa=(D.pc||[]).some(c=>c.person_id===p.id&&/FIRSTAID|BLS|Πρώτ/i.test(String(c.type_code||'')+String(c.label||'')));
+  return `<div class="dsec"><h4>Ετικέτες</h4>
+    ${mine.map(l=>`<div class="kv" style="gap:8px;align-items:center"><span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${esc(l.label)}</span>
+      <span class="dim" style="flex:1;font-size:12px">${l.scope_section?esc(l.scope_section):'όλο το Σύστημα'}${l.valid_to?' · ως '+fdate(l.valid_to):''} · βλέπει ιατρικά</span>
+      ${admin?`<button class="btn sm gh" data-lboff="${l.id}">Αφαίρεση</button>`:''}</div>`).join('')}
+    ${admin&&!mine.some(l=>l.label==='Πρώτος Βοηθός')?`<div class="grow" style="margin-top:6px;align-items:flex-end">
+      <label style="max-width:170px">Πρώτος Βοηθός για<select id="lbSec"><option value="">όλο το Σύστημα</option>
+        ${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+      <label style="max-width:150px">Ως (προαιρετικό)<input type="date" id="lbTo"></label>
+      <button class="btn sm" id="lbAdd">+ Πρώτος Βοηθός</button></div>
+      <div class="dim" style="font-size:11.5px;margin-top:4px">Βλέπει ιατρικά και σημάνσεις διατροφής — μόνο με έγκυρο Ν.91(Ι).${fa?'':' <b>Δεν έχει καταχωρημένο πιστοποιητικό Πρώτων Βοηθειών.</b>'}</div>`:''}
+  </div>`;
+}
+function wireLabels(p){
+  const a=$('lbAdd'); if(a)a.onclick=async()=>{
+    a.disabled=true;
+    const {data,error}=await sb.from('person_labels').insert({person_id:p.id,label:'Πρώτος Βοηθός',
+      scope_section:$('lbSec').value||null, valid_to:$('lbTo').value||null}).select().single();
+    if(error){a.disabled=false;return toast('Σφάλμα: '+error.message)}
+    (D.plab=D.plab||[]).push(data); saveCache(); toast('Πρώτος Βοηθός — '+nm(p)); openProfile(p.id); };
+  document.querySelectorAll('[data-lboff]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Αφαίρεση της ετικέτας; Χάνει την πρόσβαση στα ιατρικά από σήμερα.'))return;
+    const today=new Date(Date.now()-864e5).toISOString().slice(0,10);
+    const {error}=await sb.from('person_labels').update({valid_to:today}).eq('id',b.dataset.lboff);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); openProfile(p.id); });
+}
+function labelsBody(){
+  const L=(D.plab||[]).filter(l=>!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10));
+  const led=D.bh.filter(b=>isLed(b)&&b.status==='Ενεργός').sort(sortByName);
+  $('view').innerHTML=`<p class="lede">Ο <b>Πρώτος Βοηθός</b> βλέπει ιατρικά και σημάνσεις διατροφής των παιδιών — στο τμήμα που ορίζεις ή σε όλο το Σύστημα —
+      μόνο εφόσον έχει έγκυρο Ν.91(Ι). Κάθε ανάγνωση καταγράφεται όπως όλες.</p>
+    <div class="card pad" style="margin-bottom:12px"><div class="grow" style="align-items:flex-end">
+      <label style="max-width:260px">Βαθμοφόρος<select id="lbP"><option value="">— διάλεξε —</option>${led.map(b=>`<option value="${b.id}">${esc(nm(b))}</option>`).join('')}</select></label>
+      <label style="max-width:170px">Για<select id="lbS"><option value="">όλο το Σύστημα</option>${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+      <label style="max-width:150px">Ως (προαιρετικό)<input type="date" id="lbT"></label>
+      <button class="btn p sm" id="lbGo">+ Πρώτος Βοηθός</button></div></div>
+    ${L.length?`<div class="card" style="overflow:auto"><table><tbody>${L.map(l=>{const b=D.bh.find(x=>x.id===l.person_id);
+      return `<tr><td><b class="pn" data-p="${l.person_id}" style="font-weight:500">${b?esc(nm(b)):'—'}</b></td><td>${esc(l.label)}</td>
+        <td class="dim">${l.scope_section?esc(l.scope_section):'όλο το Σύστημα'}</td><td class="dim">${l.valid_to?'ως '+fdate(l.valid_to):'χωρίς λήξη'}</td>
+        <td style="text-align:right"><button class="btn sm gh" data-lboff="${l.id}">Αφαίρεση</button></td></tr>`}).join('')}</tbody></table></div>`
+     :'<div class="card pad dim">Κανένας Πρώτος Βοηθός ακόμη.</div>'}`;
+  $('lbGo').onclick=async()=>{ const pid=$('lbP').value; if(!pid)return toast('Διάλεξε βαθμοφόρο');
+    const {data,error}=await sb.from('person_labels').insert({person_id:pid,label:'Πρώτος Βοηθός',scope_section:$('lbS').value||null,valid_to:$('lbT').value||null}).select().single();
+    if(error)return toast('Σφάλμα: '+error.message); (D.plab=D.plab||[]).push(data); saveCache(); stay(); };
+  document.querySelectorAll('[data-lboff]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('Αφαίρεση; Χάνει την πρόσβαση στα ιατρικά από σήμερα.'))return;
+    const today=new Date(Date.now()-864e5).toISOString().slice(0,10);
+    const {error}=await sb.from('person_labels').update({valid_to:today}).eq('id',b.dataset.lboff);
+    if(error)return toast('Σφάλμα: '+error.message);
+    const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); stay(); });
+}
 async function openProfile(id){
   const p=D.bh.find(x=>x.id===id); if(!p)return;
   {const _pp=photoOf(p); if(_pp&&!/^https?:/.test(_pp)&&!PHOTO.has(_pp))await ensurePhotos([_pp]);}
@@ -3385,8 +3449,10 @@ async function openProfile(id){
       ${kv('Υπόσχεση Προσκόπου',esc(fgr(sd.ScoutPromise||sd.ScoutDate)))}${kv('Ανιχνευτής',esc(fgr(sd.VentureDate)))}
       ${kv('Πρόσκοπος Δημοκρατίας',esc(fgr(sd.RepublicDate)))}${kv('Έγινε βαθμοφόρος',esc(fgr(sd.LeaderDate)))}</div>`:''}
     ${filesHTML((D.doc||[]).filter(d=>d.person_id===p.id),{person_id:p.id})}
-    ${histHTML(p)}`;
+    ${histHTML(p)}
+    ${labelsHTML(p)}`;
   drw.classList.add('on');
+  wireLabels(p);
   wireFiles({person_id:p.id},()=>openProfile(p.id));
   const ab=$('avaBtn'); if(ab)ab.onclick=()=>{
     /* Αν υπάρχει ήδη φωτογραφία, η πρώτη επιλογή είναι η ΑΦΑΙΡΕΣΗ, όχι η
@@ -19665,10 +19731,6 @@ V.comms=()=>tabView('comms',[
 V.dataqa=()=>tabView('dataqa',[
   {k:'health', t:'Υγεία δεδομένων', i:'shield', fn:()=>healthBody(), d:'τι λείπει ή δεν ταιριάζει'},
   {k:'reads',  t:'Ποιος διάβασε τι',i:'lock',   fn:()=>readsBody(),  d:'κάθε ανάγνωση ευαίσθητου, με όνομα'},
-  {k:'exp',    t:'Εξαγωγές',        i:'down',   fn:exportsBody,      d:'δεδομένα για εμάς'},
-  {k:'blank',  t:'Κενά πρότυπα',    i:'book',   fn:templatesBody,    d:'τυπώνεις και συμπληρώνει άνθρωπος'},
-  {k:'filled', t:'Συμπληρωμένα',    i:'book',   fn:formsBody,        d:'με τα δικά μας δεδομένα'},
-  {k:'spk',    t:'Σ.Π.Κ.',          i:'down',   fn:spkExportBody,    d:'στη μορφή που τα ζητούν'},
   {k:'audit',  t:'Ιστορικό αλλαγών',i:'book',   fn:()=>auditBody(),  d:'ποιος άλλαξε τι και πότε — χωρίς τιμές', nav:'audit'},
   {k:'dedupe', t:'Διπλά πρόσωπα',   i:'users',  fn:()=>dedupeBody(), d:'πρόσωπα που μοιάζουν διπλά — κρίνονται μία φορά', nav:'dedupe'},
   /* nav:'deletion' δεν υπάρχει σε καμία λίστα ρόλων — άρα μόνο ο admin. */
@@ -19687,6 +19749,14 @@ V.missing=()=>tabView('missing',[
 V.imports=()=>tabView('imports',[
   {k:'es',   t:'Από e-Scouts',        i:'down', fn:()=>esimportBody(), d:'Α.Μ., τριπλότυπα, εντολές — με επικόλληση', nav:'esimport'},
   {k:'forms',t:'Ιστορικό φορμών',     i:'down', fn:()=>fimportBody(),  d:'ιατρικά προηγούμενων ετών από εξαγωγή φόρμας', nav:'fimport'}]);
+
+/* ΕΝΤΕΚΑ ΚΑΡΤΕΛΕΣ ΗΤΑΝ ΠΟΛΛΕΣ (21/09). Ο «Έλεγχος δεδομένων» κρατά ό,τι
+   ΕΛΕΓΧΕΙ· ό,τι ΒΓΑΙΝΕΙ προς τα έξω (αρχεία, έντυπα, Σ.Π.Κ.) πάει σε δική του θέση. */
+V.outputs=()=>tabView('outputs',[
+  {k:'exp',    t:'Εξαγωγές',        i:'down',   fn:exportsBody,      d:'δεδομένα για εμάς — Excel/CSV'},
+  {k:'blank',  t:'Κενά πρότυπα',    i:'book',   fn:templatesBody,    d:'τυπώνεις και συμπληρώνει άνθρωπος'},
+  {k:'filled', t:'Συμπληρωμένα',    i:'book',   fn:formsBody,        d:'με τα δικά μας δεδομένα, έτοιμα για υπογραφή'},
+  {k:'spk',    t:'Σ.Π.Κ.',          i:'down',   fn:spkExportBody,    d:'στη μορφή που τα ζητούν'}]);
 
 V.certq=()=>{ const a=routeAlias('certq'); SUBTAB[a[0]]=a[1]; V[a[0]]() };  /*@alias*/
 V.vpapers=()=>{ const a=routeAlias('vpapers'); SUBTAB[a[0]]=a[1]; V[a[0]]() };  /*@alias*/
@@ -19797,11 +19867,11 @@ async function failBody(){
 }
 async function deletionBody(){
   $('view').innerHTML='<div class="card pad dim">Φόρτωση…</div>';
-  const [pq,rq,hq]=await Promise.all([
+  const [pq,rq,hq,oq]=await Promise.all([
     sb.rpc('deletion_pending'), sb.rpc('deletion_runs',{p_days:60}),
-    sb.from('deletion_hold').select('*').is('lifted_on',null)]);
+    sb.from('deletion_hold').select('*').is('lifted_on',null), sb.rpc('storage_orphans')]);
   if(ROUTE!=='dataqa')return;
-  const pend=pq.data||[], runs=rq.data||[], holds=hq.data||[];
+  const pend=pq.data||[], runs=rq.data||[], holds=hq.data||[], orph=oq.data||[];
   const err=pq.error||rq.error||hq.error;
   const who=pid=>{const b=D.bh.find(x=>x.id===pid); return b?nm(b):'—'};
   const left=n=>n<=0?'<b style="color:var(--bad)">σήμερα</b>':n<=7?`<b style="color:var(--warn)">σε ${n} μέρες</b>`:`σε ${n} μέρες`;
@@ -19838,8 +19908,35 @@ async function deletionBody(){
         <td class="dim" style="font-size:12.5px;white-space:nowrap">${fdate(r.run_at)} ${esc(String(r.run_at).slice(11,16))}</td>
         <td>${esc(r.onoma)}</td><td><span class="pill">${esc(r.outcome)}</span></td>
         <td class="dim" style="font-size:12px">${esc(r.detail||'')}${r.arxeia_gia_sbisimo?` · ${r.arxeia_gia_sbisimo} αρχεία προς σβήσιμο`:''}</td></tr>`).join('')}</tbody></table>`
-      :'<div class="pad dim">Δεν έχει καταγραφεί πέρασμα ακόμη.</div>'}</div>`;
+      :'<div class="pad dim">Δεν έχει καταγραφεί πέρασμα ακόμη.</div>'}</div>
 
+    ${/* ══ ΟΡΦΑΝΑ ΑΡΧΕΙΑ ══ Αρχεία στον χώρο αποθήκευσης που δεν τα δείχνει
+         καμία εγγραφή: διπλά από εισαγωγές, δοκιμές, μισά ανεβάσματα. Δεν
+         φαίνονται πουθενά στην εφαρμογή — αλλά υπάρχουν, και ελαχιστοποίηση
+         σημαίνει ότι ό,τι δεν χρειάζεται, σβήνεται. */''}
+    <div class="sec" style="margin-top:18px"><h3>Ορφανά αρχεία</h3><span class="n">${orph.length}</span>
+      <span class="dim" style="font-size:12px;margin-left:8px">${orph.length?Math.round(orph.reduce((n,o)=>n+(+o.size_bytes||0),0)/1024)+' kB · ':''}δεν τα δείχνει καμία εγγραφή</span>
+      <span class="sp"></span>${orph.length?`<button class="btn sm gh" id="orAll">Επιλογή όλων</button>
+      <button class="btn sm" id="orDel" style="color:var(--bad)" disabled>Σβήσιμο επιλεγμένων</button>`:''}</div>
+    <div class="card" style="overflow:auto">${orph.length?`<table><tbody>${orph.map((o,i)=>{const b=o.person_id&&D.bh.find(x=>x.id===o.person_id);
+      const nmf=String(o.path).split('/').pop();
+      return `<tr><td style="width:30px"><input type="checkbox" class="orC" data-i="${i}" style="width:auto;margin:0"></td>
+        <td><a href="#" data-orv="${i}" style="font-size:13px">${esc(nmf.length>60?nmf.slice(0,57)+'…':nmf)}</a>
+          <div class="dim" style="font-size:11.5px">${esc(String(o.path).split('/')[0])}/ · ${b?esc(nm(b))+' · ':''}${fdate(String(o.created_at).slice(0,10))} · ${Math.max(1,Math.round((+o.size_bytes||0)/1024))} kB</div></td>
+        <td class="dim" style="font-size:12px">${esc(o.reason||(/\/test-/.test(o.path)?'αρχείο δοκιμής':'κανένας σύνδεσμος — πιθανόν μισό ανέβασμα ή διπλό'))}</td></tr>`}).join('')}</tbody></table>`
+      :'<div class="pad dim">Κανένα — κάθε αρχείο έχει την εγγραφή του.</div>'}</div>`;
+
+  const orSel=()=>[...document.querySelectorAll('.orC')].filter(c=>c.checked).map(c=>orph[+c.dataset.i]);
+  const orUI=()=>{ const b=$('orDel'); if(b){ const n=orSel().length; b.disabled=!n; b.textContent=n?`Σβήσιμο ${n} αρχείων`:'Σβήσιμο επιλεγμένων'; } };
+  document.querySelectorAll('.orC').forEach(c=>c.onchange=orUI);
+  document.querySelectorAll('[data-orv]').forEach(a=>a.onclick=e=>{ e.preventDefault(); docPreview([{path:orph[+a.dataset.orv].path}],0) });
+  if($('orAll'))$('orAll').onclick=()=>{ document.querySelectorAll('.orC').forEach(c=>c.checked=true); orUI(); };
+  if($('orDel'))$('orDel').onclick=async()=>{
+    const sel=orSel(); if(!sel.length)return;
+    if(!confirm(`Οριστικό σβήσιμο ${sel.length} αρχείων από τον χώρο αποθήκευσης;\n\nΔεν τα δείχνει καμία εγγραφή — δεν αναιρείται.`))return;
+    const {data,error}=await sb.storage.from('e76').remove(sel.map(o=>o.path));
+    if(error)return toast('Σφάλμα: '+error.message);
+    toast(`Σβήστηκαν ${(data||[]).length} από ${sel.length}`); stay(); };
   const personPick=(id)=>`<input id="${id}q" placeholder="Γράψε όνομα…" autocomplete="off">
     <select id="${id}" size="6" style="margin-top:6px;width:100%"></select>`;
   const wirePick=id=>{ const q=$(id+'q'), s=$(id);
@@ -21177,6 +21274,7 @@ V.settings=()=>V.mysys(); V.dev=()=>V.mysys();
 V.access=()=>tabView('access',[
   {k:'roles', t:'Ρόλοι',         i:'shield', fn:accessBody,       d:'μόνιμη πρόσβαση ανά λογαριασμό', nav:'roles'},
   {k:'grants',t:'Παραχωρήσεις',  i:'lock',   fn:grantsBody,       d:'προσωρινά, με ημερομηνία λήξης', nav:'roles'},
+  {k:'labels',t:'Πρώτοι Βοηθοί',  i:'shield', fn:labelsBody,       d:'ποιος βλέπει ιατρικά ως Πρώτος Βοηθός — και για ποιο τμήμα', nav:'progfix'},
   {k:'matrix',t:'Πίνακας',       i:'lock',   fn:()=>matrixBody(), d:'ποιος διαβάζει και ποιος γράφει τι — από τις πολιτικές της βάσης', nav:'matrix'},
   {k:'viewas',t:'Δες ως',        i:'users',  fn:()=>viewasBody(), d:'άνοιξε την εφαρμογή όπως τη βλέπει άλλος — από τη βάση', nav:'viewas'}]);
 /* Δύο οθόνες με τη λέξη «πιστοποιητικό» σε αναγκάζουν να θυμάσαι ποια είναι
