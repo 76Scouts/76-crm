@@ -1320,7 +1320,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-21 11:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-21 11:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -2353,11 +2353,14 @@ function mePid(){ return (VIEWAS&&VIEWAS.pid) || ME.person_id || null }
    ξαναφορτώνει 64 ερωτήματα. */
 const PIPQ=new URLSearchParams(location.search);
 const IS_PIP=PIPQ.get('pip')==='1';
+/* Ανοίχτηκε ως «Δες ως» σε δικό του παράθυρο: εδώ δεν υπάρχει «δικά μου» να
+   γυρίσεις — υπάρχει μόνο κλείσιμο. */
+const POPAS=!!PIPQ.get('as')&&!IS_PIP;
 try{VIEWAS=JSON.parse(sessionStorage.getItem('e76:viewas')||'null')}catch(e){VIEWAS=null}
 if(IS_PIP){try{document.body.classList.add('pip')}catch(e){}}
 if(PIPQ.get('as')){
   const [pid,role]=String(PIPQ.get('as')).split(':');
-  VIEWAS={k:'person:'+pid+':'+role, t:'προβολή', role, pid, sec:null, pip:true};
+  VIEWAS={k:'person:'+pid+':'+role, t:PIPQ.get('t')||'προβολή', role, pid, sec:null, pip:true};
 }
 const VA_OPTS=()=>{
   /* ΜΟΝΟ ΠΡΟΣΩΠΑ. Οι αφηρημένοι ρόλοι («Αρχηγός Αγέλης», «Βαθμοφόρος Ομάδας»)
@@ -2448,8 +2451,11 @@ function renderVaBand(){
       Το μενού είναι δικό του· τα δεδομένα φορτώθηκαν με τα δικά σου δικαιώματα.
       Για το τι βλέπει πραγματικά, δες την <a href="#" id="vaRep" style="color:#fff;text-decoration:underline">αναφορά πρόσβασης</a>.</span>
     <span style="flex:1"></span>
-    <button class="btn sm" id="vaOff">Επιστροφή στα δικά μου</button>`;
-  const off=$('vaOff'); if(off)off.onclick=()=>setViewAs('');
+    <button class="btn sm" id="vaOff">${POPAS?'Κλείσιμο παραθύρου':'Επιστροφή στα δικά μου'}</button>`;
+  const off=$('vaOff'); if(off)off.onclick=()=>{
+    if(POPAS){ try{window.close()}catch(e){} return }
+    setViewAs('');
+  };
   const rep=$('vaRep'); if(rep)rep.onclick=e=>{e.preventDefault();
     const pid=VIEWAS&&VIEWAS.pid; setViewAs(''); if(pid){VASUB=pid; route('viewas')}};
 }
@@ -3652,6 +3658,8 @@ function certsHTML(p){
           <label style="flex:1;display:flex;flex-direction:column;gap:2px">
             <span class="dim" id="pcExpL" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης</span>
             <input id="pcExp" type="date"></label></div>
+        <label id="pcOvL" style="display:none;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+          <input type="checkbox" id="pcOv" style="width:auto"> Το χαρτί γράφει άλλη λήξη</label>
         <div class="dim" id="pcHint" style="font-size:11.5px"></div>
         <label class="btn sm" style="cursor:pointer;justify-content:center">📎 Επισύναψη αρχείου<input type="file" id="pcFile" style="display:none" accept=".pdf,.png,.jpg,.jpeg,.heic"></label>
         <span class="dim" id="pcFileName" style="font-size:12px"></span>
@@ -3665,7 +3673,7 @@ function certsHTML(p){
              padding:6px 8px;border-radius:var(--rs)">✓ Ό,τι καταχωρείς εσύ μετράει
           <b>αμέσως</b> — δεν περνά από την «Επιβεβαίωση». Εκεί πάνε μόνο όσα ανεβάζουν οι ίδιοι.</div>
       </div></details>
-    <div class="dim" style="font-size:11.5px;margin-top:7px">Η λήξη υπολογίζεται αυτόματα από τον τύπο, αν αφήσεις το πεδίο κενό.</div></div>`;
+</div>`;
 }
 function wireCerts(p,after){
   /* Η επιβεβαίωση είναι πράξη, όχι πεδίο: «είδα το χαρτί». Γι' αυτό είναι
@@ -3709,22 +3717,45 @@ function wireCerts(p,after){
   /* Ποιο πεδίο είναι ΤΟ ΖΗΤΟΥΜΕΝΟ το λέει ο τύπος: σε άδεια/ασφάλεια/ΜΟΤ
      τυπώνεται η ΛΗΞΗ και δεν υπολογίζεται από πουθενά· σε πιστοποιητικό
      εκπαίδευσης τυπώνεται η ΕΚΔΟΣΗ και η λήξη βγαίνει μόνη της. */
-  const ty=$('pcType'); const upd=()=>{const t=ctype(ty.value);
+  /* ΜΙΑ ΗΜΕΡΟΜΗΝΙΑ, ΟΧΙ ΔΥΟ. Έλεγε «η λήξη υπολογίζεται αυτόματα» και
+     ταυτόχρονα σου έδινε κενό κουτί λήξης — δηλαδή δεν ήξερες αν πρέπει να
+     το γεμίσεις. Τώρα:
+       · τύπος με σταθερή διάρκεια (Ν.91, Πρώτες Βοήθειες): γράφεις ΕΚΔΟΣΗ,
+         η λήξη γεμίζει ΜΟΝΗ ΤΗΣ και κλειδώνει· αν το χαρτί λέει κάτι άλλο,
+         τσεκάρεις «άλλη λήξη» και ξεκλειδώνει
+       · άδεια, ασφάλεια, ΜΟΤ: τυπώνεται η ΛΗΞΗ — γράφεις αυτήν
+       · τύπος χωρίς σταθερή διάρκεια: γράφεις ό,τι λέει το χαρτί */
+  const ty=$('pcType');
+  const upd=()=>{
+    const t=ctype(ty.value), iss=$('pcIss'), ex=$('pcExp'), ov=$('pcOv');
     $('pcLabel').placeholder=t.label_hint||'Περιγραφή (προαιρετικά)';
-    $('pcLabel').style.display=t.needs_label?'':'';
-    const exp=t.date_basis==='λήξη';
-    $('pcIssL').textContent = exp?'Ημ. έκδοσης (προαιρετικά)':'Ημ. έκδοσης';
-    $('pcExpL').textContent = exp?'Ημ. λήξης':'Ημ. λήξης (υπολογίζεται)';
-    $('pcHint').textContent = exp
-      ? 'Γράψε τη λήξη που τυπώνει το χαρτί — δεν υπολογίζεται.'
-      : (t.validity_months
-          ? 'Γράψε την έκδοση· η λήξη μπαίνει μόνη της, '+t.validity_months+' μήνες μετά.'
-          : 'Αυτός ο τύπος δεν έχει σταθερή διάρκεια — γράψε ό,τι λέει το χαρτί.');};
-  if(ty){ty.onchange=upd;upd();}
+    const byExp=t.date_basis==='λήξη', auto=!byExp&&!!t.validity_months;
+    $('pcIssL').textContent = byExp?'Ημ. έκδοσης (προαιρετικά)':'Ημ. έκδοσης';
+    $('pcOvL').style.display = auto?'flex':'none';
+    if(auto&&!ov.checked){
+      ex.value = iss.value?addMonths(iss.value,t.validity_months):'';
+      ex.disabled=true;
+      $('pcExpL').textContent='Ημ. λήξης · αυτόματα';
+      $('pcHint').textContent = iss.value
+        ? 'Λήγει '+validTxt(t.validity_months)+' μετά την έκδοση.'
+        : 'Γράψε την ημερομηνία έκδοσης — η λήξη θα μπει μόνη της, '+validTxt(t.validity_months)+' μετά.';
+    }else{
+      ex.disabled=false;
+      $('pcExpL').textContent='Ημ. λήξης';
+      $('pcHint').textContent = byExp
+        ? 'Γράψε τη λήξη που τυπώνει το χαρτί.'
+        : auto ? 'Γράφεις τη λήξη που τυπώνει το χαρτί, αντί για την αυτόματη.'
+               : 'Αυτός ο τύπος δεν έχει σταθερή διάρκεια — γράψε ό,τι λέει το χαρτί.';
+    }
+  };
+  if(ty){ ty.onchange=()=>{ $('pcOv').checked=false; upd() };
+    $('pcIss').oninput=upd; $('pcIss').onchange=upd; $('pcOv').onchange=upd; upd(); }
   const ad=$('pcAdd'); if(ad)ad.onclick=async()=>{
     const t=ctype($('pcType').value);
     let exp=$('pcExp').value||null, iss=$('pcIss').value||null;
-    if(!exp&&iss&&t.validity_months)exp=addMonths(iss,t.validity_months);
+    const autoExp=t.date_basis!=='λήξη'&&t.validity_months&&!$('pcOv').checked;
+    if(autoExp)exp=iss?addMonths(iss,t.validity_months):null;
+    if(autoExp&&!iss)return toast('Γράψε την ημερομηνία έκδοσης.');
     if(!exp&&!iss)return toast('Βάλε ημερομηνία — χωρίς αυτήν δεν ξέρουμε ως πότε ισχύει.');
     ad.disabled=true; ad.textContent='Καταχώρηση…';
     try{
@@ -17777,27 +17808,32 @@ function vaPanel(pid){
     </div>
 
     <div class="dsec" style="border:0">
-      <button class="btn p" id="vaPip" style="width:100%;justify-content:center">
-        ${ic('grid',15)} Άνοιξέ το δίπλα — παράθυρο μέσα στο παράθυρο</button>
+      <button class="btn p" id="vaPop" style="width:100%;justify-content:center">
+        ${ic('users',15)} Άνοιξέ το σε δικό του παράθυρο</button>
       <div class="dim" style="font-size:11.5px;margin:7px 0 12px;line-height:1.5">
-        Η οθόνη του ανοίγει σε δικό της πλαίσιο. <b>Η δική σου μένει από κάτω</b> —
-        δεν φεύγεις από τη δουλειά σου για να δεις τι βλέπει.</div>
+        Ανοίγει νέο παράθυρο με <b>ολόκληρο το e76 όπως το βλέπει αυτός</b> — με το μενού του,
+        για να πλοηγηθείς κανονικά. Το δικό σου μένει ανέγγιχτο σε αυτό εδώ το παράθυρο.</div>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <button class="btn gh sm" id="vaPop">${ic('users',14)} Σε νέο παράθυρο</button>
-        <button class="btn gh sm" id="vaWear">Πλήρης οθόνη</button>
+        <button class="btn gh sm" id="vaWear">Στο ίδιο παράθυρο</button>
       </div>
       <div class="dim" style="font-size:11.5px;margin-top:7px;line-height:1.5">
-        Και στους τρεις τρόπους: βλέπεις τι θα έβλεπε <i>εκείνος</i>, με τα δεδομένα
+        Και στους δύο τρόπους: βλέπεις το μενού <i>του</i>, με τα δεδομένα
         που δικαιούσαι <i>εσύ</i>. Δεν είναι πλαστοπροσωπία.</div>
     </div>`}`;
   drw.classList.add('on');
   vaDbReport(pid);
   document.querySelectorAll('[data-varole]').forEach(b=>b.onclick=()=>{VAROLE=b.dataset.varole; vaPanel(pid)});
-  const pip=$('vaPip'); if(pip)pip.onclick=()=>{
-    drw.classList.remove('on'); openPip(pid, VAROLE, nm(p)+' · '+(cur?cur.t:VAROLE));};
+  /* ΤΟ ΠΑΡΑΘΥΡΟ-ΜΕΣΑ-ΣΤΟ-ΠΑΡΑΘΥΡΟ ΕΦΥΓΕ ΑΠΟ ΤΗΝ ΠΡΩΤΗ ΘΕΣΗ: σε ένα κουτί
+     που σέρνεται δεν πλοηγείσαι — κάθε κλικ μέσα του πάλευε με το σύρσιμο.
+     Νέο παράθυρο του browser: ολόκληρο e76, με το δικό του μενού, και η
+     δική σου δουλειά μένει εκεί που την άφησες. */
   const pop=$('vaPop'); if(pop)pop.onclick=()=>{
-    window.open(location.pathname+'?as='+encodeURIComponent(pid+':'+VAROLE),
-      'e76as'+pid,'width=1100,height=800');};
+    const lbl=nm(p)+' · '+(cur?cur.t:VAROLE);
+    const w=window.open(location.pathname+'?as='+encodeURIComponent(pid+':'+VAROLE)
+      +'&t='+encodeURIComponent(lbl), 'e76as'+pid, 'width=1200,height=860');
+    if(!w)toast('Ο browser μπλόκαρε το παράθυρο — επίτρεψε αναδυόμενα για το e.76.life.');
+    drw.classList.remove('on');
+  };
   const w=$('vaWear'); if(w)w.onclick=()=>{
     VIEWAS={k:'person:'+pid+':'+VAROLE, t:nm(p)+' · '+(cur?cur.t:VAROLE), role:VAROLE, pid,
             sec:(VAROLE==='leader'||VAROLE==='head')?secOf(p):null};
