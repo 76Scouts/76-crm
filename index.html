@@ -1185,7 +1185,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-21 18:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-21 21:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1491,6 +1491,10 @@ if(typeof document!=='undefined'&&document.addEventListener){
   ['wheel','mousemove'].forEach(ev=>document.addEventListener(ev,()=>idleCheck(),{capture:true,passive:true}));
   ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,e=>{ if(idleCheck()){e.preventDefault&&e.preventDefault();e.stopPropagation&&e.stopPropagation();} },{capture:true,passive:false}));
   document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible')idleCheck(); else LAST_ACT=Math.min(LAST_ACT,Date.now()); });
+}
+
+if(typeof navigator!=='undefined'&&navigator.serviceWorker&&typeof location!=='undefined'&&location.protocol==='https:'){
+  try{ window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }catch(e){}
 }
 
 const CK='e76:cache', QK='e76:queue';
@@ -7676,7 +7680,7 @@ let AUOPEN={}, AUHOT=false;
 V.audit=()=>{
   const rows=(D.au||[]).slice().sort((a,b)=>(b.at||'').localeCompare(a.at||''));
   const q=nameKey(AUQ||'');
-  const val=v=>v===null||v===undefined||v===''?'—'
+  const val=v=>v==='•'?'(κρυφό)':v===null||v===undefined||v===''?'—'
     :typeof v==='object'?JSON.stringify(v).slice(0,80):String(v).slice(0,80);
   const FLD={registry_no:'Α.Μ.',phone:'τηλέφωνο',email:'email',status:'κατάσταση',
     section:'τμήμα',grade:'τάξη',group_name:'υποομάδα',appointment:'ιδιότητα',
@@ -7717,7 +7721,8 @@ V.audit=()=>{
       <b>Ιστορικό αλλαγών</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Ποιος άλλαξε τι και πότε. Γράφεται από τη βάση —
         <b>κανείς δεν μπορεί να το επεξεργαστεί ή να το σβήσει</b>, ούτε ο διαχειριστής.
-        Δεν καταγράφει αναγνώσεις.</div>
+        Δεν καταγράφει αναγνώσεις. Για ταυτότητες, θρήσκευμα, υπηκοότητα, ιατρικά και κηδεμονικά
+        κρατά μόνο <b>ποιο πεδίο</b> άλλαξε — όχι την τιμή.</div>
       <div class="grow" style="margin-top:10px">
         <label style="flex:2">Αναζήτηση<input id="auq" value="${esc(AUQ||'')}" placeholder="όνομα, πίνακας, πεδίο"></label>
         <label style="max-width:210px">&nbsp;<button class="btn sm${AUHOT?' p':''}" id="auHot">${
@@ -16869,6 +16874,11 @@ async function sysBody(){
       ${bruns.length?`<div class="dim" style="font-size:12.5px;margin-top:10px">${bruns.slice(0,6).map(r=>`${fdate(r.at)} · ${r.ok?`✓ ${r.tables} πίνακες, ${Number(r.rows_n||0).toLocaleString('el')} γραμμές, ${((r.bytes||0)/1048576).toFixed(1).replace('.',',')} MB`:`<span style="color:var(--bad)">απέτυχε</span>`}`).join('<br>')}</div>`:''}
     </div>
 
+    <div class="sec"><h3>Εβδομαδιαία σύνοψη</h3><span class="n">κάθε Δευτέρα πρωί</span></div>
+    <div class="card pad" style="margin-bottom:16px;font-size:13.5px;line-height:1.6">Σφάλματα, αποτυχίες, «ποιος βλέπει τι», ταχύτητα,
+      διαγραφές που πλησιάζουν και αντίγραφα — σε ένα email, μόνο αριθμοί, κανένα πρόσωπο.
+      <div style="margin-top:8px"><button class="btn sm" id="dgNow">Στείλε τώρα</button></div></div>
+
     <div class="sec"><h3>Πόσο κρατιέται κάθε καταγραφή</h3><span class="n">${last?'τελευταία εκκαθάριση '+fdate(last):'δεν έτρεξε ακόμη'}</span></div>
     <div class="card" style="overflow:auto;margin-bottom:16px"><table>
       <thead><tr><th>Καταγραφή</th><th>Κρατιέται</th><th>Γιατί</th><th>Σβήστηκαν</th></tr></thead>
@@ -16895,6 +16905,8 @@ async function sysBody(){
       <tbody>${lts.map(x=>`<tr><td>${esc(x.role)}</td><td>${x.n}</td><td>${ms(x.p50)}</td>
         <td style="color:${x.p90>5000?'var(--warn)':'inherit'}">${ms(x.p90)}</td><td class="dim">${ms(x.worst)}</td></tr>`).join('')}</tbody></table>`
       :'<div class="pad dim">Δεν υπάρχουν ακόμη μετρήσεις — μαζεύονται από κάθε άνοιγμα, χωρίς όνομα.</div>'}</div>`;
+  if($('dgNow'))$('dgNow').onclick=async()=>{ const {error}=await sb.rpc('digest_send_now');
+    toast(error?('Δεν στάλθηκε: '+error.message):'Στάλθηκε — θα έρθει σε λίγα λεπτά'); };
   if($('bkKey'))$('bkKey').onclick=async()=>{
     if(bcfg.key_id&&!confirm('Νέο κλειδί: τα ΝΕΑ αντίγραφα θα ανοίγουν μόνο με το νέο αρχείο. Τα παλιά θέλουν το παλιό — μην το πετάξεις. Συνέχεια;'))return;
     try{ const k=await backupMakeKey();
