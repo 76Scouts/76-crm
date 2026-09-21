@@ -212,6 +212,16 @@ input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;bord
   .ed-arch input{width:auto}
   .modebar{display:flex;align-items:center;gap:8px;background:var(--accbg);border:1px solid var(--accln);color:var(--acc);padding:7px 12px;border-radius:var(--r);font-size:12.5px;margin-bottom:12px}
   .vabar{display:flex;align-items:center;gap:9px;background:#8e2a2a;color:#fff;padding:8px 13px;border-radius:var(--r);font-size:12.5px;margin-bottom:12px}
+  /* «ΒΛΕΠΕΙΣ ΩΣ» — δεν επιτρέπεται να το ξεχάσεις. Κόκκινο πλαίσιο γύρω από
+     ΟΛΟ το παράθυρο και ζώνη που κολλάει πάνω σε κάθε κύλιση. */
+  body.viewing-as #app{box-shadow:inset 0 0 0 5px #b3261e}
+  body.viewing-as .side{box-shadow:inset 5px 0 0 #b3261e}
+  #vaband:empty{display:none}
+  #vaband{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:#b3261e;color:#fff;padding:10px 16px;font-size:12.5px;line-height:1.45}
+  #vaband .vaw{font-size:14px;font-weight:700;letter-spacing:.02em}
+  #vaband .vas{opacity:.85}
+  #vaband button{background:#fff;color:#b3261e;border:0;font-weight:700}
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
   .grow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
   .grow label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2);flex:1;min-width:150px}
@@ -928,6 +938,11 @@ tr.argrow td{background:var(--bg2)}
              ανέβηκε η αλλαγή, κι αυτό είναι το πρώτο πράγμα που βλέπεις. -->
         <small id="ver" style="opacity:.6;font-variant-numeric:tabular-nums"></small></div>
     </div>
+    <!-- Το φίλτρο μενού ΕΔΩ, όχι δίπλα στην «Ιδιότητα»: δίπλα-δίπλα έμοιαζαν
+         ίδια πράγματα. Η ιδιότητα λέει ΠΟΙΟΣ είσαι· αυτό λέει ΤΙ ΚΑΝΕΙΣ ΤΩΡΑ. -->
+    <div style="padding:4px 12px 6px"><select id="mode" class="btn sm"
+      style="width:100%;padding:4px 7px;font-size:12px;background:transparent;color:var(--sidein2);border-color:rgba(255,255,255,.18)"
+      title="Φίλτρο μενού — κρύβει οθόνες που δεν χρειάζεσαι τώρα. Δεν αλλάζει ποιος είσαι."></select></div>
     <div id="navwrap"></div>
     <div class="sidefoot">
       <div id="whoami" style="cursor:pointer" title="Το προφίλ μου">—</div>
@@ -940,12 +955,12 @@ tr.argrow td{background:var(--bg2)}
   </aside>
 
   <div class="main">
+    <div id="vaband"></div>
     <header class="top">
       <button class="btn gh sm mob" id="mbtn" aria-label="Μενού"></button>
       <h2 id="ttl">Πίνακας</h2><span class="sub" id="sub"></span>
       <span class="sp"></span>
       <select id="persona" class="btn sm" style="width:auto;padding:5px 8px;max-width:230px" title="ΠΟΙΟΣ ΕΙΜΑΙ — με ποια ιδιότητα δουλεύω τώρα"></select>
-      <select id="mode" class="btn sm" style="width:auto;padding:5px 8px;max-width:180px" title="ΤΙ ΚΑΝΩ ΤΩΡΑ — κρύβει οθόνες που δεν χρειάζομαι αυτή τη στιγμή· δεν αφαιρεί δικαιώματα"></select>
       <!-- Ο φακός έφυγε από εδώ: υπάρχει ολόκληρη οθόνη «Προβολή ως» στις
            Ρυθμίσεις, που διαλέγει ΑΝΘΡΩΠΟ και ιδιότητα. Τρεις επιλογείς στην
            κεφαλίδα για συγγενή πράγματα ήταν ένας παραπάνω. -->
@@ -1305,7 +1320,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
 /* ══ STATE ══ */
-const BUILD='2026-09-20 14:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-21 11:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 /* Αναζήτηση με Α.Δ.Τ.: η ΒΑΣΗ αποφασίζει ποιος ταιριάζει, ο φυλλομετρητής
    μαθαίνει μόνο uuid. ADTQ = τα ψηφία που ρωτήσαμε, ADTHIT = ποιοι ήρθαν. */
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
@@ -2177,7 +2192,7 @@ function renderPersona(){
        δεν έχει δικά του παιδιά ούτε δικό του τμήμα, άρα ο ΜΟΝΟΣ τρόπος να δει
        τι βλέπουν οι άλλοι είναι ο φακός. */
     md.style.display=(K==='leader'||K==='dev')?'':'none';
-    md.innerHTML=MODES.map(m=>`<option value="${esc(m.k)}"${m.k===MODE?' selected':''}>${m.k?esc(m.t):'— όλα τα μενού —'}</option>`).join('');
+    md.innerHTML=MODES.map(m=>`<option value="${esc(m.k)}"${m.k===MODE?' selected':''}>${m.k?'Φίλτρο: '+esc(m.t):'Φίλτρο μενού: κανένα'}</option>`).join('');
     md.onchange=e=>setMode(e.target.value);
   }
   const va=$('viewas');
@@ -2345,17 +2360,11 @@ if(PIPQ.get('as')){
   VIEWAS={k:'person:'+pid+':'+role, t:'προβολή', role, pid, sec:null, pip:true};
 }
 const VA_OPTS=()=>{
-  /* Λίστα ΡΟΛΩΝ, όχι λίστα ανθρώπων. Τετρακόσιοι γονείς σε ένα dropdown δεν
-     είναι επιλογή — είναι τιμωρία. Το πρόσωπο διαλέγεται με αναζήτηση. */
-  const o=[{k:'',t:'— κανονική προβολή —'},
-           {k:'as',t:'Αρχηγός Συστήματος',role:'section_head'}];
-  MEMSECS().forEach(sec=>o.push({k:'head:'+sec,t:'Αρχηγός '+sec,sec,role:'section_head'}));
-  MEMSECS().concat(['Δίκτυο']).forEach(sec=>o.push({k:'leader:'+sec,t:'Βαθμοφόρος '+sec,sec,role:'leader'}));
-  o.push({k:'pick:member',t:'Μέλος…  (διάλεξε ποιο)',role:'member'});
-  o.push({k:'pick:parent',t:'Γονέας…  (διάλεξε ποιον)',role:'parent'});
-  o.push({k:'dev',t:'Τεχνικός',role:'dev'});
-  /* Ό,τι είναι ήδη επιλεγμένο μένει ορατό, αλλιώς το select δείχνει λάθος. */
-  o.push({k:'screen',t:'Προβολή ως… (οθόνη)'});
+  /* ΜΟΝΟ ΠΡΟΣΩΠΑ. Οι αφηρημένοι ρόλοι («Αρχηγός Αγέλης», «Βαθμοφόρος Ομάδας»)
+     έφυγαν: τα δικαιώματα στο e76 βγαίνουν από τον άνθρωπο — καπέλα, ιδιότητα,
+     τμήμα — και «Αρχηγός Αγέλης» χωρίς πρόσωπο δεν υπάρχει. Έδειχναν ένα μενού
+     που κανείς πραγματικός δεν είχε. */
+  const o=[{k:'',t:'— κανονική προβολή —'}];
   if(VIEWAS&&!o.some(x=>x.k===VIEWAS.k))o.push(VIEWAS);
   return o};
 
@@ -2398,8 +2407,6 @@ function vaPick(role){
 }
 
 function setViewAs(k){
-  if(k==='pick:member') return vaPick('member');
-  if(k==='pick:parent') return vaPick('parent');
   if(k==='screen')      return route('viewas');
   VIEWAS=k?VA_OPTS().find(o=>o.k===k)||null:null;
   if(VIEWAS)sessionStorage.setItem('e76:viewas',JSON.stringify(VIEWAS));
@@ -2430,14 +2437,21 @@ function vaBlocked(m){
   const b=$('vbOff'); if(b)b.onclick=()=>setViewAs('');
   const off=$('vaOff'); if(off)off.onclick=()=>setViewAs('');
 }
-function viewAsBar(){
-  if(!VIEWAS)return '';
-  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role, VIEWAS.sec);
-  const tot=NAV.reduce((n,g)=>n+g.items.length,0);
-  return `<div class="vabar">👁 Βλέπεις ως <b>${esc(VIEWAS.t)}</b>
-    <span class="dim" style="color:#fff;opacity:.75">— ${al?al.length+' από '+tot+' οθόνες'
-      :'όλες τις οθόνες'}${VIEWAS.sec?' · μόνο '+esc(VIEWAS.sec):''}. Τα δικαιώματά σου δεν άλλαξαν.</span>
-    <button class="btn sm" id="vaOff" style="margin-left:auto">Επιστροφή</button></div>`;
+function viewAsBar(){ return '' }   // η ένδειξη ζει πλέον στη ζώνη #vaband
+function renderVaBand(){
+  const b=$('vaband'); if(!b)return;
+  document.body.classList.toggle('viewing-as', !!VIEWAS);
+  if(!VIEWAS){b.innerHTML='';return}
+  const p=VIEWAS.pid&&D.bh.find(x=>x.id===VIEWAS.pid);
+  b.innerHTML=`<span class="vaw">👁 ΒΛΕΠΕΙΣ ΩΣ ${esc(p?nm(p).toUpperCase().normalize('NFD').replace(/\u0301/g,'').normalize('NFC'):String(VIEWAS.t||''))}</span>
+    <span class="vas">${esc(VIEWAS.t||'')} — <b>δεν είσαι εσύ.</b>
+      Το μενού είναι δικό του· τα δεδομένα φορτώθηκαν με τα δικά σου δικαιώματα.
+      Για το τι βλέπει πραγματικά, δες την <a href="#" id="vaRep" style="color:#fff;text-decoration:underline">αναφορά πρόσβασης</a>.</span>
+    <span style="flex:1"></span>
+    <button class="btn sm" id="vaOff">Επιστροφή στα δικά μου</button>`;
+  const off=$('vaOff'); if(off)off.onclick=()=>setViewAs('');
+  const rep=$('vaRep'); if(rep)rep.onclick=e=>{e.preventDefault();
+    const pid=VIEWAS&&VIEWAS.pid; setViewAs(''); if(pid){VASUB=pid; route('viewas')}};
 }
 /* Τι κρύβει ο φακός */
 function vaHidesSection(sec){ return VIEWAS&&VIEWAS.sec&&sec&&sec!==VIEWAS.sec }
@@ -2709,7 +2723,7 @@ function route(r){
   /* Πλάτος ανά οθόνη: όποια δείχνει πίνακα ή στήλες, ανοίγει. */
   try{const w=document.querySelector('.wrap');
     if(w)w.classList.toggle('wide', WIDE_VIEWS.has(ROUTE));}catch(e){}
-  renderNav(); window.scrollTo(0,0);
+  renderNav(); renderVaBand(); window.scrollTo(0,0);
   if(m.s==='live'){
     // Αν μια οθόνη σκάσει, ΔΕΝ αφήνουμε την προηγούμενη στη θέση της — φαίνεται σαν παλιό αρχείο.
     if(VIEWAS&&vaHidesRoute(ROUTE)){ vaBlocked(m); return; }
@@ -17645,6 +17659,67 @@ function openPip(pid, role, label){
   g.addEventListener('mousedown',rdown); g.addEventListener('touchstart',rdown,{passive:false});
 }
 
+/* ══ ΑΝΑΦΟΡΑ ΠΡΟΣΒΑΣΗΣ — Η ΑΠΑΝΤΗΣΗ ΤΗΣ ΒΑΣΗΣ ════════════════════════════
+   Η access_report() τρέχει τις ΙΔΙΕΣ πολιτικές RLS με την ταυτότητα του Χ
+   και γυρίζει ΜΟΝΟ πλήθη και ναι/όχι — ποτέ γραμμές. Κάθε ερώτηση γράφεται
+   στο ίχνος με το δικό σου όνομα. */
+const CAP_GR={people:'Άνθρωποι',attendance:'Παρουσίες',progress:'Πρόοδος',events:'Δράσεις',
+  medical:'Ιατρικά',enrollment:'Εγγραφές',finance:'Οικονομικά',documents:'Έγγραφα',
+  accounts:'Λογαριασμοί',synod:'Σύνοδος'};
+async function vaDbReport(pid){
+  const box=$('vaDb'); if(!box)return;
+  box.innerHTML='<div class="dim" style="font-size:12.5px">Ρωτάω τη βάση ως αυτόν…</div>';
+  const {data,error}=await sb.rpc('access_report',{p_person:pid});
+  if(!$('vaDb'))return;                       // έκλεισε το συρτάρι στο μεταξύ
+  if(error){box.innerHTML=`<div style="font-size:12.5px;color:var(--bad)">${esc(error.message)}</div>`;return}
+  const r=data||{};
+  if(!r.has_account){
+    box.innerHTML=`<div class="muted" style="font-size:13px;line-height:1.6">
+      <b>Δεν έχει λογαριασμό.</b> Δεν βλέπει τίποτα, γιατί δεν μπαίνει.
+      ${r.default_role?`Αν του δοθεί, θα πάρει ρόλο <b>${esc(r.default_role)}</b>.`:''}</div>`;
+    return;
+  }
+  const c=r.counts||{}, caps=r.caps||{};
+  const num=k=>c[k]===-1?'<span style="color:var(--bad)">κλειστό</span>':`<b>${c[k]??'—'}</b>`;
+  const chips=o=>Object.entries(o||{}).sort((a,b)=>b[1]-a[1])
+    .map(([k,v])=>`<span class="pill" style="font-size:11px;margin:2px 3px 0 0">${esc(k)} · ${v}</span>`).join('');
+  const row=(t,v,sub)=>`<div class="kv" style="padding:4px 0;border-bottom:1px solid var(--line)">
+    <span style="flex:1;font-size:13px">${t}${sub?`<div class="dim" style="font-size:11px">${sub}</div>`:''}</span>
+    <span style="font-size:13px">${v}</span></div>`;
+  const med=c.person_medical===-1
+    ? (caps.medical?'μόνο με καταγεγραμμένη ανάγνωση':'<span style="color:var(--ok)">όχι</span>')
+    : num('person_medical');
+  const flag=(ok,t)=>`<span class="pill" style="font-size:11px;margin:2px 3px 0 0;${ok
+    ?'background:var(--okbg);color:var(--ok);border-color:transparent'
+    :'opacity:.5;text-decoration:line-through'}">${t}</span>`;
+  box.innerHTML=`
+    ${r.identity_ok===false?`<div style="color:var(--bad);font-size:12.5px;margin-bottom:8px">
+      Προσοχή: ο λογαριασμός του δεν δείχνει σε αυτόν τον άνθρωπο στο μητρώο.</div>`:''}
+    <div style="margin-bottom:8px">
+      ${flag(r.is_admin,'Διαχειριστής')}${flag(r.convene,'Συγκαλεί Σύνοδο')}${flag(r.anix,'Ανιχνευτής')}</div>
+    ${row('Άνθρωποι στο μητρώο', num('badgeholders'),
+      chips(r.by_section)+(Object.keys(r.by_kind||{}).length?'<br>'+chips(r.by_kind):''))}
+    ${row('Ιατρικά', med)}
+    ${row('Ταυτότητες και ευαίσθητα', c.sensitive===-1
+      ?(caps.people==='rw'?'μόνο με καταγεγραμμένη ανάγνωση':'<span style="color:var(--ok)">όχι</span>')
+      :num('sensitive'))}
+    ${row('Γονείς και κηδεμόνες', num('care_links'))}
+    ${row('Επαφές έκτακτης ανάγκης', num('emergency_contacts'))}
+    ${row('Παρουσίες', num('attendance'))}
+    ${row('Έγγραφα', num('documents'))}
+    ${row('Πιστοποιητικά', num('certifications'))}
+    ${row('Σημάνσεις', num('member_flags'))}
+    ${row('Εγγραφές χρονιάς', num('member_year'), 'τμήμα, τάξη, όμιλος — ανά άνθρωπο και χρονιά')}
+    ${row('Σύνοδοι · Όμιλοι · Η.Κ.Α.Δ.Ε.', `${num('synod')} · ${num('subgroups')} · ${num('ka_progress')}`)}
+    ${row('Λίστα αναμονής', num('waitlist'))}
+    <div style="margin-top:9px;font-size:12px;color:var(--ink3)">Μπορεί να</div>
+    <div>${Object.keys(caps).length?Object.entries(caps).map(([k,v])=>
+      `<span class="pill" style="font-size:11px;margin:2px 3px 0 0">${esc(CAP_GR[k]||k)} · ${v==='rw'?'γράφει':'διαβάζει'}</span>`).join('')
+      :'<span class="dim" style="font-size:12px">— τίποτα πέρα από τα δικά του —</span>'}</div>
+    <div class="dim" style="font-size:11px;margin-top:9px;line-height:1.5">
+      Αυτά τα απαντά η βάση με τις δικές του πολιτικές — ισχύουν όπως είναι.
+      «Κλειστό» = δεν έχει ούτε δικαίωμα ανάγνωσης. Η ερώτηση καταγράφηκε με το όνομά σου.</div>`;
+}
 function vaPanel(pid){
   const p=D.bh.find(x=>x.id===pid); if(!p)return;
   VASUB=pid;
@@ -17691,6 +17766,16 @@ function vaPanel(pid){
           </div></div>`}).join('')}</div>
     </div>
 
+    ${/* ΤΟ ΚΟΜΜΑΤΙ ΠΟΥ ΕΜΠΙΣΤΕΥΕΣΑΙ. Όλα τα παραπάνω είναι το ΜΕΝΟΥ του, που
+         το ξέρει η εφαρμογή. Αυτό εδώ το απαντά η ΒΑΣΗ, με τις δικές ΤΟΥ
+         πολιτικές — όχι με μαντεψιά. */''}
+    <div class="dsec">
+      <div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap">
+        <h4 style="margin:0">Τι βλέπει στη βάση</h4>
+        <span class="dim" style="font-size:11.5px">απάντηση της βάσης, ως αυτός</span></div>
+      <div id="vaDb" style="margin-top:9px"></div>
+    </div>
+
     <div class="dsec" style="border:0">
       <button class="btn p" id="vaPip" style="width:100%;justify-content:center">
         ${ic('grid',15)} Άνοιξέ το δίπλα — παράθυρο μέσα στο παράθυρο</button>
@@ -17706,6 +17791,7 @@ function vaPanel(pid){
         που δικαιούσαι <i>εσύ</i>. Δεν είναι πλαστοπροσωπία.</div>
     </div>`}`;
   drw.classList.add('on');
+  vaDbReport(pid);
   document.querySelectorAll('[data-varole]').forEach(b=>b.onclick=()=>{VAROLE=b.dataset.varole; vaPanel(pid)});
   const pip=$('vaPip'); if(pip)pip.onclick=()=>{
     drw.classList.remove('on'); openPip(pid, VAROLE, nm(p)+' · '+(cur?cur.t:VAROLE));};
