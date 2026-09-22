@@ -160,6 +160,7 @@ tr:last-child td{border-bottom:0}
 tbody tr:hover td{background:var(--bg)}
 input,select{font:inherit;padding:7px 10px;border:1px solid var(--line2);border-radius:var(--rs);background:var(--card);color:var(--ink);width:100%}
 input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;border-color:var(--acc)}
+input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
   .lnk{color:var(--acc);text-decoration:none}
   .lnk:hover{text-decoration:underline}
   .lgd{margin:16px 0 4px;font-size:12.5px}
@@ -1185,7 +1186,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-21 21:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-22 10:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2531,6 +2532,53 @@ if(typeof MutationObserver!=='undefined'){ let _a11yq=false;
   const go=()=>{ try{ mo.observe(document.body,{childList:true,subtree:true}); a11yName(); }catch(e){} };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go); else go();
 }
+function parseDateTxt(s){
+  s=String(s||'').trim(); if(!s)return '';
+  let d,m,y,k;
+  if((k=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))){ y=+k[1]; m=+k[2]; d=+k[3]; }
+  else if((k=s.match(/^(\d{1,2})[\/.\-\s]+(\d{1,2})[\/.\-\s]+(\d{2}|\d{4})$/))){ d=+k[1]; m=+k[2]; y=k[3]; }
+  else if((k=s.match(/^(\d{2})(\d{2})(\d{4}|\d{2})$/))){ d=+k[1]; m=+k[2]; y=k[3]; }
+  else return null;
+  if(typeof y==='string'){ if(y.length===2){ const cy=new Date().getFullYear(), c=Math.floor(cy/100)*100;
+      y=c+(+y); if(y>cy+20)y-=100; } else y=+y; }
+  if(y<1900||y>2100||m<1||m>12||d<1)return null;
+  const dt=new Date(y,m-1,d); if(dt.getMonth()!==m-1||dt.getDate()!==d)return null;
+  return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+const isoToTxt=v=>{const k=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return k?k[3]+'/'+k[2]+'/'+k[1]:''};
+const dateSane=iso=>!iso||(/^\d{4}-\d{2}-\d{2}$/.test(iso)&&iso>='1990-01-01'&&iso<='2100-12-31');
+function textDate(inp){
+  if(inp.dataset.td)return; inp.dataset.td='1';
+  const proto=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+  const iso=proto.get.call(inp);
+  inp.type='text'; inp.inputMode='numeric'; inp.autocomplete='off';
+  if(!inp.placeholder)inp.placeholder='ηη/μμ/εεεε';
+  inp.maxLength=10; if(!inp.style.maxWidth)inp.style.maxWidth='150px';
+  Object.defineProperty(inp,'value',{configurable:true,
+    get(){ const r=parseDateTxt(proto.get.call(this)); return r||''; },
+    set(v){ proto.set.call(this, /^\d{4}-\d{2}-\d{2}/.test(String(v||''))?isoToTxt(v):String(v||'')); this.removeAttribute('aria-invalid'); }});
+  proto.set.call(inp,isoToTxt(iso));
+  inp.addEventListener('input',e=>{
+    if(e.inputType!=='insertText')return;
+    const raw=proto.get.call(inp);
+    if(/^\d{2}$/.test(raw)||/^\d{1,2}\/\d{2}$/.test(raw))proto.set.call(inp,raw+'/');
+  });
+  inp.addEventListener('focus',()=>{ try{inp.select()}catch(e){} });
+  inp.addEventListener('blur',()=>{
+    const raw=proto.get.call(inp).trim(); if(!raw){inp.removeAttribute('aria-invalid');return}
+    const r=parseDateTxt(raw);
+    if(r){ proto.set.call(inp,isoToTxt(r)); inp.removeAttribute('aria-invalid'); inp.title=fdate(r); }
+    else { inp.setAttribute('aria-invalid','true'); inp.title='Μη έγκυρη ημερομηνία — γράψε ηη/μμ/εεεε'; toast('Μη έγκυρη ημερομηνία: «'+raw+'» — γράψε ηη/μμ/εεεε'); }
+  });
+}
+const FINE_PTR=(()=>{try{return matchMedia('(pointer:fine)').matches}catch(e){return false}})();
+function textDates(root){ if(!FINE_PTR)return; (root||document).querySelectorAll('input[type=date]').forEach(textDate); }
+if(FINE_PTR&&typeof MutationObserver!=='undefined'){
+  const mo=new MutationObserver(ms=>{ for(const m of ms)for(const n of m.addedNodes)
+    if(n.nodeType===1){ if(n.matches&&n.matches('input[type=date]'))textDate(n); else if(n.querySelector&&n.querySelector('input[type=date]'))textDates(n); } });
+  const go=()=>{ try{ mo.observe(document.body,{childList:true,subtree:true}); textDates(); }catch(e){} };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go); else go();
+}
 function stay(){
   const m=MOD[ROUTE]; if(!m||m.s!=='live')return route(ROUTE);
   const y=window.scrollY;
@@ -3191,6 +3239,14 @@ function vehHTML(p){
           <button class="btn gh sm vldel" data-id="${x.link.id}" title="Αποσύνδεση">✕</button></div>
         <div class="dim" style="font-size:11.5px">${x.ins?`${esc(x.ins.insurer||'')}${x.ins.holder_name?' · ασφαλισμένος: '+esc(x.ins.holder_name):''}${x.ins.allows_any_driver?' · καλύπτει εξουσιοδοτημένους οδηγούς':''}${x.ins.min_age?` · ηλικία ${x.ins.min_age}-${x.ins.max_age||'—'}`:''}`:'δεν έχει καταχωρηθεί ασφάλεια'}</div>
         ${warn?`<div style="font-size:12px;color:var(--bad);margin-top:3px">⚠ Η ηλικία (${age}) είναι εκτός των ορίων της ασφάλειας</div>`:''}
+        ${
+''}
+        ${(()=>{const can=isAdminUI()||x.v.owner_id===ME.person_id;
+          const last=k=>(D.vp||[]).filter(y=>y.vehicle_id===x.v.id&&y.kind===k).sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
+          const rows=[['Ασφάλεια','vi',x.ins],['ΜΟΤ','vp',last('ΜΟΤ')],['Άδεια κυκλ.','vp',last('ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ')]].filter(r=>r[2]);
+          return rows.map(([l,t,r])=>`<div style="display:flex;gap:6px;align-items:center;font-size:12px;margin-top:3px">
+            <span style="min-width:74px">${l}</span><span class="dim" style="flex:1">${esc(paperDates(r)||'χωρίς ημερομηνίες')}</span>
+            ${can?`<button class="btn gh sm vxedit" data-t="${t}" data-id="${r.id}" title="Διόρθωση ημερομηνιών">✎</button>`:''}</div>`).join('')})()}
       </div>`}).join(''):'<div class="dim" style="font-size:13px">Κανένα όχημα</div>'}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Σύνδεση οχήματος</summary>
       <div style="display:grid;gap:7px;margin-top:9px">
@@ -3207,7 +3263,15 @@ const plateKey=s=>String(s||'').toUpperCase().replace(/[\s.\-_]/g,'')
   .replace(/[ΑΒΕΖΗΙΚΜΝΟΡΤΧΥ]/g,c=>PLATE_GR2LAT[c]||c);
 const platePretty=s=>{const k=plateKey(s),m=k.match(/^([A-Z]+)(\d+)$/);return m?m[1]+' '+m[2]:k};
 
+function wireVxEdit(after){
+  document.querySelectorAll('.vxedit').forEach(b=>b.onclick=e=>{ e.preventDefault();
+    const t=b.dataset.t, r=(D[t]||[]).find(x=>x.id===b.dataset.id); if(!r)return;
+    const v=(D.veh||[]).find(x=>x.id===r.vehicle_id), pl=v?' '+v.plate:'';
+    if(t==='vi')paperEdit({t,row:r,type:ctype('ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'),name:'Ασφάλεια'+pl,fields:['insurer'],after});
+    else paperEdit({t,row:r,type:ctype(r.kind),name:(r.kind==='ΜΟΤ'?'ΜΟΤ':'Άδεια κυκλοφορίας')+pl,after});});
+}
 function wireVeh(p,after){
+  wireVxEdit(after);
   document.querySelectorAll('.vldel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Αποσύνδεση οχήματος από το άτομο;'))return;
     await sb.from('vehicle_links').delete().eq('id',b.dataset.id);
@@ -3261,6 +3325,107 @@ function certChip(c){
 const validTxt=m=>!m?'':(m%12===0
   ? (m/12===1?'έναν χρόνο':(m/12)+' χρόνια')
   : m+' μήνες');
+function addDays(iso,n){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return isoLocal(d); }
+function certAuto(t){ return !!t && (t.date_basis==='κυκλοφορία' || (t.date_basis!=='λήξη' && !!t.validity_months)); }
+function certExpiry(t, issued){
+  if(!t||!issued) return {exp:null};
+  if(t.date_basis==='κυκλοφορία'){
+    const y=+String(issued).slice(0,4)+1, rows=(D.rtd||[]).slice().sort((a,b)=>a.year-b.year);
+    const hit=rows.find(r=>+r.year===y);
+    if(hit&&hit.renew_by) return {exp:hit.renew_by};
+    const last=rows[rows.length-1]; const md=last&&last.renew_by?String(last.renew_by).slice(5):'03-11';
+    return {exp:y+'-'+md, approx:true};
+  }
+  if(t.date_basis==='λήξη'||!t.validity_months) return {exp:null};
+  let e=addMonths(issued,t.validity_months);
+  if(t.validity_days_adjust) e=addDays(e,t.validity_days_adjust);
+  return {exp:e};
+}
+function certRuleTxt(t){
+  if(!t) return '';
+  if(t.date_basis==='κυκλοφορία') return 'ως την προθεσμία ανανέωσης της επόμενης χρονιάς (συνήθως Μάρτιος)';
+  if(!t.validity_months) return '';
+  return validTxt(t.validity_months)+(t.validity_days_adjust===-1?' μείον μία μέρα':'')+' μετά την έκδοση';
+}
+const PAPER_TBL={pc:'person_certificates',vi:'vehicle_insurance',vp:'vehicle_papers',doc:'documents'};
+function docLink(d){
+  if(!d)return null;
+  let c=(D.pc||[]).find(x=>x.document_id===d.id);
+  if(!c){const l=(D.cd||[]).find(x=>x.document_id===d.id); c=l&&(D.pc||[]).find(x=>x.id===l.cert_id);}
+  if(c)return {t:'pc',row:c,type:ctype(c.type_code),name:ctype(c.type_code).name};
+  const i=(D.vi||[]).find(x=>x.document_id===d.id);
+  if(i){const v=(D.veh||[]).find(x=>x.id===i.vehicle_id);
+    return {t:'vi',row:i,type:ctype('ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'),name:'Ασφάλεια'+(v?' '+v.plate:'')};}
+  const p=(D.vp||[]).find(x=>x.document_id===d.id);
+  if(p){const v=(D.veh||[]).find(x=>x.id===p.vehicle_id);
+    return {t:'vp',row:p,type:ctype(p.kind),name:(p.kind==='ΜΟΤ'?'ΜΟΤ':'Άδεια κυκλοφορίας')+(v?' '+v.plate:'')};}
+  return null;
+}
+async function paperSave(t,row,patch){
+  for(const k of ['issued_on','expires_on'])
+    if(k in patch&&!dateSane(patch[k]))throw new Error('η ημερομηνία '+patch[k]+' δεν είναι λογική (1990–2100)');
+  const {data,error}=await sb.from(PAPER_TBL[t]).update(patch).eq('id',row.id).select();
+  if(error)throw error;
+  if(!data||!data.length)throw new Error('δεν έχεις δικαίωμα να το αλλάξεις');
+  Object.assign(row,data[0]); saveCache();
+}
+function paperEdit(o){
+  const t=o.type||{}, auto=certAuto(t), r=o.row;
+  const calc=iss=>iss?certExpiry(t,iss):{exp:null};
+  const differs=auto&&r.expires_on&&r.issued_on&&calc(r.issued_on).exp!==r.expires_on;
+  const F={label:'Περιγραφή / κατηγορία',number:'Αριθμός',insurer:'Ασφαλιστική',title:'Τίτλος'};
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:950;display:flex;align-items:center;justify-content:center;padding:14px';
+  ov.innerHTML=`<div class="card" style="max-width:420px;width:100%" role="dialog" aria-label="Διόρθωση">
+    <div class="pad" style="border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
+      <b style="flex:1;font-size:15px">✎ ${esc(o.name||t.name||'Χαρτί')}</b>
+      <button class="btn gh sm" id="peX" title="Κλείσιμο">✕</button></div>
+    <div class="pad" style="display:grid;gap:9px">
+      ${(o.fields||[]).map(f=>`<label style="display:flex;flex-direction:column;gap:2px"><span class="dim" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">${F[f]}</span>
+        <input data-pf="${f}" value="${esc(r[f]||'')}"></label>`).join('')}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:2px"><span class="dim" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. έκδοσης</span>
+          <input type="date" id="peI" value="${esc(r.issued_on||'')}"></label>
+        <label id="peEW" style="flex:1;min-width:140px;display:flex;flex-direction:column;gap:2px"><span class="dim" id="peEL" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης</span>
+          <input type="date" id="peE" value="${esc(r.expires_on||'')}"></label></div>
+      <label id="peOvL" style="display:${auto?'flex':'none'};align-items:center;gap:6px;font-size:12.5px;cursor:pointer">
+        <input type="checkbox" id="peOv" style="width:auto"${differs?' checked':''}> Το χαρτί γράφει άλλη λήξη</label>
+      <div class="dim" id="peH" style="font-size:12px"></div>
+      ${o.t==='pc'&&!isAdminUI()&&r.confirmed_on?'<div class="dim" style="font-size:11.5px;color:var(--warn)">Η αλλαγή θα ξαναπεράσει από επιβεβαίωση του Α.Σ.</div>':''}
+      <div style="display:flex;gap:7px;justify-content:flex-end"><button class="btn gh sm" id="peC">Άκυρο</button>
+        <button class="btn p sm" id="peS">Αποθήκευση</button></div>
+    </div></div>`;
+  document.body.appendChild(ov); textDates(ov);
+  const q=id=>ov.querySelector('#'+id), close=()=>ov.remove();
+  const upd=()=>{
+    const man=!auto||q('peOv').checked, iss=q('peI').value;
+    q('peEW').style.display=man?'flex':'none';
+    q('peEL').textContent=auto?'Ημ. λήξης · όπως γράφει το χαρτί':'Ημ. λήξης';
+    if(auto&&!man){ const c=calc(iss);
+      q('peH').innerHTML=`Η λήξη υπολογίζεται αυτόματα: <b>${esc(certRuleTxt(t))}</b>`+(c.exp?` → <b>${esc(fdate(c.exp))}</b>${c.approx?' (περίπου — δεν έχει οριστεί ακόμη η προθεσμία)':''}`:' — γράψε την ημ. έκδοσης.');
+    } else q('peH').textContent='';
+  };
+  q('peI').addEventListener('change',upd); q('peI').addEventListener('blur',upd); q('peOv').onchange=upd; upd();
+  q('peX').onclick=q('peC').onclick=close; ov.onclick=e=>{if(e.target===ov)close()};
+  q('peS').onclick=async()=>{
+    const iss=q('peI').value||null, man=!auto||q('peOv').checked;
+    if(ov.querySelector('[aria-invalid=true]'))return toast('Διόρθωσε πρώτα την κόκκινη ημερομηνία.');
+    const exp=man?(q('peE').value||null):calc(iss).exp;
+    if(!iss&&!exp)return toast('Βάλε τουλάχιστον μία ημερομηνία.');
+    if(iss&&exp&&exp<iss)return toast('Η λήξη είναι πριν από την έκδοση.');
+    const patch={issued_on:iss,expires_on:exp};
+    ov.querySelectorAll('[data-pf]').forEach(i=>{patch[i.dataset.pf]=i.value.trim()||null});
+    q('peS').disabled=true;
+    try{ await paperSave(o.t,r,patch); toast('Αποθηκεύτηκε'); close(); o.after&&o.after(); }
+    catch(e){ q('peS').disabled=false; toast('Δεν αποθηκεύτηκε: '+(e.message||e)); }
+  };
+}
+function expTag(e){ if(!e)return '';
+  const d=Math.round((new Date(e+'T12:00:00')-new Date())/864e5);
+  if(d>(TH.certWarnDays||90))return '';
+  const [bg,fg,t]=d<0?['badbg','bad','έληξε']:['warnbg','warn',d===0?'λήγει σήμερα':'σε '+d+' '+plDay(d)];
+  return ` <span style="font-size:10.5px;padding:1px 6px;border-radius:9px;background:var(--${bg});color:var(--${fg})">${t}</span>`; }
+const paperDates=r=>[r&&r.issued_on?'έκδοση '+fdate(r.issued_on):'',r&&r.expires_on?'λήξη '+fdate(r.expires_on):''].filter(Boolean).join(' · ');
 function certState(id){
   const c=(D.pc||[]).filter(x=>x.person_id===id&&x.type_code==='Ν91'&&x.confirmed_on)
     .sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
@@ -3303,12 +3468,12 @@ function certsHTML(p){
                 class="pcattach" data-id="${c.id}" style="display:none"
                 accept=".pdf,.png,.jpg,.jpeg,.heic"></label>`}
           ${(!c.confirmed_on&&ME.role==='admin')?`<button class="btn p sm pcok" data-id="${c.id}" title="Είδα το χαρτί — ισχύει">Επιβεβαίωση</button>`:''}
+          ${(isAdminUI()||c.person_id===ME.person_id)?`<button class="btn gh sm pcedit" data-id="${c.id}" title="Διόρθωση ημερομηνιών / στοιχείων">✎</button>`:''}
           <button class="btn gh sm pcdel" data-id="${c.id}" title="Διαγραφή">✕</button></div>
         <div class="dim" style="font-size:11.5px">${c.notes&&/ΕΠΙΒΕΒΑΙΩΣΗ/.test(c.notes)?esc(c.notes.split('—')[0].trim())+' · ':''}${c.issued_on?'έκδοση '+fdate(c.issued_on):''}${c.number?' · αρ. '+esc(c.number):''}</div>
         ${(()=>{const t=ctype(c.type_code)||{};
-          return t.validity_months
-            ?`<div class="dim" style="font-size:11px">Ένα νέο ισχύει <b>${validTxt(t.validity_months)}</b>${
-                t.date_basis==='έκδοση'?' από την ημερομηνία έκδοσης':''} — βγάλ' το πριν λήξει το τωρινό.</div>`
+          return certAuto(t)
+            ?`<div class="dim" style="font-size:11px">Ένα νέο ισχύει <b>${esc(certRuleTxt(t))}</b> — βγάλ' το πριν λήξει το τωρινό.</div>`
             :''})()}
         ${(()=>{const ds=(D.cd||[]).filter(x=>x.cert_id===c.id).sort((a,b)=>(a.seq||0)-(b.seq||0))
               .map(x=>({cd:x,f:(D.doc||[]).find(y=>y.id===x.document_id)})).filter(x=>x.f);
@@ -3328,7 +3493,7 @@ function certsHTML(p){
           <label style="flex:1;display:flex;flex-direction:column;gap:2px">
             <span class="dim" id="pcIssL" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. έκδοσης</span>
             <input id="pcIss" type="date"></label>
-          <label style="flex:1;display:flex;flex-direction:column;gap:2px">
+          <label id="pcExpW" style="flex:1;display:flex;flex-direction:column;gap:2px">
             <span class="dim" id="pcExpL" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. λήξης</span>
             <input id="pcExp" type="date"></label></div>
         <label id="pcOvL" style="display:none;align-items:center;gap:6px;font-size:12px;cursor:pointer">
@@ -3372,6 +3537,10 @@ function wireCerts(p,after){
     }catch(e){ toast('Σφάλμα: '+(e.message||e)) }
     finally{ inp.value='' }
   });
+  document.querySelectorAll('.pcedit').forEach(b=>b.onclick=()=>{
+    const c=(D.pc||[]).find(x=>x.id===b.dataset.id); if(!c)return;
+    const t=ctype(c.type_code);
+    paperEdit({t:'pc',row:c,type:t,name:t.name,fields:['label','number'],after});});
   document.querySelectorAll('.pcdel').forEach(b=>b.onclick=async()=>{
     if(!confirm('Διαγραφή πιστοποιητικού — μαζί και το αρχείο του;'))return;
     try{ await certPurge(b.dataset.id); after&&after() }
@@ -3382,34 +3551,35 @@ function wireCerts(p,after){
   const upd=()=>{
     const t=ctype(ty.value), iss=$('pcIss'), ex=$('pcExp'), ov=$('pcOv');
     $('pcLabel').placeholder=t.label_hint||'Περιγραφή (προαιρετικά)';
-    const byExp=t.date_basis==='λήξη', auto=!byExp&&!!t.validity_months;
+    const byExp=t.date_basis==='λήξη', auto=certAuto(t);
     $('pcIssL').textContent = byExp?'Ημ. έκδοσης (προαιρετικά)':'Ημ. έκδοσης';
     $('pcOvL').style.display = auto?'flex':'none';
+    ex.disabled=false;
     if(auto&&!ov.checked){
-      ex.value = iss.value?addMonths(iss.value,t.validity_months):'';
-      ex.disabled=true;
-      $('pcExpL').textContent='Ημ. λήξης · αυτόματα';
-      $('pcHint').textContent = iss.value
-        ? 'Λήγει '+validTxt(t.validity_months)+' μετά την έκδοση.'
-        : 'Γράψε την ημερομηνία έκδοσης — η λήξη θα μπει μόνη της, '+validTxt(t.validity_months)+' μετά.';
+      const ce=certExpiry(t, iss.value); ex.value = ce.exp||'';
+      $('pcExpW').style.display='none';
+      $('pcHint').innerHTML = 'Η λήξη υπολογίζεται αυτόματα: <b>'+esc(certRuleTxt(t))+'</b> ('+esc(t.name)+').'
+        + (iss.value ? ' Λήγει <b>'+esc(fdate(ex.value))+'</b>'+(ce.approx?' (περίπου — η προθεσμία δεν έχει ανακοινωθεί ακόμη)':'')+'.' : ' Γράψε την ημερομηνία έκδοσης.');
     }else{
-      ex.disabled=false;
-      $('pcExpL').textContent='Ημ. λήξης';
+      $('pcExpW').style.display='flex';
+      if(auto&&ov.checked&&!ex.value&&iss.value) ex.value=certExpiry(t, iss.value).exp||'';
+      $('pcExpL').textContent = auto ? 'Ημ. λήξης · όπως γράφει το χαρτί' : 'Ημ. λήξης';
       $('pcHint').textContent = byExp
         ? 'Γράψε τη λήξη που τυπώνει το χαρτί.'
-        : auto ? 'Γράφεις τη λήξη που τυπώνει το χαρτί, αντί για την αυτόματη.'
+        : auto ? 'Γράφεις τη λήξη του χαρτιού αντί για την αυτόματη ('+certRuleTxt(t)+').'
                : 'Αυτός ο τύπος δεν έχει σταθερή διάρκεια — γράψε ό,τι λέει το χαρτί.';
     }
   };
-  if(ty){ ty.onchange=()=>{ $('pcOv').checked=false; upd() };
+  if(ty){ ty.onchange=()=>{ $('pcOv').checked=false; $('pcExp').value=''; upd() };
     $('pcIss').oninput=upd; $('pcIss').onchange=upd; $('pcOv').onchange=upd; upd(); }
   const ad=$('pcAdd'); if(ad)ad.onclick=async()=>{
     const t=ctype($('pcType').value);
     let exp=$('pcExp').value||null, iss=$('pcIss').value||null;
-    const autoExp=t.date_basis!=='λήξη'&&t.validity_months&&!$('pcOv').checked;
-    if(autoExp)exp=iss?addMonths(iss,t.validity_months):null;
+    const autoExp=certAuto(t)&&!$('pcOv').checked;
+    if(autoExp)exp=iss?certExpiry(t,iss).exp:null;
     if(autoExp&&!iss)return toast('Γράψε την ημερομηνία έκδοσης.');
     if(!exp&&!iss)return toast('Βάλε ημερομηνία — χωρίς αυτήν δεν ξέρουμε ως πότε ισχύει.');
+    if(!dateSane(iss)||!dateSane(exp))return toast('Η ημερομηνία δεν φαίνεται σωστή — έλεγξε τη χρονιά.');
     ad.disabled=true; ad.textContent='Καταχώρηση…';
     try{
       let docId=null;
@@ -3659,8 +3829,13 @@ function filesHTML(list,ctx){
         <span style="color:var(--ink3)" title="${String(d.path).startsWith('drive:')?'στο Google Drive':'στο e76'}">${ic(fileIcon(d.mime),16)}</span>
         <span style="flex:1;min-width:0">
           <a href="#" class="docopen" data-path="${esc(d.path)}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">${esc(d.title||'αρχείο')}</a>
-          <span class="dim" style="font-size:11.5px">${esc(d.kind)}${d.size_bytes?' · '+fsize(d.size_bytes):''}${d.uploaded_at?' · '+fdate(d.uploaded_at):''}${
+          ${(()=>{
+
+            const lk=docLink(d), pd=paperDates(lk?lk.row:d);
+            return pd?`<span style="display:block;font-size:12px;color:var(--ink2)">${esc(pd)}${expTag((lk?lk.row:d).expires_on)}</span>`:''})()}
+          <span class="dim" style="font-size:11.5px">${esc(d.kind)}${d.size_bytes?' · '+fsize(d.size_bytes):''}${d.uploaded_at?' · ανέβηκε '+fdate(d.uploaded_at):''}${
             d.original_path?' · <span title="Διορθώθηκε — το πρωτότυπο φυλάσσεται">διορθωμένο</span>':''}</span></span>
+        <button class="btn gh sm docmeta" data-id="${d.id}" title="Διόρθωση ημερομηνιών / στοιχείων">✎</button>
         ${isImg(d.path)?`<button class="btn gh sm docedit" data-id="${d.id}" title="Σάρωση — σύρε τις τέσσερις γωνίες">✂</button>`:''}
         ${d.original_path?`<button class="btn gh sm docrev" data-id="${d.id}" title="Επαναφορά πρωτοτύπου">↺</button>`:''}
         <button class="btn gh sm docdel" data-id="${d.id}" title="Διαγραφή">✕</button>
@@ -3678,6 +3853,12 @@ function wireFiles(ctx,after){
     if(c)docPreview(certSides(c),+a.dataset.ix||0);});
   document.querySelectorAll('.docedit').forEach(b=>b.onclick=()=>{
     const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(d)docEdit(d, after);
+  });
+  document.querySelectorAll('.docmeta').forEach(b=>b.onclick=()=>{
+    const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(!d)return;
+    const lk=docLink(d);
+    if(lk)paperEdit(Object.assign(lk,{fields:lk.t==='pc'?['label','number']:lk.t==='vi'?['insurer']:[],after}));
+    else paperEdit({t:'doc',row:d,type:null,name:d.title||d.kind||'Έγγραφο',fields:['title'],after});
   });
   document.querySelectorAll('.docrev').forEach(b=>b.onclick=()=>{
     const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(d)docRevert(d, after);
@@ -10421,6 +10602,7 @@ function mePieces(){
               :'<span class="pill" title="Δεν ανέβηκε ποτέ αρχείο — μόνο η ημερομηνία, από την εισαγωγή του e-Scouts">χωρίς αρχείο</span>'}
             ${
 ''}
+            <button class="btn gh sm pcedit" data-id="${x.id}" title="Διόρθωση ημερομηνιών / στοιχείων">✎</button>
             <button class="btn gh sm mycertdel" data-id="${x.id}"
               data-ok="${x.confirmed_on?'1':''}" title="Διαγραφή">✕</button>
           </div>`}).join('')})()}
@@ -10521,8 +10703,12 @@ function mePieces(){
             .map(v=>`<option value="${v.id}"${VEHPRE&&VEHPRE.v===v.id?' selected':''}>${esc(v.plate)}</option>`).join('')}
           <option value="NEW">➕ Νέο όχημα…</option></select></label>
         <label id="vcNewWrap" style="max-width:170px;display:none">Πινακίδα<input id="vcNew" placeholder="ΚΑΑ 123" style="text-transform:uppercase"></label>
-        <label style="max-width:160px">Λήγει<input type="date" id="vcE"></label>
+        <label style="max-width:160px">Ημ. έκδοσης<input type="date" id="vcI"></label>
+        <label id="vcEW" style="max-width:190px;display:none"><span id="vcEL">Λήγει</span><input type="date" id="vcE"></label>
       </div>
+      <label id="vcOvL" style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;margin:6px 0 2px">
+        <input type="checkbox" id="vcOv" style="width:auto"> Το χαρτί γράφει άλλη λήξη</label>
+      <div class="dim" id="vcH" style="font-size:12px;margin-bottom:8px"></div>
       <button class="btn p" id="vcAdd">Ανέβασμα για έλεγχο</button>
       <span class="dim" id="vcMsg" style="margin-left:10px;font-size:12.5px"></span>
     </div>`;
@@ -10533,6 +10719,10 @@ function mePieces(){
   document.querySelectorAll('.certview').forEach(a=>a.onclick=e=>{e.preventDefault();
     const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
     if(c)docPreview(certSides(c),+a.dataset.ix||0)});
+  document.querySelectorAll('.pcedit').forEach(b=>b.onclick=()=>{
+    const c=(D.pc||[]).find(x=>x.id===b.dataset.id); if(!c)return;
+    const t=ctype(c.type_code);
+    paperEdit({t:'pc',row:c,type:t,name:t.name,fields:['label','number'],after:()=>V.me()});});
   document.querySelectorAll('.mycertdel').forEach(b=>b.onclick=async()=>{
     const msg=b.dataset.ok
       ? 'Αυτό το πιστοποιητικό το έχει ΗΔΗ επιβεβαιώσει ο Α.Σ.\n\nΑν το σβήσεις, φεύγει και ο έλεγχός του και θα χρειαστεί να το ξανανεβάσεις από την αρχή.\n\nΝα το σβήσω;'
@@ -10543,6 +10733,7 @@ function mePieces(){
   const ca=$('cAdd'); if(ca)ca.onclick=async()=>{
     const type=$('cT').value, lab=$('cL').value.trim(), iss=$('cI').value, exp=$('cE').value, f=$('cF').files[0];
     if(!exp&&!iss)return cm('Βάλε τουλάχιστον μία ημερομηνία.');
+    if(!dateSane(iss)||!dateSane(exp))return cm('Η ημερομηνία δεν φαίνεται σωστή — έλεγξε τη χρονιά.');
     if(!f&&!confirm('Χωρίς αρχείο δεν μπορεί να επιβεβαιωθεί — θα μείνει σε εκκρεμότητα.\n\nΝα συνεχίσω;'))return;
     ca.disabled=true; cm('Ανεβάζω…');
     let docId=null, newDoc=null;
@@ -10598,13 +10789,26 @@ function mePieces(){
   const vcv=$('vcV'); const vcw=$('vcNewWrap');
   const vcToggle=()=>{if(vcw)vcw.style.display = (vcv&&vcv.value==='NEW')?'':'none'};
   if(vcv){vcv.onchange=vcToggle; vcToggle()}
+  const vcUpd=()=>{ const t=ctype($('vcT').value)||{}, iss=$('vcI').value, ov=$('vcOv').checked, auto=certAuto(t);
+    $('vcOvL').style.display=auto?'flex':'none';
+    if(auto&&!ov){ const ce=certExpiry(t,iss); $('vcE').value=ce.exp||''; $('vcEW').style.display='none';
+      $('vcH').innerHTML='Η λήξη υπολογίζεται αυτόματα: <b>'+esc(certRuleTxt(t))+'</b>.'
+        +(iss?' Λήγει <b>'+esc(fdate(ce.exp))+'</b>'+(ce.approx?' (περίπου — η προθεσμία δεν έχει ανακοινωθεί)':'')+'.':' Γράψε την ημερομηνία έκδοσης.'); }
+    else { $('vcEW').style.display=''; $('vcEL').textContent=auto?'Λήγει · όπως γράφει το χαρτί':'Λήγει';
+      if(auto&&!$('vcE').value&&iss) $('vcE').value=certExpiry(t,iss).exp||'';
+      $('vcH').textContent=auto?'Γράφεις τη λήξη του χαρτιού αντί για την αυτόματη.':'Γράψε τη λήξη που τυπώνει το χαρτί.'; } };
+  if($('vcT')){ $('vcT').onchange=()=>{ $('vcOv').checked=false; $('vcE').value=''; vcUpd(); };
+    $('vcI').oninput=vcUpd; $('vcI').onchange=vcUpd; $('vcOv').onchange=vcUpd; vcUpd(); }
   document.querySelectorAll('[data-vup]').forEach(b=>b.onclick=()=>vehUpload(b.dataset.vup,b.dataset.vk));
   if(VEHPRE){ const c=$('vcCard'); if(c){ setTimeout(()=>{ c.scrollIntoView({block:'center',behavior:'smooth'});
       c.style.outline='2px solid var(--acc)'; setTimeout(()=>c.style.outline='',2200); },60); } VEHPRE=null; }
   const vca=$('vcAdd'); if(vca)vca.onclick=async()=>{
-    const f=$('vcF').files[0], kind=$('vcT').value, exp=$('vcE').value;
+    const f=$('vcF').files[0], kind=$('vcT').value;
+    const vt=ctype(kind)||{}, exp=(certAuto(vt)&&!$('vcOv').checked) ? (certExpiry(vt,$('vcI').value).exp||'') : $('vcE').value;
+    if(certAuto(vt)&&!$('vcOv').checked&&!$('vcI').value)return vcm('Γράψε την ημερομηνία έκδοσης — η λήξη βγαίνει μόνη της.');
     if(!f)return vcm('Διάλεξε αρχείο — χωρίς χαρτί δεν υπάρχει τι να ελεγχθεί.');
     if(!VP_KIND[kind])return vcm('Διάλεξε είδος χαρτιού.');
+    if(!dateSane($('vcI').value))return vcm('Η ημερομηνία έκδοσης δεν φαίνεται σωστή — έλεγξε τη χρονιά.');
     if(exp&&(exp<'2000-01-01'||exp>'2100-01-01'))return vcm('Η ημερομηνία λήξης δεν φαίνεται σωστή ('+exp+') — έλεγξε τη χρονιά.');
     let vid=vcv?vcv.value:'';
     vca.disabled=true; vcm('Ανεβάζω…');
@@ -12010,13 +12214,14 @@ V.vpapers=()=>{
           <span class="sp"></span>
           ${chip('Ασφάλεια',ins)}${chip('ΜΟΤ',mot)}${chip('Άδεια',rt,true)}</div>
         ${(ins||mot||rt)?`<div class="dim" style="font-size:11.5px;margin-top:6px;display:flex;gap:12px;flex-wrap:wrap">
-          ${ins?`<span>Ασφάλεια: ${fileLine('ΑΣΦΑΛΕΙΑ',ins.id,(D.doc||[]).find(d=>d.id===ins.document_id))}</span>`:''}
-          ${mot?`<span>ΜΟΤ: ${fileLine('ΧΑΡΤΙ',mot.id,(D.doc||[]).find(d=>d.id===mot.document_id))}</span>`:''}
-          ${rt?`<span>Άδεια: ${fileLine('ΧΑΡΤΙ',rt.id,(D.doc||[]).find(d=>d.id===rt.document_id))}</span>`:''}
+          ${ins?`<span>Ασφάλεια: ${fileLine('ΑΣΦΑΛΕΙΑ',ins.id,(D.doc||[]).find(d=>d.id===ins.document_id))} · <span style="color:var(--ink2)">${esc(paperDates(ins))}</span> <a href="#" class="vxedit" data-t="vi" data-id="${ins.id}" title="Διόρθωση ημερομηνιών">✎</a></span>`:''}
+          ${mot?`<span>ΜΟΤ: ${fileLine('ΧΑΡΤΙ',mot.id,(D.doc||[]).find(d=>d.id===mot.document_id))} · <span style="color:var(--ink2)">${esc(paperDates(mot))}</span> <a href="#" class="vxedit" data-t="vp" data-id="${mot.id}" title="Διόρθωση ημερομηνιών">✎</a></span>`:''}
+          ${rt?`<span>Άδεια: ${fileLine('ΧΑΡΤΙ',rt.id,(D.doc||[]).find(d=>d.id===rt.document_id))} · <span style="color:var(--ink2)">${esc(paperDates(rt))}</span> <a href="#" class="vxedit" data-t="vp" data-id="${rt.id}" title="Διόρθωση ημερομηνιών">✎</a></span>`:''}
         </div>`:''}</div>`}).join('')
       :'<div class="dim" style="font-size:13px">Κανένα όχημα καταχωρημένο.</div>'}`;
 
   const re=()=>V.vpapers();
+  wireVxEdit(re);
   document.querySelectorAll('.rtdd').forEach(el=>el.onchange=async()=>{
     const y=+el.dataset.year, v=el.value;
     if(!v)return;
@@ -12363,7 +12568,7 @@ function certqBody(){
                       +(rows.length>1?`<a href="#" class="cdname" data-id="${r.cd.id}" title="Δώσε όνομα σε αυτή την όψη" style="margin-left:3px">✎</a>`
                         +(ix?`<a href="#" class="cdfirst" data-id="${r.cd.id}" title="Κάνε την πρώτη" style="margin-left:2px">↑</a>`:'')
                        :'')+`</span>`}).join(' · ')})()}
-                ${!exp&&t.validity_months?` · ισχύει ${t.validity_months} μήνες`:''}
+                ${!exp&&certAuto(t)?` · λήγει ${esc(certRuleTxt(t))}`:''}
                 ${fromOcr?' · <b style="color:var(--warn)">η ημερομηνία είναι πρόταση OCR</b>':''}</div></span>
             <span style="display:flex;flex-direction:column;gap:2px">
               <label class="dim" style="font-size:10.5px;letter-spacing:.03em;text-transform:uppercase">
@@ -12384,7 +12589,7 @@ function certqBody(){
     const v=el&&el.value;
     if(!v) return {};                       
     return exp ? {expires_on:v}
-               : {issued_on:v, expires_on:t.validity_months?addMonths(v,t.validity_months):c.expires_on||null};
+               : {issued_on:v, expires_on:certAuto(t)?(certExpiry(t,v).exp||c.expires_on||null):c.expires_on||null};
   };
   document.querySelectorAll('.qdate').forEach(el=>el.onchange=async()=>{
     const id=el.dataset.id, p=rowPatch(id);
@@ -13567,7 +13772,7 @@ function certOn(pid, code, onDate){
   if(!c) return all.length ? {k:'pending', c:all[0]} : {k:'none'};
   if(!c.expires_on){
     const t=ctype(code)||{};
-    const lixei = t.date_basis==='λήξη' || !!t.validity_months;
+    const lixei = t.date_basis==='λήξη' || certAuto(t);
     return lixei ? {k:'nodate', c} : {k:'ok', c};
   }
   return {k:(c.expires_on>=onDate?'ok':'expired'), c};
