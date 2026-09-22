@@ -1186,7 +1186,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-22 16:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-22 18:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1613,7 +1613,7 @@ async function loadAll(){
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
     sb.from('guardians').select('*').limit(2000),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
-    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes').order('event_date').limit(3000),
+    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,invitees').order('event_date').limit(3000),
     sb.from('participations').select('id,person_id,event_id,status,role,is_staff').limit(20000),
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
@@ -6064,7 +6064,9 @@ V.kidprog=()=>{
   const secs=[...new Set(ks.map(({kid:k})=>secOf(k)).filter(Boolean))];
   const ss=D.ss.filter(s=>secs.includes(s.section)&&(s.session_date||'')>=today)
     .sort((a,b)=>(a.session_date||'').localeCompare(b.session_date||'')).slice(0,12);
+  const invOk=(e,k)=>!Array.isArray(e.invitees)||e.invitees.includes(k.id);
   const ev=(D.ev||[]).filter(e=>(e.event_date||'')>=today)
+    .filter(e=>!Array.isArray(e.invitees)||ks.some(({kid:k})=>invOk(e,k)))
     .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,12);
 
   $('view').innerHTML=`
@@ -6081,7 +6083,7 @@ V.kidprog=()=>{
 
     <div class="card pad"><b>Δράσεις</b>
       ${ev.length?`<div style="margin-top:9px">${ev.map(e=>{
-        const kids=ks.filter(({kid:k})=>!e.section||secOf(k)===e.section);
+        const kids=ks.filter(({kid:k})=>(!e.section||secOf(k)===e.section)&&invOk(e,k));
         const open=signupOpen(e);
         return `<div style="border-top:1px solid var(--line);padding:10px 0">
           <div class="kv"><b style="flex:1">${esc(e.title||'—')}</b>
@@ -17862,6 +17864,44 @@ function molaBody(){
   if($('mImp'))$('mImp').onclick=molaImport;
 }
 
+function molaInvPool(ev){
+  return D.bh.filter(b=>b.status==='Ενεργός'&&b.kind!=='Γονέας'&&(!ev.section||secOf(b)===ev.section))
+    .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
+}
+function molaInvHTML(ev,can){
+  const inv=Array.isArray(ev.invitees)?ev.invitees:null;
+  const who=(inv||[]).map(id=>D.bh.find(b=>b.id===id)).filter(Boolean).sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
+  return `<div class="sec"><h3>Ποιοι καλούνται</h3><span class="n">${inv?inv.length:'όλοι'}</span></div>
+    <div class="dim" style="font-size:12px;margin-bottom:6px">${inv
+      ? (inv.length?'Η δήλωση φαίνεται <b>μόνο</b> στους γονείς αυτών.':'<b style="color:var(--warn)">Κανείς ακόμη</b> — η δράση δεν φαίνεται σε κανέναν γονέα.')
+      : `Όλο το τμήμα${ev.section?' ('+esc(ev.section)+')':''} βλέπει τη δήλωση.`}</div>
+    ${inv?`<div id="meInv">${who.map(b=>`<span class="pill" style="margin:0 4px 4px 0">${esc(nm(b))}${can?` <a href="#" data-invdel="${b.id}" style="color:var(--bad)" title="Αφαίρεση">✕</a>`:''}</span>`).join('')}</div>`:''}
+    ${can?`<div class="grow" style="margin-top:6px">
+      ${inv?`<label style="flex:2">Πρόσθεσε<input id="meInvQ" list="meInvL" placeholder="Όνομα μέλους…">
+        <datalist id="meInvL">${molaInvPool(ev).filter(b=>!inv.includes(b.id)).map(b=>`<option value="${esc(nm(b))}">`).join('')}</datalist></label>`:''}
+      <label>&nbsp;${inv
+        ?`<button class="btn gh sm" id="meInvAll">Άνοιξέ τη σε όλο το τμήμα</button>`
+        :`<button class="btn sm" id="meInvOnly">Μόνο συγκεκριμένοι…</button>`}</label></div>`:''}`;
+}
+function molaInvWire(ev,redraw){
+  const save=async v=>{
+    const {error}=await sb.from('events').update({invitees:v}).eq('id',ev.id);
+    if(error)return toast('Δεν σώθηκε: '+error.message);
+    ev.invitees=v; saveCache(); redraw();
+  };
+  const cur=()=>Array.isArray(ev.invitees)?ev.invitees.slice():[];
+  document.querySelectorAll('[data-invdel]').forEach(a=>a.onclick=e=>{e.preventDefault();
+    save(cur().filter(x=>x!==a.dataset.invdel))});
+  const q=$('meInvQ'); if(q){ const add=()=>{
+      const v=q.value.trim(); if(!v)return;
+      const b=molaInvPool(ev).find(x=>nm(x)===v);
+      if(!b)return toast('Δεν βρέθηκε μέλος «'+v+'» — διάλεξε από τη λίστα.');
+      const c=cur(); if(!c.includes(b.id))c.push(b.id); save(c); };
+    q.onchange=add; q.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();add()}}; }
+  const all=$('meInvAll'); if(all)all.onclick=()=>{
+    if(!confirm('Να φαίνεται η δήλωση σε ΟΛΟ το τμήμα; Η λίστα ονομάτων σβήνεται.'))return; save(null)};
+  const only=$('meInvOnly'); if(only)only.onclick=()=>save([]);
+}
 function molaEdit(id, slot, seed){
   const yr=YEAR, MAINS=molaMains();
   const ev=id?(D.ev||[]).find(x=>x.id===id):null;
@@ -17914,6 +17954,7 @@ function molaEdit(id, slot, seed){
           <input id="meB" type="checkbox" ${ev&&ev.bold?'checked':''} ${can?'':'disabled'} style="width:auto">
           <span>Έντονο (σημαντικό)</span></label>
 
+        ${ev?molaInvHTML(ev,can):''}
         <div class="sec"><h3>Κατηγορίες</h3><span class="n">${tags.length}</span></div>
         <div class="dim" style="font-size:12px;margin-bottom:6px">
           Η <b>πρώτη</b> δίνει το χρώμα. Δύο ή περισσότερα τμήματα = κοινή δράση.</div>
@@ -17941,6 +17982,7 @@ function molaEdit(id, slot, seed){
       mm.onchange=subs; subs();
       $('meAdd').onclick=()=>{const t=mm.value+':'+$('meS').value;
         if(!tags.includes(t))tags.push(t); draw()}; }
+    if(ev&&can)molaInvWire(ev,draw);
     const mk=$('meK'); if(mk)mk.onchange=()=>{const o=mk.selectedOptions[0];
       if(o&&o.dataset.n!=null&&$('meN'))$('meN').value=o.dataset.n};
     const mw=$('meW'); if(mw)mw.onchange=()=>{
