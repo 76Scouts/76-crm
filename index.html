@@ -1186,7 +1186,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-22 10:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-22 16:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -8910,7 +8910,10 @@ async function formUrl(base, p, kind, eventId){
 const FST={'δεν έχει υποβληθεί':['bad','Δεν το έχεις στείλει ακόμη'],
            'έληξε — θέλει ανανέωση':['bad','Πέρασε χρόνος — θέλει ανανέωση'],
            'λήγει σύντομα':['warn','Λήγει σύντομα'],
-           'εντάξει':['ok','Είναι ενημερωμένο']};
+           'εντάξει':['ok','Είναι ενημερωμένο'],
+           'χωρίς παραγγελία':['','Δεν έχεις παραγγείλει'],
+           'παραγγέλθηκε':['ok','Παρήγγειλες']};
+const FORDER=k=>k==='χωρίς παραγγελία'||k==='παραγγέλθηκε';
 let FORMS=null, FWHO=null;
 V.myforms=()=>{
   const who = FWHO || mePid();
@@ -8943,16 +8946,18 @@ V.myforms=()=>{
     const box=$('fwList'); if(!box)return;
     if(error)return box.innerHTML='<div class="pad" style="color:var(--bad)">'+esc(error.message)+'</div>';
     if(!data||!data.length)return box.innerHTML='<div class="pad dim">Καμία ανοιχτή φόρμα.</div>';
-    box.innerHTML=data.map(f=>{const st=FST[f.katastasi]||['','']; 
+    box.innerHTML=data.map(f=>{const st=FST[f.katastasi]||['',''], ord=FORDER(f.katastasi);
+      const pill=st[0]?`background:var(--${st[0]}bg);color:var(--${st[0]});border-color:transparent`:'';
       return `<div class="kv" style="border-top:1px solid var(--line);padding:11px 13px;align-items:flex-start">
         <span style="flex:1;min-width:0">
           <b style="font-size:14px">${esc(f.title)}</b>
           <div style="margin-top:3px">
-            <span class="pill" style="background:var(--${st[0]}bg);color:var(--${st[0]});border-color:transparent">${esc(st[1])}</span>
-            ${f.last_on?`<span class="dim" style="font-size:11.5px;margin-left:6px">στάλθηκε ${fdate(f.last_on)}${
+            <span class="pill"${pill?` style="${pill}"`:''}>${esc(st[1])}${ord&&f.last_on?' στις '+fdate(f.last_on):''}</span>
+            ${f.last_on&&!ord?`<span class="dim" style="font-size:11.5px;margin-left:6px">στάλθηκε ${fdate(f.last_on)}${
               f.valid_until?' · ισχύει ως '+fdate(f.valid_until):''}</span>`:''}
-          </div></span>
-        <button class="btn p sm" data-fopen="${esc(f.url)}" data-fkind="${esc(f.form_kind||'δράση')}">Άνοιγμα</button>
+          </div>
+          ${ord?'<div class="dim" style="font-size:11.5px;margin-top:4px">Η παραγγελία καταγράφεται πριν την πληρωμή.</div>':''}</span>
+        <button class="btn p sm" data-fopen="${esc(f.url)}" data-fkind="${esc(f.form_kind||'δράση')}">${ord?(f.last_on?'Νέα παραγγελία':'Παραγγελία'):'Άνοιγμα'}</button>
       </div>`}).join('');
     document.querySelectorAll('[data-fopen]').forEach(b=>b.onclick=async()=>{
       const w=window.open('','_blank');
@@ -13071,6 +13076,9 @@ V.formcat=async()=>{
       <div id="ffRoles" style="padding-top:5px">${fcRoleBox(r.applies_to,r.roles)}</div></label></div>
     <div id="ffCount" class="pill" style="margin:2px 0 4px">—</div>
     <div class="grow"><label style="flex:3">Σημείωση<input data-ff="note" value="${esc(r.note||'')}"></label>
+      <label style="max-width:230px" title="Παραγγελία = καταγράφεται μόνο ότι υποβλήθηκε. Δεν αγγίζει ιατρικά, επαφές, σημαίες ή ταυτότητα, και η προσυμπλήρωση στέλνει μόνο όνομα, email, κινητό.">Τι κάνει η υποβολή<select data-ff="record_only">
+        <option value=""${r.record_only?'':' selected'}>Ενημερώνει στοιχεία</option>
+        <option value="1"${r.record_only?' selected':''}>Παραγγελία — μόνο καταγραφή</option></select></label>
       <label style="max-width:150px">Κατάσταση<select data-ff="active">
         <option value="1"${r.active!==false?' selected':''}>Ενεργή</option>
         <option value=""${r.active===false?' selected':''}>Κλειστή</option></select></label></div>
@@ -13171,7 +13179,7 @@ V.formcat=async()=>{
     const td=b.closest('td'), v={};
     td.querySelectorAll('[data-ff]').forEach(i=>{
       const f=i.dataset.ff; let x=i.value.trim();
-      v[f] = f==='active' ? !!x
+      v[f] = (f==='active'||f==='record_only') ? !!x
            : (f==='seq'||f==='valid_months'||f==='quform_id') ? (x===''?null:parseInt(x))
            : (x||null);
     });
