@@ -1186,7 +1186,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-22 18:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-22 23:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1785,6 +1785,7 @@ const NAV_SELF=['me','myatt','myforms'];
 const NAV_MEMBER=[...NAV_SELF,'progKA'];
 const NAV_ANIX=['synod','groups','attend','progress','members','cal','events'];
 const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile'];
+const NAV_PATROL=[...NAV_SELF,'members','attend','trends','progAL','progOP','progKA'];
 const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
   'attend','events','cal','groups','synod','staff','enroll',
   'progAL','progOP','progKA','missing','medical','enroll',
@@ -1804,6 +1805,7 @@ function progDate(x){
 }
 function navFor(role, sec){
   const base = role==='parent' ? NAV_PARENT
+       : role==='patrol' ? NAV_PATROL
        : role==='member' ? NAV_MEMBER
        : role==='anix'   ? NAV_ANIX
        : role==='dev'    ? NAV_DEV
@@ -1817,7 +1819,7 @@ function navFor(role, sec){
     if(sec && sec!=='Κοινότητα') out = out.filter(x=>x!=='synod');
     return out;
   }
-  if(role!=='leader' && role!=='head' && role!=='section_head') return base;
+  if(role!=='leader' && role!=='head' && role!=='section_head' && role!=='patrol') return base;
   const mine = sec && PROG_OF[sec];
   if(!mine) return base;
   const others = Object.values(PROG_OF).filter(x=>x!==mine);
@@ -1849,6 +1851,12 @@ function buildPersonas(subject){
     return {role:pr.access_role||null, platform_admin:!!pr.platform_admin, person_id:pid};
   })();
   if(acc.role==='admin')out.push({id:'admin',t:'Διαχειριστής · πλήρης πρόσβαση',k:'leader',role:'admin',sc:'ΟΛΑ'});
+  if(acc.role==='patrol_leader'){
+    const sg=(D.sg||[]).find(g=>g.active!==false&&g.scout_year===YEAR&&
+      [g.leader_id,g.second_id,g.third_id].includes(pid));
+    out.push({id:'patrol',t:'Ενωμοτάρχης'+(sg&&sg.name?' · '+sg.name:''),k:'leader',
+              role:'patrol',sc:(sg&&sg.name)||'ΕΝΩΜΟΤΙΑ'});
+  }
   if(acc.platform_admin||acc.role==='admin')
     out.push({id:'dev',t:'Τεχνικός · κατάσταση εφαρμογής',k:'dev',role:'dev',sc:'ΟΛΑ'});
   ((D.ph&&D.ph.length?D.ph:(ME.hats||[]))).filter(h=>h.person_id===pid&&!h.valid_to).forEach(h=>
@@ -6983,17 +6991,16 @@ function careDrawer(memberId){
 }
 
 const ACCROLES=[
-  ['superadmin','Superadmin','Αγγίζει κλειδιά: Α.Μ., Α.Δ.Τ., ημ. γέννησης, ρόλους, διαγραφές'],
-  ['admin','Διαχειριστής','Τρέχει το Σύστημα: εγγραφές, πρόοδος, δράσεις, έντυπα'],
-  ['junior_admin','Βοηθός διαχειριστή','Καταχωρεί: παρουσίες, απαιτήσεις. Δεν σβήνει, δεν εγκρίνει'],
+  ['admin','Superadmin','Τα πάντα: κλειδιά, ρόλοι, διαγραφές, ρυθμίσεις'],
   ['section_head','Αρχηγός τμήματος','Το τμήμα του, σε βάθος'],
   ['section_assistant','Βαθμοφόρος τμήματος','Το τμήμα του, χωρίς ευαίσθητα'],
+  ['patrol_leader','Ενωμοτάρχης','Η ενωμοτία του: παρουσίες, αιτήματα απαιτήσεων, τάσεις'],
   ['commissioner','Έφορος','Εποπτεία — πλάτος χωρίς βάθος'],
   ['member','Μέλος','Μόνο ο εαυτός του'],
   ['guardian','Γονέας','Μόνο τα παιδιά του'],
   ['viewer','Χωρίς πρόσβαση','Βλέπει το κέλυφος, τίποτα άλλο']];
-const ACCSHORT={superadmin:'SA',admin:'ΔΙΑΧ',junior_admin:'ΒΟΗΘ',section_head:'Α.Τ.',
-  section_assistant:'ΒΑΘΜ',commissioner:'ΕΦ',member:'ΜΕΛ',guardian:'ΓΟΝ',viewer:'—'};
+const ACCSHORT={admin:'ΔΙΑΧ',superadmin:'ΔΙΑΧ',junior_admin:'ΔΙΑΧ',section_head:'Α.Τ.',
+  section_assistant:'ΒΑΘΜ',patrol_leader:'ΕΝΩΜ',commissioner:'ΕΦ',member:'ΜΕΛ',guardian:'ΓΟΝ',viewer:'—'};
 const accLabel=(r,short)=>{const x=ACCROLES.find(a=>a[0]===r);
   return short?(ACCSHORT[r]||r):(x?x[1]:r)};
 const accHint=r=>{const x=ACCROLES.find(a=>a[0]===r); return x?x[2]:''};
