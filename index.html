@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#1d62ad">
 <style>
 :root{
-  --bg:#f6f6f4; --card:#fff; --ink:#11161d; --ink2:#5a636f; --ink3:#68717f;
+  --bg:#f6f6f4; --card:#fff; --ink:#11161d; --ink2:#5a636f; --ink3:#636c79;
   --line:#e6e6e2; --line2:#d5d5d0;
   --acc:#1d5fe0; --accbg:#edf3fe; --accln:#c7dafb;
   --ok:#177a55; --okbg:#e8f6f0; --warn:#965c0a; --warnbg:#fdf3e3; --bad:#b93a2c; --badbg:#fdeeec;
@@ -219,6 +219,7 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);cursor:pointer;transition:.13s;text-align:left;display:block;width:100%}
 .tile:hover{border-color:var(--ink3);transform:translateY(-1px)}
 .tile[style*="cursor:default"]{box-shadow:none;background:transparent}
+.btn.p .dim,.btn.bad .dim{color:inherit}
 .wlrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;
   padding:4px 9px;border-bottom:1px solid var(--line);background:var(--card)}
 .wlrow:hover{background:var(--bg)}
@@ -319,6 +320,9 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .mk.p{background:var(--okbg);border-color:#9ed3bd}.mk.p .s{background:var(--ok)}
 .mk.a{background:var(--badbg);border-color:#eab8b0}.mk.a .s{background:var(--bad)}
 @media(prefers-color-scheme:dark){.mk.p,.mk.a{border-color:var(--line2)}}
+.mk{min-height:44px}
+.mk .mkst{font-size:11.5px;font-weight:600;color:var(--ok);flex:0 0 auto}
+.mk.a .mkst{color:var(--bad)}
 .spark{width:100%;height:44px;display:block}
 @media print{
   .side,.top,.pal,.drw,.noprint,.tile,.btn{display:none!important}
@@ -429,7 +433,7 @@ table.wl2 tr:last-child td{border-bottom:0}
 .wlprio.said{background:var(--ink3)}
 .mko{font-style:normal;font-size:9px;letter-spacing:.05em;background:var(--ink3);color:#fff;
   border-radius:3px;padding:0 4px;margin-left:4px;vertical-align:middle}
-.mrng{font-style:normal;font-size:9.5px;opacity:.75;margin-left:4px;white-space:nowrap}
+.mrng{font-style:normal;font-size:9.5px;margin-left:4px;white-space:nowrap}
 .mev.alien{opacity:.45;font-style:italic}
 .madd{position:absolute;right:3px;top:2px;border:0;background:transparent;color:var(--ink3);
   cursor:pointer;font-size:14px;line-height:1;opacity:0;padding:2px 4px}
@@ -438,7 +442,7 @@ table.wl2 tr:last-child td{border-bottom:0}
 td.mcell:hover .msadd{opacity:1}
 .msadd:hover{color:var(--acc)}
 td.mcell:hover .madd{opacity:1}
-@media (hover:none){ .madd{opacity:.55} .msadd{opacity:.55} }
+@media (hover:none){ .madd{opacity:1} .msadd{opacity:1} }
 .madd:hover{color:var(--acc)}
 @media print{
   table.mola{font-size:8.5px}
@@ -666,7 +670,7 @@ tr.argrow td{background:var(--bg2)}
   .pdo select,.pdo .btn{width:100%;max-width:none}}
 .crow{display:flex;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
 .crow.skip{opacity:.42}
-.crow .cn{flex:0 0 20px;height:20px;border-radius:50%;background:var(--line);color:var(--ink3);font-size:11px;display:grid;place-items:center}
+.crow .cn{flex:0 0 20px;height:20px;border-radius:50%;background:var(--line);color:var(--ink2);font-size:11px;display:grid;place-items:center}
 .cname{font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cpri{font-size:10.5px;background:var(--okbg);color:var(--ok);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:600;vertical-align:1px}
 .crel{font-size:11.5px;color:var(--ink3)}
@@ -991,6 +995,12 @@ const fgr=s=>{if(!s)return'';const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(Stri
 const fphone=p=>{if(!p)return'';const d=String(p).replace(/\D/g,'');return d.length===8?d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3'):p;};
 const SC={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)','Γονείς':'#6b7280'};
 const SECFALLBACK={'Αγέλη':'#dda50c','Ομάδα':'#b3924f','Κοινότητα':'#2f86c9','Δίκτυο':'#7f52c4','Μικρή Αγέλη':'#e08a3c','Σύστημα':'#48515f','Εφορεία':'#48515f','Γονείς':'#6b7280'};
+function onColor(c){
+  const h=/^#?([0-9a-f]{6})$/i.exec(String(c||'').trim()); if(!h)return '#fff';
+  const L=[0,2,4].map(i=>{const x=parseInt(h[1].slice(i,i+2),16)/255; return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)})
+    .reduce((a,v,i)=>a+v*[.2126,.7152,.0722][i],0);
+  return 1.05/(L+.05) >= (L+.05)/(0.0085+.05) ? '#fff' : '#11161d';
+}
 const SECCOLOR=new Proxy({},{get:(_,k)=>{
   const c=(D.sc||[]).find(x=>x.section===k);
   return (c&&c.color)||SECFALLBACK[k]||'#9aa3ae'}});
@@ -1210,7 +1220,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-23 17:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-23 18:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1280,7 +1290,7 @@ $('forgot').onclick=async e=>{
     m.textContent='Για ανάκτηση χρειάζεται το email σου — ο Αρ. Μητρώου δεν αρκεί.';return}
   const mail=id.toLowerCase();
   m.style.color='var(--ink2)'; m.textContent='Αποστολή…';
-  const o={}; if(!isFile)o.redirectTo=location.origin+location.pathname;
+  const o={}; if(!isFile)o.redirectTo=location.origin+APPBASE;
   const {error}=await sb.auth.resetPasswordForEmail(mail,o);
   if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
   OTPMODE=true; RECOVER=true;
@@ -1332,7 +1342,7 @@ $('gbtn').onclick=async()=>{
   $('gmail').value=em2;
   m.style.color='var(--ink2)'; m.textContent='Αποστολή…';
   const opts={shouldCreateUser:true};
-  if(!isFile)opts.emailRedirectTo=location.origin+location.pathname;
+  if(!isFile)opts.emailRedirectTo=location.origin+APPBASE;
   const {error}=await sb.auth.signInWithOtp({email:em,options:opts});
   if(error){m.style.color='var(--bad)';m.textContent=error.message;return;}
   $('gotp').style.display='block'; $('gotp').focus(); $('ghelp').open=true;
@@ -1345,7 +1355,7 @@ $('logout').onclick=async e=>{e.preventDefault();
   if(QUEUE.length&&!await uiAsk(QUEUE.length+' αλλαγές δεν έχουν συγχρονιστεί. Αποσύνδεση παρόλα αυτά;'))return;
   await sb.auth.signOut();
   ['e76:cache','e76:persona','e76:dedupe'].forEach(k=>localStorage.removeItem(k));
-  location.replace(location.pathname);};
+  location.replace(isFile?location.pathname:APPBASE);};
 
 
 
@@ -1493,7 +1503,7 @@ async function start(){
   $('legbtn').innerHTML=ic('info',16);
   if(await mustSetPassword()){ setPasswordScreen(); return; }
   const _cached=peekCache(); if(_cached)document.body.classList.add('stale');
-  renderNav(); route(location.hash.slice(1)||'dash'); banner();
+  renderNav(); route(urlRoute()||hashRoute()||'dash'); banner();
   const _r0=ROUTE;
   await loadAll(); document.body.classList.remove('stale'); const _keep=PA&&PA.id; renderPersona(); if(_keep&&PERSONAS.some(x=>x.id===_keep)){PA=PERSONAS.find(x=>x.id===_keep);$('persona').value=_keep} renderNav();
   if(!localStorage.getItem('e76:persona')&&PERSONAS.length>1){showPicker();}
@@ -1579,7 +1589,7 @@ function netErr(e){
   return /Failed to fetch|NetworkError|Load failed|fetch failed|ERR_INTERNET|timed? ?out/i.test(m) || e.name==='TypeError';
 }
 let QBUSY=false;
-async function qFlush(){
+async function qFlush(silent){
   if(QBUSY||!QUEUE.length||!navigator.onLine)return;
   QBUSY=true;
   const left=[], refused=[];
@@ -1588,6 +1598,7 @@ async function qFlush(){
       let r;
       try{
         if(j.k==='att')r=await sb.rpc('mark_attendance',{p_session:j.s,p_persons:j.p,p_status:j.st});
+        else if(j.k==='attdel')r=await sb.from('attendance').delete().eq('session_id',j.s).in('person_id',j.p);
         else if(j.k==='upd')r=await sb.from(j.tb).update(j.v).eq('id',j.id);
         else if(j.k==='my')r=await sb.from('member_year').update(j.v).eq('person_id',j.pid).eq('scout_year',j.yr);
         else { refused.push(j.k); continue; }
@@ -1595,12 +1606,12 @@ async function qFlush(){
       const err=r&&r.error;
       if(!err)continue;
       if(netErr(err)){ left.push(j); continue; }
-      refused.push(j.k==='att'?'παρουσίες':(j.tb||j.k));
+      refused.push(j.k==='att'||j.k==='attdel'?'παρουσίες':(j.tb||j.k));
     }
   } finally { QBUSY=false; }
   QUEUE=left; localStorage.setItem(QK,JSON.stringify(QUEUE));
   if(refused.length)toast('Δεν έγιναν δεκτές '+refused.length+' αλλαγές ('+[...new Set(refused)].join(', ')+') — δες «Αποτυχίες & σφάλματα»');
-  else if(!left.length)toast('Συγχρονίστηκε');
+  else if(!left.length&&!silent)toast('Συγχρονίστηκε');
   banner();
 }
 window.addEventListener('online',()=>{banner();qFlush()});
@@ -1611,9 +1622,9 @@ function banner(){
   const need=!navigator.onLine||QUEUE.length;
   if(!need){b&&b.remove();return}
   if(!b){b=document.createElement('div');b.id='offb';b.className='noprint';
-    b.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:70;background:var(--side);color:#fff;padding:8px 15px;border-radius:22px;font-size:13px;display:flex;gap:9px;align-items:center;box-shadow:0 6px 22px rgba(0,0,0,.3)';
+    b.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:70;background:var(--side);color:#fff;padding:8px 15px;border-radius:22px;font-size:13px;display:flex;gap:4px 9px;align-items:center;flex-wrap:wrap;justify-content:center;text-align:center;width:max-content;max-width:calc(100vw - 24px);box-shadow:0 6px 22px rgba(0,0,0,.3)';
     document.body.appendChild(b);}
-  const att=QUEUE.filter(j=>j.k==='att').reduce((n,j)=>n+(j.p||[]).length,0);
+  const att=QUEUE.filter(j=>j.k==='att'||j.k==='attdel').reduce((n,j)=>n+(j.p||[]).length,0);
   b.innerHTML=`${navigator.onLine?'':'<span>📵 Χωρίς σύνδεση — τίποτα δεν χάνεται</span>'}${QUEUE.length?`<span>${att?att+' παρουσίες':QUEUE.length+' αλλαγές'} σε αναμονή</span>`:''}
     ${navigator.onLine&&QUEUE.length?'<button class="btn sm" style="background:#fff;color:#000;border:0;padding:3px 9px" onclick="qFlush()">Συγχρονισμός</button>':''}`;
 }
@@ -2509,10 +2520,27 @@ function routeAliasRaw(r){
   }
   return null;
 }
+function urlRoute(){
+  const segs=location.pathname.split('/'), last=decodeURIComponent(segs[segs.length-1]||'');
+  return (typeof MOD!=='undefined'&&(MOD[last]||routeAlias(last)))?last:null;
+}
+const APPBASE=(()=>{ const p=location.pathname; return p.slice(0,p.lastIndexOf('/')+1)||'/'; })();
+function hashRoute(){ const h=(location.hash||'').slice(1);
+  return (h&&!h.includes('=')&&typeof MOD!=='undefined'&&(MOD[h]||routeAlias(h)))?h:null; }
+let ROUTE_POP=false, URL_FIRST=true;
+function setUrl(r){
+  if(isFile){ if(location.hash.slice(1)!==r)location.hash=r; return; }
+  const want=APPBASE+(r&&r!=='dash'?encodeURIComponent(r):'')+location.search;
+  if(location.pathname+location.search===want&&!location.hash){ URL_FIRST=false; return; }
+  try{ (ROUTE_POP||URL_FIRST?history.replaceState:history.pushState).call(history,{r},'',want) }catch(e){}
+  URL_FIRST=false;
+}
+window.addEventListener('popstate',()=>{ const r=urlRoute()||hashRoute()||'dash';
+  if(r!==ROUTE){ ROUTE_POP=true; try{ route(r) } finally { ROUTE_POP=false } } });
 function route(r){
   if(typeof r==='string'&&r.includes('='))r='dash';
   { const al=routeAlias(r); if(al){ if(al[1])SUBTAB[al[0]]=al[1]; r=al[0]; } }
-  ROUTE=MOD[r]?r:'dash'; location.hash=ROUTE;
+  ROUTE=MOD[r]?r:'dash'; setUrl(ROUTE);
   const m=MOD[ROUTE]; $('ttl').textContent=m.t;
   const sc=(PA&&PA.sc&&PA.sc!=='ΟΛΑ')?PA.sc:'';
   $('sub').textContent=[sc?'Μόνο '+sc:'', SUBS[ROUTE]||''].filter(Boolean).join(' · ');
@@ -2626,7 +2654,7 @@ function stay(){
   if(r&&typeof r.then==='function')r.then(back).catch(()=>{});
   renderNav();
 }
-window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(h.includes('=')) return; if(h&&h!==ROUTE)route(h)});
+window.addEventListener('hashchange',()=>{const h=hashRoute(); if(h&&(h!==ROUTE||!isFile))route(h)});
 
 function uc(m){
   $('view').innerHTML=`<div class="uc"><div class="ico">${ic(m.i,26)}</div>
@@ -4537,10 +4565,10 @@ V.intake=()=>{
       <b>Νέα μέλη</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Το Α.Μ. το εκδίδει το Σ.Π.Κ. <b>αφού</b> σταλεί η εγγραφή. Μέχρι τότε το παιδί υπάρχει εδώ — έρχεται στις συγκεντρώσεις, μπαίνει σε παρουσίες, αλλά δεν είναι ακόμη εγγεγραμμένο.</div>
       <div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="inSec" style="max-width:130px">${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>`<option${s===INSEC?' selected':''}>${s}</option>`).join('')}</select>
+        <select id="inSec" style="max-width:130px" aria-label="Τμήμα">${['Αγέλη','Ομάδα','Κοινότητα'].map(s=>`<option${s===INSEC?' selected':''}>${s}</option>`).join('')}</select>
         <input id="inFn" placeholder="Όνομα" style="max-width:130px">
         <input id="inLn" placeholder="Επώνυμο" style="max-width:150px">
-        <select id="inGr" style="max-width:110px"><option value="">Τάξη…</option>${GRADES.map(g=>`<option>${g}</option>`).join('')}</select>
+        <select id="inGr" style="max-width:110px" aria-label="Τάξη"><option value="">Τάξη…</option>${GRADES.map(g=>`<option>${g}</option>`).join('')}</select>
         <button class="btn p sm" id="inAdd">+ Στη λίστα αναμονής</button>
         <button class="btn sm" id="inImp">Εισαγωγή λίστας…</button></div></div>
 
@@ -4920,7 +4948,7 @@ function synodMinutes(id){
   const col=Math.ceil(pres.length/3)||1;
   const box=(l,v)=>`<td style="padding:3px 6px"><span class="dim" style="font-size:10.5px">${l}</span><br><b>${v||'—'}</b></td>`;
 
-  SYN_OPEN=id; SYN_PRINT=true; ROUTE='synod'; location.hash='synod';
+  SYN_OPEN=id; SYN_PRINT=true; ROUTE='synod'; setUrl('synod');
   $('view').innerHTML=`<div class="noprint" style="margin-bottom:10px">
       <button class="btn sm" id="synBack2">← Πίσω στη Σύνοδο</button>
       <button class="btn sm p" onclick="window.print()" style="margin-left:6px">Εκτύπωση</button></div>
@@ -5293,7 +5321,7 @@ async function openSynod(id){
   const decs=(D.synd||[]).filter(x=>x.synod_id===id).sort((a,b)=>(a.seq||0)-(b.seq||0));
   const waiting=(D.kap||[]).filter(g=>g.deda>=6&&!g.approved_on);
 
-  SYN_OPEN=id; SYN_PRINT=false; ROUTE='synod'; location.hash='synod';
+  SYN_OPEN=id; SYN_PRINT=false; ROUTE='synod'; setUrl('synod');
   const st=s.status||'Προετοιμασία', live=st!=='Προετοιμασία';
   $('ttl').textContent=`Σύνοδος ${s.no?'αρ. '+s.no:''}`;
   $('sub').textContent=`${fdate(s.held_on)} · ${s.kind||''}${s.special?' · '+s.special:''}`;
@@ -7081,8 +7109,8 @@ function careDrawer(memberId){
           <div class="dim" style="font-size:12px">${esc(c.phone?fphone(c.phone):'')}${c.email?' · '+esc(c.email):''}</div></div>
         ${l.restricted?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">απαγορευμένος</span>':''}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <select data-r="${l.id}" style="max-width:140px;font-size:12.5px">${RELS.map(r=>`<option${r===l.relation?' selected':''}>${r}</option>`).join('')}</select>
-        <select data-o="${l.id}" style="max-width:120px;font-size:12.5px">
+        <select data-r="${l.id}" aria-label="Σχέση" style="max-width:140px;font-size:12.5px">${RELS.map(r=>`<option${r===l.relation?' selected':''}>${r}</option>`).join('')}</select>
+        <select data-o="${l.id}" aria-label="Σειρά επικοινωνίας" style="max-width:120px;font-size:12.5px">
           <option value=""${l.call_order?'':' selected'}>χωρίς σειρά</option>
           ${[1,2,3,4].map(n=>`<option value="${n}"${l.call_order===n?' selected':''}>${n}ος στη σειρά</option>`).join('')}</select>
       </div>
@@ -7157,7 +7185,7 @@ function accessBody(){
         const secs=(pr.sections||[]).length?pr.sections:(p?[secOf(p)].filter(Boolean):[]);
         return `<tr data-role="${esc(pr.access_role||'')}" data-sec="${esc(secs[0]||'')}"><td>${p?pnm(p):'<span class="dim">—</span>'}
         ${prs.length>1?`<div class="dim" style="font-size:11px">${prs.length} λογαριασμοί σύνδεσης — ένας άνθρωπος</div>`:''}</td>
-        <td><select data-ar="${prs.map(x=>x.id).join(',')}" style="max-width:230px;font-size:12.5px">
+        <td><select data-ar="${prs.map(x=>x.id).join(',')}" aria-label="Ρόλος${p?' · '+esc(nm(p)):''}" style="max-width:230px;font-size:12.5px">
           ${ACCROLES.map(([v,l,_hint])=>`<option value="${v}"${pr.access_role===v?' selected':''}>${l}</option>`).join('')}</select>
           <div class="dim" style="font-size:11px;margin-top:3px;max-width:260px;line-height:1.4">${esc(accHint(pr.access_role))}</div></td>
         <td class="hide-s dim" style="font-size:12px">${secs.join(' · ')||'—'}</td></tr>`}).join('')}
@@ -7446,7 +7474,7 @@ function deskBody(){
           <div class="v">${(D.inv||[]).filter(i=>!i.used_on&&!i.revoked_on).length}</div><div class="s">δόθηκαν, δεν χρησιμοποιήθηκαν</div></div>
       </div></div>
 
-    ${listBar(`<select id="dkSec" style="max-width:150px">
+    ${listBar(`<select id="dkSec" style="max-width:150px" aria-label="Τμήμα">
         <option value="">Όλα τα τμήματα</option>${MEMSECS().map(x=>
         `<option${x===DESKSEC?' selected':''}>${esc(x)}</option>`).join('')}</select>`,false)}
 
@@ -7527,23 +7555,23 @@ function mysysBody(){
         <th class="hide-s">Τάξεις που δέχεται</th><th style="text-align:center">Ενεργό</th><th></th></tr></thead>
       <tbody>${secs.map(sc=>`<tr data-sc="${esc(sc.section)}">
         <td><b>${sdot(sc.section)} ${esc(sc.section)}</b></td>
-        <td><input type="color" class="sc-col" value="${esc(sc.color||SECCOLOR[sc.section]||'#888888')}"
+        <td><input type="color" class="sc-col" aria-label="Χρώμα · ${esc(sc.section)}" value="${esc(sc.color||SECCOLOR[sc.section]||'#888888')}"
              style="width:38px;height:26px;padding:1px;border:1px solid var(--line)"></td>
-        <td><input class="sc-label" value="${esc(sc.label||'')}" style="font-size:12.5px"></td>
-        <td><input class="sc-totem" value="${esc(sc.totem||'')}" placeholder="«…»" style="font-size:12.5px;max-width:130px"></td>
-        <td class="hide-s"><input class="sc-mail" value="${esc(sc.email||'')}" style="font-size:12.5px"></td>
+        <td><input class="sc-label" aria-label="Ονομασία · ${esc(sc.section)}" value="${esc(sc.label||'')}" style="font-size:12.5px"></td>
+        <td><input class="sc-totem" aria-label="Τοτέμ · ${esc(sc.section)}" value="${esc(sc.totem||'')}" placeholder="«…»" style="font-size:12.5px;max-width:130px"></td>
+        <td class="hide-s"><input class="sc-mail" aria-label="Email τμήματος · ${esc(sc.section)}" value="${esc(sc.email||'')}" style="font-size:12.5px"></td>
         <td class="hide-s" style="font-size:11.5px;min-width:230px">
           ${sc.has_members?`<div style="display:flex;flex-wrap:wrap;gap:3px 8px">${GRADES.map(g=>{
             const on=(sc.grades||[]).includes(g), std=(sc.grades_standard||[]).includes(g);
             return `<label style="display:inline-flex;align-items:center;gap:3px;font-size:11px;
                       ${on!==std&&sc.grades_standard?'color:var(--warn);font-weight:600':''}"
                       title="${std?'Στο πρότυπο Σ.Π.Κ.':'Εκτός προτύπου Σ.Π.Κ.'}">
-              <input type="checkbox" class="sc-gr" data-g="${esc(g)}"${on?' checked':''} style="width:auto;margin:0">
+              <input type="checkbox" class="sc-gr" data-g="${esc(g)}" aria-label="${esc(sc.section)} δέχεται ${esc(g)}"${on?' checked':''} style="width:auto;margin:0">
               ${esc(g)}</label>`}).join('')}</div>
             ${sc.grades_standard&&JSON.stringify(sc.grades)!==JSON.stringify(sc.grades_standard)
               ?`<div class="dim" style="font-size:10.5px;margin-top:3px">πρότυπο Σ.Π.Κ.: ${esc((sc.grades_standard||[]).join(', '))}</div>`:''}`
           :'<span class="dim">— χωρίς μέλη —</span>'}</td>
-        <td style="text-align:center"><input type="checkbox" class="sc-act"${sc.active!==false?' checked':''} style="width:auto"></td>
+        <td style="text-align:center"><input type="checkbox" class="sc-act" aria-label="Ενεργό · ${esc(sc.section)}"${sc.active!==false?' checked':''} style="width:auto"></td>
         <td></td>
       </tr>`).join('')}</tbody></table></div>
     <div class="card pad">
@@ -9120,7 +9148,7 @@ function honoursBody(){
       <div style="margin-top:11px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
         <input id="hT" placeholder="Τίτλος (π.χ. Εύφημη Μνεία)" style="max-width:200px">
         <input id="hP" placeholder="Ποιος…" style="max-width:160px">
-        <input id="hD" type="date" style="max-width:150px">
+        <input id="hD" type="date" style="max-width:150px" aria-label="Ημερομηνία">
         <button class="btn p sm" id="hAdd">+ Απονομή</button>
         <span class="sp"></span><button class="btn sm" id="hExp">${ic('down',14)} Εξαγωγή</button></div>
       <div id="hSug" class="dim" style="font-size:12.5px;margin-top:7px"></div></div>
@@ -9750,7 +9778,7 @@ function staffScreen(){
   $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:13px">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <b>Διάρθρωση</b>
-        <select id="syr" style="width:auto;max-width:120px">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select>
+        <select id="syr" style="width:auto;max-width:120px" aria-label="Χρονιά">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select>
         ${SY<YEAR?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent"
           title="Βλέπεις περασμένη χρονιά. Ό,τι αλλάξεις εδώ αλλάζει το ΠΑΡΕΛΘΟΝ.">περασμένη χρονιά</span>`:''}
         <button class="btn sm gh" id="stDraft">Πρόχειρο επιτελείων</button>
@@ -10085,9 +10113,9 @@ function staffBoard(years){
           <div class="dim" style="font-size:11.5px">${contact(p)}</div></div>
         <span class="pencil" data-pe="${p.id}" title="Ρόλος, τμήμα, προβολή">✎</span></div>`}).join('');
     return `<div class="card" style="overflow:hidden">
-      <div class="bhead" style="background:${SECCOLOR[s.section]||'var(--ink3)'};color:${s.section==='Αγέλη'||s.section==='Ομάδα'?'#3d2f10':'#fff'};border-radius:0">
-        <span style="flex:1">${esc(s.label||s.section)}${s.totem?` <span style="font-weight:400;opacity:.9">${esc(s.totem)}</span>`:''}</span>
-        <span style="font-weight:400;opacity:.9;font-size:12px">${list.length} βαθμ.${mem?' · '+mem+' μέλη':''}</span></div>
+      <div class="bhead" style="background:${SECCOLOR[s.section]||'var(--ink3)'};color:${onColor(SECCOLOR[s.section])};border-radius:0">
+        <span style="flex:1">${esc(s.label||s.section)}${s.totem?` <span style="font-weight:400">${esc(s.totem)}</span>`:''}</span>
+        <span style="font-weight:400;font-size:12px">${list.length} βαθμ.${mem?' · '+mem+' μέλη':''}</span></div>
       <div style="padding:9px 12px">
         ${head?`<div class="prow" style="border-bottom:2px solid var(--line2);padding-bottom:8px;margin-bottom:4px">
             <span class="num"></span><div style="flex:1;min-width:0">
@@ -10500,7 +10528,7 @@ function staffDraft(years){
   $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:13px">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="btn sm gh" id="stBack">← Οργανόγραμμα</button><b>Πρόχειρο επιτελείων</b>
-        <select id="syr" style="width:auto;max-width:130px">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select>
+        <select id="syr" style="width:auto;max-width:130px" aria-label="Χρονιά">${years.map(y=>`<option${y===SY?' selected':''}>${y}</option>`).join('')}</select>
         ${isFuture?'<span class="pill" style="background:var(--accbg);border-color:var(--accln);color:var(--acc)">νέα χρονιά · πρόχειρο</span>':'<span class="pill">ιστορικό</span>'}
         <span class="sp"></span>
         <input id="stq" placeholder="Αναζήτηση…" style="max-width:170px;font-size:13px">
@@ -10544,8 +10572,8 @@ function staffDraft(years){
         const mem=D.bh.filter(x=>(x.kind||'')==='Μέλος'&&x.status==='Ενεργός'&&inYear(x)&&secOf(x)===s).length;
         const netHere=list.filter(p=>netOf(p)==='ενεργό').length;
         const g=gap(s,list);
-        return `<div class="bcol"><div class="bhead" style="background:${SECCOLOR[s]};${s==='Αγέλη'||s==='Ομάδα'?'color:#3d2f10':''}">
-            ${esc(s)}<span class="sp"></span><span style="font-weight:400;opacity:.85">${list.length}${
+        return `<div class="bcol"><div class="bhead" style="background:${SECCOLOR[s]};color:${onColor(SECCOLOR[s])}">
+            ${esc(s)}<span class="sp"></span><span style="font-weight:400">${list.length}${
               netHere?'+'+netHere+'Δ':''}${mem?' · '+mem+' μέλη':''}</span></div>
           ${g?`<div class="bgap">⚠ ${esc(g)}</div>`
              :(mem&&list.length?`<div class="bratio">1 βαθμοφόρος ανά ${Math.round(mem/list.length)} μέλη</div>`:'')}
@@ -11177,8 +11205,8 @@ V.myatt=()=>{
 function settingsBody(){
   const f=(k,l,h)=>`<div style="padding:11px 0;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:center;flex-wrap:wrap">
     <div style="flex:1;min-width:210px"><div style="font-size:14px">${esc(l)}</div><div class="dim" style="font-size:12px">${esc(h)}</div></div>
-    <input id="th_${k}" type="number" value="${TH[k]}" style="max-width:96px">
-    <button class="btn sm" data-rst="${k}">↺</button></div>`;
+    <input id="th_${k}" type="number" value="${TH[k]}" style="max-width:96px" aria-label="${esc(l)}">
+    <button class="btn sm" data-rst="${k}" title="Επαναφορά προεπιλογής" aria-label="Επαναφορά: ${esc(l)}">↺</button></div>`;
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Κατώφλια & παράμετροι</b><div class="muted" style="margin-top:4px;font-size:13.5px">Ισχύουν για όλους — αποθηκεύονται στη βάση, όχι στη συσκευή.</div></div>
     <div class="card pad">
@@ -11381,8 +11409,8 @@ V.reg=()=>{
       <div class="muted" style="margin-top:5px;font-size:13.5px">Ποιος έχει εγγραφεί και ποιος πλήρωσε. Ο αριθμός τριπλοτύπου είναι η απόδειξη — μπαίνει εδώ και βγαίνει αυτόματα στο θεσμικό έντυπο.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px">
         <input id="rq" placeholder="Αναζήτηση…" style="max-width:200px">
-        <select id="rsec" style="max-width:150px"><option value="">Όλα τα τμήματα</option>${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(s=>`<option>${s}</option>`).join('')}</select>
-        <select id="rst" style="max-width:170px"><option value="">Όλες οι καταστάσεις</option><option value="no">Χωρίς εγγραφή</option><option value="yes">Εγγεγραμμένοι</option><option value="unpaid">Χωρίς τριπλότυπο</option><option value="wait">Σε αναμονή Α.Μ.</option></select>
+        <select id="rsec" style="max-width:150px" aria-label="Τμήμα"><option value="">Όλα τα τμήματα</option>${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(s=>`<option>${s}</option>`).join('')}</select>
+        <select id="rst" style="max-width:170px" aria-label="Κατάσταση"><option value="">Όλες οι καταστάσεις</option><option value="no">Χωρίς εγγραφή</option><option value="yes">Εγγεγραμμένοι</option><option value="unpaid">Χωρίς τριπλότυπο</option><option value="wait">Σε αναμονή Α.Μ.</option></select>
         <span class="sp"></span><button class="btn sm" id="rExp">${ic('down',14)} Εξαγωγή</button></div></div>
     <div class="tiles">
       <div class="tile" style="cursor:default"><div class="k">Εγγεγραμμένοι</div><div class="v">${done.length}<span class="dim" style="font-size:15px">/${rows.length}</span></div><div class="s">${rows.length?Math.round(100*done.length/rows.length):0}% της δύναμης</div></div>
@@ -11743,7 +11771,7 @@ V.rollover=()=>{
 
   const nav=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${STEPS.map(s=>
     `<button class="btn sm${S.step===s.n?' p':''}" data-st="${s.n}" style="flex:1;min-width:120px;justify-content:center;flex-direction:column;align-items:flex-start;padding:8px 11px">
-      <span style="font-size:10.5px;opacity:.7">Βήμα ${s.n}</span><span>${esc(s.t)}</span></button>`).join('')}</div>`;
+      <span style="font-size:10.5px">Βήμα ${s.n}</span><span>${esc(s.t)}</span></button>`).join('')}</div>`;
 
   const chips=l=>l.slice(0,80).map(x=>`<span class="pill" style="margin:3px 3px 0 0"><span class="pn" data-p="${x.p?x.p.id:x.id}">${esc(nm(x.p||x))}</span>${x.ng?`<span class="dim">${esc(x.ng)}</span>`:''}</span>`).join('')+(l.length>80?`<div class="dim" style="font-size:12px;margin-top:6px">+ ${l.length-80} ακόμη</div>`:'');
 
@@ -12343,7 +12371,7 @@ V.vpapers=()=>{
         ${[0,1].map(o=>{const y=new Date().getFullYear()+o;
           return `<span style="display:flex;flex-direction:column;gap:2px">
             <label class="dim" style="font-size:10px;text-transform:uppercase;letter-spacing:.03em">${y}</label>
-            <input type="date" class="rtdd" data-year="${y}" value="${esc(rtDeadline(y))}"></span>`}).join('')}
+            <input type="date" class="rtdd" data-year="${y}" aria-label="Προθεσμία ${esc(y)}" value="${esc(rtDeadline(y))}"></span>`}).join('')}
       </span></div>
 
     <div class="sec"><h3>Τα οχήματά μας</h3></div>
@@ -13900,7 +13928,7 @@ V.events=()=>{
         <td class="hide-s dim">${esc(e.type||'—')}</td><td class="hide-s">${e.section?sdot(e.section)+' '+esc(e.section):'<span class="dim">Σύστημα</span>'}</td>
         <td><b>${cnt(e.id)}</b></td><td style="white-space:nowrap"><button class="btn sm p" data-efo="${e.id}">Φάκελος</button>
           <button class="btn sm gh" data-ev="${e.id}">Συμμετοχές</button>
-          <button class="btn sm" data-evdoc="${e.id}">${ic('book',13)} ${(D.doc||[]).filter(d=>d.event_id===e.id).length||''}</button></td></tr>`).join('')}</tbody></table></div>`
+          <button class="btn sm" data-evdoc="${e.id}" title="Έγγραφα της δράσης" aria-label="Έγγραφα της δράσης">${ic('book',13)} ${(D.doc||[]).filter(d=>d.event_id===e.id).length||''}</button></td></tr>`).join('')}</tbody></table></div>`
       :`<div class="uc"><div class="ico">${ic('flag',26)}</div><h3>Καμία δράση φέτος</h3><p>Δημιούργησε την πρώτη — μετά δηλώνεις συμμετοχές με ένα tap.</p></div>`}`;
   wireVQ();
   $('evNew').onclick=()=>{const b=$('evBox');b.style.display=b.style.display==='flex'?'none':'flex';$('evD').value=new Date().toISOString().slice(0,10)};
@@ -15168,67 +15196,85 @@ function calBody(){
 };
 
 function markBody(){
+  const secs=MEMSECS().filter(sc=>D.bh.some(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sc));
+  const canNew=sec=>ME.role==='admin'||(ME.role==='section_head'&&(!ME.scope||ME.scope===sec));
+  const pre=MKPRE; MKPRE=null;    
+  const defSec=pre&&secs.includes(pre.sec)?pre.sec:scopeSec()&&secs.includes(scopeSec())?scopeSec():(secs[0]||MEMSECS()[0]);
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
-        <select id="mSec" style="max-width:150px">${MEMSECS().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
-        <select id="mSes" style="max-width:230px"></select>
-        <button class="btn sm" id="mNew">+ Νέα συγκέντρωση</button>
+        ${secs.length>1?`<select id="mSec" style="max-width:150px" aria-label="Τμήμα">${secs.map(s=>`<option${s===defSec?' selected':''}>${esc(s)}</option>`).join('')}</select>`
+          :`<input type="hidden" id="mSec" value="${esc(defSec||'')}"><b>${esc(defSec||'')}</b>`}
+        <select id="mSes" style="max-width:230px" aria-label="Συγκέντρωση"></select>
+        <button class="btn sm" id="mNew"${canNew(defSec)?'':' style="display:none"'}>+ Νέα συγκέντρωση</button>
         <span class="sp"></span><span class="pill" id="mCnt"></span>
       </div>
+      <div class="dim" id="mSt" role="status" aria-live="polite" style="font-size:12px;margin-top:7px;min-height:16px"></div>
       <div id="mNewBox" style="display:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);display:none;gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="date" id="mDate" style="max-width:180px"><input id="mTitle" placeholder="Τίτλος (προαιρετικά)" style="max-width:230px">
+        <input type="date" id="mDate" style="max-width:180px" aria-label="Ημερομηνία"><input id="mTitle" placeholder="Τίτλος (προαιρετικά)" style="max-width:230px" aria-label="Τίτλος">
         <!-- ΜΗΝΙΑΙΟ ΘΕΜΑ. Οι συγκεντρώσεις του ίδιου θέματος γράφουν το ΙΔΙΟ
              κείμενο — έτσι μετριούνται ως ΕΝΑ θέμα, όχι ως τρεις παρουσίες. -->
-        <input id="mTheme" placeholder="Μηνιαίο θέμα (Αγέλη)" list="mThemes" style="max-width:230px">
+        <input id="mTheme" placeholder="Μηνιαίο θέμα (Αγέλη)" list="mThemes" style="max-width:230px" aria-label="Μηνιαίο θέμα">
         <datalist id="mThemes">${[...new Set((D.ss||[]).map(x=>x.theme).filter(Boolean))]
           .sort().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
         <button class="btn p sm" id="mCreate">Δημιουργία</button></div></div>
     <div id="mBody"></div>`;
-  let STATE={},SES=null;
+  let STATE={},SES=null,TMR=null;
+  const today=isoLocal(new Date());
   const fill=()=>{const sec=$('mSec').value;
     const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR).sort((a,b)=>a.session_date<b.session_date?1:-1);
-    $('mSes').innerHTML=ses.map(s=>`<option value="${s.id}">${fdate(s.session_date)}${s.title&&s.title!=='Συγκέντρωση '+sec?' · '+esc(s.title):''}</option>`).join('')||'<option value="">— καμία —</option>';
+    const pick=(pre&&ses.find(s=>s.id===pre.ses))||ses.find(s=>s.session_date===today)||ses.find(s=>s.session_date<=today)||ses[0];
+    $('mSes').innerHTML=ses.map(s=>`<option value="${s.id}"${pick&&s.id===pick.id?' selected':''}>${s.session_date===today?'Σήμερα · ':''}${fdate(s.session_date)}${s.title&&s.title!=='Συγκέντρωση '+sec?' · '+esc(s.title):''}</option>`).join('')||'<option value="">— καμία —</option>';
+    const nb=$('mNew'); if(nb)nb.style.display=canNew(sec)?'':'none';
     load();};
   const load=()=>{
     const sec=$('mSec').value, sid=$('mSes').value; SES=D.ss.find(s=>s.id===sid);
-    if(!SES){$('mBody').innerHTML=`<div class="uc"><div class="ico">${ic('cal',26)}</div><h3>Καμία συγκέντρωση</h3><p>Δημιούργησε την πρώτη για ${esc(sec)}.</p></div>`;$('mCnt').textContent='';return;}
+    if(!SES){$('mBody').innerHTML=`<div class="uc"><div class="ico">${ic('cal',26)}</div><h3>Καμία συγκέντρωση</h3><p>${canNew(sec)?'Δημιούργησε την πρώτη για '+esc(sec)+'.':'Τη συγκέντρωση τη φτιάχνει ο Αρχηγός του τμήματος — μόλις υπάρξει, εμφανίζεται εδώ.'}</p></div>`;$('mCnt').textContent='';return;}
     STATE={}; D.att.filter(a=>a.session_id===sid).forEach(a=>STATE[a.person_id]=a.status==='Παρών'?'p':'a');
     const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec).sort(sortByName);
     const gs={}; kids.forEach(p=>{const g=(myOf(p)||{}).group_name||'— χωρίς υποομάδα';(gs[g]=gs[g]||[]).push(p)});
     $('mBody').innerHTML=`<div class="noprint" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <button class="btn sm" id="mAllP">Όλοι παρόντες</button><button class="btn sm" id="mClr">Καθαρισμός</button>
-        <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση</button><button class="btn p" id="mSave">Αποθήκευση</button></div>
+        <button class="btn sm" id="mAllP">Οι υπόλοιποι παρόντες</button>
+        <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση</button></div>
+      <div class="dim noprint" style="font-size:12px;margin:-4px 0 10px">Άγγιγμα: Παρών → Απών → χωρίς σημείωση. Γράφεται αμέσως — και χωρίς σήμα.</div>
       ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span></div>
-        <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}</span></button>`).join('')}</div>`).join('')}
+        <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}" aria-pressed="false"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}</span><span class="mkst"></span></button>`).join('')}</div>`).join('')}
       <div style="height:14px"></div>`;
-    paint();
-    document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const id=b.dataset.m;STATE[id]=STATE[id]==='p'?'a':(STATE[id]==='a'?null:'p');paint()});
-    $('mAllP').onclick=()=>{document.querySelectorAll('[data-m]').forEach(b=>STATE[b.dataset.m]='p');paint()};
-    $('mClr').onclick=()=>{STATE={};paint()};
-    $('mSave').onclick=save;
+    document.querySelectorAll('[data-m]').forEach(b=>paintOne(b));
+    count(); status();
+    document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const id=b.dataset.m;
+      const nx=STATE[id]==='p'?'a':(STATE[id]==='a'?null:'p');
+      put([id],nx); paintOne(b); count();});
+    $('mAllP').onclick=()=>{
+      const ids=[...document.querySelectorAll('[data-m]')].map(b=>b.dataset.m).filter(id=>!STATE[id]);
+      if(!ids.length)return toast('Όλοι έχουν ήδη σημείωση');
+      put(ids,'p'); document.querySelectorAll('[data-m]').forEach(b=>{ if(ids.includes(b.dataset.m))paintOne(b) }); count();
+      toast(ids.length+' σημειώθηκαν παρόντες');};
   };
-  const paint=()=>{let p=0,a=0;
-    document.querySelectorAll('[data-m]').forEach(b=>{const s=STATE[b.dataset.m];b.className='mk'+(s==='p'?' p':s==='a'?' a':'');if(s==='p')p++;if(s==='a')a++});
-    $('mCnt').textContent=`${p} παρόντες · ${a} απόντες`;};
-  const save=async()=>{
-    if(!SES)return; const btn=$('mSave'); btn.textContent='Αποθήκευση…'; btn.disabled=true;
-    const pres=Object.keys(STATE).filter(k=>STATE[k]==='p'), abs=Object.keys(STATE).filter(k=>STATE[k]==='a');
-    D.att=D.att.filter(a=>a.session_id!==SES.id);
-    pres.forEach(id=>D.att.push({session_id:SES.id,person_id:id,status:'Παρών'}));
-    abs.forEach(id=>D.att.push({session_id:SES.id,person_id:id,status:'Απών'}));
+  const paintOne=b=>{const s=STATE[b.dataset.m];
+    b.className='mk'+(s==='p'?' p':s==='a'?' a':'');
+    b.setAttribute('aria-pressed',s?'true':'false');
+    const t=b.querySelector('.mkst'); if(t)t.textContent=s==='p'?'Παρών':s==='a'?'Απών':'';};
+  const count=()=>{let p=0,a=0; Object.values(STATE).forEach(v=>{if(v==='p')p++; if(v==='a')a++});
+    const n=document.querySelectorAll('[data-m]').length;
+    $('mCnt').textContent=`${p} παρόντες · ${a} απόντες${n-p-a>0?' · '+(n-p-a)+' χωρίς σημείωση':''}`;};
+  const pending=()=>QUEUE.filter(j=>(j.k==='att'||j.k==='attdel')&&SES&&j.s===SES.id).reduce((n,j)=>n+j.p.length,0);
+  const status=(sending)=>{const e=$('mSt'); if(!e)return; const n=pending();
+    e.textContent=!n?(Object.keys(STATE).length?'✓ Όλα αποθηκευμένα':'')
+      :!navigator.onLine?`Χωρίς σήμα — ${n} κρατήθηκαν στη συσκευή και θα σταλούν μόλις συνδεθείς`
+      :sending?'Αποθήκευση…':`${n} περιμένουν αποστολή`;};
+  const put=(ids,st)=>{ if(!SES)return;
+    ids.forEach(id=>{ if(st)STATE[id]=st; else delete STATE[id]; });
+    D.att=D.att.filter(a=>!(a.session_id===SES.id&&ids.includes(a.person_id)));
+    if(st)ids.forEach(id=>D.att.push({session_id:SES.id,person_id:id,status:st==='p'?'Παρών':'Απών'}));
     saveCache();
-    if(pres.length)QUEUE.push({k:'att',s:SES.id,p:pres,st:'Παρών',t:Date.now()});
-    if(abs.length) QUEUE.push({k:'att',s:SES.id,p:abs, st:'Απών', t:Date.now()});
+    QUEUE=QUEUE.map(j=>((j.k==='att'||j.k==='attdel')&&j.s===SES.id)?{...j,p:j.p.filter(x=>!ids.includes(x))}:j)
+               .filter(j=>!((j.k==='att'||j.k==='attdel')&&!j.p.length));
+    QUEUE.push(st?{k:'att',s:SES.id,p:ids,st:st==='p'?'Παρών':'Απών',t:Date.now()}:{k:'attdel',s:SES.id,p:ids,t:Date.now()});
     localStorage.setItem(QK,JSON.stringify(QUEUE));
-    if(navigator.onLine){
-      await qFlush();
-      toast(QUEUE.length?('Κρατήθηκε τοπικά — '+QUEUE.length+' εκκρεμούν')
-                        :('Αποθηκεύτηκε · '+pres.length+' παρόντες'));
-    } else {
-      toast('Χωρίς σήμα — κρατήθηκε. Θα σταλεί μόλις συνδεθείς.');
-    }
-    banner();
-    btn.textContent='Αποθήκευση'; btn.disabled=false;};
+    status(); banner();
+    clearTimeout(TMR); TMR=setTimeout(async()=>{ if(!navigator.onLine){status();return}
+      status(true); await qFlush(true); status(); },900);
+  };
   $('mNew').onclick=()=>{const b=$('mNewBox');b.style.display=b.style.display==='flex'?'none':'flex';$('mDate').value=isoLocal(new Date());
     const last=(D.ss||[]).filter(x=>x.section===$('mSec').value&&x.theme)
       .sort((a,b)=>String(b.session_date).localeCompare(String(a.session_date)))[0];
@@ -15274,7 +15320,7 @@ V.dash=()=>{
   const lastS=D.ss.filter(s=>s.scout_year===YEAR&&new Date(s.session_date)<new Date()).pop();
 
   $('sub').textContent=[($('sub').textContent||'').replace(/\s*·?\s*\d{4}-\d{2}$/,''),YEAR].filter(Boolean).join(' · ');
-  $('view').innerHTML=`
+  $('view').innerHTML=`${todayHTML()}
   <div class="tiles">
     ${[['Λυκόπουλα','Αγέλη'],['Πρόσκοποι','Ομάδα'],['Ανιχνευτές','Κοινότητα'],['Δικτυακοί','Δίκτυο']]
        .filter(([t,s])=>SECS_SHOW.includes(s)).map(([t,s])=>
@@ -15306,7 +15352,7 @@ V.dash=()=>{
       <div style="font-size:17px;font-weight:600;margin-top:7px">${avgAtt()}%</div>
       <div class="dim" style="font-size:12.5px">σε ${(()=>{const had=new Set(D.att.map(a=>a.session_id)); return D.ss.filter(s=>s.scout_year===YEAR&&had.has(s.id)).length})()} συγκεντρώσεις με παρουσίες</div></div>
   </div>`;
-  bindTiles();
+  bindTiles(); bindToday();
 };
 let VEHPRE=null;
 function vehUpload(vid, kind){ VEHPRE={v:vid, k:kind||'ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'}; if(ROUTE==='myveh')stay(); else route('myveh'); }
@@ -15346,6 +15392,44 @@ function mineHTML(){
 ''}
         <button class="btn sm gh" data-go="issues" data-vtabgo="when">Όλες οι λήξεις</button></div></div>`;
 }
+let MKPRE=null;    
+function todayItems(){
+  const items=[], today=isoLocal(new Date()), wk=isoLocal(new Date(Date.now()-6*864e5));
+  const canMark=ME.role==='admin'||['section_head','section_assistant','patrol_leader'].includes(ME.role)
+    ||(PA&&['leader','patrol'].includes(PA.k));
+  if(canMark){
+    const ms=scopeSec();
+    const mine=new Set(D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)).map(p=>secOf(p)));
+    const had=new Set((D.att||[]).map(a=>a.session_id));
+    (D.ss||[]).filter(s=>s.scout_year===YEAR&&s.session_date>=wk&&s.session_date<=today
+        &&['Συγκέντρωση','Ειδική συγκέντρωση'].includes(s.session_type||'Συγκέντρωση')
+        &&mine.has(s.section)&&(!ms||s.section===ms)&&!had.has(s.id))
+      .sort((a,b)=>String(b.session_date).localeCompare(String(a.session_date)))
+      .forEach(s=>items.push({k:s.session_date===today?'warn':'bad',
+        t:(s.session_date===today?'Σήμερα':fdate(s.session_date))+' · '+s.section,
+        d:'δεν έχουν μπει παρουσίες', b:'Καταχώρηση', att:{sec:s.section, ses:s.id}}));
+  }
+  if(ME.role==='admin'){ const n=inboxCounts();
+    if(n.all)items.push({k:'warn', t:n.all+' περιμένουν τον έλεγχό σου',
+      d:[n.cert&&n.cert+' πιστοποιητικά', n.veh&&n.veh+' χαρτιά οχημάτων', n.sch&&n.sch+' δηλώσεις σχολών'].filter(Boolean).join(' · '),
+      b:'Άνοιγμα', go:'inbox'}); }
+  return items;
+}
+function todayHTML(){
+  const it=todayItems(); if(!it.length)return '';
+  return `<div class="sec"><h3>Θέλει προσοχή</h3><span class="n">${it.length}</span></div>
+    <div class="card pad" style="border-left:3px solid var(--${it.some(x=>x.k==='bad')?'bad':'warn'});margin-bottom:4px">
+    ${it.map((x,i)=>`<div style="display:flex;gap:8px;align-items:center;padding:7px 0;${i?'border-top:1px solid var(--line);':''}flex-wrap:wrap">
+      <span class="dot" style="background:var(--${x.k})" aria-hidden="true"></span>
+      <b style="font-size:13.5px">${esc(x.t)}</b><span class="dim" style="font-size:12.5px;flex:1;min-width:140px">${esc(x.d||'')}</span>
+      <button class="btn sm${x.k==='bad'?' p':''}" data-todo="${i}">${esc(x.b)}</button></div>`).join('')}</div>`;
+}
+function bindToday(){
+  const it=todayItems();
+  document.querySelectorAll('[data-todo]').forEach(b=>b.onclick=()=>{ const x=it[+b.dataset.todo]; if(!x)return;
+    if(x.att){ MKPRE=x.att; SUBTAB.attend='put'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); }
+    else if(x.go) route(x.go); });
+}
 function bdayHTML(){
   const m=new Date().getMonth(), today=new Date().getDate();
   const ms=scopeSec();
@@ -15384,9 +15468,9 @@ V.members=()=>{
   const list=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&inScope(p)).sort(sortByName);
   $('view').innerHTML=`<div class="card pad" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
       <input id="fq" placeholder="Αναζήτηση…" style="max-width:230px">
-      <select id="fsec" style="max-width:160px"><option value="">Όλα τα τμήματα</option>${MEMSECS().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
-      <select id="fgrp" style="max-width:170px"><option value="">Όλες οι υποομάδες</option></select>
-      <select id="fgr" style="max-width:150px"><option value="">Όλες οι τάξεις</option></select>
+      <select id="fsec" style="max-width:160px" aria-label="Τμήμα"><option value="">Όλα τα τμήματα</option>${MEMSECS().map(s=>`<option>${esc(s)}</option>`).join('')}</select>
+      <select id="fgrp" style="max-width:170px" aria-label="Υποομάδα"><option value="">Όλες οι υποομάδες</option></select>
+      <select id="fgr" style="max-width:150px" aria-label="Τάξη"><option value="">Όλες οι τάξεις</option></select>
       <span class="sp"></span><span class="pill" id="cnt"></span></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Υποομάδα</th><th class="hide-s">Α.Μ.</th><th class="hide-s">Τάξη</th><th>Γονέας</th></tr></thead><tbody id="tb"></tbody></table></div>`;
   const fill=()=>{
@@ -15585,8 +15669,8 @@ function guardiansBody(){
   const secs=['Αγέλη','Ομάδα','Κοινότητα'];
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
-        <select id="gsec" style="max-width:170px">${secs.map(s=>`<option>${s}</option>`).join('')}</select>
-        <select id="ggrp" style="max-width:180px"><option value="">Όλες οι υποομάδες</option></select>
+        <select id="gsec" style="max-width:170px" aria-label="Τμήμα">${secs.map(s=>`<option>${s}</option>`).join('')}</select>
+        <select id="ggrp" style="max-width:180px" aria-label="Υποομάδα"><option value="">Όλες οι υποομάδες</option></select>
         <span class="sp"></span>
         <button class="btn sm" id="cpMail">${ic('mail',14)} Αντιγραφή email</button>
         <button class="btn sm" id="cpTel">${ic('phone',14)} Αντιγραφή τηλεφώνων</button>
@@ -17986,7 +18070,7 @@ function molaBody(){
   };
 
   const chip=(k,on,label,color)=>`<button class="btn sm${on?' p':' gh'}" data-mv="${esc(k)}"
-    ${color?`style="${on?`background:${color};border-color:${color};color:#fff`:`color:${color}`}"`:''}>${esc(label)}</button>`;
+    ${color?`style="${on?`background:${color};border-color:${color};color:${onColor(color)}`:`border-color:${color};box-shadow:inset 3px 0 0 ${color}`}"`:''}>${esc(label)}</button>`;
 
   const ARG={}; molaArgies(yr).forEach(a=>ARG[a.ev.id]=a);
 
