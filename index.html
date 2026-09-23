@@ -1199,7 +1199,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-23 11:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-23 11:36'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2785,6 +2785,33 @@ function gsHits(raw){
   window.addEventListener('scroll',sc,{passive:true});
   b.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});})();
 document.addEventListener('click',e=>{const t=e.target.closest('[data-p]');if(t){e.preventDefault();openProfile(t.dataset.p)}});
+const FA_SECS=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+function faScopeHTML(pre, held){
+  held=held||[];
+  return `<span style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding-top:5px">
+    <label style="display:flex;gap:5px;align-items:center;font-weight:400;max-width:none;font-size:12.5px;cursor:pointer">
+      <input type="checkbox" id="${pre}All" class="${pre}box" style="width:auto"${held.includes(null)?' checked disabled data-held="1"':''}> όλο το Σύστημα</label>
+    ${FA_SECS.map(sc=>`<label style="display:flex;gap:5px;align-items:center;font-weight:400;max-width:none;font-size:12.5px;cursor:pointer">
+      <input type="checkbox" class="${pre}sec ${pre}box" value="${esc(sc)}" style="width:auto"${held.includes(sc)?' checked disabled data-held="1"':''}> ${esc(sc)}</label>`).join('')}</span>`;
+}
+function faScopeWire(pre){
+  const all=$(pre+'All'); if(!all)return;
+  const secs=()=>[...document.querySelectorAll('.'+pre+'sec')];
+  const sync=()=>secs().forEach(b=>{ if(b.dataset.held)return;
+    b.disabled=all.checked; if(all.checked)b.checked=false });
+  all.onchange=sync; sync();
+}
+function faScopeRead(pre){
+  const all=$(pre+'All');
+  if(all&&all.checked&&!all.dataset.held)return [null];
+  return [...document.querySelectorAll('.'+pre+'sec')].filter(b=>b.checked&&!b.dataset.held).map(b=>b.value);
+}
+function faNote(p){
+  const st=certState(p.id)||{};
+  const n91=st.k==='ok'?'':st.k==='soon'?'Ν.91 λήγει':(st.k==='expired'?'Ν.91 έληξε':'χωρίς Ν.91');
+  const fa=(D.pc||[]).some(c=>c.person_id===p.id&&/FIRSTAID|BLS|ΠΡΩΤΕΣ|Πρώτ/i.test(String(c.type_code||'')+String(c.label||'')));
+  return [secOf(p)||p.section||'', n91, fa?'':'χωρίς Πρώτες Βοήθειες'].filter(Boolean).join(' · ');
+}
 const labelsOf=pid=>(D.plab||[]).filter(l=>l.person_id===pid&&(!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10)));
 function labelsHTML(p){
   const mine=labelsOf(p.id), admin=ME.role==='admin'||!!ME.platform_admin;
@@ -2795,21 +2822,27 @@ function labelsHTML(p){
     ${mine.map(l=>`<div class="kv" style="gap:8px;align-items:center"><span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${esc(l.label)}</span>
       <span class="dim" style="flex:1;font-size:12px">${l.scope_section?esc(l.scope_section):'όλο το Σύστημα'}${l.valid_to?' · ως '+fdate(l.valid_to):''} · βλέπει ιατρικά</span>
       ${admin?`<button class="btn sm gh" data-lboff="${l.id}">Αφαίρεση</button>`:''}</div>`).join('')}
-    ${admin&&!mine.some(l=>l.label==='Πρώτος Βοηθός')?`<div class="grow" style="margin-top:6px;align-items:flex-end">
-      <label style="max-width:170px">Πρώτος Βοηθός για<select id="lbSec"><option value="">όλο το Σύστημα</option>
-        ${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+    ${admin?`<div style="margin-top:8px">
+      <span class="dim" style="font-size:11px;text-transform:uppercase;letter-spacing:.03em">Πρώτος Βοηθός για</span>
+      ${faScopeHTML('lbd', mine.filter(l=>l.label==='Πρώτος Βοηθός').map(l=>l.scope_section))}</div>
+      <div class="grow" style="margin-top:7px;align-items:flex-end">
       <label style="max-width:150px">Ως (προαιρετικό)<input type="date" id="lbTo"></label>
       <button class="btn sm" id="lbAdd">+ Πρώτος Βοηθός</button></div>
       <div class="dim" style="font-size:11.5px;margin-top:4px">Βλέπει ιατρικά και σημάνσεις διατροφής — μόνο με έγκυρο Ν.91(Ι).${fa?'':' <b>Δεν έχει καταχωρημένο πιστοποιητικό Πρώτων Βοηθειών.</b>'}</div>`:''}
   </div>`;
 }
 function wireLabels(p){
+  faScopeWire('lbd');
   const a=$('lbAdd'); if(a)a.onclick=async()=>{
+    const scopes=faScopeRead('lbd');
+    if(!scopes.length)return toast('Διάλεξε τμήμα — ή «όλο το Σύστημα».');
     a.disabled=true;
-    const {data,error}=await sb.from('person_labels').insert({person_id:p.id,label:'Πρώτος Βοηθός',
-      scope_section:$('lbSec').value||null, valid_to:$('lbTo').value||null}).select().single();
+    const rows=scopes.map(sc=>({person_id:p.id,label:'Πρώτος Βοηθός',
+      scope_section:sc, valid_to:$('lbTo').value||null}));
+    const {data,error}=await sb.from('person_labels').insert(rows).select();
     if(error){a.disabled=false;return toast('Σφάλμα: '+error.message)}
-    (D.plab=D.plab||[]).push(data); saveCache(); toast('Πρώτος Βοηθός — '+nm(p)); openProfile(p.id); };
+    (D.plab=D.plab||[]).push(...(data||[])); saveCache();
+    toast('Πρώτος Βοηθός — '+nm(p)); openProfile(p.id); };
   document.querySelectorAll('[data-lboff]').forEach(b=>b.onclick=async()=>{
     if(!confirm('Αφαίρεση της ετικέτας; Χάνει την πρόσβαση στα ιατρικά από σήμερα.'))return;
     const today=new Date(Date.now()-864e5).toISOString().slice(0,10);
@@ -2823,20 +2856,50 @@ function labelsBody(){
   $('view').innerHTML=`<p class="lede">Ο <b>Πρώτος Βοηθός</b> βλέπει ιατρικά και σημάνσεις διατροφής των παιδιών — στο τμήμα που ορίζεις ή σε όλο το Σύστημα —
       μόνο εφόσον έχει έγκυρο Ν.91(Ι). Κάθε ανάγνωση καταγράφεται όπως όλες.</p>
     <div class="card pad" style="margin-bottom:12px"><div class="grow" style="align-items:flex-end">
-      <label style="max-width:260px">Βαθμοφόρος<select id="lbP"><option value="">— διάλεξε —</option>${led.map(b=>`<option value="${b.id}">${esc(nm(b))}</option>`).join('')}</select></label>
-      <label style="max-width:170px">Για<select id="lbS"><option value="">όλο το Σύστημα</option>${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+      <label style="max-width:300px">Βαθμοφόρος${ppHTML('lbP','',{ph:'Γράψε όνομα…',
+        group:b=>'Βαθμοφόροι '+(secOf(b)||b.section||'—'), note:faNote})}</label>
       <label style="max-width:150px">Ως (προαιρετικό)<input type="date" id="lbT"></label>
-      <button class="btn p sm" id="lbGo">+ Πρώτος Βοηθός</button></div></div>
-    ${L.length?`<div class="card" style="overflow:auto"><table><tbody>${L.map(l=>{const b=D.bh.find(x=>x.id===l.person_id);
-      return `<tr><td><b class="pn" data-p="${l.person_id}" style="font-weight:500">${b?esc(nm(b)):'—'}</b></td><td>${esc(l.label)}</td>
-        <td class="dim">${l.scope_section?esc(l.scope_section):'όλο το Σύστημα'}</td><td class="dim">${l.valid_to?'ως '+fdate(l.valid_to):'χωρίς λήξη'}</td>
-        <td style="text-align:right"><button class="btn sm gh" data-lboff="${l.id}">Αφαίρεση</button></td></tr>`}).join('')}</tbody></table></div>`
-     :'<div class="card pad dim">Κανένας Πρώτος Βοηθός ακόμη.</div>'}`;
+      <button class="btn p sm" id="lbGo">+ Πρώτος Βοηθός</button></div>
+      <div style="margin-top:8px"><span class="dim" style="font-size:11px;text-transform:uppercase;letter-spacing:.03em">Για ποια τμήματα</span>
+        ${faScopeHTML('lb')}</div>
+      <div class="dim" style="font-size:11.5px;margin-top:5px">Μπορείς να διαλέξεις <b>περισσότερα από ένα</b> — π.χ. Αγέλη και Ομάδα, χωρίς Κοινότητα.</div></div>
+    ${(()=>{
+      const byP={}; L.forEach(l=>(byP[l.person_id]=byP[l.person_id]||[]).push(l));
+      const rows=Object.entries(byP).map(([pid,ls])=>({p:D.bh.find(x=>x.id===pid), ls}))
+        .sort((a,b)=>(a.p&&b.p)?sortByName(a.p,b.p):0);
+      if(!rows.length)return '<div class="card pad dim">Κανένας Πρώτος Βοηθός ακόμη.</div>';
+      return `<div class="card" style="overflow:auto"><table><thead><tr>
+          <th>Βαθμοφόρος</th><th>Τμήματα</th><th class="hide-s">Ν.91(Ι)</th><th></th></tr></thead><tbody>${rows.map(({p,ls})=>{
+        const st=p?(certState(p.id)||{}):{};
+        const n91=st.k==='ok'?`<span class="dim">σε ισχύ${st.exp?' ως '+fdate(st.exp):''}</span>`
+          :st.k==='soon'?`<span style="color:var(--warn)">λήγει ${st.exp?fdate(st.exp):''}</span>`
+          :st.k==='expired'?'<span style="color:var(--bad)">έληξε — η ετικέτα δεν ανοίγει ιατρικά</span>'
+          :'<span style="color:var(--bad)">δεν υπάρχει — η ετικέτα δεν ανοίγει ιατρικά</span>';
+        return `<tr><td><b class="pn" data-p="${esc(p?p.id:'')}" style="font-weight:500">${p?esc(nm(p)):'—'}</b>
+            <div class="dim" style="font-size:11.5px">${esc(p?(secOf(p)||p.section||''):'')}</div></td>
+          <td>${ls.map(l=>`<span class="pill" style="margin:0 4px 4px 0">${l.scope_section?esc(l.scope_section):'όλο το Σύστημα'}${
+              l.valid_to?` <span class="dim">ως ${esc(fdate(l.valid_to))}</span>`:''}
+              <a href="#" data-lboff="${l.id}" style="color:var(--bad);margin-left:4px" title="Αφαίρεση">✕</a></span>`).join('')}</td>
+          <td class="hide-s" style="font-size:12px">${n91}</td>
+          <td style="text-align:right"></td></tr>`}).join('')}</tbody></table></div>`})()}`;
+  ppWire('lbP', led, {ph:'Γράψε όνομα…', group:b=>'Βαθμοφόροι '+(secOf(b)||b.section||'—'), note:faNote});
+  faScopeWire('lb');
   $('lbGo').onclick=async()=>{ const pid=$('lbP').value; if(!pid)return toast('Διάλεξε βαθμοφόρο');
-    const {data,error}=await sb.from('person_labels').insert({person_id:pid,label:'Πρώτος Βοηθός',scope_section:$('lbS').value||null,valid_to:$('lbT').value||null}).select().single();
-    if(error)return toast('Σφάλμα: '+error.message); (D.plab=D.plab||[]).push(data); saveCache(); stay(); };
-  document.querySelectorAll('[data-lboff]').forEach(b=>b.onclick=async()=>{
-    if(!confirm('Αφαίρεση; Χάνει την πρόσβαση στα ιατρικά από σήμερα.'))return;
+    const scopes=faScopeRead('lb');
+    if(!scopes.length)return toast('Διάλεξε τμήμα — ή «όλο το Σύστημα».');
+    const have=labelsOf(pid).filter(l=>l.label==='Πρώτος Βοηθός').map(l=>l.scope_section);
+    const want=scopes.filter(sc=>!have.includes(sc));
+    if(!want.length)return toast('Το έχει ήδη για όσα διάλεξες.');
+    const rows=want.map(sc=>({person_id:pid,label:'Πρώτος Βοηθός',scope_section:sc,valid_to:$('lbT').value||null}));
+    const {data,error}=await sb.from('person_labels').insert(rows).select();
+    if(error)return toast('Σφάλμα: '+error.message);
+    (D.plab=D.plab||[]).push(...(data||[])); saveCache();
+    toast(want.length===1?'Μπήκε':'Μπήκε σε '+want.length+' τμήματα'); stay(); };
+  document.querySelectorAll('[data-lboff]').forEach(b=>b.onclick=async(e)=>{
+    if(e&&e.preventDefault)e.preventDefault();
+    const row=(D.plab||[]).find(x=>x.id===b.dataset.lboff)||{};
+    const wh=row.scope_section?('για '+row.scope_section):'για όλο το Σύστημα';
+    if(!confirm('Αφαίρεση '+wh+'; Χάνει την πρόσβαση στα ιατρικά από σήμερα.'))return;
     const today=new Date(Date.now()-864e5).toISOString().slice(0,10);
     const {error}=await sb.from('person_labels').update({valid_to:today}).eq('id',b.dataset.lboff);
     if(error)return toast('Σφάλμα: '+error.message);
