@@ -1220,7 +1220,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-23 18:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-23 18:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3112,7 +3112,7 @@ async function openProfile(id){
       const {error}=await sb.from('badgeholders').update({status:'Ενεργός'}).eq('id',p.id);
       if(error)return toast('Σφάλμα: '+error.message);
       p.status='Ενεργός'; saveCache();
-      drw.classList.remove('on'); route(ROUTE);
+      drw.classList.remove('on'); stay();
       undoBar('Επανήλθε: '+nm(p), ()=>undoRow('badgeholders', p.id, {status:was}, p));
       return;
     }
@@ -4782,7 +4782,7 @@ function archiveFlow(p){
     }
 
     saveCache();
-    $('drw').classList.remove('on'); route(ROUTE);
+    $('drw').classList.remove('on'); stay();
     undoBar('Αρχειοθετήθηκε: '+nm(p)
       +(also.length?' + '+also.length+' '+(also.length===1?'γονέας':'γονείς'):''),
       async()=>{
@@ -5246,7 +5246,7 @@ V.synod=()=>{
       const {data:dd}=await sb.from('synod_decision').insert(rows).select();
       if(dd)(D.synd=D.synd||[]).push(...dd);
     }
-    toast('Η Σύνοδος δημιουργήθηκε · αρ. '+(data.no||'')); V.synod(); openSynod(data.id);
+    toast('Η Σύνοδος δημιουργήθηκε · αρ. '+(data.no||'')); stay(); openSynod(data.id);
   };
   document.querySelectorAll('[data-syn]').forEach(b=>b.onclick=()=>openSynod(b.dataset.syn));
   document.querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>synodMinutes(b.dataset.min));
@@ -5274,7 +5274,7 @@ async function synodArchive(id, undo){
   Object.assign(s, row||{});
   if(!row){ s.archived_at=undo?null:new Date().toISOString(); s.archive_reason=undo?null:reason; }
   toast(undo?'Η Σύνοδος επανήλθε':'Η Σύνοδος αρχειοθετήθηκε');
-  V.synod();
+  stay();
 }
 
 async function synodDelete(id){
@@ -7055,7 +7055,7 @@ function parentEdit(pid){
       phone:$('pe_kp').value.trim()||null,email:$('pe_ke').value.trim()||null};
     const {error}=await sb.from('badgeholders').update(v).eq('id',pid);
     if(error)return toast('Σφάλμα: '+error.message);
-    Object.assign(p,v); saveCache(); toast('Ευχαριστούμε'); drw.classList.remove('on'); V.mykids();};
+    Object.assign(p,v); saveCache(); toast('Ευχαριστούμε'); drw.classList.remove('on'); stay();};
 }
 
 const RELS=['Μητέρα','Πατέρας','Θετή μητέρα','Θετός πατέρας','Γιαγιά','Παππούς','Αδελφή','Αδελφός','Θεία','Θείος','Ανάδοχος','Κηδεμόνας','Άλλο'];
@@ -7500,7 +7500,7 @@ function deskBody(){
     b.disabled=true;
     const {data,error}=await sb.rpc('make_invite',{p_person:b.dataset.inv,p_email:b.dataset.em,p_purpose:'γονέας'});
     if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
-    await reload1('inv','ac'); route(ROUTE);
+    await reload1('inv','ac'); stay();
     openPrint('Κωδικός λογαριασμού', `<div class="fpage" style="min-height:auto">${letterhead('ΠΡΟΣΒΑΣΗ ΣΤΗΝ ΕΦΑΡΜΟΓΗ','')}
       <div style="text-align:center;margin:26px 0">
         <div style="font-size:12px;color:#555">Κωδικός ενεργοποίησης για</div>
@@ -7713,7 +7713,7 @@ V.transfers=()=>{
       reason:$('trR').value.trim()||null, status:'αιτήθηκε',
       requested_by:ME.person_id||null});
     if(error)return tm('Σφάλμα: '+error.message);
-    await loadAll(); route('transfers');
+    await loadAll(); stay();
   };
   document.querySelectorAll('[data-trs]').forEach(b=>b.onclick=async()=>{
     const st=b.dataset.to, upd={status:st};
@@ -7721,19 +7721,19 @@ V.transfers=()=>{
     if(st==='εγκρίθηκε'){upd.approved_by=ME.person_id||null;upd.approved_on=new Date().toISOString().slice(0,10)}
     const {error}=await sb.from('transfers').update(upd).eq('id',b.dataset.trs);
     if(error)return toast('Σφάλμα: '+error.message);
-    await loadAll(); route('transfers');
+    await loadAll(); stay();
   });
   document.querySelectorAll('[data-trd]').forEach(b=>b.onclick=async()=>{
     const {error}=await sb.rpc('complete_transfer',{p_id:b.dataset.trd,p_role:null,p_override_reason:null});
     if(error)return toast('Δεν ολοκληρώθηκε: '+error.message);
-    await loadAll(); route('transfers'); toast('Ολοκληρώθηκε');
+    await loadAll(); stay(); toast('Ολοκληρώθηκε');
   });
   document.querySelectorAll('[data-trf]').forEach(b=>b.onclick=async()=>{
     const why=await uiText('Η έγκριση Εφορείας λείπει. Γράψε γιατί προχωράς — καταγράφεται και εμφανίζεται προς επικύρωση:');
     if(!why||!why.trim())return;
     const {error}=await sb.rpc('complete_transfer',{p_id:b.dataset.trf,p_role:null,p_override_reason:why.trim()});
     if(error)return toast('Δεν ολοκληρώθηκε: '+error.message);
-    await loadAll(); route('transfers'); toast('Ολοκληρώθηκε με παράκαμψη — καταγράφηκε');
+    await loadAll(); stay(); toast('Ολοκληρώθηκε με παράκαμψη — καταγράφηκε');
   });
 };
 
@@ -8309,7 +8309,7 @@ async function purgeInvites(){
   if(error)return toast('Σφάλμα: '+error.message);
   const n=(data&&data[0]&&data[0].diagrafikan)||0;
   toast(n?n+' προσκλήσεις σβήστηκαν':'Καμία δεν είχε ωριμάσει για διαγραφή');
-  if(n){ await loadAll(); V.accounts() }
+  if(n){ await loadAll(); stay() }
 }
 V.accounts=()=>{
   const all=(D.ac||[]).slice().sort((a,b)=>
@@ -8915,7 +8915,7 @@ function passBody(){
       const {data,error}=await sb.rpc('decide_requests',{p_ids:ids,p_status:st,p_note:note});
       if(error)return toast('Σφάλμα: '+error.message);
       toast(`${data.egine} ${st}${data.apetyxe?' · '+data.apetyxe+' απέτυχαν':''}`);
-      await reloadProgress(); route(ROUTE);
+      await reloadProgress(); stay();
     };
     if($('psOk'))  $('psOk').onclick  =()=>decide('εγκρίθηκε',false);
     if($('psBack'))$('psBack').onclick=()=>decide('αναπομπή',true);
@@ -9001,7 +9001,7 @@ function passBody(){
           {p_person:who.id, p_requirement:b.dataset.r, p_date:isoLocal(new Date()),
            p_examiner:($('psExam')?$('psExam').value:null)||null});
         if(error||(r&&r.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||r.error))}
-        toast('Πέρασε'); await reloadProgress(); route(ROUTE);
+        toast('Πέρασε'); await reloadProgress(); stay();
       });
     });
   }
@@ -9025,7 +9025,7 @@ function passBody(){
         requirement_id:rid, done_on:dt, signed_by:exam, status:'υποβλήθηκε'}));
       const {error}=await sb.from('progress_request').insert(rows);
       if(error)return toast('Σφάλμα: '+error.message);
-      toast(ids.length+' υποβλήθηκαν'); PSSEL.clear(); await reloadProgress(); return route(ROUTE);
+      toast(ids.length+' υποβλήθηκαν'); PSSEL.clear(); await reloadProgress(); return stay();
     }
     if(PSMODE==='sess'){
       const exam=$('psExam')?$('psExam').value:null;
@@ -9033,7 +9033,7 @@ function passBody(){
         {p_session:PSSESS, p_reqs:ids, p_examiner:exam||null});
       if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
       toast(`${data.parontes} παρόντες · ${data.perasan} πέρασαν${data.itan_idi?' · '+data.itan_idi+' ήταν ήδη':''}`);
-      PSSEL.clear(); await reloadProgress(); return route(ROUTE);
+      PSSEL.clear(); await reloadProgress(); return stay();
     }
     if(PSMODE==='kane'){
       ({data:res}=await sb.rpc('grant_from_kane',{p_person:who.id,p_reqs:ids,p_year:PSYEAR,p_date:null}));
@@ -9281,7 +9281,7 @@ V.groups=()=>{
   $('sgAdd').onclick=async()=>{const n=$('sgNew').value.trim(); if(!n)return;
     const {data,error}=await sb.from('subgroups').insert({scout_year:YEAR,section:SGSEC,name:n,kind:kindOf}).select().single();
     if(error)return toast('Σφάλμα: '+error.message);
-    (D.sg=D.sg||[]).push(data); saveCache(); $('sgNew').value=''; V.groups()};
+    (D.sg=D.sg||[]).push(data); saveCache(); $('sgNew').value=''; stay()};
   $('sgExp').onclick=()=>{
     const R=sgRoles(SGSEC);
     const rows=[['Τμήμα',kindOf,...R.map(([,t])=>t),'Υπεύθυνος βαθμοφόρος','Μέλος','Α.Μ.','Τάξη']];
@@ -9680,7 +9680,7 @@ V.fees=()=>{
     const {data,error}=await sb.rpc('recalc_fees',{y:YEAR});
     if(error){$('recalcMsg').textContent='Σφάλμα: '+error.message; b.disabled=false; return}
     $('recalcMsg').textContent=data+' εγγραφές ενημερώθηκαν';
-    await loadAll(); route('fees');};
+    await loadAll(); stay();};
 };
 
 let STMODE='org', OPEN={}, STQ='';
@@ -10948,7 +10948,7 @@ function mePieces(){
       owner_id:p.id,created_by:p.id}).select('id').single();
     if(error){va.disabled=false;return vm('Σφάλμα: '+error.message)}
     await sb.from('vehicle_links').insert({vehicle_id:v.id,person_id:p.id,relation:'Ιδιοκτήτης',valid_from:new Date().toISOString().slice(0,10)});
-    await loadAll(); route(ROUTE);
+    await loadAll(); stay();
   };
 
   document.querySelectorAll('.vedit').forEach(b=>b.onclick=()=>{
@@ -11311,7 +11311,7 @@ V.approvals=()=>{
     const {data:sts}=await sb.from('request_steps').insert(rows).select();
     D.rq=(D.rq||[]); D.rq.push(req); D.rs=(D.rs||[]).concat(sts||[]); saveCache();
     const n=rows.filter(r=>r.status==='auto').length;
-    toast(n?`Υποβλήθηκε · ${n} βήμα σφραγίστηκε αυτόματα`:'Υποβλήθηκε'); V.approvals();
+    toast(n?`Υποβλήθηκε · ${n} βήμα σφραγίστηκε αυτόματα`:'Υποβλήθηκε'); stay();
   };
   const dec=async(sid,rid,st)=>{
     await sb.from('request_steps').update({status:st,decided_by:ME.email,decided_at:new Date().toISOString()}).eq('id',sid);
@@ -11321,7 +11321,7 @@ V.approvals=()=>{
       const r=(D.rq||[]).find(x=>x.id===rid); if(r)r.status='απορρίφθηκε';}
     else if(all.every(x=>x.status!=='εκκρεμεί')){await sb.from('requests').update({status:'εγκρίθηκε',closed_at:new Date().toISOString()}).eq('id',rid);
       const r=(D.rq||[]).find(x=>x.id===rid); if(r)r.status='εγκρίθηκε';}
-    saveCache(); V.approvals();};
+    saveCache(); stay();};
   document.querySelectorAll('[data-ap]').forEach(b=>b.onclick=()=>dec(b.dataset.ap,b.dataset.r,'εγκρίθηκε'));
   document.querySelectorAll('[data-rj]').forEach(b=>b.onclick=()=>dec(b.dataset.rj,b.dataset.r,'απορρίφθηκε'));
 };
@@ -11385,7 +11385,7 @@ V.reports=()=>{
     if(error)return toast('Σφάλμα: '+error.message);
     await sb.from('report_log').insert({report_id:data.id,actor:anon?'ανώνυμος':ME.email,action:'υποβολή'});
     D.rp=(D.rp||[]); D.rp.push(data); saveCache();
-    toast(code?'Υποβλήθηκε · κωδικός '+code:'Υποβλήθηκε'); V.reports();
+    toast(code?'Υποβλήθηκε · κωδικός '+code:'Υποβλήθηκε'); stay();
   };
   document.querySelectorAll('[data-rack]').forEach(b=>b.onclick=async()=>{
     await sb.from('reports').update({status:'σε εξέταση'}).eq('id',b.dataset.rack);
@@ -11724,7 +11724,7 @@ function wireSaAdmin(){
     b.disabled=true;
     const {error}=await sb.rpc('school_passed',{p_app:b.dataset.id,p_code:code.trim(),p_aa:aa.trim()||null});
     if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
-    await loadAll(); toast('Μπήκε στο μητρώο'); V.training();
+    await loadAll(); toast('Μπήκε στο μητρώο'); stay();
   });
 }
 
@@ -11869,7 +11869,7 @@ V.rollover=()=>{
     if(e)Object.assign(e,patch);
     saveCache(); sel.closest('div').style.opacity=.4; toast('Μπήκε: '+sel.value);
   });
-  const kp=$('roKeep'); if(kp)kp.onchange=()=>{S.keepGroups=kp.checked;save();V.rollover()};
+  const kp=$('roKeep'); if(kp)kp.onchange=()=>{S.keepGroups=kp.checked;save();stay()};
   document.querySelectorAll('[data-grad]').forEach(b=>b.onclick=()=>{S.gradYears=b.dataset.grad;save();V.rollover()});
 
   const un=$('roUndo'); if(un)un.onclick=async()=>{
@@ -11877,7 +11877,7 @@ V.rollover=()=>{
     const {error}=await sb.from('member_year').delete().eq('scout_year',NY).like('source','rollover%');
     if(error)return toast('Σφάλμα: '+error.message);
     D.my=D.my.filter(x=>!(x.scout_year===NY&&(x.source||'').startsWith('rollover')));
-    saveCache(); toast('Αναιρέθηκε'); V.rollover();};
+    saveCache(); toast('Αναιρέθηκε'); stay();};
 
   const go=$('roGo'); if(go)go.onclick=async()=>{
     if(!moving.length&&!grads.length)return toast('Δεν υπάρχει τίποτα να γίνει');
@@ -13235,6 +13235,9 @@ V.formcat=async()=>{
       <label style="flex:2">Τίτλος<input data-ff="title" value="${esc(r.title||'')}"></label>
       <label style="max-width:110px">Quform id<input type="number" data-ff="quform_id" value="${r.quform_id||''}"></label>
       <label style="max-width:90px">Σειρά<input type="number" data-ff="seq" value="${r.seq||50}"></label>
+      ${
+''}
+      <label style="flex:1;min-width:190px" title="Το form_kind που στέλνει η φόρμα στο WordPress, αν διαφέρει από τον κωδικό. Χωρίζεις με κόμμα.">Όνομα στη φόρμα (WordPress)<input data-ff="kind_aliases" value="${esc((r.kind_aliases||[]).join(', '))}" placeholder="π.χ. φανέλες 2026-27"></label>
     </div>
     <div class="grow"><label style="flex:3">Σύνδεσμος<input data-ff="url" value="${esc(r.url||'')}"
       placeholder="https://smartespot.com/76life/..."></label></div>
@@ -13353,12 +13356,13 @@ V.formcat=async()=>{
     if(!await uiAsk('Διαγραφή της φόρμας από τον κατάλογο;\n\nΟι υποβολές που έχουν ήδη γίνει ΔΕΝ σβήνονται.'))return;
     const {error}=await sb.from('form_catalog').delete().eq('id',b.dataset.fcdel);
     if(error)return toast('Δεν διαγράφηκε: '+error.message);
-    FCED=null; toast('Διαγράφηκε'); V.formcat()});
+    FCED=null; toast('Διαγράφηκε'); stay()});
   document.querySelectorAll('[data-fcsave]').forEach(b=>b.onclick=async()=>{
     const td=b.closest('td'), v={};
     td.querySelectorAll('[data-ff]').forEach(i=>{
       const f=i.dataset.ff; let x=i.value.trim();
-      v[f] = (f==='active'||f==='record_only') ? !!x
+      v[f] = f==='kind_aliases' ? x.split(',').map(a=>a.trim()).filter(Boolean)
+           : (f==='active'||f==='record_only') ? !!x
            : (f==='seq'||f==='valid_months'||f==='quform_id') ? (x===''?null:parseInt(x))
            : (x||null);
     });
@@ -13441,7 +13445,7 @@ async function remDueBody(){
     if(!live&&!await uiAsk(`Θα φύγουν ${people.length} email σήμερα το πρωί.\n\nΝα ανοίξω τις υπενθυμίσεις;`))return;
     const {error}=await sb.from('app_settings').upsert({k:'reminders_enabled',v:!live});
     if(error)return toast('Δεν άλλαξε: '+error.message);
-    await reload1('st'); toast(live?'Σταμάτησαν':'Άνοιξαν'); route('reminders')};
+    await reload1('st'); toast(live?'Σταμάτησαν':'Άνοιξαν'); stay()};
 }
 
 function remSentBody(){
@@ -13937,7 +13941,7 @@ V.events=()=>{
     const rec={title:t,event_date:d,end_date:$('evD2').value||null,type:$('evTy').value,section:$('evS').value||null,scout_year:YEAR,place:$('evP').value.trim()||null,source:'e76'};
     const {data,error}=await sb.from('events').insert(rec).select().single();
     if(error)return toast('Σφάλμα: '+error.message);
-    D.ev.push(data); saveCache(); toast('Δημιουργήθηκε'); V.events();
+    D.ev.push(data); saveCache(); toast('Δημιουργήθηκε'); stay();
   };
   document.querySelectorAll('[data-efo]').forEach(b=>b.onclick=()=>{efSet(b.dataset.efo);route('efolder')});
   document.querySelectorAll('[data-ev]').forEach(b=>b.onclick=()=>evParts(b.dataset.ev));
@@ -14676,7 +14680,7 @@ function tplEdit(id){
   $('tSave').onclick=async()=>{const v=collect();
     const {error}=await sb.from('form_templates').update(v).eq('id',id);
     if(error)return toast('Σφάλμα: '+error.message);
-    Object.assign(t,v); await saveItems(); saveCache(); toast('Αποθηκεύτηκε'); drw.classList.remove('on'); V.templates();};
+    Object.assign(t,v); await saveItems(); saveCache(); toast('Αποθηκεύτηκε'); drw.classList.remove('on'); stay();};
   $('tNew').onclick=async()=>{const v=collect();
     const nv=Math.max(...(D.ft||[]).filter(x=>x.code===t.code).map(x=>x.version))+1;
     const {data,error}=await sb.from('form_templates')
@@ -14686,7 +14690,7 @@ function tplEdit(id){
       const el=document.querySelector(`[data-ci="${c.id}"]`);
       const {data:ni}=await sb.from('consent_items').insert({template_id:data.id,seq:c.seq,code:c.code,text:el?el.value.trim():c.text}).select().single();
       if(ni)D.ci.push(ni);}
-    D.ft.push(data); saveCache(); toast('Δημιουργήθηκε έκδοση '+nv); drw.classList.remove('on'); V.templates();};
+    D.ft.push(data); saveCache(); toast('Δημιουργήθηκε έκδοση '+nv); drw.classList.remove('on'); stay();};
 }
 
 const SIZES=['4-5','6-7','8-9','10-11','12-13','14-15','S','M','L','XL','XXL','3XL','4XL'];
@@ -16528,7 +16532,7 @@ function deskKidsBody(){
     b.disabled=true;
     const {data,error}=await sb.rpc('make_invite',{p_person:p.id,p_email:p.email,p_purpose:'μέλος'});
     if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
-    await reload1('inv','ac'); route(ROUTE);
+    await reload1('inv','ac'); stay();
     openPrint('Κωδικός λογαριασμού', `<div class="fpage" style="min-height:auto">${letterhead('ΠΡΟΣΒΑΣΗ ΣΤΗΝ ΕΦΑΡΜΟΓΗ','')}
       <div style="text-align:center;margin:26px 0">
         <div style="font-size:12px;color:#555">Κωδικός ενεργοποίησης για</div>
@@ -16919,9 +16923,9 @@ async function wl2SetClass(id, val){
   undoBar('Τάξη: '+wlPlain(r)+' → '+val, async()=>{
     await sb.from('waitlist_class').delete().eq('id',data.id);
     D.wlc=(D.wlc||[]).filter(x=>x.id!==data.id);
-    V.wl2();
+    stay();
   });
-  V.wl2();
+  stay();
 }
 
 async function wlSave(id,patch){
@@ -16947,7 +16951,7 @@ function wlDupWire(){
     const {data,error}=await sb.rpc('waitlist_merge',{p_keep:keep,p_drop:drop});
     if(error){b.disabled=false; return toast('Δεν ενώθηκε: '+error.message)}
     toast(data||'Ενώθηκε');
-    await reload1('wl','wlct'); route('waitlist');
+    await reload1('wl','wlct'); stay();
   });
   document.querySelectorAll('[data-wlnd]').forEach(b=>b.onclick=async()=>{
     const me=(meRec()||{}).id||null;
@@ -18323,14 +18327,14 @@ function molaEdit(id, slot, seed){
         const {data,error}=await sb.from('events').insert(row).select().single();
         if(error)return toast('Δεν μπήκε: '+error.message);
         D.ev.push(data); toast('Μπήκε'); }
-      saveCache(); drw.classList.remove('on'); V.cal();
+      saveCache(); drw.classList.remove('on'); stay();
     };
     const dl=$('meDel'); if(dl)dl.onclick=async()=>{
       if(!await uiAsk('Διαγραφή «'+ev.title+'»;'))return;
       const {error}=await sb.from('events').delete().eq('id',ev.id);
       if(error)return toast('Δεν σβήστηκε: '+error.message);
       D.ev=(D.ev||[]).filter(x=>x.id!==ev.id); saveCache();
-      drw.classList.remove('on'); toast('Σβήστηκε'); V.cal();
+      drw.classList.remove('on'); toast('Σβήστηκε'); stay();
     };
   };
   draw(); drw.classList.add('on');
@@ -18800,7 +18804,7 @@ function molaImport(){
     if(err)return $('miOut').innerHTML='<div class="bad">Δεν γράφτηκε: '+esc(err.message)
       +'<div class="dim" style="margin-top:6px">'+esc(writeHint(err.message))+'</div></div>';
     toast(ok+' δράσεις'+(theirs.length?' · '+theirs.length+' παραλείφθηκαν':''));
-    await loadAll(); drw.classList.remove('on'); V.cal();
+    await loadAll(); drw.classList.remove('on'); stay();
   };
 }
 
