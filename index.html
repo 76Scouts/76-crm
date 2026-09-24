@@ -1222,7 +1222,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-24 15:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-24 17:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3732,6 +3732,7 @@ function certsHTML(p){
         <div class="dim" id="pcHint" style="font-size:11.5px"></div>
         <label class="btn sm" style="cursor:pointer;justify-content:center">📎 Επισύναψη αρχείου<input type="file" id="pcFile" style="display:none" accept=".pdf,.png,.jpg,.jpeg,.heic"></label>
         <span class="dim" id="pcFileName" style="font-size:12px"></span>
+        <div id="pcOcr" style="display:none"></div>
         <button class="btn p sm" id="pcAdd">Καταχώρηση</button>
         ${
 ''}
@@ -3764,7 +3765,20 @@ function wireCerts(p,after){
       await sb.from('cert_documents').insert({cert_id:c.id, document_id:d.id, seq:1});
       c.document_id=d.id;
       (D.cd=D.cd||[]).push({id:'tmp'+Math.random(), cert_id:c.id, document_id:d.id, seq:1, label:null});
-      saveCache(); toast('Επισυνάφθηκε'); after&&after();
+      saveCache(); toast('Επισυνάφθηκε');
+      try{ const who=(D.bh||[]).find(b=>b.id===c.person_id);
+        const r=await ocrText(f); if(r.text){ const P=ocrParse(r.text,t), nc=ocrNameCheck(r.text,who);
+          if(nc==='no')toast('⚠ Δεν βρήκα το όνομα '+nm(who)+' στο χαρτί — έλεγξέ το');
+          const patch={};
+          if(P.issued&&P.issued!==c.issued_on){ patch.issued_on=P.issued; if(certAuto(t))patch.expires_on=certExpiry(t,P.issued).exp; }
+          if(P.expires&&P.expires!==c.expires_on&&!certAuto(t))patch.expires_on=P.expires;
+          if(Object.keys(patch).length&&await uiAsk('Το χαρτί γράφει '
+              +(patch.issued_on?'έκδοση '+fdate(patch.issued_on):'')+(patch.issued_on&&patch.expires_on?' · ':'')+(patch.expires_on?'λήξη '+fdate(patch.expires_on):'')
+              +'.\nΣτην καρτέλα: '+(c.issued_on?'έκδοση '+fdate(c.issued_on):'')+(c.expires_on?' · λήξη '+fdate(c.expires_on):'')
+              +'\n\nΝα διορθώσω την καρτέλα σύμφωνα με το χαρτί;',{ok:'Διόρθωσε'}))
+            await paperSave('pc',c,patch);
+        } }catch(e){}
+      after&&after();
     }catch(e){ toast('Σφάλμα: '+(e.message||e)) }
     finally{ inp.value='' }
   });
@@ -3777,7 +3791,9 @@ function wireCerts(p,after){
     try{ await certPurge(b.dataset.id); after&&after() }
     catch(e){ toast('Δεν διαγράφηκε: '+(e.message||e)) }});
   let pending=null;
-  const pf=$('pcFile'); if(pf)pf.onchange=()=>{pending=pf.files&&pf.files[0];$('pcFileName').textContent=pending?pending.name:''};
+  const pf=$('pcFile'); if(pf)pf.onchange=()=>{pending=pf.files&&pf.files[0];$('pcFileName').textContent=pending?pending.name:'';
+    if(pending)ocrAssist(pending,{box:$('pcOcr'),type:ctype($('pcType').value),person:p,
+      fill:{iss:$('pcIss'),exp:$('pcExp'),ov:$('pcOv')}});};
   const ty=$('pcType');
   const upd=()=>{
     const t=ctype(ty.value), iss=$('pcIss'), ex=$('pcExp'), ov=$('pcOv');
@@ -4329,6 +4345,177 @@ function showLegend(){
 }
 
 
+
+const OCR_TJS ='https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js';
+const OCR_PDF ='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const OCR_PDFW='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const ocrScript=(src,glob)=>new Promise((ok,no)=>{
+  if(window[glob])return ok();
+  let s=document.querySelector(`script[src="${src}"]`);
+  if(!s){ s=document.createElement('script'); s.src=src; s.async=true; document.head.appendChild(s); }
+  s.addEventListener('load',()=>ok()); s.addEventListener('error',()=>no(new Error('δεν φόρτωσε το πρόγραμμα ανάγνωσης')));
+});
+
+async function ocrText(file, onStep){
+  const step=t=>{ try{onStep&&onStep(t)}catch(e){} };
+  const isPdf=/pdf/i.test(file.type||'')||/\.pdf$/i.test(file.name||'');
+  const imgs=[];
+  if(isPdf){
+    step('Ανοίγω το PDF…');
+    await ocrScript(OCR_PDF,'pdfjsLib');
+    const L=window.pdfjsLib; L.GlobalWorkerOptions.workerSrc=OCR_PDFW;
+    const pdf=await L.getDocument({data:await file.arrayBuffer()}).promise;
+    const N=Math.min(pdf.numPages,2); let txt='';
+    for(let i=1;i<=N;i++){ const pg=await pdf.getPage(i); const tc=await pg.getTextContent();
+      txt+=tc.items.map(x=>x.str+(x.hasEOL?'\n':' ')).join('')+'\n'; }
+    if(txt.split(/\s+/).filter(w=>w.length>1).length>=25) return {text:txt, how:'κείμενο του PDF'};
+    for(let i=1;i<=N;i++){ const pg=await pdf.getPage(i), vp=pg.getViewport({scale:2.5});
+      const c=document.createElement('canvas'); c.width=vp.width; c.height=vp.height;
+      await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise; imgs.push(c); }
+  } else if(/^image\//.test(file.type||'')&&!/heic|heif/i.test(file.type||'')) imgs.push(file);
+  else return {text:'', how:'—'};
+  step('Φορτώνω την ανάγνωση (μόνο την πρώτη φορά αργεί)…');
+  await ocrScript(OCR_TJS,'Tesseract');
+  const w=await window.Tesseract.createWorker(['ell','eng']);
+  let text='';
+  try{ for(const im of imgs){ step('Διαβάζω το χαρτί…'); const r=await w.recognize(im); text+=r.data.text+'\n'; } }
+  finally{ try{await w.terminate()}catch(e){} }
+  return {text, how:'OCR'};
+}
+
+const OCR_MON={ιαν:1,φεβ:2,μαρ:3,απρ:4,μαι:5,μαϊ:5,ιουν:6,ιουλ:7,αυγ:8,σεπ:9,οκτ:10,νοε:11,δεκ:12,
+  jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+const ocrFold=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const ocrIso=(d,m,ys)=>{ let y=+ys; if(String(ys).length===2)y+= y<50?2000:1900;
+  if(!(m>=1&&m<=12&&d>=1&&d<=31&&y>=1990&&y<=2100))return null;
+  const dt=new Date(Date.UTC(y,m-1,d)); if(dt.getUTCDate()!==+d)return null;
+  return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'); };
+function ocrDates(text){
+  const t=ocrFold(text), out=[];
+  const re1=/(\d{1,2})\s*[.\/\-]\s*(\d{1,2})\s*[.\/\-]\s*(\d{4}|\d{2})(?!\d)/g; let m;
+  while((m=re1.exec(t))){ const iso=ocrIso(+m[1],+m[2],m[3]); if(iso)out.push({iso,at:m.index}); }
+  const re2=/(\d{1,2})\s+([a-zα-ω]{3,})\.?\s+(\d{4})/g;
+  while((m=re2.exec(t))){ const mo=OCR_MON[m[2].slice(0,4)]||OCR_MON[m[2].slice(0,3)]; if(!mo)continue;
+    const iso=ocrIso(+m[1],mo,m[3]); if(iso)out.push({iso,at:m.index}); }
+  return out.sort((a,b)=>a.at-b.at).map(x=>({...x, before:t.slice(Math.max(0,x.at-45),x.at)}));
+}
+const OCR_ISS=/(εκδοσ|εκδοθ|issue|ημ\.?\s*εκδ|απο[\s:.\-]*$|from[\s:.\-]*$|εναρξ|effective|ημερομηνια[\s:.\-]*$)/;
+const OCR_EXP=/(ληξ|ληγει|expir|valid\s*(until|to|thru)|εως[\s:.\-]*$|μεχρι[\s:.\-]*$|\bto[\s:.\-]*$|ισχυει|ισχυ[οςυ]*\s*(εως|μεχρι))/;
+function ocrParse(text, type){
+  const ds=ocrDates(text); let issued=null, expires=null;
+  const lab=(d,re)=>{ const seg=d.before.split('\n'); let ln=seg.pop(); if(!ln.trim())ln=seg.pop()||'';
+    return re.test(ln.trim()); };
+  for(const d of ds){ if(!issued&&lab(d,OCR_ISS)&&!lab(d,OCR_EXP))issued=d.iso; }
+  for(const d of ds){ if(!expires&&lab(d,OCR_EXP)&&(!issued||d.iso>=issued))expires=d.iso; }
+  const uniq=[...new Set(ds.map(d=>d.iso))];
+  if(!issued&&!expires&&uniq.length===1){
+    if((type||{}).date_basis==='λήξη')expires=uniq[0]; else issued=uniq[0];
+  }
+  if(issued&&expires&&expires<issued)expires=null;
+  return {issued, expires, dates:uniq};
+}
+
+function ocrSkel(w){
+  let s=ocrFold(w).replace(/[^a-zα-ω]/g,'');
+  s=s.replace(/^ντ/,'d').replace(/^μπ/,'b').replace(/^γκ/,'g').replace(/μπ/g,'b').replace(/ντ/g,'d').replace(/γκ|γγ/g,'g')
+     .replace(/ου/g,'u').replace(/αι/g,'e').replace(/ει|οι|υι/g,'i');
+  const G={α:'a',β:'v',γ:'g',δ:'d',ε:'e',ζ:'z',η:'i',θ:'t',ι:'i',κ:'k',λ:'l',μ:'m',ν:'n',ξ:'ks',ο:'o',π:'p',ρ:'r',σ:'s',ς:'s',τ:'t',υ:'i',φ:'f',χ:'h',ψ:'ps',ω:'o'};
+  s=[...s].map(c=>G[c]!==undefined?G[c]:c).join('');
+  s=s.replace(/ou/g,'u').replace(/th/g,'t').replace(/ph/g,'f').replace(/ch/g,'h').replace(/x/g,'ks')
+     .replace(/[yj]/g,'i').replace(/c/g,'k').replace(/w/g,'v').replace(/mb|mp/g,'b').replace(/^nt/,'d')
+     .replace(/ai/g,'e').replace(/ei|oi/g,'i').replace(/h/g,'');
+  return s.replace(/(.)\1+/g,'$1');
+}
+function ocrLev(a,b){ if(Math.abs(a.length-b.length)>2)return 9; const d=[...Array(b.length+1).keys()];
+  for(let i=1;i<=a.length;i++){ let p=d[0]; d[0]=i;
+    for(let j=1;j<=b.length;j++){ const t=d[j]; d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1)); p=t; } }
+  return d[b.length]; }
+const ocrNear=(a,b)=>{ if(a===b)return true; const lo=Math.min(a.length,b.length), hi=Math.max(a.length,b.length);
+  if(lo>=5&&(a.startsWith(b)||b.startsWith(a)))return true;
+  return lo>=3&&hi>=4&&ocrLev(a,b)<=(lo>=8?2:1); };
+function ocrNameCheck(text, p){
+  if(!p)return null;
+  const words=[...new Set(String(text).split(/[^A-Za-zΑ-Ωα-ωΆ-Ώά-ώΐΰϊϋ]+/).filter(w=>w.length>=3).map(ocrSkel))];
+  if(words.length<5)return null;
+  const has=n=>String(n||'').split(/[\s\-]+/).filter(x=>x.length>=3).some(x=>{const k=ocrSkel(x); return words.some(w=>ocrNear(w,k))});
+  const lat=String(p.latin_name||'').split(/\s+/);
+  const last=has(p.last_name)||(lat.length>1&&has(lat[lat.length-1]));
+  const first=has(p.first_name)||has(p.nickname)||(lat.length>1&&has(lat[0]));
+  return last&&first?'ok':last?'part':'no';
+}
+function ocrIdNum(text){
+  const t=ocrFold(text);
+  const m=t.match(/(αρ\.?\s*δ\.?\s*τ\.?|ταυτοτητ[αοςη]*|id\s*(card|no)|identity)[^\d\n]{0,25}(\d[\d\s]{4,10}\d)/);
+  return m?m[3].replace(/\s/g,''):null;
+}
+function ocrPlates(text){
+  const GL={Α:'A',Β:'B',Ε:'E',Ζ:'Z',Η:'H',Ι:'I',Κ:'K',Μ:'M',Ν:'N',Ο:'O',Ρ:'P',Τ:'T',Υ:'Y',Χ:'X'};
+  const t=String(text).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[ΑΒΕΖΗΙΚΜΝΟΡΤΥΧ]/g,c=>GL[c]);
+  const out=new Set(); const re=/(?:^|[^A-Z0-9])([A-Z]{3})\s?[-]?\s?(\d{1,3})(?![0-9])/g; let m;
+  while((m=re.exec(t)))out.add(m[1]+m[2]);
+  return [...out];
+}
+
+async function ocrAssist(file, o){
+  const box=o&&o.box; if(!box||!file)return null;
+  box.style.display='block';
+  const card=h=>`<div style="margin-top:8px;padding:9px 11px;border-radius:8px;background:var(--bg);border:1px solid var(--line);font-size:12.5px;line-height:1.6" role="status" aria-live="polite">${h}</div>`;
+  const say=h=>{box.innerHTML=card(h)};
+  say('🔎 Διαβάζω το χαρτί — <b>στη συσκευή σου</b>, δεν στέλνεται πουθενά.');
+  let r;
+  try{ r=await ocrText(file,t=>say('🔎 '+esc(t))); }
+  catch(e){ say('Δεν μπόρεσα να διαβάσω το χαρτί ('+esc(e.message||e)+'). Γράψε τις ημερομηνίες εσύ.'); return null; }
+  if(!r.text||r.text.replace(/\s/g,'').length<20){ say('Δεν διάβασα κείμενο σε αυτό το αρχείο — γράψε τις ημερομηνίες εσύ.'); return null; }
+  const t=o.type||{}, P=ocrParse(r.text,t), L=[];
+  const mark=el=>{ el.style.outline='2px solid var(--acc)'; el.title='Από το χαρτί — έλεγξέ το';
+    setTimeout(()=>{el.style.outline=''},6000); };
+  const put=(el,v)=>{ el.value=v; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); mark(el); };
+  const F=o.fill||{};
+  const offer=[];
+  const dateLine=(el,val,label)=>{
+    if(!el||!val)return;
+    if(!el.value){ put(el,val); L.push(`✓ ${label}: <b>${esc(fdate(val))}</b> <span class="dim">— από το χαρτί, έλεγξέ το</span>`); }
+    else if(el.value!==val){ const k=offer.length; offer.push(()=>put(el,val));
+      L.push(`⚠ ${label}: το χαρτί γράφει <b>${esc(fdate(val))}</b>, εδώ <b>${esc(fdate(el.value))}</b> <button class="btn sm gh" data-ocro="${k}">Βάλε του χαρτιού</button>`); }
+    else L.push(`✓ ${label}: ίδια με το χαρτί`);
+  };
+  dateLine(F.iss,P.issued,'Έκδοση');
+  if(P.expires&&F.exp){
+    const auto=typeof certAuto==='function'&&certAuto(t)&&F.ov;
+    const calc=auto&&P.issued?certExpiry(t,P.issued).exp:null;
+    if(auto&&calc&&calc!==P.expires){ F.ov.checked=true; F.ov.dispatchEvent(new Event('change',{bubbles:true}));
+      put(F.exp,P.expires); L.push(`⚠ Λήξη: το χαρτί γράφει <b>${esc(fdate(P.expires))}</b>, όχι την αυτόματη ${esc(fdate(calc))} — κράτησα του χαρτιού`); }
+    else if(!auto) dateLine(F.exp,P.expires,'Λήξη');
+    else L.push(`✓ Λήξη: <b>${esc(fdate(P.expires))}</b> — ίδια με την αυτόματη`);
+  }
+  if(!P.issued&&!P.expires)
+    L.push(P.dates.length?`— Βρήκα ${P.dates.length} ημερομηνίες αλλά όχι ποια είναι η έκδοση/λήξη· γράψ' τες εσύ.`
+                        :'— Δεν βρήκα ημερομηνία με σιγουριά· γράψ\' τη εσύ.');
+  const nc=ocrNameCheck(r.text,o.person);
+  if(nc==='ok')L.push(`✓ Το όνομα ταιριάζει με την καρτέλα (${esc(nm(o.person))})`);
+  else if(nc==='part')L.push(`⚠ Βρήκα μόνο το επώνυμο — έλεγξε ότι είναι χαρτί του/της <b>${esc(nm(o.person))}</b>`);
+  else if(nc==='no')L.push(`⚠ <b>Δεν βρήκα το όνομα ${esc(nm(o.person))}</b> στο χαρτί — είναι σίγουρα δικό του/της;`);
+  const idn=ocrIdNum(r.text);
+  if(idn&&o.person&&o.person.id){
+    try{ const {data}=await sb.rpc('adt_matches',{p_person:o.person.id,p_adt:idn});
+      if(data==='ίδιο')L.push('✓ Ο αριθμός ταυτότητας ταιριάζει με την καρτέλα');
+      else if(data==='διαφορετικό')L.push('⚠ Ο αριθμός ταυτότητας στο χαρτί <b>διαφέρει</b> από την καρτέλα — ίσως παλιά ή άλλη ταυτότητα');
+      else if(data==='κενό')L.push('— Η καρτέλα δεν έχει αριθμό ταυτότητας για σύγκριση');
+    }catch(e){}
+  }
+  if(o.plate){
+    const pls=ocrPlates(r.text), want=o.plate();
+    const key=s=>ocrPlates(String(s||'')+' ')[0]||String(s||'').toUpperCase().replace(/[\s.\-_]/g,'');    
+    if(want){ if(pls.includes(key(want)))L.push(`✓ Η πινακίδα ${esc(want)} υπάρχει στο χαρτί`);
+      else if(pls.length)L.push(`⚠ Το χαρτί γράφει πινακίδα <b>${esc(pls.join(', '))}</b>, όχι ${esc(want)}`);
+      else L.push('— Δεν βρήκα πινακίδα στο χαρτί'); }
+    else if(o.plateEl&&!o.plateEl.value&&pls.length===1){ put(o.plateEl,pls[0].replace(/^([A-Z]+)(\d+)$/,'$1 $2'));
+      L.push(`✓ Πινακίδα: <b>${esc(o.plateEl.value)}</b> <span class="dim">— από το χαρτί, έλεγξέ τη</span>`); }
+  }
+  say(L.map(x=>`<div>${x}</div>`).join('')+`<div class="dim" style="font-size:11px;margin-top:4px">Διαβάστηκε στη συσκευή σου (${esc(r.how)}). Τίποτα δεν αποθηκεύτηκε ακόμη.</div>`);
+  box.querySelectorAll('[data-ocro]').forEach(b=>b.onclick=()=>{ offer[+b.dataset.ocro](); b.replaceWith('✓'); });
+  return {P, name:nc, id:idn};
+}
 const V={};
 
 V.trends=()=>{
@@ -10996,6 +11183,7 @@ function mePieces(){
         <label style="display:block"><b style="font-size:13.5px">Το χαρτί σου</b>
           <input type="file" id="cF" accept="application/pdf,image/*" style="margin-top:5px"></label>
         <div class="dim" style="font-size:11.5px;margin-top:4px">Φωτογραφία ή PDF. Χωρίς αυτό η καταχώρηση μένει «χωρίς αρχείο» και δεν μπορεί να επιβεβαιωθεί.</div>
+        <div id="cOcr" style="display:none"></div>
       </div>
       <div class="grow" style="margin-top:10px">
         ${
@@ -11076,7 +11264,8 @@ function mePieces(){
         Πάει στον Α.Σ. για έλεγχο και μετά μετράει για τις μεταφορές δράσης.</div>
       <div style="padding:12px;border:1px dashed var(--line2);border-radius:var(--rs)">
         <label style="display:block"><b style="font-size:13.5px">Το χαρτί</b>
-          <input type="file" id="vcF" accept="application/pdf,image/*" style="margin-top:5px"></label></div>
+          <input type="file" id="vcF" accept="application/pdf,image/*" style="margin-top:5px"></label>
+        <div id="vcOcr" style="display:none"></div></div>
       <div class="grow" style="margin-top:10px">
         <label style="max-width:210px">Τι<select id="vcT">
           ${
@@ -11114,6 +11303,8 @@ function mePieces(){
     if(!await uiAsk(msg))return;
     try{ await certPurge(b.dataset.id); toast('Διαγράφηκε.'); V.me() }
     catch(e){ toast('Δεν διαγράφηκε: '+(e.message||e)) }});
+  const cf=$('cF'); if(cf)cf.onchange=()=>{ const f=cf.files&&cf.files[0];
+    if(f)ocrAssist(f,{box:$('cOcr'),type:ctype($('cT').value),person:p,fill:{iss:$('cI'),exp:$('cE')}}); };
   const ca=$('cAdd'); if(ca)ca.onclick=async()=>{
     const type=$('cT').value, lab=$('cL').value.trim(), iss=$('cI').value, exp=$('cE').value, f=$('cF').files[0];
     if(!exp&&!iss)return cm('Βάλε τουλάχιστον μία ημερομηνία.');
@@ -11186,6 +11377,12 @@ function mePieces(){
   document.querySelectorAll('[data-vup]').forEach(b=>b.onclick=()=>vehUpload(b.dataset.vup,b.dataset.vk));
   if(VEHPRE){ const c=$('vcCard'); if(c){ setTimeout(()=>{ c.scrollIntoView({block:'center',behavior:'smooth'});
       c.style.outline='2px solid var(--acc)'; setTimeout(()=>c.style.outline='',2200); },60); } VEHPRE=null; }
+  const vcf=$('vcF'); if(vcf)vcf.onchange=()=>{ const f=vcf.files&&vcf.files[0]; if(!f)return;
+    const isIns=$('vcT').value==='ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ';
+    ocrAssist(f,{box:$('vcOcr'),type:ctype($('vcT').value),person:isIns?p:null,
+      fill:{iss:$('vcI'),exp:$('vcE'),ov:$('vcOv')},
+      plate:()=>{const v=vcv&&vcv.value; if(!v||v==='NEW')return null; return ((D.veh||[]).find(x=>x.id===v)||{}).plate||null},
+      plateEl:$('vcNew')}); };
   const vca=$('vcAdd'); if(vca)vca.onclick=async()=>{
     const f=$('vcF').files[0], kind=$('vcT').value;
     const vt=ctype(kind)||{}, exp=(certAuto(vt)&&!$('vcOv').checked) ? (certExpiry(vt,$('vcI').value).exp||'') : $('vcE').value;
