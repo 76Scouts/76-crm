@@ -500,24 +500,6 @@ td.mcell:hover .madd{opacity:1}
 .scand{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
 .scand-b{font-size:11.5px;padding:3px 7px}
 .fpill{border-radius:20px;font-size:11.5px;padding:3px 11px}
-.pipw{position:fixed;right:18px;bottom:18px;width:460px;height:min(620px,78vh);
-  background:var(--card);border:1px solid var(--acc);border-radius:14px;z-index:180;
-  box-shadow:0 18px 60px rgba(0,0,0,.34);display:flex;flex-direction:column;overflow:hidden}
-.pipw.wide{width:min(880px,94vw)}
-.pipw.min{height:auto}
-.pipw.min .pipb,.pipw.min .pipf,.pipw.min .pipr{display:none}
-.piph{display:flex;gap:6px;align-items:center;padding:7px 9px;background:var(--acc);color:var(--onacc,#fff);
-  cursor:grab;font-size:13px;user-select:none}
-.piph:active{cursor:grabbing}
-.piph .btn{color:#fff;border-color:rgba(255,255,255,.35);background:transparent;padding:2px 7px}
-.pipb{flex:1;min-height:0}
-.pipb iframe{width:100%;height:100%;border:0;display:block;background:var(--bg)}
-.pipf{padding:5px 10px;font-size:10.5px;color:var(--ink3);background:var(--bg2);
-  border-top:1px solid var(--ln)}
-.pipr{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize}
-.pipr::after{content:'';position:absolute;right:3px;bottom:3px;width:7px;height:7px;
-  border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3)}
-@media(max-width:820px){ .pipw{left:8px;right:8px;width:auto;height:70vh} }
 body.pip #side,body.pip .vabar,body.pip #owner{display:none!important}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
 .side :focus-visible{outline-color:#fff}
@@ -990,7 +972,6 @@ const MON=['Ιανουαρίου','Φεβρουαρίου','Μαρτίου','Α�
 const p2=n=>String(n).padStart(2,'0');
 const fdate=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+' '+MON[x.getMonth()]+' '+x.getFullYear();};
 const fshort=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+'/'+p2(x.getMonth()+1);};
-const fnum=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+'/'+p2(x.getMonth()+1)+'/'+x.getFullYear();};
 const fgr=s=>{if(!s)return'';const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s).trim());return m?p2(m[1])+'/'+p2(m[2])+'/'+m[3]:s;};
 const fphone=p=>{if(!p)return'';const d=String(p).replace(/\D/g,'');return d.length===8?d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3'):p;};
 const SC={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)','Γονείς':'#6b7280'};
@@ -1222,7 +1203,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-25 13:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-25 15:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1559,9 +1540,20 @@ const LZQ={
   amx: ()=>sb.from('v_access_matrix').select('*'),
   wcon:()=>sb.from('v_warrant_conflicts').select('*').limit(500),
   tr2: ()=>sb.from('transfers').select('*').limit(1000),
-  tp:  ()=>sb.from('transfer_policy').select('*')
+  tp:  ()=>sb.from('transfer_policy').select('*'),
+  elog: ()=>sb.from('email_log').select('*').order('sent_at',{ascending:false}).limit(5000),
+  wl:   ()=>sb.from('waitlist').select('*').order('submitted_on',{ascending:false}),
+  rr:   ()=>sb.from('reminder_rules').select('*').order('seq'),
+  rl:   ()=>sb.from('reminder_log').select('*').order('created_at',{ascending:false}).limit(1500),
+  spl:  ()=>sb.from('structure_plan').select('*'),
+  splr: ()=>sb.from('structure_plan_row').select('plan_id,person_id,role_code,part_time,section,meta').limit(3000),
+  coh:  ()=>sb.from('cert_ocr_hint').select('*').limit(2000),
+  vds:  ()=>sb.from('vehicle_doc_sides').select('*').limit(2000),
+  fs:   ()=>sb.from('fee_schedule').select('*'),
+  inv:  ()=>sb.from('invitations').select('*').limit(2000)
 };
-const LZN={au:'audit_log', amx:'amx', wcon:'wcon', tr2:'transfers', tp:'transfer_policy'};
+const LZN={au:'audit_log', amx:'amx', wcon:'wcon', tr2:'transfers', tp:'transfer_policy',
+  elog:'elog', wl:'wl', rr:'rr', rl:'rl', spl:'structure_plan', splr:'structure_plan_row', coh:'coh', vds:'vds', fs:'fee_schedule', inv:'invitations'};
 const LZ={}, LZON={};
 function lazyArm(){
   for(const k of Object.keys(LZQ)){
@@ -1580,7 +1572,10 @@ function lazyFire(k){
     LZON[k]=error?null:'ok';                    
     if(error){console.warn('e76 τεμπέλικο '+k+':',error.message);return}
     LZ[k]=data||[];
-    if(LOADED&&ROUTE)route(ROUTE);
+    if(LZ[k].length===1000){ try{ if(!CUT.includes(k))CUT.push(k); console.warn('e76: ΚΟΠΗΚΕ στις 1000 —',k);
+      toast('Κόπηκαν δεδομένα στις 1000 γραμμές: '+k+' — χρειάζεται σελιδοποίηση') }catch(e){} }
+    if(LOADED&&ROUTE)stay();
+    try{ const dw=$('drw'); if(dw&&dw.classList.contains('on')&&OPENPID)openProfile(OPENPID) }catch(e){}
   }, e=>{ LZON[k]=null; console.warn('e76 τεμπέλικο '+k+':',e) });
 }
 lazyArm();
@@ -1642,8 +1637,9 @@ async function pageAll(table, cols, step=1000, cap=50000){
   return {data:out, error:null};
 }
 async function loadAll(){
+  Object.keys(LZON).forEach(k=>{ if(LZON[k]==='ok'){ LZON[k]=null; lazyFire(k) } });
   const q=[
-    pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location'),
+    pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location,studying'),
     sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
     sb.from('sessions').select('id,session_date,section,scout_year,status,title').order('session_date').limit(500),
     pageAll('attendance','session_id,person_id,status'),
@@ -1778,13 +1774,13 @@ async function loadAll(){
     if(me0&&(me0.kind||'')==='Μέλος'){ const {data:kr}=await sb.rpc('koinotita_roster'); KROSTER=kr||null; } }catch(e){}
   const assign=()=>{
   D.bh=r[0]?.data||D.bh||[]; D.my=r[1]?.data||[]; D.ss=r[2]?.data||[]; D.att=r[3]?.data||[]; D.cert=r[4]?.data||[]; D.gu=r[5]?.data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
-  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.fs=r[38]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[]; D.mb=r[41]?.data||[]; D.kl=r[42]?.data||[]; D.inv=r[43]?.data||[];   D.am=r[46]?.data||[]; D.ac=r[48]?.data||[]; D.cons=r[49]?.data||[];
+  D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[]; D.mb=r[41]?.data||[]; D.kl=r[42]?.data||[];   D.am=r[46]?.data||[]; D.ac=r[48]?.data||[]; D.cons=r[49]?.data||[];
   D.syn=r[50]?.data||[]; D.synp=r[51]?.data||[]; D.synd=r[52]?.data||[];
   (KROSTER||[]).forEach(x=>{ if(!D.my.some(y=>y.person_id===x.person_id&&y.scout_year===x.scout_year)) D.my.push(x) });
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.coh=r[70]?.data||[]; D.cd=r[71]?.data||[]; D.vds=r[72]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.elog=r[80]?.data||[]; D.wl=r[81]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.rr=r[84]?.data||[]; D.rl=r[85]?.data||[]; D.emo=r[86]?.data||[]; D.spl=r[87]?.data||[]; D.splr=r[88]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.cd=r[71]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.emo=r[86]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[];
   if(!(D.cl||[]).length && (D.care_op||[]).length) D.cl=D.care_op.map(x=>({...x}));
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   const _ow=$('owner');
@@ -1796,7 +1792,8 @@ async function loadAll(){
            style="color:inherit;text-decoration:underline"><b>${own}</b></a>` : `<b>${own}</b>`;
     _ow.innerHTML=`e76 · λογισμικό ${lbl}<br>Τα δεδομένα ανήκουν στο κλιμάκιο`;
   }
-  CUT=Object.keys(D).filter(k=>Array.isArray(D[k])&&D[k].length===1000);
+  CUT=Object.keys(D).filter(k=>Array.isArray(D[k])&&D[k].length===1000)
+    .concat(Object.keys(LZ).filter(k=>(LZ[k]||[]).length===1000));    
   if(CUT.length){
     console.warn('e76: ΚΟΠΗΚΕ στις 1000 —', CUT.join(', '));
     try{toast('Κόπηκαν δεδομένα στις 1000 γραμμές: '+CUT.join(', ')+' — χρειάζεται σελιδοποίηση')}catch(e){}
@@ -2094,42 +2091,6 @@ const VA_OPTS=()=>{
   if(VIEWAS&&!o.some(x=>x.k===VIEWAS.k))o.push(VIEWAS);
   return o};
 
-function vaPick(role){
-  const isP=role==='parent';
-  const pool=isP
-    ? [...new Map((D.cl||[]).filter(c=>!c.valid_to)
-        .map(c=>D.bh.find(b=>b.id===c.carer_id)).filter(Boolean).map(b=>[b.id,b])).values()]
-    : D.bh.filter(b=>isMem(b)&&b.status==='Ενεργός');
-  pool.sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
-  const sub=b=>isP
-    ? ((D.cl||[]).filter(c=>c.carer_id===b.id&&!c.valid_to).length+' παιδιά')
-    : [secOf(b),gradeOf(b)].filter(Boolean).join(' · ');
-  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
-      <div style="font-size:17px;font-weight:600">Δες ως ${isP?'γονέας':'μέλος'}</div>
-      <div class="dim" style="font-size:12.5px">Διάλεξε ποιον φοράς</div></div>
-      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
-    <div class="dsec"><input id="vaq" placeholder="Γράψε όνομα…" autofocus>
-      <div class="muted" style="font-size:11.5px;margin-top:6px">Βλέπεις ό,τι θα έβλεπε ο ίδιος.
-        Τα δικαιώματά σου δεν αλλάζουν — μόνο η οπτική.</div></div>
-    <div class="dsec" style="border:0;max-height:56vh;overflow:auto" id="valist"></div>`;
-  drw.classList.add('on');
-  const draw=()=>{
-    const q=nameKey($('vaq').value.trim());
-    const hits=(q?pool.filter(b=>nameKey(nm(b)).includes(q)):pool).slice(0,60);
-    $('valist').innerHTML=hits.map(b=>`<div class="kv" style="cursor:pointer" data-va="${b.id}">
-        <b style="flex:1">${pn(b)}</b>
-        <span class="dim" style="font-size:11.5px">${esc(sub(b))}</span></div>`).join('')
-      ||'<div class="dim" style="font-size:12.5px">Κανένα αποτέλεσμα — δοκίμασε λιγότερα γράμματα ή σβήσε το φίλτρο</div>';
-    document.querySelectorAll('[data-va]').forEach(d=>d.onclick=()=>{
-      const b=pool.find(x=>x.id===d.dataset.va);
-      VIEWAS={k:role+':'+b.id, t:(isP?'Γονέας · ':'Μέλος · ')+nm(b), role, pid:b.id};
-      sessionStorage.setItem('e76:viewas',JSON.stringify(VIEWAS));
-      drw.classList.remove('on'); renderPersona(); renderNav();
-      route(isP?'mykids':'me');
-    });
-  };
-  $('vaq').oninput=draw; draw();
-}
 
 function setViewAs(k){
   if(k==='screen')      return route('viewas');
@@ -2178,7 +2139,6 @@ function renderVaBand(){
   const rep=$('vaRep'); if(rep)rep.onclick=e=>{e.preventDefault();
     const pid=VIEWAS&&VIEWAS.pid; setViewAs(''); if(pid){VASUB=pid; route('viewas')}};
 }
-function vaHidesSection(sec){ return VIEWAS&&VIEWAS.sec&&sec&&sec!==VIEWAS.sec }
 function vaHidesPerson(p){
   if(!VIEWAS)return false;
   if(VIEWAS.role==='member')return p.id!==(VIEWAS.pid||ME.person_id||'');
@@ -2599,6 +2559,9 @@ if(typeof MutationObserver!=='undefined'){ let _a11yq=false;
   const go=()=>{ try{ mo.observe(document.body,{childList:true,subtree:true}); a11yName(); }catch(e){} };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go); else go();
 }
+const csvCell=v=>{const s=v==null?'':String(v);return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+const csvText=rows=>'\ufeff'+rows.map(r=>r.map(csvCell).join(';')).join('\r\n');
+function csvSave(rows,name){ saveBlob(csvText(rows),'text/csv;charset=utf-8',name) }
 function parseDateTxt(s){
   s=String(s||'').trim(); if(!s)return '';
   let d,m,y,k;
@@ -3005,8 +2968,9 @@ function labelsBody(){
     if(error)return toast('Σφάλμα: '+error.message);
     const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); stay(); });
 }
+let OPENPID=null;    
 async function openProfile(id){
-  const p=D.bh.find(x=>x.id===id); if(!p)return;
+  const p=D.bh.find(x=>x.id===id); if(!p)return; OPENPID=id;
   {const _pp=photoOf(p); if(_pp&&!/^https?:/.test(_pp)&&!PHOTO.has(_pp))await ensurePhotos([_pp]);}
   const y=myOf(p)||{}, gu=gOf(p.registry_no)||{}, c=D.cert.find(x=>x.person_id===p.id)||{}, sn=(D.sen||[]).find(x=>x.person_id===p.id)||{};
   const sec=secOf(p), isMem=(p.kind||'')==='Μέλος';
@@ -3238,7 +3202,7 @@ const pnm=p=>`<b class="pn" data-p="${p.id}">${esc(nm(p))}</b>${
 
 
 
-const TR_B=/βασικ/i, TR_P=/προκαταρκτ/i;
+const TR_B=/βασικ/i;
 const SEC_CODE={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Σύστημα':'ΑΣ','Δίκτυο':'Δ'};
 function trainLevel(id, sec){
   const t=(D.tr||[]).filter(x=>x.person_id===id);
@@ -4641,7 +4605,6 @@ function normRole(t){
   if(/^Β[ΑΟΚΜ]/.test(c)) return 'Βοηθός';       
   return undefined;                             
 }
-const CATS_B=['ΑΣ','Αρχηγός','Βαθμοφόρος','P/T','Δίκτυο','Υπεύθυνος Δικτύου'];
 const POS_B=[['Αρχηγός','Αρχηγός'],['Υπαρχηγός','Υπαρχηγός (Βαθμοφόρος)'],
   ['Βοηθός','Βοηθός'],['P/T','P/T (YOLO)'],
   ['Δίκτυο','Δίκτυο — μόνο γραμμένος'],['ΑΣ','Αρχηγός Συστήματος'],['Έφορος','Έφορος']];
@@ -4686,7 +4649,6 @@ function loadDraft(){
   if(fixed){try{localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}catch(e){}}
 }
 function saveDraft(){localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}
-const initials=p=>((p.first_name||' ')[0]+(p.last_name||' ')[0]).toUpperCase();
 
 
 let INSEC='Αγέλη';
@@ -5059,8 +5021,6 @@ const DEDA=[
 ];
 const DEDA_COL=['var(--ink3)','#9aa3ae','#9aa3ae','#f4c20d','#f4c20d','#f39c12','#27ae60','#27ae60'];
 
-const kaReqs=()=>(D.rc2||[]).filter(r=>r.section==='Κοινότητα'&&r.active!==false)
-  .sort((a,b)=>(a.stage_ordinal||0)-(b.stage_ordinal||0)||(a.ordinal||0)-(b.ordinal||0));
 const loadScript=src=>new Promise((ok,no)=>{ if(document.querySelector(`script[src="${src}"]`))return ok();
   const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('δεν φορτώθηκε '+src)); document.head.appendChild(s); });
 async function fileText(f){
@@ -6296,39 +6256,6 @@ function noKids(){
     <p>Ο λογαριασμός σου δεν είναι συνδεδεμένος με μέλος. Γράψε στο <b>as@76.life</b>.</p></div>`;
 }
 
-const MEDQ=[
- {g:'Βασικά'},
- {k:'blood_type', t:'Ομάδα αίματος', type:'sel', opts:['','0+','0−','A+','A−','B+','B−','AB+','AB−','Δεν γνωρίζω']},
- {k:'tetanus', t:'Αντιτετανικό', det:'tetanus_until', detT:'Ισχύει μέχρι', detType:'date'},
- {g:'Υγεία'},
- {k:'recent_illness', t:'Υπέφερε από κάτι τους τελευταίους 6 μήνες;', det:'recent_illness_txt', detT:'Τι ακριβώς'},
- {k:'chronic', t:'Χρόνιες παθήσεις;', det:'conditions', detT:'Ποιες'},
- {k:'mental', t:'Θέματα ψυχικής υγείας;', det:'mental_txt', detT:'Τι χρειάζεται να ξέρουμε'},
- {k:'on_medication', t:'Παίρνει φαρμακευτική αγωγή;', det:'medication', detT:'Ποια φάρμακα, πότε, πόσο'},
- {g:'Αλλεργίες'},
- {k:'allergy_drugs', t:'Σε φάρμακα;', det:'allergy_drugs_txt', detT:'Ποια'},
- {k:'allergy_food',  t:'Σε τροφές;',  det:'allergy_food_txt',  detT:'Ποιες'},
- {k:'allergy_other', t:'Κάτι άλλο;',  det:'allergy_other_txt', detT:'Τι'},
- {g:'Διατροφή'},
- {k:'eats_amount', t:'Πόσο τρώει', type:'sel', opts:['','Κανονικά','Λίγο','Πολύ','Επιλεκτικά']},
- {k:'fasting', t:'Νηστεύει;'},
- {k:'dietary_yes', t:'Διαιτητικοί περιορισμοί;', det:'dietary', detT:'Ποιοι'},
- {g:'Διανυκτέρευση', n:'Μόνο για κατασκηνώσεις και εκδρομές με διανυκτέρευση.'},
- {k:'first_camp', t:'Πρώτη του κατασκήνωση;'},
- {k:'tires', t:'Κουράζεται εύκολα;'},
- {k:'irritable', t:'Οξύθυμος;'},
- {k:'constipation', t:'Δυσκοιλιότητα;'},
- {k:'fears_dark', t:'Φοβάται το σκοτάδι;'},
- {k:'sleep_talks', t:'Μιλά στον ύπνο του;'},
- {k:'sleep_wets', t:'Ουρεί στον ύπνο του;'},
- {k:'night_toilet', t:'Σηκώνεται τουαλέτα το βράδυ;', det:'night_toilet_txt', detT:'Πόσο συχνά'},
- {k:'sleep_other', t:'Κάτι άλλο για τον ύπνο;', det:'sleep_other_txt', detT:'Τι'},
- {g:'Γιατρός'},
- {k:'doctor_name', t:'Θεράπων ιατρός (ένας ανά γραμμή)', type:'area'},
- {k:'doctor_phone', t:'Τηλέφωνο γιατρού', type:'txt'},
- {k:'insurance_no', t:'Ιδιωτική ασφάλιση (εταιρεία & αρ. συμβολαίου)', type:'txt'},
- {k:'notes', t:'Οτιδήποτε άλλο θέλεις να ξέρουμε', type:'area'},
-];
 
 V.kidhealth=()=>{
   const kid=kidPick(); if(!kid)return $('view').innerHTML=noKids();
@@ -7021,16 +6948,6 @@ function sampleBilinear(sd,sw,sh,x,y,od,oi){
   od[oi+3]=255;
 }
 
-function buildName(){
-  var d=($('[name="purchaseDate"]').value||'').trim(),
-      fund=($('[name="fund"]').value||'').trim(),
-      sup=($('[name="supplier"]').value||'').trim(),
-      amt=(($('[name="amount"]').value||'')+'').trim();
-  var base=[d,fund,sup, amt?amt+'€':''].filter(Boolean).join('_') || 'apodeixi';
-  base=base.replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-  return (base||'apodeixi')+'.jpg';
-}
-
 var _cropWork=null, _cropCorners=null, _cropDone=null, _cropDrag=-1;
 function cropDraw(){
   var cv=$('cropCanvas'), ctx=cv.getContext('2d');
@@ -7481,8 +7398,6 @@ const ACCROLES=[
   ['viewer','Χωρίς πρόσβαση','Βλέπει το κέλυφος, τίποτα άλλο']];
 const ACCSHORT={admin:'ΔΙΑΧ',superadmin:'ΔΙΑΧ',junior_admin:'ΔΙΑΧ',section_head:'Α.Τ.',
   section_assistant:'ΒΑΘΜ',patrol_leader:'ΕΝΩΜ',commissioner:'ΕΦ',member:'ΜΕΛ',guardian:'ΓΟΝ',viewer:'—'};
-const accLabel=(r,short)=>{const x=ACCROLES.find(a=>a[0]===r);
-  return short?(ACCSHORT[r]||r):(x?x[1]:r)};
 const accHint=r=>{const x=ACCROLES.find(a=>a[0]===r); return x?x[2]:''};
 function accessBody(){
   const byPerson={};
@@ -8606,7 +8521,6 @@ function setPasswordScreen(){
 const ACC_STEP={'χωρίς email':0,'έχει email — χωρίς κωδικό':1,'ο κωδικός έληξε':1,
   'εκδόθηκε — δεν δόθηκε':2,'στάλθηκε με email':3,'δόθηκε στο χέρι':3,
   'χρησιμοποίησε τον κωδικό':4,'έφτιαξε λογαριασμό — χωρίς συνθηματικό':4,'ενεργός':5};
-const ACC_PEND=['εκδόθηκε — δεν δόθηκε'];
 const ACC_HAS=[['me','Έφτιαξε προφίλ'],['sent','Στάλθηκε κωδικός — δεν μπήκε'],
                ['none','Ούτε κωδικός ακόμη'],['xoris','Χωρίς λογαριασμό (και τα δύο πιο πάνω)']];
 const accBucket=n=>n>=4?'me':n>=2?'sent':'none';
@@ -8994,7 +8908,7 @@ function diakriseis(pid){
   out.held=held; return out;
 }
 
-let PGST=null, PGWHO=null, PGTAB='pinakas';
+let PGST=null, PGTAB='pinakas';
 function progressBody(){
   const kids=opKids(), stages=opStages();
   if(!stages.length)return $('view').innerHTML='<div class="uc"><h3>Δεν φορτώθηκε ο κατάλογος</h3><p>Δοκίμασε ανανέωση.</p></div>';
@@ -9373,8 +9287,6 @@ async function reloadProgress(){
 
 
 
-const YN = v => v===true||v==='true'||v===1 ? 'Ναι'
-              : v===false||v==='false'||v===0 ? 'Όχι' : '';
 const ddmmyyyy = d => { if(!d) return '';
   const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
 
@@ -9393,7 +9305,7 @@ const FST={'δεν έχει υποβληθεί':['bad','Δεν το έχεις �
            'χωρίς παραγγελία':['','Δεν έχεις παραγγείλει'],
            'παραγγέλθηκε':['ok','Παρήγγειλες']};
 const FORDER=k=>k==='χωρίς παραγγελία'||k==='παραγγέλθηκε';
-let FORMS=null, FWHO=null;
+let FWHO=null;
 V.myforms=()=>{
   const who = FWHO || mePid();
   const p = D.bh.find(b=>b.id===who);
@@ -9495,8 +9407,7 @@ function honoursBody(){
 
 function exportRows(rows,name,title){
   if(!rows||rows.length<2)return toast('Τίποτα για εξαγωγή');
-  const esc2=v=>{const s=v==null?'':String(v);return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
-  const csv=()=>saveBlob('﻿'+rows.map(r=>r.map(esc2).join(';')).join('\r\n'),'text/csv;charset=utf-8',name+'.csv');
+  const csv=()=>csvSave(rows,name+'.csv');
   const xls=()=>{  
     const cell=v=>{const s=String(v==null?'':v);
       const num=/^-?\d+([.,]\d+)?$/.test(s)&&s.length<15;
@@ -9770,6 +9681,81 @@ V.year=()=>{
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go));
 };
 
+const HON_LEVELS=[
+  {lvl:1, yrs:10, t:"Ευδόκιμη Υπηρεσία Δ' Τάξης"},
+  {lvl:2, yrs:20, t:"Ευδόκιμη Υπηρεσία Γ' Τάξης"},
+  {lvl:3, yrs:30, t:"Ευδόκιμη Υπηρεσία Β' Τάξης"},
+  {lvl:4, yrs:40, t:"Ευδόκιμη Υπηρεσία Α' Τάξης"}];
+function honLevelOf(title){
+  const t=String(title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[\u0384\u0374\u02B9\u2032\u2019`΄]/g,"'").toUpperCase();
+  if(/ΕΥΔΟΚΙΜ(ΗΣ|ΟΥ)\s+ΥΠΗΡΕΣΙΑΣ/.test(t)){
+    const L=c=>new RegExp("(^|[\\s(])"+c+"('|\\s+ΤΑΞ)").test(t);
+    if(L('Δ'))return 1; if(L('Γ'))return 2; if(L('Β'))return 3;
+    if(L('Α'))return /ΜΕΤΑΛΛΙΟ/.test(t)?'παλιά':4;
+    return 'παλιά';
+  }
+  const m=t.match(/ΜΑΚΡΑΣ\s+ΥΠΗΡΕΣΙΑΣ.*?\((\d+)\s*ΧΡΟΝΙΑ\)/);
+  if(m)return ({10:1,20:2,30:3,40:4})[+m[1]]||'παλιά';
+  if(/ΜΑΚΡΑΣ\s+ΥΠΗΡΕΣΙΑΣ/.test(t))return 'παλιά';
+  return null;
+}
+function honYears(rows){
+  const ok=new Set(), rev=new Set(), ent=new Set();
+  (rows||[]).forEach(r=>{ if(!r.scout_year)return;
+    const counts=r.warrant_type==='Εντολή Διοίκησης'||r.counts_for_service===true;
+    if(!counts)return;
+    if(String(r.needs_review||'').trim())rev.add(r.scout_year);
+    else { ok.add(r.scout_year); if(r.warrant_type==='Εντολή Διοίκησης')ent.add(r.scout_year); } });
+  [...ok].forEach(y=>rev.delete(y));
+  const ys=[...ok].sort();
+  return {n:ok.size, entoli:ent.size, review:rev.size, first:ys[0]||null, last:ys[ys.length-1]||null};
+}
+function honRows(){
+  const byP={}; (D.sh||[]).forEach(r=>{(byP[r.person_id]=byP[r.person_id]||[]).push(r)});
+  const hoP={}; (D.ho||[]).forEach(h=>{const l=honLevelOf(h.title); if(l===null)return;
+    const x=hoP[h.person_id]=hoP[h.person_id]||{max:0,old:[]};
+    if(l==='παλιά')x.old.push(h); else x.max=Math.max(x.max,l)});
+  return Object.keys(byP).map(pid=>{
+    const p=D.bh.find(b=>b.id===pid); if(!p||p.status!=='Ενεργός')return null;    
+    const y=honYears(byP[pid]); const reach=[...HON_LEVELS].reverse().find(L=>y.n>=L.yrs);
+    const got=hoP[pid]||{max:0,old:[]};
+    const next=HON_LEVELS.find(L=>L.lvl>got.max);
+    return {p, y, reach:reach?reach.lvl:0, got:got.max, old:got.old, next,
+      due: !!reach && reach.lvl>got.max && !got.old.length,
+      check: !!reach && reach.lvl>got.max && !!got.old.length,
+      soon: !!next && y.n>=next.yrs-2 && y.n<next.yrs};
+  }).filter(Boolean).sort((a,b)=>b.y.n-a.y.n||sortByName(a.p,b.p));
+}
+function honoursEligibleBody(){
+  if(!isAdminUI())return $('view').innerHTML='<div class="card pad dim">Μόνο ο Α.Σ. βλέπει τη λίστα υποψηφίων.</div>';
+  const R=honRows(), lvT=l=>(HON_LEVELS.find(L=>L.lvl===l)||{}).t||'—';
+  const due=R.filter(x=>x.due), chk=R.filter(x=>x.check), soon=R.filter(x=>x.soon&&!x.due&&!x.check);
+  const rev=R.filter(x=>x.y.review);
+  const row=x=>`<tr><td>${pnm(x.p)}</td><td><b>${x.y.n}</b>${x.y.review?` <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="γραμμές προς έλεγχο — δεν μετρήθηκαν">+${x.y.review} προς έλεγχο</span>`:''}</td>
+    <td class="hide-s dim">${esc(x.y.first||'—')} – ${esc(x.y.last||'—')}</td>
+    <td>${x.got?esc(lvT(x.got)):'<span class="dim">καμία</span>'}${x.old.length?`<div class="dim" style="font-size:11.5px">παλιά ονομασία: ${esc(x.old.map(h=>h.title).join(' · '))}</div>`:''}</td>
+    <td>${x.due||x.check?`<b>${esc(lvT(x.reach))}</b>`:x.next?`<span class="dim">${esc(lvT(x.next.lvl))} στα ${x.next.yrs}</span>`:'—'}</td></tr>`;
+  const tbl=(title,list,why)=>list.length?`<div class="sec"><h3>${title}</h3><span class="n">${list.length}</span></div>
+    ${why?`<div class="dim" style="font-size:12.5px;margin:-4px 0 8px">${why}</div>`:''}
+    <div class="card" style="overflow:auto"><table><thead><tr><th>Βαθμοφόρος</th><th>Χρόνια</th><th class="hide-s">Από – έως</th><th>Έχει</th><th>Δικαιούται</th></tr></thead>
+    <tbody>${list.map(row).join('')}</tbody></table></div>`:'';
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>Ποιος συμπλήρωσε τα χρόνια για διάκριση Ευδόκιμης Υπηρεσίας</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px;line-height:1.6">
+        Κανονισμός ΣΠΚ (2013): Δ' Τάξη στα <b>10</b>, Γ' στα <b>20</b>, Β' στα <b>30</b>, Α' στα <b>40</b> χρόνια ως βαθμοφόρος — αθροιστικά.
+        Το «ευδόκιμη» το κρίνει ο Έφορος και την πρόταση την κάνει η Επαρχία· εδώ φαίνεται μόνο ποιος συμπλήρωσε τα χρόνια.
+        Μετράει κάθε προσκοπικό έτος με Εντολή Διοίκησης (ή «μετρά για υπηρεσία») στο ιστορικό· οι γραμμές <i>προς έλεγχο</i> δεν μετρούν.</div>
+      <div style="margin-top:10px"><button class="btn sm" id="honCsv">${ic('down',14)} CSV για την Επαρχία</button></div></div>
+    ${tbl('Δικαιούνται και δεν την έχουν',due,'')}
+    ${tbl('Να επιβεβαιωθεί',chk,'Έχουν διάκριση με παλιά ονομασία (πριν το 2011) — δες σε ποια σημερινή τάξη αντιστοιχεί.')}
+    ${tbl('Κοντά (έως 2 χρόνια)',soon,'')}
+    ${rev.length?`<div class="card pad dim" style="margin-top:14px;font-size:12.5px">${rev.length} βαθμοφόροι έχουν γραμμές ιστορικού <b>προς έλεγχο</b> που δεν μετρήθηκαν. Όταν ελεγχθούν, η λίστα αλλάζει μόνη της.</div>`:''}
+    ${!due.length&&!chk.length&&!soon.length?'<div class="uc"><h3>Κανείς αυτή τη στιγμή</h3><p>Κανένας βαθμοφόρος δεν συμπληρώνει τα χρόνια χωρίς να έχει ήδη τη διάκριση.</p></div>':''}`;
+  $('honCsv').onclick=()=>csvSave([['Ονοματεπώνυμο','Α.Μ.','Χρόνια','Προς έλεγχο','Από','Έως','Έχει','Δικαιούται']]
+    .concat([...due,...chk].map(x=>[nm(x.p),x.p.registry_no||'',x.y.n,x.y.review,x.y.first||'',x.y.last||'',x.got?lvT(x.got):'',lvT(x.reach)])),
+    `76-diakriseis-ypopsifioi.csv`);
+}
 const CAPS=[
  {k:'people',    t:'Πρόσωπα & επαφές',      d:'Καρτέλες, τηλέφωνα γονέων, εξαγωγές'},
  {k:'attendance',t:'Παρουσίες',             d:'Συγκεντρώσεις και παρουσιολόγιο'},
@@ -10213,8 +10199,7 @@ function staffScreen(){
     ep.forEach(o=>rows.push(['Επαρχιακή Λευκωσίας','',o.title,o.person_name||'','','','','',o.email||'','','']));
     secsBoard().forEach(s=>(bySec[s]||[]).forEach(p=>{const cs=certState(p.id),w=warrantOf(p.id);
       rows.push(['76ο Σύστημα',s,roleOfYear(p,SY),p.last_name,p.first_name,p.scout_name||'',p.registry_no||'',p.phone||'',p.email||'',cs.exp||'',w&&w.no?w.no:''])}));
-    const csv='﻿'+rows.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
-    saveBlob(csv,'text/csv;charset=utf-8',`76-diarthrwsi-${SY}.csv`)};
+    csvSave(rows,`76-diarthrwsi-${SY}.csv`)};
 };
 
 async function staffAssign(pid, roleCode, section, archived, pt){
@@ -11086,8 +11071,7 @@ function staffDraft(years){
     const R=[['Τμήμα','Ρόλος','Κατηγορία','Ονοματεπώνυμο','Προσκοπικό','Α.Μ.','Τηλέφωνο']];
     secsBoard().forEach(s=>led.filter(x=>place(x)===s).sort((a,b)=>POS_RANK(rl(a))-POS_RANK(rl(b))||sortByName(a,b))
       .forEach(x=>R.push([s,rl(x),catOf(x),nm(x),x.scout_name||'',x.registry_no||'',x.phone||''])));
-    const csv='\ufeff'+R.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`e76-diarthrosi-${SY}.csv`;a.click();toast('Κατέβηκε');};
+    csvSave(R,`e76-diarthrosi-${SY}.csv`);toast('Κατέβηκε');};
   const dg=$('stDrag'); if(dg)dg.onclick=()=>{DRAGON=!DRAGON;
     try{localStorage.setItem('e76:dragon',DRAGON?'1':'')}catch(x){}; V.staff()};
   const im=$('stImp'); if(im)im.onclick=staffImport;
@@ -11364,7 +11348,7 @@ function licNote(p,pt){
   const a=[]; if(pt)a.push('Part Time');
   if(p.special==='Σ')a.push('Στρατός'); else if(p.special==='7')a.push('7η');
   const l=String(p.location||'').trim();
-  if(/^[A-Z]{2}(-[A-Z]{2,3})?$/.test(l)&&!/^CY/.test(l))a.push('Φοιτητής Εξωτερικού');
+  if(/^[A-Z]{2}(-[A-Z]{2,3})?$/.test(l)&&!/^CY/.test(l))a.push(p.studying?'Φοιτητής Εξωτερικού':'Εξωτερικό');
   return a.join(' · ');
 }
 function licStaffRows(){
@@ -12294,7 +12278,6 @@ const trLevel=t=>{
   if(k==='ΣΠΕΒ'||TR_PRE.test(s))        return 1;    
   return 0;
 };
-const SA_FLOW=['δηλώθηκε','στάλθηκε','έγινε δεκτός','την πέρασε'];
 const SA_COL={'δηλώθηκε':'', 'στάλθηκε':'warn', 'έγινε δεκτός':'ok',
               'την πέρασε':'ok', 'δεν έγινε δεκτός':'bad', 'ακυρώθηκε':'bad'};
 const SA_SYN={
@@ -13858,7 +13841,6 @@ V.reads=async()=>{
   };
 };
 
-const NW_COL={'εντάξει':'ok'};
 const nwCol=a=>a==='εντάξει'?'ok':/θέλει κρίση/.test(a)?'warn':'bad';
 let NWPLAN=[];
 
@@ -14050,8 +14032,9 @@ function fcAudience(v){
 async function fcCounts(ids){
   const out={};
   for(const id of ids){
-    const {data}=await sb.rpc('form_audience',{p_form:id});
-    out[id]=(data||[]).length;
+    const {data,error}=await sb.rpc('form_audience',{p_form:id});
+    out[id]=error?'—':(data||[]).length;
+    if(error)console.warn('form_audience:',error.message);
   }
   return out;
 }
@@ -14508,10 +14491,6 @@ V.dedupe=()=>{
 let CALLSEC='all', CALLONLY='', ENSEC='all', ENONLY='';
 const FLAGPUB=['Ιατρικό','Διατροφή'];
 const flagsOf=id=>(D.mf||[]).filter(f=>f.person_id===id);
-function callLog(pid,who,ok){
-  const k=pid+'|'+who; CALLLOG[k]={t:Date.now(),ok:ok};
-  localStorage.setItem('e76:calllog',JSON.stringify(CALLLOG)); route(ROUTE);
-}
 function contactsOf(p){
   const g=gOf(p.registry_no)||{}; const out=[];
   if(g.father_name)out.push({rel:'Πατέρας',name:g.father_name,tel:g.father_mobile,alt:g.father_work_phone,mail:g.father_email,pri:g.priority==='Πατέρας'});
@@ -15232,9 +15211,7 @@ function efPhonesWire(e,parts){
     parts.forEach(x=>{const car=((x.p.kind||'')==='Μέλος')?carersOf(x.p.id):[];
       if(car.length)car.forEach(c=>R.push([nm(x.p),x.pa.role||'',secOf(x.p)||'',c.p.phone,nm(c.p)+' ('+(c.rel||'')+')']));
       else R.push([nm(x.p),x.pa.role||'',secOf(x.p)||'',x.p.phone||'',x.p.phone?'ο ίδιος':'—']);});
-    const csv='﻿'+R.map(r=>r.map(c=>{const v=c==null?'':String(c);
-      return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
-    saveBlob(csv,'text/csv;charset=utf-8',`76-tilefona-${(e.title||'drasi').replace(/\W+/g,'-')}.csv`)};
+    csvSave(R,`76-tilefona-${(e.title||'drasi').replace(/\W+/g,'-')}.csv`)};
   $('efPhPrint').onclick=()=>window.print();
 }
 
@@ -15295,9 +15272,7 @@ function efCertsWire(e,parts,onDate){
       return s.k==='ok'?(s.c&&s.c.expires_on?'έως '+s.c.expires_on:'ΝΑΙ')
            :s.k==='expired'?'ΕΛΗΞΕ':s.k==='pending'?'ΕΚΚΡΕΜΕΙ ΕΠΙΒΕΒΑΙΩΣΗ'
            :s.k==='nodate'?'ΧΩΡΙΣ ΗΜΕΡΟΜΗΝΙΑ ΛΗΞΗΣ':''})]));
-    const csv='﻿'+R.map(r=>r.map(c=>{const v=c==null?'':String(c);
-      return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
-    saveBlob(csv,'text/csv;charset=utf-8',`76-pistopoiitika-${(e.title||'drasi').replace(/\W+/g,'-')}.csv`)};
+    csvSave(R,`76-pistopoiitika-${(e.title||'drasi').replace(/\W+/g,'-')}.csv`)};
 }
 
 function evFiles(eid){
@@ -15385,8 +15360,7 @@ V.mails=()=>{
     const rows=[['Τύπος','Όνομα','Ιδιότητα','Τηλέφωνο','Παιδιά/Τάξη']]
       .concat(teens.map(p=>['Ανιχνευτής',nm(p),(myOf(p)||{}).grade||'',p.phone||'','']))
       .concat(gaps.map(g=>['Γονέας',g.name,g.rel,g.tel||'',g.kids.join(' · ')]));
-    const csv='﻿'+rows.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
-    saveBlob(csv,'text/csv;charset=utf-8',`76-leipoun-email-${YEAR}.csv`)};
+    csvSave(rows,`76-leipoun-email-${YEAR}.csv`)};
 };
 
 const UPBASE='https://as76-strvls.github.io/eggrafes/76-anevasma.html';
@@ -15424,12 +15398,10 @@ async function uploadLinks(reqCode){
     $('ulCopy').onclick=()=>cp(per.map(r=>r.onoma+': '+r.url).join('\n'),'σύνδεσμοι');
     $('ulCsv').onclick=()=>{
       const rws=[['Παιδί','Σύνδεσμος']].concat(per.map(r=>[r.onoma,r.url]));
-      const csv='﻿'+rws.map(r=>r.map(c=>/[",;\n]/.test(String(c))?'"'+String(c).replace(/"/g,'""')+'"':c).join(';')).join('\r\n');
-      saveBlob(csv,'text/csv;charset=utf-8',`76-syndesmoi-${reqCode}-${YEAR}.csv`)};
+      csvSave(rws,`76-syndesmoi-${reqCode}-${YEAR}.csv`)};
   };
 }
 
-const edKey=(pid,code,yr)=>pid+'|'+code+'|'+(yr||'');
 function edHas(p,req){
   const yr=req.cadence==='ετήσιο'?YEAR:null;
   return (D.ed||[]).find(x=>x.person_id===p.id&&x.req_code===req.code&&(req.cadence==='ετήσιο'?x.scout_year===YEAR:true));
@@ -15482,8 +15454,7 @@ function enrollBody(){
   $('enCons').onclick=()=>consentForms(kids);
   $('enCsv').onclick=()=>{
     const rows=[['Α.Μ.','Παιδί','Τμήμα',...reqs.map(r=>r.label)]].concat(kids.map(p=>[p.registry_no,nm(p),secOf(p),...reqs.map(r=>edHas(p,r)?'ΝΑΙ':'')]));
-    const csv='﻿'+rows.map(r=>r.map(c=>{const v=c==null?'':String(c);return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(';')).join('\r\n');
-    saveBlob(csv,'text/csv;charset=utf-8',`76-fakelos-eggrafis-${YEAR}.csv`)};
+    csvSave(rows,`76-fakelos-eggrafis-${YEAR}.csv`)};
   document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=async()=>{
     if(b.dataset.fdoc){ const d=(D.doc||[]).find(x=>x.id===b.dataset.fdoc);
       if(d)return docOpen(d.path); }
@@ -17018,7 +16989,7 @@ function stagePassBody(){
   };
 }
 
-let HSWHO=null, HSSTAGE=null, HSDATE='', HSSEL={}, HSOPEN={};
+let HSWHO=null, HSDATE='', HSSEL={}, HSOPEN={};
 const HEADCODE={'Αγέλη':'AAL','Ομάδα':'AOP','Κοινότητα':'AKA'};
 const canHistory=()=>ME.role==='admin'||!!ME.platform_admin
   ||myHats().some(h=>['AS','YAS'].includes(h.role_code)||h.role_code===HEADCODE[PSEC]);
@@ -17181,16 +17152,6 @@ function adtSoon(raw){
     vqApply();
   },350);
 }
-function matchWhy(p,q){
-  const d=digits(q), k=nameKey(q);
-  if(nameKey(nm(p)).includes(k))return '';
-  if(d.length>=3&&digits(p.registry_no).includes(d))return 'Α.Μ. '+esc(p.registry_no);
-  if(d.length>=3&&(digits(p.phone).includes(d)||digits(p.home_phone).includes(d)))return 'τηλέφωνο';
-  if(q.includes('@'))return 'email';
-  if(d.length>=5&&ADTHIT&&ADTQ===d&&ADTHIT.has(p.id))return 'αριθμός ταυτότητας';
-  if(d.length>=3)return 'τηλέφωνο επαφής';
-  return 'ψευδώνυμο';
-}
 
 let VAQ='', VASUB=null, VAROLE=null;
 V.viewas=()=>{
@@ -17246,58 +17207,6 @@ V.viewas=()=>{
   if(VASUB)vaPanel(VASUB);
 };
 
-
-function openPip(pid, role, label){
-  const old=$('e76pip'); if(old)old.remove();
-  const src=location.pathname+'?pip=1&as='+encodeURIComponent(pid+':'+role);
-  const d=document.createElement('div');
-  d.id='e76pip'; d.className='pipw';
-  d.innerHTML=`<div class="piph">
-      <b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        ${ic('users',14)} ${esc(label||'Προβολή ως')}</b>
-      <button class="btn sm gh" data-pipw title="Πλάτος">⇔</button>
-      <button class="btn sm gh" data-pipm title="Ελαχιστοποίηση">–</button>
-      <button class="btn sm gh" data-pipo title="Σε νέο παράθυρο">↗</button>
-      <button class="btn sm gh" data-pipx title="Κλείσιμο">✕</button>
-    </div>
-    <div class="pipb"><iframe src="${esc(src)}" title="${esc(label||'')}"></iframe></div>
-    <div class="pipf">Βλέπεις την οθόνη του. Τα δεδομένα παραμένουν τα δικά σου.</div>
-    <div class="pipr" data-pipr></div>`;
-  document.body.appendChild(d);
-
-  d.querySelector('[data-pipx]').onclick=()=>d.remove();
-  d.querySelector('[data-pipo]').onclick=()=>{
-    window.open(src.replace('pip=1&',''),'e76as'+pid,'width=1100,height=800'); d.remove()};
-  d.querySelector('[data-pipm]').onclick=e=>{d.classList.toggle('min');
-    e.target.textContent=d.classList.contains('min')?'▢':'–'};
-  d.querySelector('[data-pipw]').onclick=()=>d.classList.toggle('wide');
-
-  const h=d.querySelector('.piph'); let dx=0,dy=0,on=false;
-  const move=e=>{if(!on)return; const t=e.touches?e.touches[0]:e;
-    d.style.left=Math.max(4,Math.min(innerWidth-60,t.clientX-dx))+'px';
-    d.style.top =Math.max(4,Math.min(innerHeight-40,t.clientY-dy))+'px';
-    d.style.right='auto'; d.style.bottom='auto'};
-  const up=()=>{on=false;document.removeEventListener('mousemove',move);
-    document.removeEventListener('touchmove',move)};
-  const down=e=>{if(e.target.closest('button'))return; const t=e.touches?e.touches[0]:e;
-    const r=d.getBoundingClientRect(); dx=t.clientX-r.left; dy=t.clientY-r.top; on=true;
-    document.addEventListener('mousemove',move); document.addEventListener('touchmove',move,{passive:true});
-    document.addEventListener('mouseup',up,{once:true}); document.addEventListener('touchend',up,{once:true})};
-  h.addEventListener('mousedown',down); h.addEventListener('touchstart',down,{passive:true});
-
-  const g=d.querySelector('[data-pipr]'); let rz=false,w0=0,h0=0,x0=0,y0=0;
-  const rmove=e=>{if(!rz)return; const t=e.touches?e.touches[0]:e;
-    d.style.width =Math.max(300,w0+(t.clientX-x0))+'px';
-    d.style.height=Math.max(220,h0+(t.clientY-y0))+'px'};
-  const rup=()=>{rz=false;document.removeEventListener('mousemove',rmove);
-    document.removeEventListener('touchmove',rmove)};
-  const rdown=e=>{const t=e.touches?e.touches[0]:e; const r=d.getBoundingClientRect();
-    w0=r.width;h0=r.height;x0=t.clientX;y0=t.clientY;rz=true;
-    document.addEventListener('mousemove',rmove); document.addEventListener('touchmove',rmove,{passive:true});
-    document.addEventListener('mouseup',rup,{once:true}); document.addEventListener('touchend',rup,{once:true});
-    e.preventDefault()};
-  g.addEventListener('mousedown',rdown); g.addEventListener('touchstart',rdown,{passive:false});
-}
 
 const CAP_GR={people:'Άνθρωποι',attendance:'Παρουσίες',progress:'Πρόοδος',events:'Δράσεις',
   medical:'Ιατρικά',enrollment:'Εγγραφές',finance:'Οικονομικά',documents:'Έγγραφα',
@@ -17562,7 +17471,7 @@ const wlBk=g=>(g===null||g===undefined)?99:(g<1?0:(g>12?13:g));
 const wlClass=g=>g===null||g===undefined?'Άγνωστη τάξη':g<1?'Δεν πάει σχολείο ακόμη':g>12?'Τελείωσε το σχολείο':WLGR[g-1];
 
 
-let WLVIEW='list', WLTAB=null, WLOPEN_ID=null;
+let WLVIEW='list';
 try{WLVIEW=localStorage.getItem('e76:wlview')||'list'}catch(e){}
 
 
@@ -19867,7 +19776,10 @@ function progScreen(sec, extra){
     {k:'stg', t:'Απονομές (ιστορικό)', i:'award', fn:stagePassBody, d:'στάδια και πτυχία που ήδη φοράει'}]:[]),
     ...(extra||[])]);
 }
-V.honours=()=>honoursBody();
+V.honours=()=>tabView('honours',[
+  {k:'given', t:'Απονομές', i:'award', fn:honoursBody, d:'τι έχει απονεμηθεί'},
+  ...(isAdminUI()?[{k:'due', t:'Υποψήφιοι', i:'trend', fn:honoursEligibleBody, d:'ποιος συμπλήρωσε τα χρόνια (κανονισμός ΣΠΚ 2013)',
+     n:(()=>{try{return honRows().filter(x=>x.due).length}catch(e){return 0}})()}]:[])]);
 V.guardians=()=>tabView('guardians',[
   {k:'list', t:'Κατάλογος',      i:'home', fn:guardiansBody, d:'επαφές ανά παιδί'},
   {k:'call', t:'Ποιον καλώ',     i:'msg',  fn:callsBody,     d:'σημάνσεις και κανόνες πριν σηκώσεις'}]);
