@@ -1222,7 +1222,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-25 12:13'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-25 13:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1643,7 +1643,7 @@ async function pageAll(table, cols, step=1000, cap=50000){
 }
 async function loadAll(){
   const q=[
-    pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address'),
+    pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location'),
     sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
     sb.from('sessions').select('id,session_date,section,scout_year,status,title').order('session_date').limit(500),
     pageAll('attendance','session_id,person_id,status'),
@@ -11357,16 +11357,27 @@ function licRedrawItem(k){const d=licDef(), i=d&&d.items.find(x=>x.k===k), el=do
 
 const LIC_DUTY={AS:'Α.Σ.',AAL:'Α.Α.Λ',AMAL:'Α.Μ.Α.Λ.',AOP:'Α.Ο.Π.',AKA:'Α.Κ.Α.',APD:'Α.Δ.',
   YMAL:'Υ.Μ.Α.Λ.',YAL:'Υ.Α.Λ.',BAL:'Υ.Α.Λ.',BAL_PT:'Υ.Α.Λ.',YOP:'Υ.Ο.Π.',BOP:'Υ.Ο.Π.',BOP_PT:'Υ.Ο.Π.',YKA:'Υ.Κ.Α.',BKA:'Υ.Κ.Α.',BKA_PT:'Υ.Κ.Α.'};
-const LIC_DUTY_ORDER=['AS','YAS','AAL','AMAL','YMAL','YAL','BAL','BAL_PT','AOP','YOP','BOP','BOP_PT','AKA','YKA','BKA','BKA_PT','APD'];
+const LIC_GROUP={AS:1,YAS:2,AAL:3,AMAL:3,AOP:4,AKA:5,YAL:6,YMAL:6,BAL:6,YOP:7,BOP:7,YKA:8,BKA:8,
+  BAL_PT:9,BOP_PT:10,BKA_PT:11};
+const LIC_PT={YAL:9,YMAL:9,BAL:9,YOP:10,BOP:10,YKA:11,BKA:11};
+function licNote(p,pt){
+  const a=[]; if(pt)a.push('Part Time');
+  if(p.special==='Σ')a.push('Στρατός'); else if(p.special==='7')a.push('7η');
+  const l=String(p.location||'').trim();
+  if(/^[A-Z]{2}(-[A-Z]{2,3})?$/.test(l)&&!/^CY/.test(l))a.push('Φοιτητής Εξωτερικού');
+  return a.join(' · ');
+}
 function licStaffRows(){
   const P=id=>D.bh.find(b=>b.id===id), best={};
-  diarthrosiRows('now').filter(r=>LIC_DUTY_ORDER.includes(r.code)).forEach(r=>{
-    const cur=best[r.pid]; if(!cur||LIC_DUTY_ORDER.indexOf(r.code)<LIC_DUTY_ORDER.indexOf(cur.code))best[r.pid]=r});
-  return Object.values(best).map(r=>({r,p:P(r.pid)})).filter(x=>x.p)
-    .sort((a,b)=>LIC_DUTY_ORDER.indexOf(a.r.code)-LIC_DUTY_ORDER.indexOf(b.r.code)||(a.p.last_name||'').localeCompare(b.p.last_name||'','el'))
+  diarthrosiRows('now').forEach(r=>{
+    const g=(r.pt&&LIC_PT[r.code])||LIC_GROUP[r.code]; if(!g)return;
+    const cur=best[r.pid]; if(!cur||g<cur.g)best[r.pid]={...r,g}});
+  return Object.values(best).map(r=>({r,p:P(r.pid)})).filter(x=>x.p&&!x.p.is_commissioner)
+    .sort((a,b)=>a.r.g-b.r.g||(a.p.last_name||'').localeCompare(b.p.last_name||'','el'))
     .map(({r,p})=>{const w=licWar(p.id)||{};
       return {name:p.last_name+' '+p.first_name, duty:LIC_DUTY[r.code]||roleShort(r.code)||r.code,
-              am:p.registry_no||'', war:w.status==='εγκρίθηκε'?(w.number||''):'', email:p.email||'', phone:fphone(p.phone||'')}});
+              am:p.registry_no||'', war:w.status==='εγκρίθηκε'?(w.number||''):'', email:p.email||'', phone:fphone(p.phone||''),
+              note:licNote(p, r.g>=9)}});
 }
 function licProgRows(){
   const Y=licYear(), K=molaKl(), COL={'Μικρή Αγέλη':'E','Αγέλη':'F','Ομάδα':'G','Κοινότητα':'H'};
@@ -11381,10 +11392,20 @@ function licProgRows(){
   });
   return out.sort((a,b)=>a.d.localeCompare(b.d));
 }
+const LIC_WD=['Κυρ','Δευ','Τρι','Τετ','Πεμ','Παρ','Σαβ'];
 function licEvText(e){
-  const d=e.event_date, n=e.nights||0, end=e.end_date||(n?isoLocal(new Date(Date.parse(d+'T12:00:00')+n*864e5)):null);
-  const dd=x=>+x.slice(8,10)+'/'+ +x.slice(5,7);
-  return (end&&end!==d?dd(d)+'–'+dd(end)+' ':'')+(e.title||'');
+  const t=String(e.title||'').replace(/\s*\((Κυρ|Δευ|Τρι|Τετ|Πεμ|Παρ|Σαβ)\)\s*$/,''), d=e.event_date;    
+  if(/\(\s*\d{1,2}(?:\s*[-–]\s*\d{1,2})?\/\d{1,2}/.test(t))return t;
+  const add=(x,k)=>{const z=new Date(x+'T12:00:00Z'); z.setUTCDate(z.getUTCDate()+k); return z.toISOString().slice(0,10)};
+  const n=e.nights||({'Διήμερο':1,'Τριήμερο':2})[e.type]||0;
+  const end=e.end_date&&e.end_date>d?e.end_date:(n?add(d,n):d);
+  const wd=x=>new Date(x+'T12:00:00Z').getUTCDay(), dd=x=>+x.slice(8,10)+'/'+ +x.slice(5,7);
+  const s=wd(d);
+  if(end===d)return s===6?t:`${t} (${dd(d)}, ${LIC_WD[s]})`;
+  const days=Math.round((Date.parse(end)-Date.parse(d))/864e5);
+  if(s===6&&days<=2)return `${t} (${LIC_WD[6]}–${LIC_WD[wd(end)]})`;
+  const rng=d.slice(5,7)===end.slice(5,7)?(+d.slice(8,10))+'–'+dd(end):dd(d)+'–'+dd(end);
+  return `${t} (${rng}, ${LIC_WD[s]}–${LIC_WD[wd(end)]})`;
 }
 function licRowDate(v){
   if(v instanceof Date)return v.toISOString().slice(0,10);
@@ -11406,10 +11427,13 @@ function licFillProg(ws, rows){
   return miss;
 }
 function licFillStaff(ws, rows){
-  rows.forEach((x,k)=>{const i=k+2;
+  if(!ws.getCell('H1').value)ws.getCell('H1').value='Σημείωση';
+  rows.forEach((x,k)=>{const i=k+2; ws.getCell('H'+i).value=x.note||null;
     ws.getCell('A'+i).value=k+1; ws.getCell('B'+i).value=x.name; ws.getCell('C'+i).value=x.duty;
     ws.getCell('D'+i).value=x.am?String(x.am):null; ws.getCell('E'+i).value=x.war||null;
     ws.getCell('F'+i).value=x.email||null; ws.getCell('G'+i).value=x.phone||null});
+  for(let i=rows.length+2; typeof ws.getCell('A'+i).value==='number'; i++)
+    'ABCDEFGH'.split('').forEach(c=>ws.getCell(c+i).value=null);    
   return rows.length;
 }
 async function licXlsx(file){
