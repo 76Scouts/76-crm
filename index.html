@@ -1203,7 +1203,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-25 15:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-25 17:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -14124,6 +14124,7 @@ V.formcat=async()=>{
           <span class="pill" style="background:var(--${live(r)?'ok':'warn'}bg);color:var(--${live(r)?'ok':'warn'});border-color:transparent">${live(r)?'ανοιχτή':'κλειστή'}</span>
           <button class="btn gh sm" data-fcedit="${r.id}">✎</button></td></tr>
         ${FCED===r.id?ed(r):''}`).join('')||'<tr><td colspan="5" class="dim">Καμία φόρμα ακόμη.</td></tr>'}</tbody></table></div>`;
+  fcPendingMount();    
 
   const fcRoles=td=>{
     const all=[...td.querySelectorAll('.ffrole')], on=all.filter(i=>i.checked);
@@ -14196,6 +14197,62 @@ V.formcat=async()=>{
     FCED=null; toast('Αποθηκεύτηκε'); stay()});
 };
 
+const IRV_TEL=v=>{const d=String(v||'').replace(/\D/g,'');return d.length>=8?d.slice(-8):''};
+function irvKnown(pid){
+  const today=new Date().toISOString().slice(0,10);
+  const ids=[pid,...(D.cl||[]).filter(c=>c.member_id===pid&&!c.restricted
+    &&(!c.valid_from||String(c.valid_from)<=today)&&(!c.valid_to||String(c.valid_to)>=today)).map(c=>c.carer_id)];
+  const ps=ids.map(id=>(D.bh||[]).find(b=>b.id===id)).filter(Boolean);
+  return {mails:[...new Set(ps.map(p=>String(p.email||'').trim().toLowerCase()).filter(Boolean))],
+          tels:[...new Set(ps.flatMap(p=>[IRV_TEL(p.phone),IRV_TEL(p.home_phone),IRV_TEL(p.work_phone)]).filter(Boolean))]};
+}
+function irvRow(s){
+  const p=(D.bh||[]).find(b=>b.id===s.person_id), pl=s.payload||{};
+  const k=irvKnown(s.person_id);
+  const am=String(pl.ait_email||'').trim().toLowerCase(), at=IRV_TEL(pl.ait_tilefono);
+  const who=[pl.ait_onoma,pl.ait_epitheto].filter(Boolean).join(' ');
+  const nf=Object.keys(pl).filter(x=>!['form','form_kind','scout_year','am'].includes(x)).length;
+  return `<tr><td>${p?pnm(p):'<span class="dim">άγνωστο πρόσωπο</span>'}
+      <div class="dim" style="font-size:11.5px">Α.Μ. ${esc(pl.am||'—')}</div></td>
+    <td>${esc(s.form_name||'—')}<div class="dim" style="font-size:11.5px">${fdate(s.submitted_on)} · ${nf} πεδία</div></td>
+    <td style="font-size:12.5px">${esc(who||'—')}
+      <div class="dim">${esc(am||'χωρίς email')} · ${esc(pl.ait_tilefono||'χωρίς κινητό')}</div></td>
+    <td class="dim" style="font-size:12px">${k.mails.length||k.tels.length
+      ?`${k.mails.map(esc).join(', ')||'—'}<br>${k.tels.map(t=>'…'+esc(t.slice(-4))).join(', ')||'—'}`:'κανένα γνωστό'}
+      ${(am&&k.mails.includes(am))||(at&&k.tels.includes(at))?'':'<div style="color:var(--warn)">δεν ταιριάζει</div>'}</td>
+    <td style="white-space:nowrap"><button class="btn sm" data-irvok="${s.id}">Εφαρμογή</button>
+      <button class="btn gh sm" data-irvno="${s.id}">Απόρριψη</button></td></tr>`;
+}
+async function fcPendingMount(){
+  if(!isAdminUI())return;
+  const {data,error}=await sb.from('form_submission')
+    .select('id,person_id,form_name,form_kind,submitted_on,applied_note,payload')
+    .is('applied_on',null).like('applied_note','Περιμένει έλεγχο%')
+    .order('submitted_on',{ascending:false}).limit(200);
+  const view=$('view'); if(!view||!view.querySelector('#fcNew,[data-fcedit]'))return;
+  if(error){console.warn('pending submissions:',error.code);return}
+  if(!(data||[]).length)return;
+  const old=document.getElementById('irvBox'); if(old)old.remove();    
+  const box=document.createElement('div'); box.id='irvBox';
+  box.innerHTML=`<div class="sec"><h3>Υποβολές που περιμένουν έλεγχο</h3><span class="n">${data.length}</span></div>
+    <div class="dim" style="font-size:12.5px;margin:-4px 0 8px">Ήρθαν χωρίς σύνδεσμο e76 και ταυτίστηκαν μόνο με Α.Μ. ή όνομα.
+      Δεν άλλαξαν τίποτα ακόμη. Εγγραφές και δηλώσεις βαθμοφόρων χωρίς σύνδεσμο έρχονται ΠΑΝΤΑ εδώ, γιατί γράφουν
+      κινητό, email και επαφές έκτακτης ανάγκης. Εφάρμοσε μόνο αν ο αιτών είναι σίγουρα γονέας ή ο ίδιος.</div>
+    <div class="card" style="overflow:auto;margin-bottom:16px"><table><thead><tr><th>Πρόσωπο</th><th>Φόρμα</th>
+      <th>Αιτών</th><th>Γνωστά</th><th></th></tr></thead><tbody>${data.map(irvRow).join('')}</tbody></table></div>`;
+  view.prepend(box);
+  box.querySelectorAll('[data-irvok]').forEach(b=>b.onclick=async()=>{
+    if(!await uiAsk('Εφαρμογή της υποβολής στην καρτέλα;\n\nΘα γραφτούν τα ιατρικά και τα υπόλοιπα στοιχεία της φόρμας.'))return;
+    const {error:e}=await sb.rpc('intake_review_apply',{p_sub:b.dataset.irvok});
+    if(e)return toast('Δεν εφαρμόστηκε: '+e.message);
+    toast('Εφαρμόστηκε'); stay()});
+  box.querySelectorAll('[data-irvno]').forEach(b=>b.onclick=async()=>{
+    const note=await uiText('Απόρριψη — η υποβολή μένει φυλαγμένη αλλά δεν εφαρμόζεται.\n\nΣημείωση (προαιρετικά):','',{ok:'Απόρριψη'});
+    if(note===null)return;
+    const {error:e}=await sb.rpc('intake_review_reject',{p_sub:b.dataset.irvno,p_note:note||null});
+    if(e)return toast('Δεν απορρίφθηκε: '+e.message);
+    toast('Απορρίφθηκε'); stay()});
+}
 async function remDueBody(){
   $('view').innerHTML='<div class="card pad dim">Υπολογισμός…</div>';
   const on=(D.st||[]).find(x=>x.k==='reminders_enabled');
