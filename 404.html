@@ -1203,7 +1203,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-26 10:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-26 11:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -14770,7 +14770,7 @@ function formsBody(){
   const F=[
     {id:'reg',t:'Κατάλογος Εγγραφών Κλιμακίου',d:'Το βασικό θεσμικό έντυπο προς την Επαρχία'},
     {id:'inv',t:'Απογραφή Μελών',d:'Δύναμη κλιμακίου ανά κλάδο και τμήμα'},
-    {id:'att',t:'Κενό παρουσιολόγιο',d:'Για δράσεις χωρίς σήμα — συμπληρώνεται με στυλό'}
+    {id:'att',t:'Παρουσιολόγιο',d:'Με τις συγκεντρώσεις της Μόλας — Αγέλη/Ομάδα υφιστάμενα και νέα, Κοινότητα ανά όμιλο'}
   ];
   $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:14px">
       <b>Έντυπα προς εκτύπωση</b>
@@ -14807,9 +14807,7 @@ async function form(kind){
   if(kind==='att'){
     const sec=await uiChoose('Παρουσιολόγιο για ποιο τμήμα;',
       ['Αγέλη','Ομάδα','Κοινότητα'].map(x=>({v:x,t:x,primary:x==='Αγέλη'}))); if(!sec)return;
-    const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec).sort(sortByName);
-    body=head('ΠΑΡΟΥΣΙΟΛΟΓΙΟ — '+sec.toUpperCase())+`<table style="font-size:12px"><thead><tr><th>Ονοματεπώνυμο</th><th>Υποομάδα</th>${Array.from({length:8},(_,i)=>`<th style="width:34px">&nbsp;</th>`).join('')}</tr></thead><tbody>${
-      kids.map(p=>`<tr><td>${pn(p)}</td><td class="dim">${esc((myOf(p)||{}).group_name||'')}</td>${Array.from({length:8},()=>'<td style="height:26px"></td>').join('')}</tr>`).join('')}</tbody></table>`;
+    body=attRegisterHTML(sec);    
   }
   $('fout').innerHTML=`<div class="card pad prt" style="display:block">${body}</div>
     <div class="noprint" style="margin-top:12px"><button class="btn p" onclick="window.print()">Εκτύπωση</button></div>`;
@@ -15621,6 +15619,64 @@ function deskSheet(kids){
   w.document.close(); setTimeout(()=>w.print(),400);
 }
 const senRef={fn:p=>(D.sen||[]).find(s=>s.person_id===p.id)||{}}; const senOf=p=>senRef.fn(p);
+const ATT_COLS=17;    
+function attPrevYear(y){ const a=+String(y).slice(0,4); return a?`${a-1}-${String(a).slice(2)}`:''; }
+function attSheets(sec, o){
+  const {bh, my, ss, year}=o, prev=attPrevYear(year);
+  const cur=(my||[]).filter(m=>m.scout_year===year&&!m.voided_at&&m.section===sec);
+  const byId=new Map((bh||[]).map(b=>[b.id,b]));
+  const was=new Map((my||[]).filter(m=>m.scout_year===prev&&!m.voided_at).map(m=>[m.person_id,m.section]));
+  const kids=cur.map(m=>({m, p:byId.get(m.person_id)}))
+    .filter(x=>x.p&&(x.p.kind||'')==='Μέλος'&&x.p.status==='Ενεργός');
+  const nm=p=>`${p.last_name||''} ${p.first_name||''}`.trim();
+  const az=(a,b)=>nm(a.p).localeCompare(nm(b.p),'el');
+  const dates=[...new Set((ss||[]).filter(s=>s.section===sec&&s.scout_year===year).map(s=>s.session_date))].sort();
+  const row=x=>({n:nm(x.p), note:''});
+  if(sec==='Κοινότητα'){
+    const g={}; kids.forEach(x=>{const k=x.m.group_name||'Χωρίς όμιλο';(g[k]=g[k]||[]).push(x)});
+    return Object.keys(g).sort((a,b)=>a==='Χωρίς όμιλο'?1:b==='Χωρίς όμιλο'?-1:a.localeCompare(b,'el'))
+      .map(k=>({title:`ΠΑΡΟΥΣΙΟΛΟΓΙΟ — ΚΟΙΝΟΤΗΤΑ · ΟΜΙΛΟΣ ${k.toUpperCase()}`, file:k, dates,
+        groups:[{h:'', rows:g[k].sort(az).map(row), blank:2}]}));
+  }
+  const old=kids.filter(x=>was.get(x.p.id)===sec).sort(az);
+  const nu=kids.filter(x=>was.get(x.p.id)!==sec).sort(az).map(x=>{
+    const w=was.get(x.p.id);
+    return {n:nm(x.p), note:w?`από ${w==='Αγέλη'?'Αγέλη':w==='Ομάδα'?'Ομάδα':w}`:'νέο μέλος'};});
+  return [{title:`ΠΑΡΟΥΣΙΟΛΟΓΙΟ — ${sec.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').normalize('NFC')}`, file:sec, dates,
+    groups:[{h:'ΥΦΙΣΤΑΜΕΝΑ ΜΕΛΗ', rows:old.map(row)}, {h:'ΝΕΑ ΜΕΛΗ', rows:nu, blank:3}]}];
+}
+function attSheetsHTML(sheets, head){
+  const E=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const dd=d=>{const x=d.split('-');return `${+x[2]}/${+x[1]}`};
+  const pages=[];
+  sheets.forEach(sh=>{
+    const np=Math.max(1,Math.ceil(sh.dates.length/ATT_COLS)), per=Math.max(1,Math.ceil(sh.dates.length/np));
+    const chunks=[]; for(let i=0;i<Math.max(1,sh.dates.length);i+=per)chunks.push(sh.dates.slice(i,i+per));
+    chunks.forEach((ch,ci)=>{
+      const cols=Array.from({length:per},(_,i)=>ch[i]||'');
+      let n=0;
+      const body=sh.groups.map(g=>(g.h?`<tr class="attg"><td colspan="${per+2}">${E(g.h)} (${g.rows.length})</td></tr>`:'')
+        +g.rows.map(r=>`<tr><td class="attn">${++n}</td><td class="attname">${E(r.n)}${r.note?` <span class="attnote">(${E(r.note)})</span>`:''}</td>${cols.map(()=>'<td></td>').join('')}</tr>`).join('')
+        +Array.from({length:g.blank||0},()=>`<tr><td class="attn"></td><td class="attname"></td>${cols.map(()=>'<td></td>').join('')}</tr>`).join('')).join('');
+      pages.push(`<section class="attpage">${head?head(sh.title, chunks.length>1?`Σελίδα ${ci+1} από ${chunks.length}`:''):`<h2>${E(sh.title)}</h2>`}
+        <table class="att"><thead><tr><th class="attn">Α/Α</th><th class="attname">Ονοματεπώνυμο</th>${cols.map(d=>`<th>${d?dd(d):''}</th>`).join('')}</tr></thead>
+        <tbody>${body}</tbody></table>
+        <div class="attfoot">Π = παρών · Α = απών · Δ = δικαιολογημένη απουσία</div></section>`);
+    });
+  });
+  return `<style>
+    .attpage{break-after:page;page-break-after:always}.attpage:last-child{break-after:auto;page-break-after:auto}
+    table.att{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}
+    table.att th,table.att td{border:1px solid #888;padding:3px 4px;height:21px;text-align:center}
+    table.att th.attname,table.att td.attname{text-align:left;width:34%}
+    table.att .attn{width:4%}table.att th{font-size:10px;background:#f2f2f2}
+    tr.attg td{text-align:left;font-weight:700;background:#fafafa;letter-spacing:.03em}
+    .attnote{color:#666;font-size:9.5px}.attfoot{font-size:9.5px;color:#666;margin-top:6px}
+    @page{size:A4 landscape;margin:10mm}</style>${pages.join('')}`;
+}
+function attRegisterHTML(sec){
+  return attSheetsHTML(attSheets(sec,{bh:D.bh, my:D.my, ss:D.ss, year:YEAR}), (t,s)=>letterhead(t,'Προσκοπική περίοδος '+YEAR+(s?' · '+s:'')));
+}
 const SAMPLE={id:'__demo__',registry_no:'00000',first_name:'ΟΝΟΜΑ',last_name:'ΕΠΩΝΥΜΟ',
   birthplace:'—',home_address:'—',home_phone:'',phone:'',email:'',education_level:'',
   kind:'Μέλος',member_role:'Πρόσκοπος',section:'Ομάδα'};
