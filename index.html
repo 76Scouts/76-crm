@@ -1203,7 +1203,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-25 17:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-26 10:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -6779,8 +6779,30 @@ function docRowHTML(p,r){
 const docOrphans=p=>(D.doc||[]).filter(d=>d.person_id===p.id&&!d.event_id
   &&!(D.ed||[]).some(e=>e.document_id===d.id));
 
+const DOC_STOP=new Set(['αντιγραφο','πιστοποιητικου','πιστοποιητικο','βεβαιωση','εντυπο','ενυπογραφη','αιτηση']);
+const docNorm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function docGuess(text){
+  const t=docNorm(text); if(!t)return null;
+  const hits=(D.dr||[]).filter(r=>r.active!==false).map(r=>{
+    const stems=docNorm(r.label).split(/[^a-zα-ω0-9]+/).filter(w=>w.length>=5&&!DOC_STOP.has(w)).map(w=>w.slice(0,5));
+    return {r, n:stems.filter(s=>t.includes(s)).length};
+  }).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);
+  if(!hits.length||(hits[1]&&hits[1].n===hits[0].n))return null;    
+  return hits[0].r;
+}
+async function docConfirmSlot(texts, code){
+  const req=(D.dr||[]).find(r=>r.code===code); if(!req)return true;
+  const name=(texts||[]).find(Boolean)||'';
+  const g=docGuess((texts||[]).filter(Boolean).join(' '));
+  if(!g||g.code===code)return true;
+  return await uiAsk(`Το αρχείο λέγεται «${name}» — μοιάζει με «${g.label}».\n\nΣίγουρα στη θέση «${req.label}»;`,
+    {ok:'Ναι, εκεί', cancel:'Όχι, στάσου'});
+}
+
 function docOrphanHTML(p,d){
   const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const g=docGuess([d.title,d.kind].join(' '));
+  const have=g&&edHas(p,g)&&edHas(p,g).document_id;
   return `<div class="pdoc orph">
     <div class="pdi">?</div>
     <div style="flex:1;min-width:0">
@@ -6788,9 +6810,10 @@ function docOrphanHTML(p,d){
       <div class="pds">${esc(d.kind||'')}${d.uploaded_at?' · '+fdate(d.uploaded_at):''}
         · <a href="#" class="pdfa" data-doc="${d.id}">δες το</a></div>
       <div class="pdo">
-        <select data-oc="${d.id}">${reqs.map(r=>`<option value="${r.code}">${esc(r.label)}</option>`).join('')}</select>
+        <select data-oc="${d.id}"><option value="">— τι είναι; —</option>${reqs.map(r=>`<option value="${r.code}">${esc(r.label)}</option>`).join('')}</select>
         <button class="btn sm p" data-oa="${d.id}" data-op="${p.id}">Σύνδεση</button>
       </div>
+      ${g?`<div class="dim" style="font-size:11.5px;margin-top:4px">Από τον τίτλο μοιάζει με «${esc(g.label)}»${have?' — αυτό το έχουμε ήδη· ίσως είναι δεύτερο αντίγραφο':''}.</div>`:''}
     </div>
   </div>`;
 }
@@ -6801,9 +6824,15 @@ function docOrphansHTML(p){
     ${o.map(d=>docOrphanHTML(p,d)).join('')}</div>`;
 }
 async function docAttach(pid, docId, code, after){
+  if(!code)return toast('Διάλεξε πρώτα τι είναι το αρχείο');
   const req=(D.dr||[]).find(r=>r.code===code); if(!req)return;
+  const d=(D.doc||[]).find(x=>x.id===docId)||{};
+  if(!await docConfirmSlot([d.title,d.kind],code))return;
+  const p=(D.bh||[]).find(x=>x.id===pid), cur=p&&edHas(p,req);
+  if(cur&&cur.document_id&&cur.document_id!==docId&&cur.scout_year===edYear(req)
+     &&!await uiAsk(`Το «${req.label}» το έχουμε ήδη με άλλο αρχείο.\n\nΝα το αντικαταστήσει αυτό;`,{ok:'Αντικατάσταση'}))return;
   const rec={person_id:pid, req_code:code,
-    scout_year:req.cadence==='ετήσιο'?YEAR:null,
+    scout_year:edYear(req),
     received_on:new Date().toISOString().slice(0,10),
     document_id:docId, notes:'Συνδέθηκε από τον γονέα'};
   const {data,error}=await sb.from('enrollment_docs')
@@ -7186,7 +7215,9 @@ function parentUpload(pid, only){
       ${one?`<input type="hidden" id="puK" value="${esc(one.code)}">`
            :`<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Τι ανεβάζεις
         <select id="puK">${reqs.map(r=>`<option value="${r.code}">${esc(r.label)}</option>`).join('')||'<option value="">— δεν εκκρεμεί τίποτα —</option>'}</select></label>`}
-      <input type="file" id="puF" accept=".pdf,image/*">
+      ${
+''}
+      <input type="file" id="puF" accept="application/pdf,.pdf,image/*">
       <div class="dim" style="font-size:11.5px;margin-top:8px">Διάλεξε <b>αρχείο PDF</b> από το τηλέφωνο ή τον υπολογιστή σου, <b>φωτογραφία</b> που ήδη έχεις, ή <b>βγάλε φωτογραφία</b> τώρα — και τα τρία δουλεύουν. Έως 12 MB. Αν είναι φωτογραφία, θα σου ζητήσω να σύρεις τις τέσσερις γωνίες ώστε να ισιώσει. Το αρχείο το βλέπουν μόνο οι υπεύθυνοι βαθμοφόροι.</div></div>`;
   drw.classList.add('on');
   $('puF').onchange=async()=>{
@@ -7220,7 +7251,7 @@ function parentUpload(pid, only){
     const edRow=async(kid,a,docId,page)=>{
       const rq=(D.dr||[]).find(r=>r.code===a.code); if(!rq)return;
       const {data,error}=await sb.from('enrollment_docs').upsert({person_id:kid,req_code:a.code,
-        scout_year:rq.cadence==='ετήσιο'?YEAR:null,received_on:new Date().toISOString().slice(0,10),
+        scout_year:edYear(rq),received_on:new Date().toISOString().slice(0,10),
         document_id:docId,page:page,notes:'Ανέβηκε από τον γονέα'},
         {onConflict:'person_id,req_code,scout_year'}).select().single();
       if(error)throw error;
@@ -7232,9 +7263,11 @@ function parentUpload(pid, only){
       if(pids.length<=1){
         const kid=pids[0]||pid, rows=byKid[kid]||plan;
         const multi=rows.length>1;
+        const rq1=(D.dr||[]).find(r=>r.code===rows[0].code)||req;
+        if(!multi&&!await docConfirmSlot([f.name],rq1.code))return toast('Δεν ανέβηκε — διάλεξε ξανά');
         const doc=await docUpload(f,{person_id:kid,
-          kind:multi?'Δικαιολογητικά':req.label,
-          title:multi?('Δικαιολογητικά — '+YEAR):(req.label+' — '+YEAR)});
+          kind:multi?'Δικαιολογητικά':rq1.label,
+          title:multi?('Δικαιολογητικά — '+YEAR):(rq1.label+' — '+YEAR)});
         for(const a of rows) await edRow(kid,a,doc.id,a.page);
         toast(multi?('Τα λάβαμε — '+rows.length+' χαρτιά'):'Το λάβαμε — ευχαριστούμε');
       }else{
@@ -15423,7 +15456,7 @@ V.mails=()=>{
 const UPBASE='https://as76-strvls.github.io/eggrafes/76-anevasma.html';
 async function uploadLinks(reqCode){
   const req=(D.dr||[]).find(r=>r.code===reqCode)||{label:reqCode,cadence:'ετήσιο'};
-  const yr=req.cadence==='ετήσιο'?YEAR:null;
+  const yr=edYear(req);
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Σύνδεσμοι ανεβάσματος</div>
       <div class="dim" style="font-size:12.5px">${esc(req.label)}${yr?' · '+esc(yr):''}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
@@ -15459,9 +15492,12 @@ async function uploadLinks(reqCode){
   };
 }
 
+function edYear(req){ return req&&req.cadence==='εφάπαξ'?null:YEAR; }
 function edHas(p,req){
-  const yr=req.cadence==='ετήσιο'?YEAR:null;
-  return (D.ed||[]).find(x=>x.person_id===p.id&&x.req_code===req.code&&(req.cadence==='ετήσιο'?x.scout_year===YEAR:true));
+  const rows=(D.ed||[]).filter(x=>x.person_id===p.id&&x.req_code===req.code);
+  if(req.cadence==='ετήσιο')return rows.find(x=>x.scout_year===YEAR);
+  return rows.sort((a,b)=>String(b.received_on||'').localeCompare(String(a.received_on||''))
+    ||String(b.scout_year||'').localeCompare(String(a.scout_year||'')))[0];
 }
 function enrollBody(){
   const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
@@ -15520,7 +15556,7 @@ function enrollBody(){
     if(cur){const {error}=await sb.from('enrollment_docs').delete().eq('id',cur.id);
       if(error)return toast('Σφάλμα: '+error.message);
       D.ed=(D.ed||[]).filter(x=>x.id!==cur.id);}
-    else{const rec={person_id:pid,req_code:code,scout_year:req.cadence==='ετήσιο'?YEAR:null,received_on:new Date().toISOString().slice(0,10)};
+    else{const rec={person_id:pid,req_code:code,scout_year:edYear(req),received_on:new Date().toISOString().slice(0,10)};
       const {data,error}=await sb.from('enrollment_docs').insert(rec).select().single();
       if(error)return toast('Σφάλμα: '+error.message); (D.ed=D.ed||[]).push(data);}
     saveCache(); stay();});
