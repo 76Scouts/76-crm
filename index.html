@@ -1203,7 +1203,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-27 14:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-27 15:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -16803,7 +16803,7 @@ function gstHTML(sid,wl){
       <input id="gstNew" maxlength="80" placeholder="+ Νέο όνομα (επώνυμο όνομα)" style="flex:1 1 200px" aria-label="Νέο όνομα">
       <button class="btn sm" id="gstAdd">Προσθήκη ως παρών</button></div>`;
 }
-function gstWire(sid,after){
+function gstWire(sid,after,wl){
   const paint=(b,st)=>{b.className='mk'+(st==='Παρών'?' p':st==='Απών'?' a':''); b.setAttribute('aria-pressed',st?'true':'false');
     const t=b.querySelector('.mkst'); if(t)t.textContent=st||''};
   const wire=b=>b.onclick=()=>{const w=b.dataset.gw||null, n=b.dataset.gn;
@@ -16813,7 +16813,13 @@ function gstWire(sid,after){
   document.querySelectorAll('[data-gn]').forEach(wire);
   const add=()=>{const i=$('gstNew'); const n=(i.value||'').trim().replace(/\s+/g,' ');
     if(n.length<2)return toast('Γράψε ονοματεπώνυμο');
-    if(gstRows(sid).some(g=>!g.waitlist_id&&g.name.toLowerCase()===n.toLowerCase()))return toast('Υπάρχει ήδη');
+    const k=attKey(n), s=(D.ss||[]).find(x=>x.id===sid);
+    const onList=(wl||[]).find(x=>attKey(x.name)===k);
+    if(onList){const b=[...document.querySelectorAll('[data-gw]')].find(e=>e.dataset.gw===onList.id);
+      if(b){b.scrollIntoView({block:'center'}); b.focus();} i.value=''; return toast('Είναι ήδη στη λίστα αναμονής — πάτησέ το εκεί');}
+    if(gstRows(sid).some(g=>attKey(g.name)===k))return toast('Υπάρχει ήδη');
+    if(s&&D.bh.some(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===s.section&&attKey(nm(p))===k))
+      return toast('Έχει ήδη καρτέλα — σημείωσέ το στα παιδιά');
     gstPut(sid,null,n,'Παρών'); i.value='';
     const t=document.createElement('div'); t.innerHTML=`<button class="mk p" data-gw="" data-gn="${esc(n)}" aria-pressed="true"><span class="s"></span><span style="flex:1;min-width:0">${esc(n)}</span><span class="mkst">Παρών</span></button>`;
     const b=t.firstElementChild; $('gstGrid').appendChild(b); wire(b); after&&after();};
@@ -16829,7 +16835,7 @@ async function gstMount(sid,after){
   wl=wl.filter(x=>!have.has(attKey(x.name)));
   await gstLoad([sid]);
   const w2=$('gstWrap'); if(!w2||w2.dataset.sid!==sid)return;    
-  w2.innerHTML=gstHTML(sid,wl); gstWire(sid,after); after&&after();
+  w2.innerHTML=gstHTML(sid,wl); gstWire(sid,after,wl); after&&after();
 }
 D.satt=D.satt||[];
 D.sst=D.sst&&typeof D.sst==='object'&&!Array.isArray(D.sst)?D.sst:{};    
