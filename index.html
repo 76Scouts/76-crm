@@ -1203,7 +1203,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-27 10:51'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-27 11:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1772,7 +1772,8 @@ async function loadAll(){
     if(loadCache()&&(D.bh||[]).length){banner();return}
   }
   LOADED=true;
-  let KROSTER=null;
+  let KROSTER=null, ONEC=null;
+  try{ const {data:oc,error:oe}=await sb.rpc('single_carer_ids'); if(!oe)ONEC=oc||[]; }catch(e){}
   try{ const {data:pl}=await _pl; D.plab=pl||D.plab||[]; }catch(e){ D.plab=D.plab||[]; }
   try{ const me0=((r[0]&&r[0].data)||[]).find(b=>b.id===(ME&&ME.person_id));
     if(me0&&(me0.kind||'')==='Μέλος'){ const {data:kr}=await sb.rpc('koinotita_roster'); KROSTER=kr||null; } }catch(e){}
@@ -1780,6 +1781,7 @@ async function loadAll(){
   D.bh=r[0]?.data||D.bh||[]; D.my=r[1]?.data||[]; D.ss=r[2]?.data||[]; D.att=r[3]?.data||[]; D.cert=r[4]?.data||[]; D.gu=r[5]?.data||[]; D.sen=r[6]?.data||[]; D.ev=r[7]?.data||[]; D.pa=r[8]?.data||[]; D.med=r[9]?.data||[]; D.ecs=r[10]?.data||[]; D.tr=r[11]?.data||[];
   D.st=r[12]?.data||[]; D.rt=r[13]?.data||[]; D.rq=r[14]?.data||[]; D.rs=r[15]?.data||[]; D.rp=r[16]?.data||[]; D.or=r[17]?.data||[]; D.ph=r[18]?.data||[]; D.sh=r[19]?.data||[]; D.ho=r[20]?.data||[]; D.pe=r[21]?.data||[]; D.doc=r[22]?.data||[]; D.pc=r[23]?.data||[]; D.ct=r[24]?.data||[]; D.veh=r[25]?.data||[]; D.vl=r[26]?.data||[]; D.vi=r[27]?.data||[]; D.mf=r[28]?.data||[]; D.dr=r[29]?.data||[]; D.ed=r[30]?.data||[]; D.ft=r[31]?.data||[]; D.ci=r[32]?.data||[]; D.ho2=r[33]?.data||[]; D.sg=r[34]?.data||[]; D.cl=r[35]?.data||[]; D.pr=r[36]?.data||[]; D.sc=r[37]?.data||[]; D.gr=r[39]?.data||[]; D.rc=r[40]?.data||[]; D.mb=r[41]?.data||[]; D.kl=r[42]?.data||[];   D.am=r[46]?.data||[]; D.ac=r[48]?.data||[]; D.cons=r[49]?.data||[];
   D.syn=r[50]?.data||[]; D.synp=r[51]?.data||[]; D.synd=r[52]?.data||[];
+  D.onec=ONEC||D.onec||[];
   (KROSTER||[]).forEach(x=>{ if(!D.my.some(y=>y.person_id===x.person_id&&y.scout_year===x.scout_year)) D.my.push(x) });
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
@@ -3083,6 +3085,7 @@ async function openProfile(id){
       ${[['Πατέρας',gu.father_name,gu.father_mobile,gu.father_email],['Μητέρα',gu.mother_name,gu.mother_mobile,gu.mother_email]].filter(x=>x[1]).map(([r,n,t,m])=>
         `<div style="padding:5px 0"><div style="font-size:13.5px"><span class="dim" style="font-size:11.5px">${r}</span> ${esc(n)}</div>
          <div style="font-size:12.5px">${t?`<a href="tel:${esc(t)}">${fphone(t)}</a>`:''}${m?` · <a href="mailto:${esc(m)}">${esc(m)}</a>`:''}</div></div>`).join('')}</div>`:''}
+    ${oneCarerHTML(p)}
 
     ${(()=>{
       const kids=(D.cl||[]).filter(c=>c.carer_id===p.id)
@@ -3129,6 +3132,7 @@ async function openProfile(id){
     ${labelsHTML(p)}`;
   drw.classList.add('on');
   wireLabels(p);
+  oneCarerWire(p);    
   wireFiles({person_id:p.id},()=>openProfile(p.id));
   const ab=$('avaBtn'); if(ab)ab.onclick=async()=>{
     if(photoOf(p)){
@@ -7650,6 +7654,41 @@ function devBody(){
     $('dvMsg').textContent='Καθαρίστηκε — κάνε ανανέωση'};
 };
 
+const ONEC_KIND='Ένας κηδεμόνας';
+const ONEC_WHY=['Δεν υπάρχει δεύτερος γονέας','Απώλεια γονέα','Δικαστικό διάταγμα','Ο δεύτερος γονέας δεν συμμετέχει'];
+const oneCarer=p=>!!p&&((D.onec||[]).includes(p.id)||(D.mf||[]).some(f=>f.person_id===p.id&&f.kind===ONEC_KIND));
+const oneCarerRow=pid=>(D.mf||[]).find(f=>f.person_id===pid&&f.kind===ONEC_KIND)||null;
+function oneCarerHTML(p){
+  if(!p||(p.kind||'')!=='Μέλος')return '';
+  const admin=isAdminUI(), r=oneCarerRow(p.id);
+  if(!admin)return oneCarer(p)?`<div class="dsec" id="onecBox"><span class="pill">${esc(ONEC_KIND)}</span>
+    <span class="dim" style="font-size:12px"> — αρκεί μία υπογραφή σε έντυπα και συγκαταθέσεις</span></div>`:'';
+  return `<div class="dsec" id="onecBox"><h4>Κηδεμονία</h4>
+    <label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px">
+      <span>${esc(ONEC_KIND)}</span>
+      <select id="onecSel" style="max-width:260px" aria-label="Λόγος — μόνο για τον Α.Σ.">
+        <option value="">— όχι, δύο κηδεμόνες —</option>
+        ${ONEC_WHY.map(w=>`<option${r&&r.detail===w?' selected':''}>${esc(w)}</option>`).join('')}</select></label>
+    <div class="dim" style="font-size:11.5px;margin-top:5px">Ο βαθμοφόρος βλέπει μόνο «${esc(ONEC_KIND)}». Ο λόγος μένει σε σένα.
+      ${r&&r.detail==='Απώλεια γονέα'?'<br><b>Προσοχή</b> σε γιορτές και δραστηριότητες «με τον μπαμπά/τη μαμά».':''}</div></div>`;
+}
+function oneCarerWire(p){
+  const s=$('onecSel'); if(!s)return;
+  s.onchange=async()=>{
+    const v=s.value, r=oneCarerRow(p.id);
+    if(v&&!ONEC_WHY.includes(v))return;
+    let error=null;
+    if(!v&&r)({error}=await sb.from('member_flags').delete().eq('id',r.id));
+    else if(v&&r)({error}=await sb.from('member_flags').update({detail:v}).eq('id',r.id));
+    else if(v){const q=await sb.from('member_flags').insert({person_id:p.id,kind:ONEC_KIND,detail:v,source:'e76'}).select().single();
+      error=q.error; if(!error&&q.data)(D.mf=D.mf||[]).push(q.data);}
+    if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
+    if(!v){D.mf=(D.mf||[]).filter(f=>!(f.person_id===p.id&&f.kind===ONEC_KIND)); D.onec=(D.onec||[]).filter(x=>x!==p.id);}
+    else{ if(r)r.detail=v; if(!(D.onec||[]).includes(p.id))(D.onec=D.onec||[]).push(p.id); }
+    saveCache(); toast(v?ONEC_KIND+' — αρκεί μία υπογραφή':'Δύο κηδεμόνες');
+    const b=$('onecBox'); if(b){b.outerHTML=oneCarerHTML(p); oneCarerWire(p);}
+  };
+}
 const FAMREL=['Μητέρα','Πατέρας','Κηδεμόνας','Γιαγιά','Παππούς','Άλλο'];
 function famDrawer(){
   const pf=(i)=>`<div class="dsec"><div style="font-size:12px;color:var(--ink3);margin-bottom:7px">
@@ -14639,7 +14678,8 @@ V.dedupe=()=>{
 };
 
 let CALLSEC='all', CALLONLY='', ENSEC='all', ENONLY='';
-const FLAGPUB=['Ιατρικό','Διατροφή'];
+const FLAGPUB=['Ιατρικό','Διατροφή','Ένας κηδεμόνας'];
+const FLAGNODETAIL=['Ένας κηδεμόνας'];
 const flagsOf=id=>(D.mf||[]).filter(f=>f.person_id===id);
 function contactsOf(p){
   const g=gOf(p.registry_no)||{}; const out=[];
@@ -14660,19 +14700,21 @@ function callsBody(){
     const pub=fl.filter(f=>FLAGPUB.includes(f.kind));
     const priv=fl.filter(f=>!FLAGPUB.includes(f.kind));
     const rule=fl.find(f=>f.kind==='Επικοινωνία');
-    return {p,cs,reach,pub,priv,rule};
+    const thin=reach<2&&!(oneCarer(p)&&reach>=1);
+    return {p,cs,reach,pub,priv,rule,thin};
   };
   let rows=people.map(rowOf);
-  if(CALLONLY==='thin')rows=rows.filter(r=>r.reach<2);
+  if(CALLONLY==='thin')rows=rows.filter(r=>r.thin);
   if(CALLONLY==='flag')rows=rows.filter(r=>r.pub.length||r.rule);
-  const thin=people.map(rowOf).filter(r=>r.reach<2).length;
+  const thin=people.map(rowOf).filter(r=>r.thin).length;
   const nurg=(D.mf||[]).filter(f=>f.urgent&&FLAGPUB.includes(f.kind)).length;
   const chip=(v,t)=>`<button class="btn sm${CALLSEC===v?' p':' gh'}" data-cs="${v}">${t}</button>`;
   const only=(v,t)=>`<button class="btn sm${CALLONLY===v?' p':' gh'}" data-co="${v}">${t}</button>`;
   const card=r=>{
     const p=r.p;
     const flagHtml=[
-      ...r.pub.map(f=>`<div class="cflag${f.urgent?' urg':''}">${f.urgent?'⚠ ':''}<b>${esc(f.kind)}</b> · ${esc(f.detail)}</div>`),
+      ...r.pub.filter(f=>!FLAGNODETAIL.includes(f.kind)).map(f=>`<div class="cflag${f.urgent?' urg':''}">${f.urgent?'⚠ ':''}<b>${esc(f.kind)}</b> · ${esc(f.detail)}</div>`),
+      oneCarer(p)?`<div class="cflag"><b>${esc(ONEC_KIND)}</b>${admin&&oneCarerRow(p.id)?' · '+esc(oneCarerRow(p.id).detail):' · αρκεί μία υπογραφή'}</div>`:'',
       r.rule?`<div class="cflag urg">⚠ <b>Ειδικός κανόνας επικοινωνίας</b> · ${admin?esc(r.rule.detail):'ρώτα τον Αρχηγό Συστήματος πριν αφήσεις το παιδί να φύγει με κάποιον'}</div>`:'',
       ...(admin?r.priv.filter(f=>f.kind!=='Επικοινωνία').map(f=>`<div class="cflag priv">${esc(f.kind)} · ${esc(f.detail)}</div>`):[])
     ].filter(Boolean).join('');
@@ -14690,11 +14732,11 @@ function callsBody(){
         ${alt?`<a class="btn sm gh" href="tel:${esc(String(alt).replace(/\s/g,''))}">εργ.</a>`:''}
         ${tel||alt?`<button class="btn sm gh" data-na="${esc(k)}" title="Δεν απάντησε">${lg&&!lg.ok?'✕':'—'}</button>`:''}
       </div>`}).join('')||'<div class="dim" style="font-size:13px;padding:6px 0">Καμία καταγεγραμμένη επαφή</div>';
-    return `<div class="ccard${r.reach<2?' warn':''}">
+    return `<div class="ccard${r.thin?' warn':''}">
       <div class="chead">${sdot(secOf(p))}<div style="flex:1;min-width:0"><div class="ctitle">${pn(p)}</div>
         <div class="dim" style="font-size:12px">${esc(secOf(p)||'')}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
-        ${r.reach<2?'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">1 επαφή</span>':''}</div>
-      ${flagHtml}${cl}</div>`;
+        ${r.thin?'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">1 επαφή</span>':''}</div>
+      ${flagHtml}${cl}</div>`;    
   };
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Λίστα κλήσεων</b>
@@ -16025,8 +16067,9 @@ async function enrollForms(kids){
 
       <div class="fsec">${adult?'Δήλωση μέλους':'Δήλωση γονέα / κηδεμόνα'}${t?`<span class="fn"> — έκδοση ${t.version}</span>`:''}</div>
       <div class="fdec">${esc(((t&&t.body)||'').replace('{ΧΡΟΝΙΑ}',YEAR))} Δηλώνω επίσης ότι έχω ενημερώσει γραπτώς το Σύστημα για οποιοδήποτε ιατρικό θέμα αντιμετωπίζει ${adult?'ο/η ίδιος/α':'το παιδί μου'}.</div>
-      <div class="frow" style="margin-top:11px">${LN(adult?'Ονοματεπώνυμο μέλους':'Ονοματεπώνυμο 1',' ',2)}${LN('Υπογραφή',' ',1.6)}${LN('Ημερομηνία',' ',1)}</div>
-      ${adult?'':`<div class="frow">${LN('Ονοματεπώνυμο 2',' ',2)}${LN('Υπογραφή',' ',1.6)}${LN('Ημερομηνία',' ',1)}</div>`}
+      <div class="frow" style="margin-top:11px">${LN(adult?'Ονοματεπώνυμο μέλους':(oneCarer(p)?'Ονοματεπώνυμο κηδεμόνα':'Ονοματεπώνυμο 1'),' ',2)}${LN('Υπογραφή',' ',1.6)}${LN('Ημερομηνία',' ',1)}</div>
+      ${adult?'':oneCarer(p)?`<div class="fnote">${esc(ONEC_KIND)} — αρκεί μία υπογραφή.</div>`
+        :`<div class="frow">${LN('Ονοματεπώνυμο 2',' ',2)}${LN('Υπογραφή',' ',1.6)}${LN('Ημερομηνία',' ',1)}</div>`}
       <div class="ffoot"><span>Παραλήφθηκε από: ______________________ &nbsp; Ημ.: ____/____/________</span><span>${pn(p)}</span></div>
     </div>`};
   openPrint('Αιτήσεις εγγραφής '+YEAR, kids.map(page).join(''));
@@ -16071,9 +16114,12 @@ function consentForms(kids){
       <div class="fnote">Τα στοιχεία τηρούνται στα αρχεία του 76ου Συστήματος Προσκόπων Στροβόλου, μονάδας του Σώματος Προσκόπων Κύπρου, και διαγράφονται όταν ζητηθεί γραπτώς στο <b>as@76.life</b>, το οποίο αποτελεί και το σημείο επικοινωνίας για κάθε θέμα προσωπικών δεδομένων. Η συγκατάθεση μπορεί να ανακληθεί ανά πάσα στιγμή, γραπτώς ή με νέο έντυπο, <b>χωρίς καμία επίπτωση στη συμμετοχή του παιδιού</b> στο προσκοπικό πρόγραμμα.</div>
 
       <div class="fsec">Υπογραφές γονέων / κηδεμόνων</div>
-      <div class="fnote" style="margin:0 0 5px">Για τις επιλογές <b>1</b> και <b>2</b> αρκεί η υπογραφή ενός προσώπου που ασκεί τη γονική μέριμνα. Για την επιλογή <b>4</b> (οπτικοακουστικό υλικό) υπογράφουν όλοι όσοι την ασκούν.</div>
+      ${oneCarer(list[0])
+        ?`<div class="fnote" style="margin:0 0 5px"><b>${esc(ONEC_KIND)}</b> — για όλες τις επιλογές αρκεί η υπογραφή του.</div>
+      <div class="frow">${LN('Ονοματεπώνυμο',g.father_name||g.mother_name,2)}${LN('Ιδιότητα',' ',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>`
+        :`<div class="fnote" style="margin:0 0 5px">Για τις επιλογές <b>1</b> και <b>2</b> αρκεί η υπογραφή ενός προσώπου που ασκεί τη γονική μέριμνα. Για την επιλογή <b>4</b> (οπτικοακουστικό υλικό) υπογράφουν όλοι όσοι την ασκούν.</div>
       <div class="frow">${LN('Ονοματεπώνυμο',g.father_name,2)}${LN('Ιδιότητα','π.χ. πατέρας',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
-      <div class="frow">${LN('Ονοματεπώνυμο',g.mother_name,2)}${LN('Ιδιότητα','π.χ. μητέρα',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
+      <div class="frow">${LN('Ονοματεπώνυμο',g.mother_name,2)}${LN('Ιδιότητα','π.χ. μητέρα',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>`}
       <div class="frow">${LN('Ονοματεπώνυμο',' ',2)}${LN('Ιδιότητα',' ',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
       <div class="fnote" style="margin-top:4px">Μία γραμμή ανά πρόσωπο. Κηδεμόνας που προστίθεται αργότερα υπογράφει σε κενή γραμμή με τη δική του ημερομηνία — <b>το έντυπο δεν επανεκδίδεται</b>.</div>
       <div class="ffoot"><span>Ερωτήματα: as@76.life &nbsp;·&nbsp; Αρχή Προστασίας Δεδομένων: commissioner@dataprotection.gov.cy</span>
