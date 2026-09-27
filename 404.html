@@ -1203,7 +1203,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-27 11:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-27 14:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1601,13 +1601,14 @@ async function qFlush(silent){
         else if(j.k==='cash')r=await cashSend(j);    
         else if(j.k==='cashx')r=await cashSendX(j);  
         else if(j.k==='gst')r=await gstSend(j);      
+        else if(j.k==='satt')r=await satSend(j);     
         else { refused.push(j.k); continue; }
       }catch(e){ left.push(j); continue; }
       const err=r&&r.error;
       if(!err)continue;
       if(netErr(err)){ left.push(j); continue; }
       if(j.k==='att')saveFail('attendance','rpc:mark_attendance',[],err);
-      refused.push(j.k==='att'||j.k==='attdel'?'παρουσίες':(j.k==='cash'||j.k==='cashx')?'ταμείο':j.k==='gst'?'παρουσίες νέων':(j.tb||j.k));
+      refused.push(j.k==='att'||j.k==='attdel'?'παρουσίες':(j.k==='cash'||j.k==='cashx')?'ταμείο':j.k==='gst'?'παρουσίες νέων':j.k==='satt'?'παρουσίες βαθμοφόρων':(j.tb||j.k));
     }
   } finally { QBUSY=false; }
   QUEUE=left; localStorage.setItem(QK,JSON.stringify(QUEUE));
@@ -2652,9 +2653,12 @@ const isAnix=p=>{
 };
 const nm=p=>p.first_name+' '+p.last_name;
 const sdot=s=>`<span class="dot" style="background:${SC[s]||'var(--ink3)'}" title="${esc(s||'')}"></span>`;
+const carerOfLink=c=>D.bh.find(b=>b.id===c.carer_id)
+  ||((c.first_name||c.last_name)?{id:c.carer_id,first_name:c.first_name||'',last_name:c.last_name||'',
+      phone:c.phone||'',email:c.email||'',kind:'Γονέας',status:'Ενεργός',_op:true}:null);
 function carersOfPerson(pid){
   return (D.cl||[]).filter(c=>c.member_id===pid&&!c.valid_to)
-    .map(c=>({l:c, p:D.bh.find(b=>b.id===c.carer_id)}))
+    .map(c=>({l:c, p:carerOfLink(c)}))
     .filter(x=>x.p)
     .sort((a,b)=>(a.l.call_order||9)-(b.l.call_order||9));
 }
@@ -2736,6 +2740,9 @@ const ppLeaders=()=>D.bh.filter(x=>x.kind==='Βαθμοφόρος'&&x.status==='
 function sortByName(a,b){return nameKey(a.last_name+a.first_name).localeCompare(nameKey(b.last_name+b.first_name),'el')}
 
 const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const NEW_LABEL='Νέο μέλος';
+const isNewMember=(pid,day)=>{day=day||todayISO(); return (D.plab||[]).some(l=>l.person_id===pid&&l.label===NEW_LABEL&&(!l.valid_from||l.valid_from<=day)&&(!l.valid_to||l.valid_to>=day))};
+const NEWCHIP=` <span class="pill" style="font-size:10.5px;padding:0 6px;margin-left:4px;background:var(--accbg);border-color:var(--accln)">${NEW_LABEL}</span>`;
 const sesDone=s=>!!s&&!!s.session_date&&String(s.session_date)<=todayISO();
 const attRoster=sec=>D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec).length;
 function sesCount(s){
@@ -2906,7 +2913,8 @@ function faNote(p){
   const fa=(D.pc||[]).some(c=>c.person_id===p.id&&/FIRSTAID|BLS|ΠΡΩΤΕΣ|Πρώτ/i.test(String(c.type_code||'')+String(c.label||'')));
   return [secOf(p)||p.section||'', n91, fa?'':'χωρίς Πρώτες Βοήθειες'].filter(Boolean).join(' · ');
 }
-const labelsOf=pid=>(D.plab||[]).filter(l=>l.person_id===pid&&(!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10)));
+const FA_LABEL='Πρώτος Βοηθός';
+const labelsOf=pid=>(D.plab||[]).filter(l=>l.person_id===pid&&l.label===FA_LABEL&&(!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10)));
 function labelsHTML(p){
   const mine=labelsOf(p.id), admin=ME.role==='admin'||!!ME.platform_admin;
   if(!admin&&!mine.length)return '';
@@ -2945,7 +2953,7 @@ function wireLabels(p){
     const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); openProfile(p.id); });
 }
 function labelsBody(){
-  const L=(D.plab||[]).filter(l=>!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10));
+  const L=(D.plab||[]).filter(l=>l.label===FA_LABEL&&(!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10)));
   const led=D.bh.filter(b=>isLed(b)&&b.status==='Ενεργός').sort(sortByName);
   $('view').innerHTML=`<p class="lede">Ο <b>Πρώτος Βοηθός</b> βλέπει ιατρικά και σημάνσεις διατροφής των παιδιών — στο τμήμα που ορίζεις ή σε όλο το Σύστημα —
       μόνο εφόσον έχει έγκυρο Ν.91(Ι). Κάθε ανάγνωση καταγράφεται όπως όλες.</p>
@@ -15381,7 +15389,7 @@ function efPastePanel(e){
 
 function efPhones(e,parts){
   const carersOf=pid=>(D.cl||[]).filter(c=>c.member_id===pid&&!c.valid_to)
-    .map(c=>({rel:c.relation, p:(D.bh||[]).find(b=>b.id===c.carer_id)})).filter(x=>x.p&&x.p.phone);
+    .map(c=>({rel:c.relation, p:carerOfLink(c)})).filter(x=>x.p&&x.p.phone);
   const rows=parts.map(x=>{
     const kid=(x.p.kind||'')==='Μέλος';
     const car=kid?carersOf(x.p.id):[];
@@ -15413,7 +15421,7 @@ function efPhones(e,parts){
 }
 function efPhonesWire(e,parts){
   const carersOf=pid=>(D.cl||[]).filter(c=>c.member_id===pid&&!c.valid_to)
-    .map(c=>({rel:c.relation, p:(D.bh||[]).find(b=>b.id===c.carer_id)})).filter(x=>x.p&&x.p.phone);
+    .map(c=>({rel:c.relation, p:carerOfLink(c)})).filter(x=>x.p&&x.p.phone);
   $('efPhCsv').onclick=()=>{
     const R=[['Όνομα','Ρόλος','Τμήμα','Τηλέφωνο','Ποιανού']];
     parts.forEach(x=>{const car=((x.p.kind||'')==='Μέλος')?carersOf(x.p.id):[];
@@ -16501,12 +16509,14 @@ function markBody(){
         <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση</button></div>
       <div class="dim noprint" style="font-size:12px;margin:-4px 0 10px">Άγγιγμα: Παρών → Απών → χωρίς σημείωση. Γράφεται αμέσως — και χωρίς σήμα.</div>
       ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span></div>
-        <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}" aria-pressed="false"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}</span><span class="mkst"></span></button>`).join('')}</div>`).join('')}
+        <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}" aria-pressed="false"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}${isNewMember(p.id,SES.session_date)?NEWCHIP:''}</span><span class="mkst"></span></button>`).join('')}</div>`).join('')}
       ${ME.role!=='patrol_leader'?`<div id="gstWrap" data-sid="${sid}"></div>`:''}
+      ${canStaffAtt(sec)?`<div id="satWrap" data-sid="${sid}" style="margin-top:6px"></div>`:''}
       <div id="cashWrap">${cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader')}</div>
       <div style="height:14px"></div>`;
     cashWire(sid);
     if(ME.role!=='patrol_leader')gstMount(sid,count);
+    if(canStaffAtt(sec))satMount(sid);
     cashLoad([sid]).then(()=>{const w=$('cashWrap'); if(w&&SES&&SES.id===sid){w.innerHTML=cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader'); cashWire(sid)}});
     document.querySelectorAll('[data-m]').forEach(b=>paintOne(b));
     count(); status();
@@ -16820,6 +16830,81 @@ async function gstMount(sid,after){
   await gstLoad([sid]);
   const w2=$('gstWrap'); if(!w2||w2.dataset.sid!==sid)return;    
   w2.innerHTML=gstHTML(sid,wl); gstWire(sid,after); after&&after();
+}
+D.satt=D.satt||[];
+D.sst=D.sst&&typeof D.sst==='object'&&!Array.isArray(D.sst)?D.sst:{};    
+const canStaffAtt=sec=>ME.role==='admin'||(ME.role==='section_head'&&(!ME.scope||ME.scope===sec));
+const satRows=sid=>(D.satt||[]).filter(a=>a.session_id===sid);
+const satOf=(sid,pid)=>((D.satt||[]).find(a=>a.session_id===sid&&a.person_id===pid)||{}).status||null;
+async function satLoad(ids){
+  ids=(ids||[]).filter(Boolean); if(!ids.length||!navigator.onLine)return;
+  const {data,error}=await sb.from('staff_attendance').select('session_id,person_id,status').in('session_id',ids);
+  if(error){console.warn('βαθμοφόροι:',error.code);return}
+  D.satt=(D.satt||[]).filter(a=>!ids.includes(a.session_id)).concat(data||[]); saveCache();
+}
+function satPut(sid,pid,st){
+  D.satt=(D.satt||[]).filter(a=>!(a.session_id===sid&&a.person_id===pid));
+  if(st)D.satt.push({session_id:sid,person_id:pid,status:st});
+  saveCache();
+  QUEUE=QUEUE.filter(j=>!(j.k==='satt'&&j.s===sid&&j.p===pid));
+  qAdd({k:'satt',s:sid,p:pid,st:st||null,t:Date.now()});
+  setTimeout(()=>qFlush(true),600);
+}
+async function satSend(j){
+  const q=()=>sb.from('staff_attendance');
+  if(!j.st)return await q().delete().eq('session_id',j.s).eq('person_id',j.p);
+  return await q().upsert({session_id:j.s,person_id:j.p,status:j.st},{onConflict:'session_id,person_id'});
+}
+function satCountText(sid,staff){
+  const ids=new Set(staff.map(x=>x.person_id)); let p=0,a=0;
+  satRows(sid).forEach(r=>{if(!ids.has(r.person_id))return; if(r.status==='Παρών')p++; else a++});
+  const un=staff.length-p-a;
+  return `${p}/${staff.length} παρόντες${a?' · '+a+' απόντες':''}${un>0?' · '+un+' χωρίς σημείωση':''}`;
+}
+function satHTML(sid,staff){
+  const btn=x=>{const st=satOf(sid,x.person_id);
+    return `<button class="mk${st==='Παρών'?' p':st==='Απών'?' a':''}" data-sm="${esc(x.person_id)}" aria-pressed="${st?'true':'false'}">
+    <span class="s"></span><span style="flex:1;min-width:0">${esc(x.name)}<span class="dim" style="display:block;font-size:11px">${esc(x.title||'')}${x.part_time?' · μερική':''}</span></span><span class="mkst">${st||''}</span></button>`};
+  return `<div class="sec"><h3>Βαθμοφόροι</h3><span class="n" id="satCnt">${esc(satCountText(sid,staff))}</span></div>
+    <div class="dim" style="font-size:12px;margin:-4px 0 8px">Χωριστά από τα παιδιά — δεν μετρούν στο ποσοστό τους. Τις βλέπεις μόνο εσύ και ο Α.Σ.</div>
+    ${staff.length?`<div class="mkgrid">${staff.map(btn).join('')}</div>
+    <div class="noprint" style="margin-top:8px"><button class="btn sm" id="satAllP">Οι υπόλοιποι βαθμοφόροι παρόντες</button></div>`
+      :'<div class="dim" style="font-size:12.5px">Κανένα ενεργό καπέλο σε αυτό το τμήμα για αυτή τη μέρα.</div>'}`;
+}
+function satWire(sid,staff){
+  const cnt=()=>{const c=$('satCnt'); if(c)c.textContent=satCountText(sid,staff)};
+  const paint=b=>{const st=satOf(sid,b.dataset.sm); b.className='mk'+(st==='Παρών'?' p':st==='Απών'?' a':'');
+    b.setAttribute('aria-pressed',st?'true':'false'); const t=b.querySelector('.mkst'); if(t)t.textContent=st||''};
+  document.querySelectorAll('[data-sm]').forEach(b=>b.onclick=()=>{const pid=b.dataset.sm, cur=satOf(sid,pid);
+    satPut(sid,pid,cur==='Παρών'?'Απών':cur==='Απών'?null:'Παρών'); paint(b); cnt();});
+  const all=$('satAllP'); if(all)all.onclick=()=>{
+    const ids=staff.map(x=>x.person_id).filter(pid=>!satOf(sid,pid));
+    if(!ids.length)return toast('Όλοι έχουν ήδη σημείωση');
+    ids.forEach(pid=>satPut(sid,pid,'Παρών'));
+    document.querySelectorAll('[data-sm]').forEach(paint); cnt(); toast(ids.length+' βαθμοφόροι παρόντες');};
+}
+async function satMount(sid){
+  const w=$('satWrap'); if(!w)return;
+  let staff=D.sst[sid]||null;
+  if(navigator.onLine){ const {data,error}=await sb.rpc('session_staff',{p_session:sid});
+    if(!error){staff=data||[]; D.sst[sid]=staff; saveCache();} }
+  await satLoad([sid]);
+  const w2=$('satWrap'); if(!w2||w2.dataset.sid!==sid)return;    
+  if(!staff){w2.innerHTML='<div class="dim" style="font-size:12.5px">Οι βαθμοφόροι φαίνονται μόλις υπάρξει σήμα.</div>';return}
+  w2.innerHTML=satHTML(sid,staff); satWire(sid,staff);
+}
+async function satStats(year){
+  if(!navigator.onLine)return null;
+  const {data,error}=await sb.rpc('staff_att_stats',{p_year:year});
+  if(error){console.warn('βαθμοφόροι ποσοστά:',error.code);return null}
+  const m={}; (data||[]).forEach(r=>m[r.session_id]=r); return m;
+}
+const satCell=r=>!r?'—':(r.present+r.absent)?`<b>${r.present}</b><span class="dim">/${r.roster}</span>${r.absent?`<div class="dim" style="font-size:11.5px">${r.absent} απόντες</div>`:''}`:'<span class="dim">χωρίς σημείωση</span>';
+function satPct(m,sec,year){
+  let p=0,n=0,k=0;
+  (D.ss||[]).filter(s=>s.section===sec&&s.scout_year===year).forEach(s=>{const r=m[s.id];
+    if(r&&(r.present+r.absent)){p+=r.present; n+=r.roster; k++}});
+  return n?{pct:Math.round(100*p/n),k}:null;
 }
 let VEHPRE=null;
 function vehUpload(vid, kind){ VEHPRE={v:vid, k:kind||'ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'}; if(ROUTE==='myveh')stay(); else route('myveh'); }
@@ -17296,22 +17381,27 @@ function attendBody(){
     document.querySelectorAll('[data-ct]').forEach(b=>b.onclick=()=>{const id=b.dataset.ct;CONTACTED[id]=CONTACTED[id]?0:Date.now();localStorage.setItem('e76:contacted',JSON.stringify(CONTACTED));risky()});
   };
   const all=()=>{
+    const SATCOL=ME.role==='admin'||ME.role==='section_head';
     const rows=['Αγέλη','Ομάδα','Κοινότητα'].map(sec=>{
       const all=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR), ses=all.filter(sesDone); const ids=new Set(ses.map(s=>s.id));
       const a=D.att.filter(x=>ids.has(x.session_id)), withM=ses.filter(s=>a.some(x=>x.session_id===s.id)).length, n=attRoster(sec);
       const pct=withM&&n?Math.round(100*a.filter(x=>x.status==='Παρών').length/(n*withM)):null;
       return {sec,n:ses.length,next:all.length-ses.length,pct,withM,roster:n,miss:ses.length-withM};});
-    $('atbody').innerHTML=`<div class="tiles">${rows.map(r=>`<div class="tile" style="cursor:default"><div class="k">${sdot(r.sec)}${esc(r.sec)}</div><div class="v">${r.pct===null?'—':r.pct+'%'}</div><div class="s">${r.roster} γραμμένοι · ${r.n} έγιναν${r.miss?' · <b>'+r.miss+' χωρίς καταχώρηση</b>':''}${r.next?' · '+r.next+' επόμενες':''}</div></div>`).join('')}</div>
+    $('atbody').innerHTML=`<div class="tiles">${rows.map(r=>`<div class="tile" style="cursor:default"><div class="k">${sdot(r.sec)}${esc(r.sec)}</div><div class="v">${r.pct===null?'—':r.pct+'%'}</div><div class="s">${r.roster} γραμμένοι · ${r.n} έγιναν${r.miss?' · <b>'+r.miss+' χωρίς καταχώρηση</b>':''}${r.next?' · '+r.next+' επόμενες':''}</div>${canStaffAtt(r.sec)?`<div class="s" data-sattile="${esc(r.sec)}"></div>`:''}</div>`).join('')}</div>
       <div class="sec"><h3>Συγκεντρώσεις που έγιναν — ${esc(YEAR)}</h3></div>
-      <div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th class="hide-s">Τίτλος</th><th>Παρόντες <span class="dim" style="font-weight:400">/ γραμμένοι</span></th><th>Ταμείο</th></tr></thead><tbody>${
+      <div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th class="hide-s">Τίτλος</th><th>Παρόντες <span class="dim" style="font-weight:400">/ γραμμένοι</span></th><th>Ταμείο</th>${SATCOL?'<th>Βαθμοφόροι</th>':''}</tr></thead><tbody>${
       D.ss.filter(s=>s.scout_year===YEAR&&sesDone(s)).sort((a,b)=>a.session_date<b.session_date?1:-1).map(s=>{const c=sesCount(s);
-      return `<tr><td>${fdate(s.session_date)}</td><td>${sdot(s.section)} ${esc(s.section||'')}</td><td class="hide-s dim">${esc(s.title||progTopic(s.section,s.session_date)||'—')}</td><td data-gsc="${s.id}">${c.marked?`<b>${c.p}</b><span class="dim">/${c.n}</span>${gstPresent(s.id)?` <span class="dim" style="font-size:11.5px">+${gstPresent(s.id)} νέοι</span>`:''}${c.ab||c.un?`<div class="dim" style="font-size:11.5px">${[c.ab&&c.ab+' απόντες',c.un&&c.un+' χωρίς σημείωση'].filter(Boolean).join(' · ')}</div>`:''}`:'<span style="color:var(--warn)">δεν καταχωρήθηκε</span>'}</td><td data-cash="${s.id}" class="dim">${cashRows(s.id).length?cashLabel(s.id):'—'}</td></tr>`}).join('')
-      ||'<tr><td colspan="5" class="dim" style="padding:22px;text-align:center">Δεν έγινε ακόμη καμία συγκέντρωση</td></tr>'}</tbody></table></div>`;
+      return `<tr><td>${fdate(s.session_date)}</td><td>${sdot(s.section)} ${esc(s.section||'')}</td><td class="hide-s dim">${esc(s.title||progTopic(s.section,s.session_date)||'—')}</td><td data-gsc="${s.id}">${c.marked?`<b>${c.p}</b><span class="dim">/${c.n}</span>${gstPresent(s.id)?` <span class="dim" style="font-size:11.5px">+${gstPresent(s.id)} νέοι</span>`:''}${c.ab||c.un?`<div class="dim" style="font-size:11.5px">${[c.ab&&c.ab+' απόντες',c.un&&c.un+' χωρίς σημείωση'].filter(Boolean).join(' · ')}</div>`:''}`:'<span style="color:var(--warn)">δεν καταχωρήθηκε</span>'}</td><td data-cash="${s.id}" class="dim">${cashRows(s.id).length?cashLabel(s.id):'—'}</td>${SATCOL?`<td data-sat="${s.id}" class="dim">${canStaffAtt(s.section)?'…':'—'}</td>`:''}</tr>`}).join('')
+      ||'<tr><td colspan="6" class="dim" style="padding:22px;text-align:center">Δεν έγινε ακόμη καμία συγκέντρωση</td></tr>'}</tbody></table></div>`;
     const ids=D.ss.filter(s=>s.scout_year===YEAR&&sesDone(s)).map(s=>s.id);
     gstLoad(ids).then(()=>document.querySelectorAll('[data-gsc]').forEach(td=>{const g=gstPresent(td.dataset.gsc);
       if(g&&!/νέοι/.test(td.textContent)){const b=td.querySelector('b'); if(b)b.insertAdjacentHTML('afterend',`<span class="dim" style="font-size:11.5px"> +${g} νέοι</span>`)}}));
     cashLoad(ids).then(()=>document.querySelectorAll('[data-cash]').forEach(td=>{const id=td.dataset.cash;
       td.textContent=cashRows(id).length?cashLabel(id):'—'}));
+    if(SATCOL)satStats(YEAR).then(m=>{ if(!m)return document.querySelectorAll('[data-sat]').forEach(td=>td.textContent='—');
+      document.querySelectorAll('[data-sat]').forEach(td=>td.innerHTML=satCell(m[td.dataset.sat]));
+      document.querySelectorAll('[data-sattile]').forEach(d=>{const r=satPct(m,d.dataset.sattile,YEAR);
+        d.innerHTML=r?`Βαθμοφόροι <b>${r.pct}%</b> · σε ${r.k} συγκεντρώσεις`:'Βαθμοφόροι: χωρίς σημείωση ακόμη'});});
   };
   $('tabRisk').onclick=()=>{$('tabRisk').className='btn p sm';$('tabAll').className='btn sm';risky()};
   $('tabAll').onclick=()=>{$('tabAll').className='btn p sm';$('tabRisk').className='btn sm';all()};
