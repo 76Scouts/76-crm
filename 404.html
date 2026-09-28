@@ -1203,7 +1203,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-27 15:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-28 12:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1641,6 +1641,28 @@ async function pageAll(table, cols, step=1000, cap=50000){
   }
   return {data:out, error:null};
 }
+let XSTUB={pat:[],sys:[]};
+async function loadStubs(){
+  if(!navigator.onLine||!ME)return;
+  try{
+    if(ME.role==='patrol_leader'){ const {data,error}=await sb.rpc('my_patrol_roster'); if(!error)XSTUB.pat=data||[]; }
+    if(['section_head','section_assistant','commissioner'].includes(ME.role)){ const {data,error}=await sb.rpc('system_staff'); if(!error)XSTUB.sys=data||[]; }
+  }catch(e){ return }
+  mergeStubs(); if(typeof LOADED!=='undefined'&&LOADED&&ROUTE)stay();
+}
+function mergeStubs(){
+  if(!D.bh||!D.my)return;
+  const has=new Set(D.bh.map(p=>p.id));
+  (XSTUB.pat||[]).forEach(r=>{
+    if(!has.has(r.person_id)){ D.bh.push({id:r.person_id,first_name:r.first_name,last_name:r.last_name,kind:'Μέλος',
+      status:'Ενεργός',section:r.section,_stub:true}); has.add(r.person_id); }
+    if(!D.my.some(x=>x.person_id===r.person_id&&x.scout_year===YEAR))
+      D.my.push({person_id:r.person_id,scout_year:YEAR,section:r.section,group_name:r.group_name,_stub:true});
+  });
+  (XSTUB.sys||[]).forEach(r=>{ if(has.has(r.id))return;
+    D.bh.push({id:r.id,first_name:r.first_name,last_name:r.last_name,kind:'Βαθμοφόρος',category:r.category,
+      status:'Ενεργός',section:'Σύστημα',_stub:true}); has.add(r.id); });
+}
 async function loadAll(){
   Object.keys(LZON).forEach(k=>{ if(LZON[k]==='ok'){ LZON[k]=null; lazyFire(k) } });
   const q=[
@@ -1749,6 +1771,7 @@ async function loadAll(){
   });
   const r=new Array(q.length).fill(null);
   const _pl=guard(sb.from('person_labels').select('*'),'person_labels');    
+  loadStubs();    
   const core=[...CORE].filter(i=>i<q.length);
   await Promise.all(core.map(async i=>{ r[i]=await guard(q[i],names[i]) }));
   const LZI=new Set(Object.values(LZN).map(n=>names.indexOf(n)).filter(i=>i>=0));
@@ -1789,6 +1812,7 @@ async function loadAll(){
                                         stage_ordinal:x.progression_catalog?.ordinal}));
   D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.cd=r[71]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.emo=r[86]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[];
   if(!(D.cl||[]).length && (D.care_op||[]).length) D.cl=D.care_op.map(x=>({...x}));
+  mergeStubs();
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
   const _ow=$('owner');
   if(_ow&&(D.am||[]).length){
@@ -16433,6 +16457,7 @@ function evParts(eid){
   draw();
 }
 
+const HQ='Σύστημα';    
 function calBody(){
   const now=new Date(); let cm=now.getMonth(), cy=now.getFullYear();
   const draw=()=>{
@@ -16469,12 +16494,13 @@ function calBody(){
 
 function markBody(){
   const secs=MEMSECS().filter(sc=>D.bh.some(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sc));
+  if(ME.role==='admin'&&!secs.includes(HQ))secs.push(HQ);
   const canNew=sec=>ME.role==='admin'||(ME.role==='section_head'&&(!ME.scope||ME.scope===sec));
   const pre=MKPRE; MKPRE=null;    
   const defSec=pre&&secs.includes(pre.sec)?pre.sec:scopeSec()&&secs.includes(scopeSec())?scopeSec():(secs[0]||MEMSECS()[0]);
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
-        ${secs.length>1?`<select id="mSec" style="max-width:150px" aria-label="Τμήμα">${secs.map(s=>`<option${s===defSec?' selected':''}>${esc(s)}</option>`).join('')}</select>`
+        ${secs.length>1?`<select id="mSec" style="max-width:150px" aria-label="Τμήμα">${secs.map(s=>`<option value="${esc(s)}"${s===defSec?' selected':''}>${esc(s===HQ?'Αρχηγείο':s)}</option>`).join('')}</select>`
           :`<input type="hidden" id="mSec" value="${esc(defSec||'')}"><b>${esc(defSec||'')}</b>`}
         <select id="mSes" style="max-width:230px" aria-label="Συγκέντρωση"></select>
         <button class="btn sm" id="mNew"${canNew(defSec)?'':' style="display:none"'}>+ Νέα συγκέντρωση</button>
@@ -16502,28 +16528,30 @@ function markBody(){
     const sec=$('mSec').value, sid=$('mSes').value; SES=D.ss.find(s=>s.id===sid);
     if(!SES){$('mBody').innerHTML=`<div class="uc"><div class="ico">${ic('cal',26)}</div><h3>Καμία συγκέντρωση</h3><p>${canNew(sec)?'Δημιούργησε την πρώτη για '+esc(sec)+'.':'Τη συγκέντρωση τη φτιάχνει ο Αρχηγός του τμήματος — μόλις υπάρξει, εμφανίζεται εδώ.'}</p></div>`;$('mCnt').textContent='';return;}
     STATE={}; D.att.filter(a=>a.session_id===sid).forEach(a=>STATE[a.person_id]=a.status==='Παρών'?'p':'a');
-    const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec).sort(sortByName);
+    const hq=sec===HQ;
+    const kids=hq?[]:D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec).sort(sortByName);
     const gs={}; kids.forEach(p=>{const g=(myOf(p)||{}).group_name||'— χωρίς υποομάδα';(gs[g]=gs[g]||[]).push(p)});
     $('mBody').innerHTML=`<div class="noprint" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <button class="btn sm" id="mAllP">Οι υπόλοιποι παρόντες</button>
+        ${hq?'':'<button class="btn sm" id="mAllP">Οι υπόλοιποι παρόντες</button>'}
         <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση</button></div>
       <div class="dim noprint" style="font-size:12px;margin:-4px 0 10px">Άγγιγμα: Παρών → Απών → χωρίς σημείωση. Γράφεται αμέσως — και χωρίς σήμα.</div>
       ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span></div>
         <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}" aria-pressed="false"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}${isNewMember(p.id,SES.session_date)?NEWCHIP:''}</span><span class="mkst"></span></button>`).join('')}</div>`).join('')}
-      ${ME.role!=='patrol_leader'?`<div id="gstWrap" data-sid="${sid}"></div>`:''}
+      ${ME.role!=='patrol_leader'&&!hq?`<div id="gstWrap" data-sid="${sid}"></div>`:''}
+      ${hq?'':`<div id="cashWrap">${cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader')}</div>`}
+      ${ ''}
       ${canStaffAtt(sec)?`<div id="satWrap" data-sid="${sid}" style="margin-top:6px"></div>`:''}
-      <div id="cashWrap">${cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader')}</div>
       <div style="height:14px"></div>`;
-    cashWire(sid);
-    if(ME.role!=='patrol_leader')gstMount(sid,count);
+    if(!hq)cashWire(sid);
+    if(ME.role!=='patrol_leader'&&!hq)gstMount(sid,count);
     if(canStaffAtt(sec))satMount(sid);
-    cashLoad([sid]).then(()=>{const w=$('cashWrap'); if(w&&SES&&SES.id===sid){w.innerHTML=cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader'); cashWire(sid)}});
+    if(!hq)cashLoad([sid]).then(()=>{const w=$('cashWrap'); if(w&&SES&&SES.id===sid){w.innerHTML=cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader'); cashWire(sid)}});
     document.querySelectorAll('[data-m]').forEach(b=>paintOne(b));
     count(); status();
     document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const id=b.dataset.m;
       const nx=STATE[id]==='p'?'a':(STATE[id]==='a'?null:'p');
       put([id],nx); paintOne(b); count();});
-    $('mAllP').onclick=()=>{
+    if($('mAllP'))$('mAllP').onclick=()=>{
       const ids=[...document.querySelectorAll('[data-m]')].map(b=>b.dataset.m).filter(id=>!STATE[id]);
       if(!ids.length)return toast('Όλοι έχουν ήδη σημείωση');
       put(ids,'p'); document.querySelectorAll('[data-m]').forEach(b=>{ if(ids.includes(b.dataset.m))paintOne(b) }); count();
@@ -16566,7 +16594,7 @@ function markBody(){
   $('mCreate').onclick=async()=>{
     const d=$('mDate').value, sec=$('mSec').value; if(!d)return toast('Βάλε ημερομηνία');
     const {data,error}=await sb.from('sessions').insert({session_date:d,session_type:'Συγκέντρωση',
-      section:sec,title:$('mTitle').value||('Συγκέντρωση '+sec),
+      section:sec,title:$('mTitle').value||(sec===HQ?'Αρχηγείο':'Συγκέντρωση '+sec),
       theme:($('mTheme')&&$('mTheme').value.trim())||null,
       scout_year:YEAR,status:'πραγματοποιήθηκε'}).select().single();
     if(error)return toast('Σφάλμα: '+error.message);
