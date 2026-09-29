@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-29 19:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-29 21:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -6537,20 +6537,59 @@ async function declareAndOpen(ev, kid, parent){
   else window.open(url,'_blank','noopener');
 }
 
+function kidForEv(e,k){const s=evSecs(e); return !s.length||s.includes(secOf(k))}
+function kidEvents(ks,today){
+  const invOk=(e,k)=>evInvOk(e,k.id,secOf(k));
+  const up=(D.ev||[]).filter(e=>!e.hidden&&evStage(e)==='published'&&(e.event_date||'')>=today&&!evLeadersOnly(e)
+    &&ks.some(({kid:k})=>kidForEv(e,k)));
+  const ev=up.filter(e=>{const c=evCat(e);
+      return c==='drasi'||c==='ekdil'||((c==='ekso'||c==='sim')&&(signupOpen(e)||Array.isArray(e.invitees)))})
+    .filter(e=>!Array.isArray(e.invitees)||ks.some(({kid:k})=>invOk(e,k)))
+    .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,12);
+  return {up,ev};
+}
+function kidActRow(e,ks,today){
+  const forKid=kidForEv, invOk=(e,k)=>evInvOk(e,k.id,secOf(k));
+        const kids=ks.filter(({kid:k})=>forKid(e,k)&&invOk(e,k));
+        const open=signupOpen(e);
+        return `<div data-evrow="${e.id}" style="border-top:1px solid var(--line);padding:10px 0">
+          <div class="kv"><b style="flex:1">${esc(e.title||'—')}</b>
+            <span class="dim" style="font-size:12px">${fdate(e.event_date)}${e.fee?` · €${Number(e.fee).toFixed(2)}`:''}</span></div>
+          ${e.place?`<div class="dim" style="font-size:11.5px">${esc(e.place)}</div>`:''}
+          ${e.signup_closes?`<div class="dim" style="font-size:11.5px">Δηλώσεις μέχρι ${fdate(e.signup_closes)}</div>`:''}
+          ${e.signup_note?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(e.signup_note)}</div>`:''}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kids.map(({kid:k})=>{
+            const has=(D.pa||[]).find(x=>x.person_id===k.id&&x.event_id===e.id);
+            if(has)return `<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">
+              ✓ ${esc(k.first_name)} — ${has.paid?'πληρωμένη':'δηλώθηκε'}</span>`;
+            if(!e.form_url)return '';
+            if(!open)return `<span class="dim" style="font-size:12px">${esc(k.first_name)} · ${e.signup_closes&&e.signup_closes<today?'δηλώσεις κλειστές':e.signup_opens?'δηλώσεις από '+fdate(e.signup_opens):'δηλώσεις δεν άνοιξαν ακόμη'}</span>`;
+            return `<button class="btn sm p" data-sign="${e.id}" data-k="${k.id}">Δήλωση · ${esc(k.first_name)}</button>`;
+          }).join('')}</div>
+        </div>`
+}
+function kidActWire(ks,root){
+  const meP=meRec(), today=new Date().toISOString().slice(0,10);
+  (root||document).querySelectorAll('[data-sign]').forEach(b=>b.onclick=async()=>{
+    const e=(D.ev||[]).find(x=>x.id===b.dataset.sign);
+    const k=(ks.find(x=>x.kid.id===b.dataset.k)||{}).kid;
+    if(!e||!k)return;
+    b.disabled=true; b.textContent='Άνοιγμα…';
+    await declareAndOpen(e,k,meP);
+    const row=document.querySelector(`[data-evrow="${e.id}"]`); if(!row)return;
+    row.outerHTML=kidActRow(e,ks,today);
+    const fresh=document.querySelector(`[data-evrow="${e.id}"]`); if(fresh)kidActWire(ks,fresh);
+  });
+}
+
 V.kidprog=()=>{
   const ks=myKids(); if(!ks.length)return $('view').innerHTML=noKids();
   const today=new Date().toISOString().slice(0,10);
   const secs=[...new Set(ks.map(({kid:k})=>secOf(k)).filter(Boolean))];
   const ss=D.ss.filter(s=>secs.includes(s.section)&&(s.session_date||'')>=today)
     .sort((a,b)=>(a.session_date||'').localeCompare(b.session_date||'')).slice(0,12);
-  const invOk=(e,k)=>evInvOk(e,k.id,secOf(k));
-  const forKid=(e,k)=>{const s=evSecs(e); return !s.length||s.includes(secOf(k))};
-  const up=(D.ev||[]).filter(e=>!e.hidden&&evStage(e)==='published'&&(e.event_date||'')>=today&&!evLeadersOnly(e)
-    &&ks.some(({kid:k})=>forKid(e,k)));
-  const ev=up.filter(e=>{const c=evCat(e);
-      return c==='drasi'||c==='ekdil'||((c==='ekso'||c==='sim')&&(signupOpen(e)||Array.isArray(e.invitees)))})
-    .filter(e=>!Array.isArray(e.invitees)||ks.some(({kid:k})=>invOk(e,k)))
-    .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,12);
+  const {up,ev}=kidEvents(ks,today);
+  const forKid=kidForEv;
   const dates=up.filter(e=>!ev.includes(e)&&(['sim','argia'].includes(evCat(e))||(evCat(e)==='ekso'&&evSecs(e).length)))
     .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,6);
 
@@ -6567,24 +6606,7 @@ V.kidprog=()=>{
     </div>
 
     <div class="card pad"><b>Δράσεις</b>
-      ${ev.length?`<div style="margin-top:9px">${ev.map(e=>{
-        const kids=ks.filter(({kid:k})=>forKid(e,k)&&invOk(e,k));
-        const open=signupOpen(e);
-        return `<div style="border-top:1px solid var(--line);padding:10px 0">
-          <div class="kv"><b style="flex:1">${esc(e.title||'—')}</b>
-            <span class="dim" style="font-size:12px">${fdate(e.event_date)}${e.fee?` · €${Number(e.fee).toFixed(2)}`:''}</span></div>
-          ${e.place?`<div class="dim" style="font-size:11.5px">${esc(e.place)}</div>`:''}
-          ${e.signup_closes?`<div class="dim" style="font-size:11.5px">Δηλώσεις μέχρι ${fdate(e.signup_closes)}</div>`:''}
-          ${e.signup_note?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(e.signup_note)}</div>`:''}
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kids.map(({kid:k})=>{
-            const has=(D.pa||[]).find(x=>x.person_id===k.id&&x.event_id===e.id);
-            if(has)return `<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">
-              ✓ ${esc(k.first_name)} — ${has.paid?'πληρωμένη':'δηλώθηκε'}</span>`;
-            if(!e.form_url)return '';
-            if(!open)return `<span class="dim" style="font-size:12px">${esc(k.first_name)} · ${e.signup_closes&&e.signup_closes<today?'δηλώσεις κλειστές':e.signup_opens?'δηλώσεις από '+fdate(e.signup_opens):'δηλώσεις δεν άνοιξαν ακόμη'}</span>`;
-            return `<button class="btn sm p" data-sign="${e.id}" data-k="${k.id}">Δήλωση · ${esc(k.first_name)}</button>`;
-          }).join('')}</div>
-        </div>`}).join('')}</div>`
+      ${ev.length?`<div style="margin-top:9px">${ev.map(e=>kidActRow(e,ks,today)).join('')}</div>`
       :'<div class="dim" style="margin-top:8px;font-size:13px">Δεν έχουν ανακοινωθεί δράσεις ακόμη.</div>'}
     </div>
 
@@ -6601,14 +6623,7 @@ V.kidprog=()=>{
         πες το στον Αρχηγό — μην αφήσεις τη δήλωση να μείνει.
       </div></div>`;
 
-  const meP=meRec();
-  document.querySelectorAll('[data-sign]').forEach(b=>b.onclick=async()=>{
-    const e=(D.ev||[]).find(x=>x.id===b.dataset.sign);
-    const k=(ks.find(x=>x.kid.id===b.dataset.k)||{}).kid;
-    if(!e||!k)return;
-    b.disabled=true; b.textContent='Άνοιγμα…';
-    await declareAndOpen(e,k,meP); V.kidprog();
-  });
+  kidActWire(ks);
 };
 
 V.myfees=()=>{
@@ -9552,7 +9567,9 @@ V.myforms=()=>{
         διορθώσεις ό,τι άλλαξε.
         ${mine?'':'<br><b>Προσοχή:</b> ανοίγεις τη φόρμα κάποιου άλλου. Στείλ’ του τον σύνδεσμο μόνο αν σου τον ζήτησε.'}
       </div></div>
-    <div id="fwList" class="card"><div class="pad dim">Φόρτωση…</div></div>`;
+    <div id="fwList" class="card"><div class="pad dim">Φόρτωση…</div></div>
+    <div id="fwKids"></div>`;
+  fwKids(mine);
 
   if(led)ppWire('fwPick',led);
   const pk=$('fwPick'); if(pk)pk.onchange=e=>{ if(!e.target.value)return; FWHO=e.target.value;V.myforms()};
@@ -9585,6 +9602,17 @@ V.myforms=()=>{
     });
   });
 };
+
+function fwKids(mine){
+  const box=$('fwKids'); if(!box||!mine||typeof myKids!=='function')return;
+  const ks=myKids(); if(!ks.length)return;
+  const today=new Date().toISOString().slice(0,10);
+  const ev=kidEvents(ks,today).ev.filter(e=>e.form_url);
+  box.innerHTML=`<div class="card pad" style="margin-top:14px"><b>Δηλώσεις για ${ks.length===1?'το παιδί σου':'τα παιδιά σου'}</b>
+    ${ev.length?`<div style="margin-top:9px">${ev.map(e=>kidActRow(e,ks,today)).join('')}</div>`
+      :'<div class="dim" style="margin-top:8px;font-size:13px">Καμία ανοιχτή δήλωση δράσης αυτή τη στιγμή.</div>'}</div>`;
+  kidActWire(ks,box);
+}
 
 function honoursBody(){
   const hs=(D.ho||[]).map(h=>({h,p:D.bh.find(b=>b.id===h.person_id)})).filter(x=>x.p)
