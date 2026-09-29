@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-29 21:38'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-29 21:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -15421,12 +15421,13 @@ function V_efolder(){
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
         ${[['venue','Τοποθεσία','home'],['people','Συμμετέχοντες','users'],
-           ['phones','Τηλέφωνα','mail'],['certs','Πιστοποιητικά','shield']]
+           ['forms','Δηλώσεις','book'],['phones','Τηλέφωνα','mail'],['certs','Πιστοποιητικά','shield']]
           .map(([k,t,i])=>`<button class="btn sm${tab===k?' p':' gh'}" data-eftab="${k}">${ic(i,14)} ${t}</button>`).join('')}
       </div></div>`;
 
   const body = tab==='venue'  ? efVenue(e)
              : tab==='people' ? efPeople(e,parts)
+             : tab==='forms'  ? '<div id="efForms" class="card"><div class="pad dim">Φόρτωση…</div></div>'
              : tab==='phones' ? efPhones(e,parts)
              :                  efCerts(e,parts,endD);
   $('view').innerHTML=head+body;
@@ -15437,8 +15438,30 @@ function V_efolder(){
     V_efolder();});
   if(tab==='venue')  efVenueWire(e);
   if(tab==='people') efPeopleWire(e);
+  if(tab==='forms')  efFormsLoad(e);
   if(tab==='phones') efPhonesWire(e,parts);
   if(tab==='certs')  efCertsWire(e,parts,endD);
+}
+
+async function efFormsLoad(e){
+  const {data,error}=await sb.from('form_submission')
+    .select('id,person_id,form_name,submitted_on,ait_onoma:payload->>ait_onoma,ait_epitheto:payload->>ait_epitheto')
+    .eq('event_id',e.id).order('submitted_on',{ascending:false}).limit(500);
+  const box=$('efForms'); if(!box)return;           
+  if(error)return box.innerHTML='<div class="pad" style="color:var(--bad)">Δεν φορτώθηκαν οι δηλώσεις ('+esc(error.code||'')+').</div>';
+  const rows=(data||[]).map(s=>({s,p:(D.bh||[]).find(b=>b.id===s.person_id)}));
+  if(!rows.length)return box.innerHTML='<div class="pad dim">Δεν έχει σταλεί φόρμα για αυτή τη δράση — ή δεν αφορά παιδιά που βλέπεις.</div>';
+  const pa=(D.pa||[]).filter(x=>x.event_id===e.id);
+  box.innerHTML=`<div class="pad" style="padding-bottom:4px"><b>${rows.length} ${rows.length===1?'φόρμα':'φόρμες'}</b>
+      <span class="dim" style="font-size:12.5px"> · τα ιατρικά ανοίγουν από το ιατρικό δελτίο του παιδιού, όχι εδώ</span></div>
+    <div style="overflow:auto"><table><thead><tr><th>Παιδί</th><th>Ενωμοτία / εξάδα</th><th>Γονιός</th><th>Στάλθηκε</th><th>Κατάσταση</th></tr></thead>
+    <tbody>${rows.map(({s,p})=>{const my=p&&(D.my||[]).find(y=>y.person_id===p.id&&y.scout_year===YEAR&&!y.voided_at);
+      const d=pa.find(x=>x.person_id===s.person_id);
+      return `<tr><td>${p?pnm(p):'<span class="dim">—</span>'}</td>
+        <td class="dim">${esc((my&&my.group_name)||'—')}</td>
+        <td>${esc([s.ait_onoma,s.ait_epitheto].filter(Boolean).join(' ')||'—')}</td>
+        <td class="dim" style="white-space:nowrap">${fdate(s.submitted_on)}</td>
+        <td>${d?(d.paid?'πληρωμένη':esc(d.status||'δηλώθηκε')):'<span class="dim">χωρίς δήλωση στο e76</span>'}</td></tr>`}).join('')}</tbody></table></div>`;
 }
 
 function efVenue(e){
