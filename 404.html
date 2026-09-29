@@ -284,6 +284,10 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .dlgbox input{margin-top:12px;width:100%}
 .dlgb{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
 .dlgb .btn{min-height:40px;padding-left:16px;padding-right:16px}
+.dlgck{display:flex;flex-direction:column;gap:4px;margin-top:12px;max-height:52vh;overflow-y:auto}
+.dlgck label{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:14px;line-height:1.35;-webkit-user-select:none;user-select:none}
+.dlgck label:hover{background:var(--line)}
+.dlgck input{margin:0;width:20px;height:20px;flex:0 0 auto}
 .btn.bad{background:var(--bad);border-color:var(--bad);color:var(--onbad,#fff)}
 .btn.bad:hover{filter:brightness(1.07)}
 @media (max-width:560px){.dlg{align-items:flex-end;padding:0}.dlgbox{border-radius:16px 16px 0 0;width:100%;padding-bottom:calc(14px + env(safe-area-inset-bottom))}.dlgb{flex-direction:column-reverse}.dlgb .btn{width:100%;justify-content:center}}
@@ -1213,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-29 16:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-29 19:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -15184,26 +15188,37 @@ async function gcalPick(e, after){
   if(!C.list.length)return toast('Δεν έχουν οριστεί ημερολόγια (ρυθμίσεις: gcal_calendars)');
   const api=await gcalApi();
   const ch=C.list.slice().sort((a,b)=>(sug.includes(b.k)?1:0)-(sug.includes(a.k)?1:0))
-    .map(c=>({v:c.k, t:(done[c.k]?'✓ ':'')+c.name+(sug.includes(c.k)?' — προτείνεται':'')+(done[c.k]?' ('+gcalWhenTxt(done[c.k])+')':''), primary:sug[0]===c.k}));
-  const k=await uiChoose(`«${e.title}» · ${fdate(e.event_date)}\nΣε ποιο ημερολόγιο; `
+    .map(c=>({v:c.k, on:sug.includes(c.k)&&!done[c.k],
+      t:(done[c.k]?'✓ ':'')+c.name+(sug.includes(c.k)?' — προτείνεται':'')+(done[c.k]?' ('+gcalWhenTxt(done[c.k])+')':'')}));
+  const ks=await uiChooseMulti(`«${e.title}» · ${fdate(e.event_date)}\nΣε ποια ημερολόγια; `
     +(api?'Γράφεται απευθείας — και ενημερώνεται μόνο του όταν αλλάξεις τη δράση.'
          :'Ανοίγει το Google Calendar συμπληρωμένο — πατάς «Αποθήκευση» εκεί.'),ch);
-  if(!k)return;
-  const cal=C.list.find(c=>c.k===k); if(!cal)return;
+  if(!ks||!ks.length)return;
+  const cals=C.list.filter(c=>ks.includes(c.k));
+  if(!cals.length)return;
   if(api){
-    const cur=done[k];
-    if(gcalIsApi(cur)){
-      const a=await uiChoose(`Είναι ήδη στο «${cal.name}».`,[{v:'up',t:'Ενημέρωση με ό,τι έχει τώρα το e76',primary:true},{v:'del',t:'Αφαίρεση από το ημερολόγιο',danger:true}]);
-      if(!a)return;
-      if(await gcalCall(a==='del'?'delete':'upsert',e,k)){toast(a==='del'?'Αφαιρέθηκε':'Ενημερώθηκε'); after&&after()}
-      return;
+    let ok=0; const bad=[];
+    for(const cal of cals){
+      const cur=done[cal.k];
+      let op='upsert';
+      if(gcalIsApi(cur)){
+        const a=await uiChoose(`Είναι ήδη στο «${cal.name}».`,[{v:'up',t:'Ενημέρωση με ό,τι έχει τώρα το e76',primary:true},{v:'del',t:'Αφαίρεση από το ημερολόγιο',danger:true},{v:'skip',t:'Παράλειψη'}]);
+        if(!a||a==='skip')continue;
+        if(a==='del')op='delete';
+      }else if(cur&&!await uiAsk(`Στο «${cal.name}» μπήκε με το χέρι (${gcalWhenTxt(cur)}). Αν το γράψει τώρα το e76, θα υπάρχουν ΔΥΟ.\n\nΣβήσε πρώτα το παλιό από το Google. Να προχωρήσω;`))continue;
+      if(await gcalCall(op,e,cal.k))ok++; else bad.push(cal.name);
     }
-    if(cur&&!await uiAsk(`Στο «${cal.name}» μπήκε με το χέρι (${gcalWhenTxt(cur)}). Αν το γράψει τώρα το e76, θα υπάρχουν ΔΥΟ.\n\nΣβήσε πρώτα το παλιό από το Google. Να προχωρήσω;`))return;
-    if(await gcalCall('upsert',e,k)){toast('Μπήκε στο «'+cal.name+'»'); after&&after()}
+    if(ok){ toast(ok===1?'Έγινε σε 1 ημερολόγιο':'Έγινε σε '+ok+' ημερολόγια'); after&&after(); }
+    if(bad.length)toast('Δεν έγινε σε: '+bad.join(', '));
     return;
   }
-  window.open(gcalUrl(e,cal,C.account),'_blank');
-  const g={...(e.gcal||{}),[k]:isoLocal(new Date())};
+  const g={...(e.gcal||{})}; let n=0;
+  for(const cal of cals){
+    if(n>0&&!await uiAsk(`Επόμενο: «${cal.name}»`,{ok:'Άνοιγμα',cancel:'Στοπ'}))break;
+    window.open(gcalUrl(e,cal,C.account),'_blank');
+    g[cal.k]=isoLocal(new Date()); n++;
+  }
+  if(!n)return;
   const {error}=await sb.from('events').update({gcal:g}).eq('id',e.id);
   if(!error){ e.gcal=g; saveCache(); after&&after(); }
 }
@@ -17538,6 +17553,38 @@ function uiAsk(msg,o){ const v=dlgVerb(msg); o=o||{};
 function uiNote(msg,o){ return dlg({msg, note:true, ok:(o||{}).ok}) }
 function uiText(msg,def,o){ o=o||{}; return dlg({msg, input:true, def, ok:o.ok||'Εντάξει', placeholder:o.placeholder}) }
 function uiChoose(msg,choices){ return dlg({msg, choices}) }
+function uiChooseMulti(msg,choices,o){
+  o=o||{};
+  return new Promise(done=>{
+    const prev=document.activeElement;
+    const txt=String(msg||''); const cut=txt.indexOf('\n\n');
+    const head=cut<0?txt:txt.slice(0,cut), rest=cut<0?'':txt.slice(cut+2);
+    const ov=document.createElement('div'); ov.className='dlg noprint';
+    ov.innerHTML=`<div class="dlgbox" role="dialog" aria-modal="true" aria-labelledby="dlgH"${rest?' aria-describedby="dlgM"':''}>
+      <div class="dlgh" id="dlgH">${esc(head)}</div>
+      ${rest?`<div class="dlgm" id="dlgM">${esc(rest)}</div>`:''}
+      <div class="dlgck">${choices.map((c,i)=>`<label><input type="checkbox" data-i="${i}"${c.on?' checked':''}><span>${esc(c.t)}</span></label>`).join('')}</div>
+      <div class="dlgb"><button class="btn gh" data-x="0">${esc(o.cancel||'Άκυρο')}</button><button class="btn p" data-x="1">${esc(o.ok||'Εντάξει')}</button></div></div>`;
+    document.body.appendChild(ov);
+    const boxes=[...ov.querySelectorAll('input[type=checkbox]')];
+    const close=v=>{ document.removeEventListener('keydown',key,true); ov.remove();
+      try{ prev&&prev.focus&&prev.focus() }catch(e){}
+      done(v); };
+    const submit=()=>close(boxes.filter(b=>b.checked).map(b=>choices[+b.dataset.i].v));
+    ov.querySelector('[data-x="0"]').onclick=()=>close(null);
+    ov.querySelector('[data-x="1"]').onclick=submit;
+    ov.onclick=e=>{ if(e.target===ov) close(null) };
+    const key=e=>{
+      if(!document.body.contains(ov))return;
+      if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); close(null); return }
+      if(e.key==='Enter'&&document.activeElement.tagName!=='BUTTON'){ e.preventDefault(); submit(); return }
+      if(e.key==='Tab'){ const f=[...ov.querySelectorAll('input,button')]; const i=f.indexOf(document.activeElement);
+        e.preventDefault(); f[(i+(e.shiftKey?-1:1)+f.length)%f.length].focus(); }
+    };
+    document.addEventListener('keydown',key,true);
+    setTimeout(()=>(boxes[0]||ov.querySelector('[data-x="1"]')).focus(),0);
+  });
+}
 
 let UNDO=null;
 function undoClose(){ if(!UNDO)return; clearInterval(UNDO.tick); UNDO.el.remove(); UNDO=null }
