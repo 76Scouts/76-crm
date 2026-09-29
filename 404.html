@@ -435,6 +435,16 @@ table.wl2 tr:last-child td{border-bottom:0}
   border-radius:3px;padding:0 4px;margin-left:4px;vertical-align:middle}
 .mrng{font-style:normal;font-size:9.5px;margin-left:4px;white-space:nowrap}
 .mev.alien{opacity:.45;font-style:italic}
+.mev.st-draft{border-left-style:dashed;opacity:.8}
+.mev.st-annual{border-left-style:dotted}
+.mst{font-style:normal;font-size:9px;letter-spacing:.04em;border:1px solid currentColor;
+  border-radius:3px;padding:0 3px;margin-left:4px;vertical-align:middle;opacity:.85}
+.pill.stg-draft{color:#8a5a00;border-color:#8a5a00}
+.pill.stg-annual{color:#15558F;border-color:#15558F}
+:root[data-theme="dark"] .pill.stg-draft{color:#e0b560;border-color:#e0b560}
+:root[data-theme="dark"] .pill.stg-annual{color:#8fbcef;border-color:#8fbcef}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.stg-draft{color:#e0b560;border-color:#e0b560}
+  :root:not([data-theme="light"]) .pill.stg-annual{color:#8fbcef;border-color:#8fbcef}}
 .madd{position:absolute;right:3px;top:2px;border:0;background:transparent;color:var(--ink3);
   cursor:pointer;font-size:14px;line-height:1;opacity:0;padding:2px 4px}
 .msadd{border:0;background:transparent;color:var(--ink3);font-size:10.5px;font-weight:700;
@@ -1203,7 +1213,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-29 15:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-29 16:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1668,12 +1678,12 @@ async function loadAll(){
   const q=[
     pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location,studying'),
     sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,voided_at,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
-    sb.from('sessions').select('id,session_date,section,scout_year,status,title').order('session_date').limit(500),
+    sb.from('sessions').select('id,session_date,section,scout_year,status,title,session_type,event_id,theme').order('session_date').limit(500),
     pageAll('attendance','session_id,person_id,status'),
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
     sb.from('guardians').select('*').limit(2000),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
-    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,invitees,gcal,prog_kind').order('event_date').limit(3000),
+    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,invitees,gcal,prog_kind,stage').order('event_date').limit(3000),
     sb.from('participations').select('id,person_id,event_id,status,role,is_staff').limit(20000),
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
@@ -6475,7 +6485,7 @@ V.kidprog=()=>{
     .sort((a,b)=>(a.session_date||'').localeCompare(b.session_date||'')).slice(0,12);
   const invOk=(e,k)=>evInvOk(e,k.id,secOf(k));
   const forKid=(e,k)=>{const s=evSecs(e); return !s.length||s.includes(secOf(k))};
-  const up=(D.ev||[]).filter(e=>!e.hidden&&(e.event_date||'')>=today&&!evLeadersOnly(e)
+  const up=(D.ev||[]).filter(e=>!e.hidden&&evStage(e)==='published'&&(e.event_date||'')>=today&&!evLeadersOnly(e)
     &&ks.some(({kid:k})=>forKid(e,k)));
   const ev=up.filter(e=>{const c=evCat(e);
       return c==='drasi'||c==='ekdil'||((c==='ekso'||c==='sim')&&(signupOpen(e)||Array.isArray(e.invitees)))})
@@ -6573,6 +6583,7 @@ V.myfees=()=>{
 
 
 function evTag(e){
+  if(evStage(e)==='annual')return ' · προσωρινό';
   const c=evCat(e); if(c==='argia')return ' · αργία';
   if(c==='ekso'){ const m=String((e.tags||[])[0]||'').split(':')[0]; return m==='ΕΠΑΡΧΙΑ'?' · Επαρχία':' · Γενική'; }
   return '';
@@ -6587,7 +6598,7 @@ V.myprog=()=>{
   if(!MYPROG_V.some(v=>v[0]===view))view='imp';
   const today=isoLocal(new Date());
   const byD=(a,b)=>(a.event_date||'9999').localeCompare(b.event_date||'9999');
-  const up=(D.ev||[]).filter(e=>!e.hidden&&!evLeadersOnly(e)&&(e.event_date||'')>=today);
+  const up=(D.ev||[]).filter(e=>!e.hidden&&evPubFor(e,sec)&&!evLeadersOnly(e)&&(e.event_date||'')>=today);
   const mine=e=>{const s=evSecs(e); return !s.length||s.includes(sec)};
 
   const days={};
@@ -6602,7 +6613,7 @@ V.myprog=()=>{
   const acts=up.filter(e=>{const c=evCat(e);
       return mine(e)&&(c==='drasi'||((c==='ekso'||c==='sim')&&signupOpen(e)))})
     .filter(e=>evInvOk(e,p.id,sec)&&!ekd.includes(e)).sort(byD);
-  const sxo=(D.ev||[]).filter(e=>!e.hidden&&evCat(e)==='sxoli'&&evOpenFor(e,sec)&&(!e.event_date||e.event_date>=today)).sort(byD);
+  const sxo=(D.ev||[]).filter(e=>!e.hidden&&evPubFor(e,sec)&&evCat(e)==='sxoli'&&evOpenFor(e,sec)&&(!e.event_date||e.event_date>=today)).sort(byD);
 
   const row=(l,r,extra)=>`<div style="border-top:1px solid var(--line);padding:9px 0">
     <div class="kv"><b style="flex:1">${l}</b><span class="dim" style="font-size:12px">${r}</span></div>${extra||''}</div>`;
@@ -11603,7 +11614,7 @@ function licStaffRows(){
 function licProgRows(){
   const Y=licYear(), K=molaKl(), COL={'Μικρή Αγέλη':'E','Αγέλη':'F','Ομάδα':'G','Κοινότητα':'H'};
   const out=[];
-  (D.ev||[]).filter(e=>e.scout_year===Y&&!e.hidden&&e.event_date&&!evLeadersOnly(e)).forEach(e=>{
+  (D.ev||[]).filter(e=>e.scout_year===Y&&!e.hidden&&evStage(e)!=='draft'&&e.event_date&&!evLeadersOnly(e)).forEach(e=>{
     const lv=molaLevel(e), c=evCat(e);
     if(lv.k==='ep'){ if(['drasi','ekdil','sim','ekso'].includes(c))out.push({d:e.event_date,col:'D',t:licEvText(e)}); return }
     if(lv.k!=='sy'||!['drasi','ekdil','sim'].includes(c))return;
@@ -15193,12 +15204,12 @@ V.events=()=>{
         <button class="btn p sm" id="evSave">Δημιουργία</button></div></div>
     ${evs.length?listBar('',false)+`<div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Δράση</th><th class="hide-s">Τύπος</th><th class="hide-s">Τμήμα</th>${EVF==='sxoli'?'<th>Ανοιχτή σε μέλη</th>':''}<th>Συμμετοχές</th><th></th></tr></thead><tbody>${
       evs.map(e=>`<tr><td>${fdate(e.event_date)}${e.end_date&&e.end_date!==e.event_date?`<span class="dim"> → ${fshort(e.end_date)}</span>`:''}</td>
-        <td><b>${esc(e.title||'—')}</b>${e.place?`<div class="dim" style="font-size:12px">${esc(e.place)}</div>`:''}</td>
+        <td><b>${esc(e.title||'—')}</b>${stgPill(e)}${e.place?`<div class="dim" style="font-size:12px">${esc(e.place)}</div>`:''}</td>
         <td class="hide-s dim">${EVF==='act'||EVF==='all'?`<span data-pkl="${e.id}" style="color:${EVCAT[evCat(e)].c}">${EVCAT[evCat(e)].t}</span>${e.type&&e.type!==EVCAT[evCat(e)].t?' · '+esc(e.type):''}${evPkBtn(e)}`:esc(e.type||'—')}</td><td class="hide-s">${evSecs(e).length?evSecs(e).map(x=>sdot(x)+' '+esc(x)).join('<br>'):'<span class="dim">Σύστημα</span>'}</td>
         ${EVF==='sxoli'?`<td style="white-space:nowrap">${EMO_SECS.map(x=>emoBtn(e,x)).join(' ')}</td>`:''}
         <td><b>${cnt(e.id)}</b></td><td style="white-space:nowrap"><button class="btn sm p" data-efo="${e.id}">Φάκελος</button>
           <button class="btn sm gh" data-ev="${e.id}">Συμμετοχές</button>
-          <button class="btn sm" data-evdoc="${e.id}" title="Έγγραφα της δράσης" aria-label="Έγγραφα της δράσης">${ic('book',13)} ${(D.doc||[]).filter(d=>d.event_id===e.id).length||''}</button>${isAdminUI()?`
+          <button class="btn sm" data-evdoc="${e.id}" title="Έγγραφα της δράσης" aria-label="Έγγραφα της δράσης">${ic('book',13)} ${(D.doc||[]).filter(d=>d.event_id===e.id).length||''}</button>${isAdminUI()&&evStage(e)==='published'?`
           <button class="btn sm gh" data-gcal="${e.id}" title="${gcalMarks(e)?'Ανοίχτηκε για: '+esc(gcalMarks(e)):'Στο ημερολόγιο Google'}" aria-label="Στο ημερολόγιο Google">📅${gcalMarks(e)?'<span class="dim" style="font-size:10.5px"> ✓</span>':''}</button>`:''}</td></tr>`).join('')}</tbody></table></div>`
       :EVF!=='act'?`<div class="uc"><h3>Τίποτα σε αυτή την κατηγορία</h3></div>`
       :`<div class="uc"><div class="ico">${ic('flag',26)}</div><h3>Καμία δράση φέτος</h3><p>Δημιούργησε την πρώτη — μετά δηλώνεις συμμετοχές με ένα tap.</p></div>`}`;
@@ -19522,7 +19533,7 @@ function molaWeek(satIso){
 }
 const MOLA_MAINSEC={'ΑΛ':'Αγέλη','ΟΠ':'Ομάδα','ΚΑ':'Κοινότητα'};
 
-let MOLA={view:'all', src:{ge:1,ep:1,sy:1}, fmain:{}, sel:null, peek:0};
+let MOLA={view:'all', src:{ge:1,ep:1,sy:1}, st:{draft:1,annual:1,published:1}, fmain:{}, sel:null, peek:0};
 try{MOLA=Object.assign(MOLA,JSON.parse(localStorage.getItem('e76:mola')||'{}'))}catch(e){}
 const molaSave=()=>{try{localStorage.setItem('e76:mola',JSON.stringify(MOLA))}catch(e){}};
 
@@ -19592,8 +19603,8 @@ function molaCanEdit(ev){
   if(lv.k==='ge'||lv.k==='ep'||lv.k==='all') return !!ME&&!!ME.platform_admin;
   if(adm) return true;
   if(r==='section_head'){ const mine=(ME.rec&&(secOf(ME.rec)||ME.rec.section))||null;
-    return !!mine && evOwnerSec(ev)===mine; }
-  return false;
+    if(!!mine && evOwnerSec(ev)===mine)return true; }
+  return stgInvEdit(ev);
 }
 function molaMyScope(){
   const r=(ME&&ME.role)||'';
@@ -19704,7 +19715,7 @@ function molaArgiesPanel(){
 
 function molaBody(){
   const yr=YEAR, MAINS=molaMains(), {G,cells}=molaCells(yr);
-  const K=molaKl();
+  const K=molaKl(); pdaLoad();
   const secs=['Αγέλη','Ομάδα','Κοινότητα'];
 
   const viewOK=e=>{
@@ -19713,6 +19724,7 @@ function molaBody(){
     if(lv.k==='ep'&&!MOLA.src.ep)return false;
     if(lv.k==='sy'&&!MOLA.src.sy)return false;
     const tags=e.tags||[];
+    if(MOLA.st&&MOLA.st[evStage(e)]===0)return false;
     if(MOLA.view!=='all'){
       const code=MOLA_SECMAIN[MOLA.view];
       const hits=tags.some(t=>{const [m,s]=t.split(':');
@@ -19753,9 +19765,10 @@ function molaBody(){
         const shared=(e.tags||[]).filter(x=>['ΑΛ','ΟΠ','ΚΑ'].includes(x.split(':')[0])).length>1;
         const rng=molaRange(e);
         const alien=MOLA.peek&&MOLA.view!=='all'&&e.section&&e.section!==MOLA.view;
-        return `<div class="mev${e.bold?' b':''}${alien?' alien':''}" data-ev="${e.id}" style="color:${col};border-left-color:${col}"
-          title="${esc(e.title)}&#10;${esc(lv.t)}${rng?' · '+esc(rng):''}${e.hours?' · '+esc(e.hours):''}">
-          ${esc(e.title)}${rng?`<i class="mrng">${esc(rng)}</i>`:''}${shared?'<i class="mko">κοινό</i>':''}</div>`}).join('')}
+        const st=evStage(e);
+        return `<div class="mev${e.bold?' b':''}${alien?' alien':''}${st!=='published'?' st-'+st:''}" data-ev="${e.id}" style="color:${col};border-left-color:${col}"
+          title="${esc(e.title)}&#10;${esc(lv.t)}${rng?' · '+esc(rng):''}${e.hours?' · '+esc(e.hours):''}${st!=='published'?'&#10;'+esc(STG[st].t):''}">
+          ${esc(e.title)}${rng?`<i class="mrng">${esc(rng)}</i>`:''}${shared?'<i class="mko">κοινό</i>':''}${st!=='published'?`<i class="mst">${esc(STG[st].s)}</i>`:''}</div>`}).join('')}
       ${molaCanEdit()?`<button class="madd" data-add="${mi}_${si}" title="Πρόσθεσε δράση">＋</button>`:''}
     </td>`;
   };
@@ -19780,10 +19793,13 @@ function molaBody(){
       ${chip('src:ge',MOLA.src.ge,'Γενική')}
       ${chip('src:ep',MOLA.src.ep,'Επαρχία')}
       ${chip('src:sy',MOLA.src.sy,'76ο')}
+      <span class="dim" style="font-size:12px;margin-left:6px">Στάδιο:</span>
+      ${['draft','annual','published'].map(k=>chip('st:'+k,(MOLA.st||{})[k]!==0,STG[k].t)).join('')}
       <span class="sp"></span>
       <button class="btn sm gh" id="mLeg">${ic('info',13)} Υπόμνημα</button>
       <button class="btn sm gh" id="mCat">Κατηγορίες</button>
       <button class="btn sm gh" id="mSes">Συγκεντρώσεις</button>
+      ${stgMine().length?`<button class="btn sm gh" id="mStg" title="Προσχέδιο → Ετήσιο → Δημοσίευση">Στάδια</button>`:''}
       <button class="btn sm${freeArg?' p':' gh'}" id="mArg"
         title="Αργίες που δεν αξιοποιούμε">☆ Ευκαιρίες${freeArg?' · '+freeArg:''}</button>
       <button class="btn sm" id="mXls">${ic('down',14)} Excel</button>
@@ -19809,6 +19825,7 @@ function molaBody(){
     const [k,v]=b.dataset.mv.split(':');
     if(k==='view')MOLA.view=v;
     else if(k==='peek')MOLA.peek=MOLA.peek?0:1;
+    else if(k==='st'){MOLA.st=MOLA.st||{}; MOLA.st[v]=MOLA.st[v]===0?1:0;}
     else MOLA.src[v]=!MOLA.src[v];
     molaSave(); V.cal()});
   document.querySelectorAll('[data-ev]').forEach(d=>d.onclick=()=>molaEdit(d.dataset.ev));
@@ -19817,6 +19834,7 @@ function molaBody(){
   $('mLeg').onclick=molaLegend;
   $('mCat').onclick=molaCats;
   $('mSes').onclick=molaSesPanel;
+  if($('mStg'))$('mStg').onclick=stgPanel;
   $('mArg').onclick=molaArgiesPanel;
   $('mXls').onclick=()=>molaExcel(yr, viewOK);
   if($('mJson'))$('mJson').onclick=()=>molaJson(yr, viewOK);
@@ -19895,6 +19913,7 @@ function molaEdit(id, slot, seed){
         :`<div class="card pad" style="margin-bottom:11px;background:var(--warnbg)">
           <b>Δεν είναι δικό σου.</b> Ανήκει στο κλιμάκιο «${esc(lv.t)}». Το βλέπεις, δεν το αλλάζεις.
           Αν είναι λάθος, ζήτησέ το από εκεί.</div>`}
+        ${stgBlock(ev)}
         <label>Τίτλος<input id="meT" value="${esc(ev?ev.title:(seed&&seed.title||''))}" ${can?'':'disabled'}></label>
         ${(()=>{
           const satIso=slot?cellIso(slot):(ev&&ev.sat_slot?cellIso(ev.sat_slot):null);
@@ -19944,7 +19963,7 @@ function molaEdit(id, slot, seed){
         ${can?`<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn p" id="meSave">Αποθήκευση</button>
           ${ev?`<button class="btn gh" id="meDel" style="color:var(--bad)">Διαγραφή</button>`:''}
-          ${ev&&isAdminUI()?`<button class="btn gh" id="meGcal" title="Στο ημερολόγιο Google (Σύστημα / τμήμα / Επιτελείο)">📅 Ημερολόγιο${gcalMarks(ev)?' ✓':''}</button>`:''}
+          ${ev&&isAdminUI()&&evStage(ev)==='published'?`<button class="btn gh" id="meGcal" title="Στο ημερολόγιο Google (Σύστημα / τμήμα / Επιτελείο)">📅 Ημερολόγιο${gcalMarks(ev)?' ✓':''}</button>`:''}
         </div>`:''}
       </div>`;
     const tw=$('meTags');
@@ -19960,6 +19979,7 @@ function molaEdit(id, slot, seed){
       $('meAdd').onclick=()=>{const t=mm.value+':'+$('meS').value;
         if(!tags.includes(t))tags.push(t); draw()}; }
     if(ev&&can)molaInvWire(ev,draw);
+    if(ev)stgWire(ev,()=>{draw(); stay();});
     const mk=$('meK'); if(mk)mk.onchange=()=>{const o=mk.selectedOptions[0];
       if(o&&o.dataset.n!=null&&$('meN'))$('meN').value=o.dataset.n};
     const mw=$('meW'); if(mw)mw.onchange=()=>{
@@ -20499,6 +20519,7 @@ function molaImport(){
 
     const have=new Map((D.ev||[]).filter(e=>e.ext_id&&e.scout_year===yr).map(e=>[e.ext_id,e]));
     mine.forEach(r=>{ const h=r.ext_id&&have.get(r.ext_id); if(h&&h.type&&(!r.type||r.type==='Συγκέντρωση'))r.type=h.type;
+      { const Ks=molaKl(); r.stage=h?evStage(h):(Ks.sy&&r.klimakio_id===Ks.sy.id?'annual':'published'); }
       if(h&&!r.owner_section&&h.owner_section){r.owner_section=h.owner_section; r.section=h.section} });
     const withId=mine.filter(r=>r.ext_id), noId=mine.filter(r=>!r.ext_id);
     let ok=0, err=null;
@@ -20518,6 +20539,132 @@ function molaImport(){
   };
 }
 
+
+const STG={draft:{t:'Προσχέδιο',s:'προσχέδιο',c:'#8a5a00',who:'Α.Σ., αρχηγός τμήματος, καλεσμένοι βαθμοφόροι'},
+  annual:{t:'Ετήσιο',s:'ετήσιο',c:'#15558F',who:'όλοι οι βαθμοφόροι · οι Ανιχνευτές για της Κοινότητας'},
+  published:{t:'Δημοσιευμένο',s:'δημοσιευμένο',c:'var(--ok)',who:'και πρόσκοποι, γονείς, ημερολόγια'}};
+const STG_SECS=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα'];
+const evStage=e=>(e&&e.stage)||'published';
+const stgKey=e=>evOwnerSec(e)||'Σύστημα';
+const evPubFor=(e,sec)=>evStage(e)==='published'
+  ||(evStage(e)==='annual'&&sec==='Κοινότητα'&&evSecs(e).includes('Κοινότητα'));
+function stgPill(e){ const st=evStage(e); if(st==='published')return '';
+  return ` <span class="pill stg-${st}" title="${esc(STG[st].t+': '+STG[st].who)}">${esc(STG[st].s)}</span>`; }
+
+let PDA=null, PDA_ON=false, PDA_NAMES=null;
+function pdaLoad(){ if(PDA_ON||!ME||!['admin','section_head','section_assistant','commissioner'].includes(ME.role)&&!ME.platform_admin)return;
+  PDA_ON=true;
+  sb.from('programme_draft_access').select('*').then(({data,error})=>{
+    if(error){PDA_ON=false;return}
+    const first=PDA===null; PDA=data||[]; if(first&&PDA.length&&ROUTE==='cal')stay(); }); }
+const myPid=()=>(ME&&ME.rec&&ME.rec.id)||null;
+const stgInvited=sec=>(PDA||[]).some(a=>a.person_id===myPid()&&a.section===sec&&a.scout_year===YEAR);
+const stgInvitedAny=()=>(PDA||[]).some(a=>a.person_id===myPid()&&a.scout_year===YEAR);
+function stgInvEdit(ev){ return ev ? (evStage(ev)==='draft'&&molaLevel(ev).k==='sy'&&stgInvited(stgKey(ev))) : stgInvitedAny(); }
+
+function stgMine(){ const r=(ME&&ME.role)||'';
+  if(ME&&(ME.platform_admin||r==='admin'))return STG_SECS.slice();
+  if(r==='section_head'){ const m=(ME.rec&&(secOf(ME.rec)||ME.rec.section))||null; return m?[m]:[]; }
+  return []; }
+function stgCanPromote(e){ return molaLevel(e||{}).k==='sy'&&stgMine().includes(stgKey(e||{})); }
+
+function stgBlock(ev){
+  if(!ev) return molaCanEdit()?`<div class="dim" style="font-size:12px;margin:2px 0 8px">Νέα εγγραφή του Συστήματος = <b>Προσχέδιο</b> — τη βλέπουν μόνο ${esc(STG.draft.who)}.</div>`:'';
+  if(molaLevel(ev).k!=='sy')return '';
+  const st=evStage(ev), can=stgCanPromote(ev);
+  const b=(to,lab,p)=>`<button class="btn sm${p?' p':' gh'}" data-stg="${to}">${lab}</button>`;
+  return `<div class="card pad" style="margin-bottom:11px;border-left:4px solid ${STG[st].c}">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <b style="color:${STG[st].c}">${esc(STG[st].t)}</b><span class="dim" style="font-size:12px;flex:1">${esc(STG[st].who)}</span></div>
+    ${can?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${
+      st==='draft'?b('annual','→ Ετήσιο',1)
+      :st==='annual'?b('published','→ Δημοσίευση',1)+b('draft','↩ Προσχέδιο')
+      :b('annual','↩ Απόσυρση σε Ετήσιο')}</div>`:''}</div>`;
+}
+async function stgSet(ids,to){
+  const {error}=await sb.from('events').update({stage:to}).in('id',ids);
+  if(error){toast('Δεν άλλαξε: '+error.message);return false}
+  ids.forEach(id=>{const e=(D.ev||[]).find(x=>x.id===id); if(e)e.stage=to}); saveCache(); return true;
+}
+function stgWire(ev,after){
+  document.querySelectorAll('[data-stg]').forEach(b=>b.onclick=async()=>{
+    const to=b.dataset.stg, from=evStage(ev);
+    if(from==='published'&&gcalMarks(ev)&&!await uiAsk('Είναι ήδη στο ημερολόγιο Google ('+gcalMarks(ev)+').\n\nΝα αποσυρθεί από τα μέλη;'+(isAdminUI()?' Θα σβηστεί και από το Google.':' Σβήσ\' το κι από το Google.')))return;
+    if(!await stgSet([ev.id],to))return;
+    if(from==='published'&&isAdminUI()&&gcalMarks(ev)){ const left=await gcalRemoveAll(ev); if(left.length)toast('Στο Google είχε μπει με το χέρι ('+left.join(', ')+')'); }
+    toast(STG[to].t+' — '+ev.title); after();
+    if(to==='published'&&isAdminUI()&&!gcalMarks(ev))gcalPick(ev,()=>{});
+  });
+}
+
+function stgRows(sec){ const K=molaKl();
+  return (D.ev||[]).filter(e=>e.scout_year===YEAR&&!e.hidden&&K.sy&&e.klimakio_id===K.sy.id&&stgKey(e)===sec); }
+function stgPanel(){
+  pdaLoad();
+  const secs=stgMine(), today=isoLocal(new Date());
+  const nm2=p=>btrim2((p.last_name||'')+' '+(p.first_name||''));
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+      <div style="font-size:17px;font-weight:600">Στάδια προγράμματος ${esc(YEAR)}</div>
+      <div class="dim" style="font-size:12.5px">Προσχέδιο → Ετήσιο → Δημοσιευμένο</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">
+      ${['draft','annual','published'].map(k=>`<div style="font-size:12.5px;margin-bottom:4px"><b style="color:${STG[k].c}">${STG[k].t}</b> — ${esc(STG[k].who)}</div>`).join('')}
+      ${secs.map(sec=>{ const R=stgRows(sec), n=k=>R.filter(e=>evStage(e)===k).length;
+        const inv=(PDA||[]).filter(a=>a.section===sec&&a.scout_year===YEAR);
+        return `<div class="card pad" style="margin-top:12px" data-stgsec="${esc(sec)}">
+          <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b style="flex:1">${esc(sec)}</b>
+            ${['draft','annual','published'].map(k=>`<span class="pill" style="color:${STG[k].c}">${STG[k].s} ${n(k)}</span>`).join('')}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center">
+            <button class="btn sm p" data-sb="up" ${n('draft')?'':'disabled'}>Όλα τα προσχέδια → Ετήσιο</button></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
+            <span class="dim" style="font-size:12px">Δημοσίευση Ετησίου έως</span><input type="date" data-sd="pub" style="max-width:150px">
+            <button class="btn sm" data-sb="pub" ${n('annual')?'':'disabled'}>Δημοσίευση</button></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
+            <span class="dim" style="font-size:12px">Απόσυρση σε Ετήσιο από</span><input type="date" data-sd="back" value="${today}" style="max-width:150px">
+            <button class="btn sm gh" data-sb="back" ${n('published')?'':'disabled'}>Απόσυρση</button></div>
+          <div class="sec" style="margin-top:10px"><h3>Καλεσμένοι στο προσχέδιο</h3><span class="n">${inv.length}</span></div>
+          <div>${inv.map(a=>{const p=(PDA_NAMES||[]).find(x=>x.id===a.person_id)||D.bh.find(x=>x.id===a.person_id);
+            return `<span class="pill" style="margin:0 4px 4px 0">${esc(p?nm2(p):'…')} <a href="#" data-pdadel="${a.person_id}" style="color:var(--bad)" title="Αφαίρεση">✕</a></span>`}).join('')||'<span class="dim" style="font-size:12.5px">κανείς — μόνο ο Α.Σ. και ο αρχηγός του τμήματος</span>'}</div>
+          <label style="margin-top:6px">Κάλεσε βαθμοφόρο<input data-pdaq list="pdaL" placeholder="Όνομα…"></label></div>`}).join('')}
+      <datalist id="pdaL">${(PDA_NAMES||[]).map(p=>`<option value="${esc(nm2(p))}">`).join('')}</datalist>
+    </div>`;
+  if(PDA_NAMES===null){ PDA_NAMES=[]; sb.rpc('prog_staff_names').then(({data})=>{PDA_NAMES=data||[];
+    if(drw.classList.contains('on')&&$('pdaL'))stgPanel()}); }
+  stgPanelWire();
+  drw.classList.add('on');
+}
+const btrim2=s=>String(s||'').replace(/\s+/g,' ').trim();
+function stgPanelWire(){
+  const K=molaKl();
+  document.querySelectorAll('[data-stgsec]').forEach(box=>{
+    const sec=box.dataset.stgsec, R=()=>stgRows(sec);
+    box.querySelectorAll('[data-sb]').forEach(b=>b.onclick=async()=>{
+      const k=b.dataset.sb, d=(box.querySelector(`[data-sd="${k}"]`)||{}).value||'';
+      let ids=[], to='';
+      if(k==='up'){ ids=R().filter(e=>evStage(e)==='draft').map(e=>e.id); to='annual'; }
+      else if(k==='pub'){ if(!d)return toast('Διάλεξε ημερομηνία');
+        ids=R().filter(e=>evStage(e)==='annual'&&(e.event_date||'')<=d).map(e=>e.id); to='published'; }
+      else { if(!d)return toast('Διάλεξε ημερομηνία');
+        ids=R().filter(e=>evStage(e)==='published'&&(e.event_date||'')>=d).map(e=>e.id); to='annual'; }
+      if(!ids.length)return toast('Τίποτα σε αυτό το διάστημα');
+      const g=k==='back'?R().filter(e=>ids.includes(e.id)&&gcalMarks(e)).length:0;
+      if(!await uiAsk(`${sec}: ${ids.length} εγγραφές → ${STG[to].t}.${g?`\n\n${g} είναι ήδη στο ημερολόγιο Google — σβήσ' τες κι από εκεί.`:''}\n\nΝα προχωρήσω;`))return;
+      if(await stgSet(ids,to)){ toast(ids.length+' → '+STG[to].t); stgPanel(); }
+    });
+    box.querySelectorAll('[data-pdadel]').forEach(a=>a.onclick=async e=>{e.preventDefault();
+      const {error}=await sb.from('programme_draft_access').delete()
+        .eq('klimakio_id',K.sy.id).eq('section',sec).eq('scout_year',YEAR).eq('person_id',a.dataset.pdadel);
+      if(error)return toast('Δεν αφαιρέθηκε: '+error.message);
+      PDA=(PDA||[]).filter(x=>!(x.section===sec&&x.scout_year===YEAR&&x.person_id===a.dataset.pdadel)); stgPanel(); });
+    const q=box.querySelector('[data-pdaq]'); if(q)q.onchange=async()=>{
+      const p=(PDA_NAMES||[]).find(x=>btrim2((x.last_name||'')+' '+(x.first_name||''))===q.value.trim());
+      if(!p)return toast('Διάλεξε βαθμοφόρο από τη λίστα');
+      const row={klimakio_id:K.sy.id, section:sec, scout_year:YEAR, person_id:p.id};
+      const {error}=await sb.from('programme_draft_access').insert(row);
+      if(error)return toast('Δεν μπήκε: '+error.message);
+      PDA=(PDA||[]).concat([row]); toast('Καλέστηκε στο προσχέδιο: '+q.value); stgPanel(); };
+  });
+}
 V.cal=()=>tabView('cal',[
   {k:'mola', t:'Μόλα',              i:'grid',  fn:molaBody,    d:'μήνες × Σάββατα — όλη η χρονιά σε μια ματιά'},
   {k:'year', t:'Ημερολόγιο',        i:'cal',   fn:calBody,     d:'όλα σε λίστα ημερομηνιών'},
