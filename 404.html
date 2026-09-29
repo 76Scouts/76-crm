@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-29 21:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-29 21:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1688,7 +1688,7 @@ async function loadAll(){
     sb.from('guardians').select('*').limit(2000),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
     sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,invitees,gcal,prog_kind,stage').order('event_date').limit(3000),
-    sb.from('participations').select('id,person_id,event_id,status,role,is_staff').limit(20000),
+    sb.from('participations').select('id,person_id,event_id,status,role,is_staff,paid,channel,declared_at').limit(20000),    
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
     sb.from('trainings').select('person_id,type,code,date,section,body').limit(5000),
@@ -6544,6 +6544,13 @@ async function declareAndOpen(ev, kid, parent){
   else window.open(url,'_blank','noopener');
 }
 
+function paStage(pa){
+  if(!pa)return {t:'χωρίς δήλωση',c:''};
+  if(pa.paid)return {t:'πληρωμένη',c:'ok'};
+  if(pa.channel==='πύλη γονέα')return {t:'άνοιξε τη φόρμα — δεν στάλθηκε',c:'warn'};
+  return {t:pa.channel==='φόρμα Smartespot'?'στάλθηκε η φόρμα':(pa.status||'δηλώθηκε').toLowerCase(),c:'ok'};
+}
+function regMissing(p){ if(!p||p.kind!=='Μέλος')return false; const y=myOf(p); return !y||!y.registered }
 function kidForEv(e,k){const s=evSecs(e); return !s.length||s.includes(secOf(k))}
 function kidEvents(ks,today){
   const invOk=(e,k)=>evInvOk(e,k.id,secOf(k));
@@ -6567,9 +6574,10 @@ function kidActRow(e,ks,today){
           ${e.signup_note?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(e.signup_note)}</div>`:''}
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kids.map(({kid:k})=>{
             const has=(D.pa||[]).find(x=>x.person_id===k.id&&x.event_id===e.id);
-            if(has)return `<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">
-              ✓ ${esc(k.first_name)} — ${has.paid?'πληρωμένη':'δηλώθηκε'}</span>${
-              e.form_url&&open&&!has.paid?`<button class="btn sm" data-sign="${e.id}" data-k="${k.id}">Εκ νέου δήλωση · ${esc(k.first_name)}</button>`:''}`;
+            if(has){ const st=paStage(has);
+              return `<span class="pill" style="background:var(--${st.c}bg);color:var(--${st.c});border-color:transparent">
+              ${st.c==='ok'?'✓ ':''}${esc(k.first_name)} — ${esc(st.t)}</span>${
+              e.form_url&&open&&!has.paid?`<button class="btn sm" data-sign="${e.id}" data-k="${k.id}">Εκ νέου δήλωση · ${esc(k.first_name)}</button>`:''}`; }
             if(!e.form_url)return '';
             if(!open)return `<span class="dim" style="font-size:12px">${esc(k.first_name)} · ${e.signup_closes&&e.signup_closes<today?'δηλώσεις κλειστές':e.signup_opens?'δηλώσεις από '+fdate(e.signup_opens):'δηλώσεις δεν άνοιξαν ακόμη'}</span>`;
             return `<button class="btn sm p" data-sign="${e.id}" data-k="${k.id}">Δήλωση · ${esc(k.first_name)}</button>`;
@@ -14129,11 +14137,26 @@ function certqBody(){
 };
 
 const DH_COL={'κρίσιμο':'bad','προσοχή':'warn','πληροφορία':''};
+function dhEventRows(){
+  const today=new Date().toISOString().slice(0,10), out=[];
+  (D.ev||[]).filter(e=>e.form_url&&!e.hidden&&(e.end_date||e.event_date||'')>=today).forEach(e=>{
+    const when=fdate(e.event_date)+(e.signup_closes?' · δηλώσεις ως '+fdate(e.signup_closes):'');
+    if(evStage(e)!=='published'&&(signupOpen(e)||!e.signup_closes||e.signup_closes>=today))
+      out.push({code:'ΔΡΑΣΗ_ΦΟΡΜΑ_ΟΧΙ_ΔΗΜΟΣΙΕΥΣΗ',severity:'κρίσιμο',route:'cal',
+        title:'Δράση με φόρμα που οι γονείς ΔΕΝ βλέπουν — δεν είναι στη Δημοσίευση',
+        who:e.title,detail:when+' · στάδιο «'+(evStage(e)==='annual'?'Ετήσιο':'Προσχέδιο')+'»'});
+    if(evStage(e)==='published'&&Array.isArray(e.invitees)&&!e.invitees.length&&!e.owner_section)
+      out.push({code:'ΔΡΑΣΗ_ΚΕΝΗ_ΛΙΣΤΑ_ΚΑΛΕΣΜΕΝΩΝ',severity:'κρίσιμο',route:'cal',
+        title:'Δράση με φόρμα και ΚΕΝΗ λίστα καλεσμένων — δεν τη βλέπει κανένας γονιός',
+        who:e.title,detail:when+' · άνοιξε τη δράση στη Μόλα → «Ποιοι καλούνται»'});
+  });
+  return out;
+}
 V.health=async()=>{
   $('view').innerHTML='<div class="card pad dim">Έλεγχος…</div>';
   const {data,error}=await sb.rpc('data_health');
   if(error)return $('view').innerHTML=`<div class="uc"><h3>Δεν έτρεξε ο έλεγχος</h3><p>${esc(error.message)}</p></div>`;
-  const rows=data||[];
+  const rows=(data||[]).concat(dhEventRows());
   const by={}; rows.forEach(r=>{const k=r.code;
     (by[k]=by[k]||{severity:r.severity,title:r.title,route:r.route,items:[]}).items.push(r)});
   const ord=Object.entries(by).sort((a,b)=>{
@@ -15232,9 +15255,18 @@ async function gcalApi(){
 }
 const gcalIsApi=v=>!!(v&&typeof v==='object'&&v.id);
 const gcalWhenTxt=v=>gcalIsApi(v)?'στο Google '+fdate(String(v.at||'').slice(0,10)):(v?'ανοίχτηκε '+fdate(v):'');
-async function gcalCall(op, e, k){
+const GCAL_WHY=[[/accessNotConfigured|SERVICE_DISABLED/,'το Google Calendar API είναι κλειστό στο Google Cloud project'],
+  [/requiredAccessLevel|forbidden|403/,'ο λογαριασμός υπηρεσίας δεν έχει δικαίωμα αλλαγών στο ημερολόγιο'],
+  [/not_configured/,'δεν έχει μπει το κλειδί GCAL_SA_KEY'],[/404/,'το ημερολόγιο δεν βρέθηκε']];
+const gcalWhy=t=>{t=String(t||''); const m=GCAL_WHY.find(([re])=>re.test(t)); return m?m[1]:(t||'σφάλμα')};
+async function gcalCall(op, e, k, quiet){
   const {data,error}=await sb.functions.invoke('gcal-sync',{body:{op, event_id:e.id, cal:k}});
-  if(error||!data||!data.ok){ toast('Ημερολόγιο Google: '+((data&&data.error)||(error&&error.message)||'σφάλμα')); return false }
+  if(error||!data||!data.ok){
+    let why=data&&data.error;
+    if(!why&&error&&error.context&&typeof error.context.json==='function'){ try{ why=(await error.context.json()).error }catch(x){} }
+    gcalCall.err=gcalWhy(why||(error&&error.message));
+    if(!quiet)toast('Ημερολόγιο Google: '+gcalCall.err);
+    return false }
   e.gcal=data.gcal; saveCache(); return true;
 }
 async function gcalSyncAfterSave(e){
@@ -15271,10 +15303,10 @@ async function gcalPick(e, after){
         if(!a||a==='skip')continue;
         if(a==='del')op='delete';
       }else if(cur&&!await uiAsk(`Στο «${cal.name}» μπήκε με το χέρι (${gcalWhenTxt(cur)}). Αν το γράψει τώρα το e76, θα υπάρχουν ΔΥΟ.\n\nΣβήσε πρώτα το παλιό από το Google. Να προχωρήσω;`))continue;
-      if(await gcalCall(op,e,cal.k))ok++; else bad.push(cal.name);
+      if(await gcalCall(op,e,cal.k,true))ok++; else bad.push(cal.name+' — '+gcalCall.err);
     }
     if(ok){ toast(ok===1?'Έγινε σε 1 ημερολόγιο':'Έγινε σε '+ok+' ημερολόγια'); after&&after(); }
-    if(bad.length)toast('Δεν έγινε σε: '+bad.join(', '));
+    if(bad.length)toast('Δεν έγινε σε: '+bad.join(' · '));
     return;
   }
   const g={...(e.gcal||{})}; let n=0;
@@ -15461,7 +15493,8 @@ async function efFormsLoad(e){
         <td class="dim">${esc((my&&my.group_name)||'—')}</td>
         <td>${esc([s.ait_onoma,s.ait_epitheto].filter(Boolean).join(' ')||'—')}</td>
         <td class="dim" style="white-space:nowrap">${fdate(s.submitted_on)}</td>
-        <td>${d?(d.paid?'πληρωμένη':esc(d.status||'δηλώθηκε')):'<span class="dim">χωρίς δήλωση στο e76</span>'}</td></tr>`}).join('')}</tbody></table></div>`;
+        <td>${(()=>{const st=paStage(d); return st.c?`<span class="pill" style="background:var(--${st.c}bg);color:var(--${st.c});border-color:transparent">${esc(st.t)}</span>`:'<span class="dim">χωρίς δήλωση στο e76</span>'})()}
+          ${p&&regMissing(p)?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Η δράση συνήθως θέλει ολοκληρωμένη εγγραφή της χρονιάς">χωρίς εγγραφή ${esc(YEAR)}</span>`:''}</td></tr>`}).join('')}</tbody></table></div>`;
 }
 
 function efVenue(e){
@@ -15552,7 +15585,7 @@ function efPeople(e,parts){
   const lead=parts.some(x=>x.pa.role==='Αρχηγός δράσης');
   const row=x=>`<tr>
       <td>${statusBar(x.p)}</td>
-      <td>${pnm(x.p)}<div class="dim" style="font-size:11.5px">${esc(secOf(x.p)||'')}</div></td>
+      <td>${pnm(x.p)}<div class="dim" style="font-size:11.5px">${esc(secOf(x.p)||'')}${regMissing(x.p)?` · <span style="color:var(--warn)">χωρίς εγγραφή ${esc(YEAR)}</span>`:''}${x.pa.channel==='πύλη γονέα'&&!x.pa.paid?' · <span style="color:var(--warn)">άνοιξε τη φόρμα, δεν στάλθηκε</span>':''}</div></td>
       <td><select data-parole="${x.pa.id}" style="font-size:12px;max-width:170px">
         ${EF_ROLES.map(r=>`<option${r===(x.pa.role||'Συμμετέχων')?' selected':''}>${esc(r)}</option>`).join('')}</select></td>
       <td style="text-align:center"><input type="checkbox" data-papaid="${x.pa.id}" ${x.pa.paid?'checked':''} style="width:auto"></td>
@@ -20050,6 +20083,16 @@ function molaInvPool(ev){
 function molaGuestSecs(ev){
   return ev&&ev.owner_section ? evSecs(ev).filter(s=>s!==ev.owner_section) : [];
 }
+function molaSlotSecs(ev){ const gs=molaGuestSecs(ev); return gs.length?gs:(ev.section?[ev.section]:[]) }
+function molaSlotIds(ev){
+  const secs=molaSlotSecs(ev);
+  return [...new Set((D.sg||[]).filter(s=>s.scout_year===YEAR&&secs.includes(s.section)&&s.active!==false)
+    .flatMap(s=>Object.values(SG_SLOTCOL).map(c=>s[c])).filter(Boolean))];
+}
+function molaSlotTitle(ev){
+  const t=[...new Set(molaSlotSecs(ev).flatMap(sec=>sgRoles(sec).map(([,x])=>x.replace(/\s+Β$/,''))))];
+  return t.join(' & ')||'Θέσεις υποομάδων';
+}
 function molaInvHTML(ev,can){
   const inv=Array.isArray(ev.invitees)?ev.invitees:null;
   const who=(inv||[]).map(id=>D.bh.find(b=>b.id===id)).filter(Boolean).sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
@@ -20066,6 +20109,7 @@ function molaInvHTML(ev,can){
     ${can?`<div class="grow" style="margin-top:6px">
       ${inv?`<label style="flex:2">Πρόσθεσε<input id="meInvQ" list="meInvL" placeholder="Όνομα…">
         <datalist id="meInvL">${molaInvPool(ev).filter(b=>!inv.includes(b.id)).map(b=>`<option value="${esc(nm(b))}">`).join('')}</datalist></label>`:''}
+      ${inv&&molaSlotIds(ev).length?`<label>&nbsp;<button class="btn sm" id="meInvSlots" title="${esc(molaSlotTitle(ev))}">+ ${esc(molaSlotTitle(ev))} (${molaSlotIds(ev).length})</button></label>`:''}
       <label>&nbsp;${inv
         ?`<button class="btn gh sm" id="meInvAll">Άνοιξέ τη σε όλους</button>`
         :`<button class="btn sm" id="meInvOnly">Μόνο συγκεκριμένοι…</button>`}</label></div>`:''}`;
@@ -20088,6 +20132,7 @@ function molaInvWire(ev,redraw){
   const all=$('meInvAll'); if(all)all.onclick=async ()=>{
     if(!await uiAsk('Να φαίνεται η δήλωση σε ΟΛΟ το τμήμα; Η λίστα ονομάτων σβήνεται.'))return; save(null)};
   const only=$('meInvOnly'); if(only)only.onclick=()=>save([]);
+  const sl=$('meInvSlots'); if(sl)sl.onclick=()=>{ const c=cur(); molaSlotIds(ev).forEach(id=>{if(!c.includes(id))c.push(id)}); save(c) };
 }
 function molaEdit(id, slot, seed){
   const yr=YEAR, MAINS=molaMains();
