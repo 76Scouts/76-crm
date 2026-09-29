@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-29 21:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-29 21:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2194,9 +2194,22 @@ function vaHidesPerson(p){
   if(VIEWAS.sec)return (secOf(p)||p.section)!==VIEWAS.sec;
   return false;
 }
+function mineAllowed(id,K){
+  if(NAV_MINE.includes(id)){
+    const rec=meRec();
+    if(!rec) return false;
+    if(NAV_MINE_ANY.includes(id)) return true;
+    if(LENS_PERSONAL.includes(K)) return false;
+    return isLed(rec);
+  }
+  return null;
+}
 function vaHidesRoute(r){
   if(!VIEWAS)return false;
-  const al=navFor(VIEWAS.role==='section_head'?'head':VIEWAS.role, VIEWAS.sec);
+  const K=VIEWAS.role==='section_head'?'head':VIEWAS.role;
+  if(NAV_ALWAYS.includes(r))return false;
+  const mn=mineAllowed(r,K); if(mn!==null)return !mn;
+  const al=navFor(K, VIEWAS.sec);
   return al ? !al.includes(r) : false;
 }
 
@@ -2417,13 +2430,7 @@ function renderNav(){
   const personalRole=['member','parent','dev'].includes(K);
   const allow=(id,noMode)=>{
     if(NAV_ALWAYS.includes(id)) return true;       
-    if(NAV_MINE.includes(id)){
-      const rec=meRec();
-      if(!rec) return false;
-      if(NAV_MINE_ANY.includes(id)) return true;
-      if(LENS_PERSONAL.includes(K)) return false;
-      return isLed(rec);
-    }
+    { const mn=mineAllowed(id,K); if(mn!==null)return mn; }
     if(AL && !AL.includes(id)) return false;
     if(!AL && id==='dev' && !(ME.platform_admin||ME.role==='admin')) return false;
     if(!AL && NAV_PARENT.includes(id) && K!=='parent') return false;    
