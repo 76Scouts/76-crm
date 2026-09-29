@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-29 21:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-09-29 21:38'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -6568,7 +6568,8 @@ function kidActRow(e,ks,today){
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kids.map(({kid:k})=>{
             const has=(D.pa||[]).find(x=>x.person_id===k.id&&x.event_id===e.id);
             if(has)return `<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">
-              ✓ ${esc(k.first_name)} — ${has.paid?'πληρωμένη':'δηλώθηκε'}</span>`;
+              ✓ ${esc(k.first_name)} — ${has.paid?'πληρωμένη':'δηλώθηκε'}</span>${
+              e.form_url&&open&&!has.paid?`<button class="btn sm" data-sign="${e.id}" data-k="${k.id}">Εκ νέου δήλωση · ${esc(k.first_name)}</button>`:''}`;
             if(!e.form_url)return '';
             if(!open)return `<span class="dim" style="font-size:12px">${esc(k.first_name)} · ${e.signup_closes&&e.signup_closes<today?'δηλώσεις κλειστές':e.signup_opens?'δηλώσεις από '+fdate(e.signup_opens):'δηλώσεις δεν άνοιξαν ακόμη'}</span>`;
             return `<button class="btn sm p" data-sign="${e.id}" data-k="${k.id}">Δήλωση · ${esc(k.first_name)}</button>`;
@@ -9617,8 +9618,37 @@ function fwKids(mine){
   const ev=kidEvents(ks,today).ev.filter(e=>e.form_url);
   box.innerHTML=`<div class="card pad" style="margin-top:14px"><b>Δηλώσεις για ${ks.length===1?'το παιδί σου':'τα παιδιά σου'}</b>
     ${ev.length?`<div style="margin-top:9px">${ev.map(e=>kidActRow(e,ks,today)).join('')}</div>`
-      :'<div class="dim" style="margin-top:8px;font-size:13px">Καμία ανοιχτή δήλωση δράσης αυτή τη στιγμή.</div>'}</div>`;
+      :'<div class="dim" style="margin-top:8px;font-size:13px">Καμία ανοιχτή δήλωση δράσης αυτή τη στιγμή.</div>'}</div>
+    <div id="fwHist"></div>`;
   kidActWire(ks,box);
+  fwKidHistory(ks);
+}
+function fwKidHistory(ks){
+  const box=$('fwHist'); if(!box)return;
+  const ids=ks.map(({kid:k})=>k.id);
+  sb.from('form_submission').select('person_id,form_name,form_kind,submitted_on,event_id')
+    .in('person_id',ids).order('submitted_on',{ascending:false}).limit(300).then(({data,error})=>{
+    const b=$('fwHist'); if(!b)return;
+    const subs=error?[]:(data||[]);
+    const evT=id=>{const e=(D.ev||[]).find(x=>x.id===id); return e?e.title:null};
+    const rows=k=>{
+      const out=subs.filter(s=>s.person_id===k.id).map(s=>({d:(s.submitted_on||'').slice(0,10),
+        t:s.form_name||evT(s.event_id)||s.form_kind||'Φόρμα', w:'στάλθηκε'}));
+      (D.pa||[]).filter(x=>x.person_id===k.id&&x.event_id).forEach(x=>{
+        const t=evT(x.event_id); if(!t)return;
+        const e=(D.ev||[]).find(y=>y.id===x.event_id)||{};
+        if(!out.some(o=>o.t===t))out.push({d:e.event_date||'',t,w:(x.status||'δηλώθηκε').toLowerCase()});
+      });
+      return out.sort((a,b)=>(b.d||'').localeCompare(a.d||''));
+    };
+    b.innerHTML=ks.map(({kid:k})=>{const r=rows(k);
+      return `<div class="card pad" style="margin-top:14px"><b>Ιστορικό φορμών · ${esc(k.first_name)}</b>
+        ${r.length?`<div style="margin-top:8px">${r.map(x=>`<div class="kv" style="border-top:1px solid var(--line);padding:7px 0">
+          <span style="flex:1;min-width:0">${esc(x.t)}</span>
+          <span class="dim" style="font-size:12px;white-space:nowrap">${esc(x.w)}${x.d?' · '+fdate(x.d):''}</span></div>`).join('')}</div>`
+        :'<div class="dim" style="margin-top:8px;font-size:13px">Δεν έχει σταλεί φόρμα ακόμη.</div>'}</div>`}).join('')
+      +(error?'<div class="dim pad" style="font-size:12px">Δεν φορτώθηκε το ιστορικό των φορμών.</div>':'');
+  });
 }
 
 function honoursBody(){
