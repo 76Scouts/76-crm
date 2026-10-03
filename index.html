@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-09-29 22:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-03 18:36'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -5532,6 +5532,8 @@ V.synod=()=>{
     const {data,error}=await sb.from('synod').insert(rec).select().single();
     if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
     (D.syn=D.syn||[]).push(data);
+    { const {data:pr}=await sb.from('synod_present').select('*').eq('synod_id',data.id);
+      if(pr)D.synp=(D.synp||[]).filter(x=>x.synod_id!==data.id).concat(pr); }
     if(rec.special==='Σύνοδος Προγραμματισμού'){
       const rows=SYNOD_PLANNING_AGENDA.map(([t,n],i)=>({synod_id:data.id,seq:i+1,topic:t,note:n||null}));
       const {data:dd}=await sb.from('synod_decision').insert(rows).select();
@@ -5840,8 +5842,17 @@ async function openSynod(id){
     const r=(D.synp||[]).find(x=>x.id===t.dataset.r); if(r)r[f]=v;
   });
 
+  const synPresentDup=async rec=>{
+    let q=sb.from('synod_present').select('*').eq('synod_id',id);
+    q=rec.person_id?q.eq('person_id',rec.person_id):q.ilike('guest_name',String(rec.guest_name||'').trim().replace(/[%_\\]/g,'\\$&'));
+    const {data:ex}=await q.limit(1);
+    const row=ex&&ex[0]; if(!row)return false;
+    D.synp=(D.synp||[]).filter(x=>x.id!==row.id); D.synp.push(row);
+    return true;
+  };
   const prPut=async rec=>{
     const {data,error}=await sb.from('synod_present').insert(rec).select().single();
+    if(error&&error.code==='23505'&&await synPresentDup(rec)){toast('Είναι ήδη στους παρόντες'); openSynod(id); return true}
     if(error){toast(error.message);return false}
     (D.synp=D.synp||[]).push(data); toast('Προστέθηκε στους παρόντες');
     openSynod(id); return true;
@@ -5865,6 +5876,7 @@ async function openSynod(id){
     if(c.checked){
       const {data,error}=await sb.from('synod_present')
         .insert({synod_id:id,person_id:c.value}).select().single();
+      if(error&&error.code==='23505'&&await synPresentDup({person_id:c.value})){openSynod(id); return}
       if(error){toast(error.message);c.checked=false;return}
       (D.synp=D.synp||[]).push(data);
       openSynod(id); return;
@@ -16145,7 +16157,7 @@ function attDayHTML(sheets, head){
     table.att th.attname,table.att td.attname{text-align:left;width:44%}
     table.att .attn{width:6%}table.att .attbox{width:12%}table.att th{font-size:11px;background:#f2f2f2}
     tr.attg td{text-align:left;font-weight:700;background:#fafafa;letter-spacing:.03em}
-    .attnote{color:#666;font-size:10px}.attfoot{font-size:10px;color:#666;margin-top:8px}
+    .attnote{color:#000;font-size:10.5px;font-style:italic}.attfoot{font-size:10.5px;color:#000;margin-top:8px}
     @page{size:A4 portrait;margin:8mm 10mm}</style>${pages.join('')}`;
 }
 function attSheetsHTML(sheets, head){
@@ -16175,7 +16187,7 @@ function attSheetsHTML(sheets, head){
     table.att th.attname,table.att td.attname{text-align:left;width:34%}
     table.att .attn{width:4%}table.att th{font-size:10px;background:#f2f2f2}
     tr.attg td{text-align:left;font-weight:700;background:#fafafa;letter-spacing:.03em}
-    .attnote{color:#666;font-size:9.5px}.attfoot{font-size:9.5px;color:#666;margin-top:6px}
+    .attnote{color:#000;font-size:10px;font-style:italic}.attfoot{font-size:10px;color:#000;margin-top:6px}
     @page{size:A4 landscape;margin:10mm}</style>${pages.join('')}`;
 }
 function attWlRows(wl, year, secOf){
