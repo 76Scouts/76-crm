@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-03 18:36'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-03 20:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1685,7 +1685,7 @@ async function loadAll(){
     sb.from('sessions').select('id,session_date,section,scout_year,status,title,session_type,event_id,theme').order('session_date').limit(500),
     pageAll('attendance','session_id,person_id,status'),
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
-    sb.from('guardians').select('*').limit(2000),
+    sb.from('care_links').select('member_id').limit(0),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
     sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,invitees,gcal,prog_kind,stage').order('event_date').limit(3000),
     sb.from('participations').select('id,person_id,event_id,status,role,is_staff,paid,channel,declared_at').limit(20000),    
@@ -16977,7 +16977,7 @@ V.dash=()=>{
 ''}
     <button class="tile ${(expd||nocert)?'bad':(soon?'warn':'')}" data-go="leaders" data-chip="cert:${expd?'bad':'warn'}"><div class="k">${ic('shield',14)}<span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Πιστοποιητικά Ν.91(Ι)</span></div><div class="v">${expd+soon}</div><div class="s">${expd?expd+' ληγμένα · ':''}${soon} λήγουν σε 90 μέρες</div></button>
     <button class="tile ${nocert?'warn':''}" data-go="leaders" data-chip="cert:none"><div class="k">${ic('alert',14)}Χωρίς πιστοποιητικό</div><div class="v">${nocert}</div><div class="s">βαθμοφόροι χωρίς καταχώρηση</div></button>
-    <button class="tile act" data-go="guardians"><div class="k">${ic('msg',14)}Επικοινωνία γονέων</div><div class="v">${D.gu.length}</div><div class="s">έτοιμες λίστες ανά τμήμα</div></button>
+    <button class="tile act" data-go="guardians"><div class="k">${ic('msg',14)}Επικοινωνία γονέων</div><div class="v">${new Set((D.cl||[]).filter(c=>!c.valid_to).map(c=>c.member_id)).size}</div><div class="s">έτοιμες λίστες ανά τμήμα</div></button>
   </div>
   ${bdayHTML()}
 
@@ -19031,13 +19031,11 @@ function wlPrioScan(){
   const digits10=s=>String(s||'').replace(/\D/g,'').slice(-8);
   const byPhone={}, byMail={};
   const add=(map,k,v)=>{ if(!k)return; (map[k]=map[k]||[]).push(v) };
-  (D.gu||[]).forEach(g=>{
-    const kids=(D.bh||[]).filter(p=>p.registry_no&&p.registry_no===g.registry_no);
-    kids.forEach(kid=>{
-      [g.father_mobile,g.mother_mobile,g.father_work_phone,g.mother_work_phone]
-        .forEach(t=>add(byPhone,digits10(t),{kind:'member',p:kid}));
-      [g.father_email,g.mother_email].forEach(e=>add(byMail,String(e||'').trim().toLowerCase(),{kind:'member',p:kid}));
-    });
+  (D.cl||[]).filter(c=>!c.valid_to).forEach(c=>{
+    const kid=(D.bh||[]).find(p=>p.id===c.member_id&&p.registry_no); if(!kid)return;
+    const g=carerOfLink(c); if(!g)return;
+    [g.phone,g.home_phone].forEach(t=>add(byPhone,digits10(t),{kind:'member',p:kid}));
+    add(byMail,String(g.email||'').trim().toLowerCase(),{kind:'member',p:kid});
   });
   (D.bh||[]).filter(p=>isLed(p)).forEach(p=>{
     add(byPhone,digits10(p.phone),{kind:'leader',p});
