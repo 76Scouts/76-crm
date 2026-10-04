@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-04 11:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-04 13:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -15541,13 +15541,14 @@ function V_efolder(){
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
         ${[['venue','Τοποθεσία','home'],['people','Συμμετέχοντες','users'],
-           ['forms','Δηλώσεις','book'],['phones','Τηλέφωνα','mail'],['certs','Πιστοποιητικά','shield']]
+           ['forms','Δηλώσεις','book'],['docs','Έγγραφα','down'],['phones','Τηλέφωνα','mail'],['certs','Πιστοποιητικά','shield']]
           .map(([k,t,i])=>`<button class="btn sm${tab===k?' p':' gh'}" data-eftab="${k}">${ic(i,14)} ${t}</button>`).join('')}
       </div></div>`;
 
   const body = tab==='venue'  ? efVenue(e)
              : tab==='people' ? efPeople(e,parts)
              : tab==='forms'  ? '<div id="efForms" class="card"><div class="pad dim">Φόρτωση…</div></div>'
+             : tab==='docs'   ? efDocs(e,parts)
              : tab==='phones' ? efPhones(e,parts)
              :                  efCerts(e,parts,endD);
   $('view').innerHTML=head+body;
@@ -15559,6 +15560,7 @@ function V_efolder(){
   if(tab==='venue')  efVenueWire(e);
   if(tab==='people') efPeopleWire(e);
   if(tab==='forms')  efFormsLoad(e);
+  if(tab==='docs')   efDocsWire(e,parts);
   if(tab==='phones') efPhonesWire(e,parts);
   if(tab==='certs')  efCertsWire(e,parts,endD);
 }
@@ -16158,6 +16160,212 @@ function deskSheet(kids){
   w.document.close(); setTimeout(()=>w.print(),400);
 }
 const senRef={fn:p=>(D.sen||[]).find(s=>s.person_id===p.id)||{}}; const senOf=p=>senRef.fn(p);
+const EFD_DECL=['επιβεβαιώνω την ηλεκτρονική δήλωση συμμετοχής που υποβλήθηκε στο smartespot.com/76life και συναινώ στη συμμετοχή του/της στη δράση, όπως περιγράφεται στην ανακοίνωση·',
+  'βεβαιώνω ότι τα στοιχεία της δήλωσης, μαζί με τα στοιχεία υγείας και διατροφής, είναι αληθή και πλήρη, ώστε οι Βαθμοφόροι να εξασφαλίσουν ασφαλή και όσο το δυνατόν πληρέστερη συμμετοχή του/της·',
+  'θα ενημερώσω τους Βαθμοφόρους για κάθε αλλαγή μέχρι την ημέρα της δράσης.'];
+const efdLive=pa=>!/ακυρ/i.test(pa.status||'');
+const efdKids=parts=>parts.filter(x=>(x.p.kind||'')==='Μέλος'&&efdLive(x.pa));
+const efdLeds=parts=>parts.filter(x=>isLed(x.p)&&efdLive(x.pa));
+function efdPool(e){
+  if(Array.isArray(e.invitees))return (D.bh||[]).filter(p=>e.invitees.includes(p.id)&&(p.kind||'')==='Μέλος');
+  return (D.bh||[]).filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&(!e.section||secOf(p)===e.section));
+}
+const efdDate=pa=>{const d=pa&&(pa.declared_at||pa.created_at); if(!d)return '—';
+  const x=new Date(d); return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear()};
+const efdWhen=e=>fdate(e.event_date)+(e.end_date&&e.end_date!==e.event_date?' – '+fdate(e.end_date):'');
+
+function efdMed(m){
+  const o={diet:[],med:[],sleep:[],misc:[]}; if(!m)return o;
+  const t=(on,lbl,txt)=>{ if(on) return lbl+(txt?': '+txt:''); return null };
+  const push=(k,v)=>{ if(v)o[k].push(v) };
+  push('diet',t(m.allergy_food,'Αλλεργία τροφών',m.allergy_food_txt));
+  push('diet',t(m.dietary_yes||(!!m.dietary&&m.dietary_yes!==false),'Διατροφή',m.dietary));
+  push('diet',t(m.fasting,'Νηστεύει'));
+  push('diet',t(m.eats_amount&&!/^ικανοποιητ/i.test(m.eats_amount),'Τρώει',m.eats_amount));
+  push('med',t(m.chronic,'Χρόνια πάθηση',m.conditions));
+  push('med',t(m.on_medication,'Φάρμακα',m.medication));
+  push('med',t(m.allergy_drugs,'Αλλεργία φαρμάκων',m.allergy_drugs_txt));
+  push('med',t(m.allergy_food,'Αλλεργία τροφών',m.allergy_food_txt));
+  push('med',t(m.allergy_other,'Άλλη αλλεργία',m.allergy_other_txt));
+  push('med',t(m.mental,'Ψυχική υγεία',m.mental_txt));
+  push('med',t(m.recent_illness,'Πρόσφατο πρόβλημα',m.recent_illness_txt));
+  push('med',t(m.other_medical,'Άλλο ιατρικό',m.notes));
+  push('med',t(!!m.mobility,'Κινητικότητα',m.mobility));
+  push('med',t(m.tetanus===false,'Αντιτετανικό: όχι'));
+  push('sleep',t(m.fears_dark,'Φοβάται το σκοτάδι')); push('sleep',t(m.sleep_talks,'Μιλά στον ύπνο'));
+  push('sleep',t(m.sleep_wets,'Ουρεί στον ύπνο')); push('sleep',t(m.night_toilet,'Τουαλέτα το βράδυ',m.night_toilet_txt));
+  push('sleep',t(m.sleep_other,'Ύπνος',m.sleep_other_txt));
+  push('misc',t(m.first_camp,'Πρώτη κατασκήνωση')); push('misc',t(m.tires,'Κουράζεται'));
+  push('misc',t(m.irritable,'Οξύθυμος')); push('misc',t(m.constipation,'Δυσκοιλιότητα'));
+  return o;
+}
+async function efdMedMany(ids,purpose,onStep){
+  const out={}; let no=0, i=0;
+  for(const id of ids){
+    i++; if(onStep)onStep(i,ids.length);
+    const {data,error}=await sb.rpc('get_medical',{p_person:id,p_purpose:purpose});
+    if(error){no++; continue}
+    out[id]=(data&&data[0])||{};
+  }
+  return {med:out,no};
+}
+function efdWin(title){
+  const w=window.open('','_blank'); if(!w){toast('Ο φυλλομετρητής μπλόκαρε το παράθυρο — επίτρεψε αναδυόμενα για το e76');return null}
+  w.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>'+esc(title)+'</title></head><body style="font:14px system-ui;padding:20px">Ετοιμάζεται…</body></html>');
+  return w;
+}
+function efdPage(w,title,body,landscape){
+  const logo=((document.querySelector('#side img, header img')||{}).src)||'';
+  w.document.open();
+  w.document.write(`<!doctype html><html lang="el"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+    *{box-sizing:border-box}body{font:11.5px/1.35 Calibri,Carlito,system-ui,-apple-system,Segoe UI,sans-serif;color:#000;margin:0;background:#fff}
+    .pg{padding:0 2mm}.hd{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+    .hd .t{flex:1;text-align:center}.hd b{display:block;font-size:17px}.hd span{font-size:12.5px}
+    .hd img{width:26mm;height:26mm;object-fit:contain}.hd .sec{width:26mm;font-weight:700;font-size:12px}
+    table{width:100%;border-collapse:collapse}th,td{border:1px solid #000;padding:4px 5px;vertical-align:middle;text-align:left}
+    th{font-size:11px;text-align:center;border-bottom:2px solid #000}tbody tr:nth-child(even) td{background:#ebebeb}
+    td.c{text-align:center}td.ep{font-weight:700;font-size:13px}td.sm{font-size:9.5px;text-align:center}
+    .decl{border-bottom:1px solid #000;margin:6px 0 8px;padding:0 0 6px 8px;border-left:4px solid #000}
+    .decl b{display:block;font-size:12.5px;border-bottom:2px solid #000;margin-bottom:4px;padding-bottom:2px}
+    .decl li{margin:1px 0}.note{font-size:10.5px;margin-top:8px}h3{font-size:13px;margin:12px 0 4px}
+    .sig{display:flex;gap:30mm;margin-top:14mm}.sig div{flex:1;border-top:1px solid #000;padding-top:3px;text-align:center;font-size:11px}
+    .grp{break-before:page}.grp:first-of-type{break-before:auto}.k{font-size:10.5px}
+    @page{size:A4 ${landscape?'landscape':'portrait'};margin:10mm 9mm 13mm;@bottom-center{content:"Σελίδα " counter(page) " από " counter(pages);font-size:9pt}}
+    @media screen{body{background:#f4f4f5}.pg{background:#fff;max-width:${landscape?'297mm':'210mm'};margin:10px auto;padding:10mm}}
+  </style></head><body><div class="pg">${body.replace(/%LOGO%/g,logo?`<img src="${logo}" alt="76ο Σύστημα">`:'')}</div>
+  <script>setTimeout(function(){print()},450)<\/script></body></html>`);
+  w.document.close();
+}
+const efdHead=(e,title)=>`<div class="hd"><div class="sec">${esc(e.section||'76ο Σύστημα')}</div>
+  <div class="t"><b>${esc(title)}</b><span>${esc(e.title||'')} · ${esc(efdWhen(e))}${e.place?' · '+esc(e.place):''}</span></div>%LOGO%</div>`;
+
+function efdSign(e,parts,mode){
+  const pa=new Map(efParts(e.id).filter(efdLive).map(x=>[x.person_id,x]));
+  const people=(mode==='all'?efdPool(e):efdKids(parts).map(x=>x.p)).slice().sort(sortByName);
+  if(!people.length)return toast(mode==='all'?'Κανένα μέλος για τη λίστα':'Κανένας δηλωμένος ακόμα');
+  const w=efdWin('Υπογραφές — '+(e.title||'')); if(!w)return;
+  const head=`<tr><th colspan="7" style="border:0;padding:0;text-align:left;font-weight:400">${efdHead(e,'Λίστα υπογραφών')}
+    <div class="decl"><b>ΔΗΛΩΣΗ ΓΟΝΕΑ / ΚΗΔΕΜΟΝΑ</b>Υπογράφοντας, ως γονέας ή νόμιμος κηδεμόνας του μέλους:
+      <ul style="margin:3px 0 0 18px;padding:0">${EFD_DECL.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div></th></tr>
+    <tr><th style="width:4%">Α/Α</th><th style="width:15%">Επίθετο</th><th style="width:13%">Όνομα</th><th style="width:8%">Ημ/νία<br>Δήλωσης</th>
+      <th style="width:24%">Ονοματεπώνυμο Γονέα / Κηδεμόνα</th><th style="width:10%">Ημερομηνία<br>υπογραφής</th><th>Υπογραφή</th></tr>`;
+  const rows=people.map((p,i)=>`<tr style="height:9mm"><td class="c">${i+1}</td><td class="ep">${esc(p.last_name||'')}</td><td>${esc(p.first_name||'')}</td>
+    <td class="sm">${esc(efdDate(pa.get(p.id)))}</td><td></td><td></td><td></td></tr>`).join('');
+  efdPage(w,'Υπογραφές — '+(e.title||''),`<table><thead>${head}</thead><tbody>${rows}</tbody></table>`,true);
+}
+
+async function efdPrep(e,parts,who,purpose,btn){
+  const list=(who==='kids'?efdKids(parts):who==='leds'?efdLeds(parts):efdKids(parts).concat(efdLeds(parts)));
+  if(!list.length){toast('Κανένας δηλωμένος ακόμα');return null}
+  const lbl=btn?btn.textContent:'';
+  const r=await efdMedMany(list.map(x=>x.p.id),purpose,(i,n)=>{if(btn)btn.textContent='Ιατρικά '+i+'/'+n+'…'});
+  if(btn)btn.textContent=lbl;
+  return {list,med:r.med,no:r.no};
+}
+const efdNo=n=>n?`<div class="note">⚠ Για ${n} ${n===1?'άτομο':'άτομα'} δεν δόθηκαν στοιχεία υγείας (δικαίωμα ή Ν.91) — ρώτησε τον Α.Σ.</div>`:'';
+const efdGrp=p=>((myOf(p)||{}).group_name)||'';
+const efdCalls=(p,eid)=>callListOf(p,eid).filter(l=>l.n&&l.t!=='self').slice(0,3)
+  .map((l,i)=>`<div class="k">${i+1}. ${esc(l.name||'')} · ${esc(l.rel||'')} · <b>${esc(ctFmt(l.n))}</b>${l.ev?' · για τη δράση':''}</div>`).join('')||'<span class="k">— κανένα τηλέφωνο —</span>';
+
+async function efdLeaders(e,parts,btn){
+  const w=efdWin('Για βαθμοφόρους — '+(e.title||'')); if(!w)return;
+  const r=await efdPrep(e,parts,'kids','φάκελος δράσης · για βαθμοφόρους',btn); if(!r){w.close();return}
+  const by={}; r.list.forEach(x=>{const g=efdGrp(x.p)||'—';(by[g]=by[g]||[]).push(x)});
+  const keys=Object.keys(by).sort((a,b)=>a==='—'?1:b==='—'?-1:a.localeCompare(b,'el'));
+  const tbl=(g,l)=>`<div class="grp">${efdHead(e,'Για τους βαθμοφόρους'+(g!=='—'?' · '+g:''))}
+    <table><thead><tr><th style="width:4%">Α/Α</th><th style="width:22%">Μέλος</th><th style="width:34%">Λίστα κλήσεων (για τη δράση)</th><th>Τι να προσέξουμε</th></tr></thead>
+    <tbody>${l.sort((a,b)=>sortByName(a.p,b.p)).map((x,i)=>{const m=efdMed(r.med[x.p.id]); const all=m.med.concat(m.diet.filter(d=>!/^Αλλεργία τροφών/.test(d)),m.sleep,m.misc);
+      return `<tr><td class="c">${i+1}</td><td><b>${esc(x.p.last_name||'')}</b> ${esc(x.p.first_name||'')}
+        ${x.p.shirt_size?`<div class="k">Φανέλα: ${esc(x.p.shirt_size)}</div>`:''}${r.med[x.p.id]&&r.med[x.p.id].blood_type?`<div class="k">Ομ. αίματος: ${esc(r.med[x.p.id].blood_type)}</div>`:''}</td>
+        <td>${efdCalls(x.p,e.id)}</td><td class="k">${all.map(esc).join('<br>')||'—'}</td></tr>`}).join('')}</tbody></table></div>`;
+  const leds=efdLeds(parts).sort((a,b)=>sortByName(a.p,b.p));
+  efdPage(w,'Για βαθμοφόρους — '+(e.title||''),keys.map(g=>tbl(g,by[g])).join('')
+    +(leds.length?`<h3>Βαθμοφόροι της δράσης</h3><table><thead><tr><th>Όνομα</th><th>Ρόλος</th><th>Τηλέφωνο</th></tr></thead><tbody>${leds.map(x=>
+      `<tr><td>${esc(nm(x.p))}</td><td>${esc(x.pa.role||'')}</td><td>${esc(ctFmt(ctCallNo(x.p.id)||x.p.phone||''))}</td></tr>`).join('')}</tbody></table>`:'')
+    +efdNo(r.no),true);
+}
+async function efdKitchen(e,parts,btn){
+  const w=efdWin('Κουζίνα — '+(e.title||'')); if(!w)return;
+  const r=await efdPrep(e,parts,'all','φάκελος δράσης · κουζίνα',btn); if(!r){w.close();return}
+  const rows=r.list.map(x=>({x,d:efdMed(r.med[x.p.id]).diet})).filter(y=>y.d.length).sort((a,b)=>sortByName(a.x.p,b.x.p));
+  const k=efdKids(parts).length, l=efdLeds(parts).length;
+  efdPage(w,'Κουζίνα — '+(e.title||''),efdHead(e,'Κουζίνα — διατροφή')
+    +`<div style="margin:4px 0 8px"><b>Σύνολο: ${k+l}</b> (μέλη ${k} · βαθμοφόροι ${l}) · με κάτι να προσέξουμε: <b>${rows.length}</b></div>`
+    +(rows.length?`<table><thead><tr><th style="width:5%">Α/Α</th><th style="width:30%">Ονοματεπώνυμο</th><th>Διατροφή</th></tr></thead><tbody>${rows.map((y,i)=>
+      `<tr><td class="c">${i+1}</td><td><b>${esc(y.x.p.last_name||'')}</b> ${esc(y.x.p.first_name||'')}${isLed(y.x.p)?' <span class="k">(βαθμοφόρος)</span>':''}</td><td>${y.d.map(esc).join('<br>')}</td></tr>`).join('')}</tbody></table>`
+      :'<div>Κανείς δεν δήλωσε κάτι για τη διατροφή.</div>')+efdNo(r.no),false);
+}
+async function efdFirstAid(e,parts,btn){
+  const w=efdWin('Πρώτες βοήθειες — '+(e.title||'')); if(!w)return;
+  const r=await efdPrep(e,parts,'all','φάκελος δράσης · πρώτες βοήθειες',btn); if(!r){w.close();return}
+  const rows=r.list.map(x=>({x,m:r.med[x.p.id]||{},d:efdMed(r.med[x.p.id]).med})).sort((a,b)=>sortByName(a.x.p,b.x.p));
+  efdPage(w,'Πρώτες βοήθειες — '+(e.title||''),efdHead(e,'Πρώτες βοήθειες')
+    +`<table><thead><tr><th style="width:4%">Α/Α</th><th style="width:24%">Ονοματεπώνυμο</th><th style="width:8%">Ομ. αίματος</th><th style="width:12%">Αντιτετανικό</th><th>Ιατρικά</th></tr></thead><tbody>${rows.map((y,i)=>
+      `<tr><td class="c">${i+1}</td><td><b>${esc(y.x.p.last_name||'')}</b> ${esc(y.x.p.first_name||'')}${isLed(y.x.p)?' <span class="k">(βαθμοφόρος)</span>':''}</td>
+       <td class="c">${esc(y.m.blood_type||'—')}</td><td class="sm">${y.m.tetanus===false?'ΟΧΙ':y.m.tetanus_until?esc(fdate(y.m.tetanus_until)):'—'}</td>
+       <td class="k">${y.d.filter(t=>!/^Αντιτετανικό/.test(t)).map(esc).join('<br>')||'—'}</td></tr>`).join('')}</tbody></table>`+efdNo(r.no),true);
+}
+
+const efdWarrant=pid=>{const w=(D.war||[]).filter(x=>x.person_id===pid&&(!x.scout_year||x.scout_year===YEAR))
+  .sort((a,b)=>(b.approved_on?1:0)-(a.approved_on?1:0))[0]; return (w&&w.number)||''};
+const efdSigs=e=>`<div class="sig"><div>Αρχηγός Τμήματος${e.section?' · '+esc(e.section):''}</div><div>Αρχηγός Συστήματος · σφραγίδα</div></div>`;
+async function efdProvKids(e,parts,btn){
+  const w=efdWin('Επαρχία · παιδιά — '+(e.title||'')); if(!w)return;
+  const r=await efdPrep(e,parts,'kids','φάκελος δράσης · αρχείο Επαρχίας',btn); if(!r){w.close();return}
+  const rows=r.list.slice().sort((a,b)=>sortByName(a.p,b.p));
+  efdPage(w,'Επαρχία · παιδιά — '+(e.title||''),efdHead(e,'Δήλωση συμμετοχής — μέλη')
+    +`<table><thead><tr><th style="width:5%">Α/Α</th><th style="width:35%">Ονοματεπώνυμο</th><th>Διατροφικά / ιατρικά</th></tr></thead><tbody>${rows.map((x,i)=>{
+      const m=efdMed(r.med[x.p.id]); const t=[...new Set(m.diet.concat(m.med))];
+      return `<tr><td class="c">${i+1}</td><td><b>${esc(x.p.last_name||'')}</b> ${esc(x.p.first_name||'')}</td><td class="k">${t.map(esc).join('<br>')||'—'}</td></tr>`}).join('')}</tbody></table>`
+    +`<div class="note">Οι γονείς υπέγραψαν τη δήλωση συμμετοχής, με τα στοιχεία υγείας και διατροφής, και τα κρατά το Σύστημα.</div>`
+    +efdNo(r.no)+efdSigs(e),false);
+}
+function efdProvLeds(e,parts){
+  const leds=efdLeds(parts).slice().sort((a,b)=>sortByName(a.p,b.p));
+  const w=efdWin('Επαρχία · βαθμοφόροι — '+(e.title||'')); if(!w)return;
+  const rows=leds.length?leds.map((x,i)=>`<tr><td class="c">${i+1}</td><td><b>${esc(x.p.last_name||'')}</b> ${esc(x.p.first_name||'')}</td>
+      <td class="c">${esc(efdWarrant(x.p.id)||'—')}</td><td>${esc(x.pa.role||'')}</td><td class="sm">Όλη τη δράση</td>
+      <td>${esc(ctFmt(ctCallNo(x.p.id)||x.p.phone||''))}</td><td class="k">${esc(x.p.email||'')}</td></tr>`).join('')
+    :`<tr><td class="c">1</td><td colspan="6">Εκκρεμεί — θα επικοινωνήσουμε μαζί σας</td></tr>`;
+  efdPage(w,'Επαρχία · βαθμοφόροι — '+(e.title||''),efdHead(e,'Δήλωση συμμετοχής βαθμοφόρων')
+    +`<table><thead><tr><th style="width:4%">Α/Α</th><th style="width:22%">Ονοματεπώνυμο</th><th style="width:10%">Αρ. Εντολής</th><th style="width:16%">Θέση</th>
+      <th style="width:10%">Συμμετοχή</th><th style="width:12%">Τηλέφωνο</th><th>Email</th></tr></thead><tbody>${rows}</tbody></table>`+efdSigs(e),true);
+}
+
+function efDocs(e,parts){
+  const k=efdKids(parts).length, pool=efdPool(e).length;
+  const open=typeof signupOpen==='function'&&signupOpen(e);
+  const allDef=open&&!Array.isArray(e.invitees);
+  const b=(id,t,d)=>`<div style="display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)">
+      <div style="flex:1;min-width:0"><b style="font-size:13.5px">${t}</b><div class="dim" style="font-size:12px;margin-top:2px">${d}</div></div>
+      <button class="btn sm" id="${id}">Εκτύπωση</button></div>`;
+  return `<div class="card pad">
+    <div class="dim" style="font-size:12.5px;line-height:1.5">Τα αρχεία που ετοιμάζονταν όταν έκλεινε μια δήλωση — από τα στοιχεία του e76.
+      Τα στοιχεία υγείας ζητούνται ένα-ένα και αφήνουν ίχνος· δεν αποθηκεύεται τίποτα.</div>
+    <div style="padding:9px 0;border-top:1px solid var(--line);margin-top:9px">
+      <b style="font-size:13.5px">Λίστα υπογραφών</b>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin:6px 0;font-size:13px">
+        <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdMode" value="all"${allDef?' checked':''} style="width:auto"> Με όλους (${pool})</label>
+        <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdMode" value="decl"${allDef?'':' checked'} style="width:auto"> Μόνο όσοι δήλωσαν (${k})</label></div>
+      <div class="dim" style="font-size:12px">«Με όλους» όταν καλείται όλο το τμήμα ή η δήλωση είναι ακόμα ανοιχτή — με την ημερομηνία δήλωσης δίπλα σε όποιον δήλωσε.
+        Χωρίς στήλη απόδειξης ή πληρωμής.</div>
+      <button class="btn sm p" id="efdSign" style="margin-top:7px">Εκτύπωση λίστας</button></div>
+    ${b('efdLead','Για τους βαθμοφόρους','Ανά ενωμοτία / εξάδα: λίστα κλήσεων της δράσης και τι να προσέξουμε.')}
+    ${b('efdKit','Κουζίνα','Μόνο διατροφή — η κουζίνα δεν βλέπει ιατρικά.')}
+    ${b('efdFa','Πρώτες βοήθειες','Ομάδα αίματος, αντιτετανικό και ιατρικά — μόνο για τον υπεύθυνο υγείας.')}
+    ${b('efdPk','Για Επαρχία / ΓΕ · μέλη','Ονοματεπώνυμο και διατροφικά/ιατρικά, με υπογραφές Α.Τ. και Α.Σ.')}
+    ${b('efdPl','Για Επαρχία / ΓΕ · βαθμοφόροι','Εντολή, θέση, τηλέφωνο, email — «Εκκρεμεί» αν δεν ορίστηκε ακόμα.')}
+  </div>`;
+}
+function efDocsWire(e,parts){
+  const on=(id,fn)=>{const x=$(id); if(x)x.onclick=()=>fn(x)};
+  on('efdSign',()=>efdSign(e,parts,((document.querySelector('input[name="efdMode"]:checked')||{}).value)==='all'?'all':'decl'));
+  on('efdLead',x=>efdLeaders(e,parts,x));
+  on('efdKit',x=>efdKitchen(e,parts,x));
+  on('efdFa',x=>efdFirstAid(e,parts,x));
+  on('efdPk',x=>efdProvKids(e,parts,x));
+  on('efdPl',()=>efdProvLeds(e,parts));
+}
 const ATT_COLS=17;    
 const attKey=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
   .replace(/ς/g,'σ').split(/[\s\-]+/).filter(Boolean).sort().join(' ');
@@ -17777,7 +17985,7 @@ function contactBlockHTML(p){
   if(isKid){
     h+=`<div class="dsec"><h4>Λίστα κλήσεων${L.length>1?' <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:400">· με σειρά προτεραιότητας</span>':''}</h4>
       ${L.map((x,i)=>ctLineHTML(p,x,i,L.length,canOrd,canEc)).join('')||'<div class="dim" style="font-size:12.5px">Κανένας καταχωρημένος.</div>'}
-      ${add}${ctViberHTML(p,carersOfPerson(p.id))}</div>${ctEventEcsHTML(p)}`;
+      ${add}${leadsKid(p)?'<div id="ctSug"></div>':''}${ctViberHTML(p,carersOfPerson(p.id))}</div>${ctEventEcsHTML(p)}`;
   } else if(L.length||canEc){
     h+=`<div class="dsec"><h4>Σε έκτακτη ανάγκη${L.length>1?' <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:400">· με σειρά</span>':''}</h4>
       ${L.map((x,i)=>ctLineHTML(p,x,i,L.length,canOrd,canEc)).join('')||'<div class="dim" style="font-size:12.5px">Καμία επαφή — ποιον καλούμε αν συμβεί κάτι;</div>'}
@@ -17858,6 +18066,28 @@ function ctWire(p){
     e.expires_on=(data&&data.expires_on)||'2000-01-01'; saveCache(); toast('Αφαιρέθηκε'); ctRedraw(p);
   });
   const ve=$('ctVbEd'); if(ve)ve.onclick=()=>ctViberEditor(p);
+  if($('ctSug'))ctSugLoad(p);
+}
+async function ctSugLoad(p){
+  const {data,error}=await sb.rpc('ec_suggest',{p_person:p.id});
+  const box=$('ctSug'); if(error||!box||!data||!data.length)return;
+  box.innerHTML=data.slice(0,3).map(s=>`<div class="ctSugRow" style="margin-top:8px;padding:8px 9px;border-radius:8px;background:var(--accbg);font-size:12.5px">
+      <b>${esc(s.name||'Επαφή')}</b>${s.relation?` <span class="dim">· ${esc(s.relation)}</span>`:''} · ${esc(ctFmt(s.phone))}
+      <div class="dim" style="margin-top:2px">Δηλώθηκε σε ${s.n_events} δράσεις (τελευταία ${esc(ctD(s.last_on))}). Να μπει στη μόνιμη λίστα κλήσεων;</div>
+      <div style="display:flex;gap:6px;margin-top:6px"><button class="btn p sm" data-sgy="${esc(s.phone)}">Ναι, μόνιμα</button><button class="btn sm" data-sgn="${esc(s.phone)}">Όχι</button></div></div>`).join('');
+  box.querySelectorAll('[data-sgy]').forEach(b=>b.onclick=async()=>{
+    const s=data.find(x=>x.phone===b.dataset.sgy); if(!s)return; b.disabled=true;
+    const {data:r,error:er}=await sb.rpc('ec_save',{p_person:p.id,p_id:null,p_name:s.name||'Επαφή',p_relation:s.relation||null,
+      p_phone:s.phone,p_alt:null,p_note:'Από πρόταση: δηλώθηκε σε '+s.n_events+' δράσεις',p_event:null});
+    if(er){b.disabled=false; return toast('Δεν αποθηκεύτηκε: '+er.message)}
+    D.ecs=(D.ecs||[]).filter(x=>x.id!==r.id).concat([r]); saveCache(); toast('Μπήκε στη μόνιμη λίστα κλήσεων'); ctRedraw(p);
+  });
+  box.querySelectorAll('[data-sgn]').forEach(b=>b.onclick=async()=>{
+    b.disabled=true;
+    const {error:er}=await sb.rpc('ec_suggest_dismiss',{p_person:p.id,p_phone:b.dataset.sgn});
+    if(er){b.disabled=false; return toast('Δεν καταχωρήθηκε: '+er.message)}
+    const row=b.closest('.ctSugRow'); if(row)row.remove(); toast('Δεν θα ξαναπροταθεί');
+  });
 }
 
 function contactEditor(pid, host, done, o){
