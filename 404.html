@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-03 20:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-04 08:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1537,7 +1537,7 @@ function saveCache(now){
   if(_sct)return;
   _sct=setTimeout(()=>{_sct=null;_saveCacheNow()},1200);
 }
-const CACHE_SKIP=new Set(['cl','care_op','ecs','sen','med','gu','idrev','wl','wlc','wlct','elog','sapp','pe','cons','coh']);
+const CACHE_SKIP=new Set(['cl','care_op','ecs','sen','med','gu','idrev','wl','wlc','wlct','elog','sapp','pe','cons','coh','phn','cpf']);
 function _saveCacheNow(){try{if(!(D.bh||[]).length)return;
   const lite={}; Object.keys(D).forEach(k=>{ if(!CACHE_SKIP.has(k)) lite[k]=D[k]; });
   localStorage.setItem(CK,JSON.stringify({t:Date.now(),u:(ME&&ME.email)||null,D:lite}))}catch(e){}}
@@ -1588,8 +1588,8 @@ function lazyFire(k){
     LZ[k]=data||[];
     if(LZ[k].length===1000){ try{ if(!CUT.includes(k))CUT.push(k); console.warn('e76: ΚΟΠΗΚΕ στις 1000 —',k);
       toast('Κόπηκαν δεδομένα στις 1000 γραμμές: '+k+' — χρειάζεται σελιδοποίηση') }catch(e){} }
-    if(LOADED&&ROUTE)stay();
-    try{ const dw=$('drw'); if(dw&&dw.classList.contains('on')&&OPENPID)openProfile(OPENPID) }catch(e){}
+    if(LOADED&&ROUTE&&!document.querySelector('#view [data-ctediting]'))stay();
+    try{ const dw=$('drw'); if(dw&&dw.classList.contains('on')&&OPENPID&&!dw.querySelector('[data-ctediting]'))openProfile(OPENPID) }catch(e){}
   }, e=>{ LZON[k]=null; console.warn('e76 τεμπέλικο '+k+':',e) });
 }
 lazyArm();
@@ -1771,9 +1771,12 @@ async function loadAll(){
     sb.from('structure_plan').select('*'),
     sb.from('structure_plan_row').select('plan_id,person_id,role_code,part_time,section,meta').limit(3000),
     sb.from('warrants').select('id,person_id,scout_year,kind,number,role_code,status,approved_on,source').limit(3000),
-    sb.from('committee_members').select('*').limit(1000)
+    sb.from('committee_members').select('*').limit(1000),
+    pageAll('person_phones','id,person_id,number,kind,viber,seq,note'),
+    sb.from('contact_prefs').select('person_id,viber_phone_id,note').limit(1000),
+    sb.from('section_links').select('id,scout_year,section,audience,url,label').limit(500)
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc','wlct','rr','rl','event_member_open','structure_plan','structure_plan_row','warrants','committee_members'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc','wlct','rr','rl','event_member_open','structure_plan','structure_plan_row','warrants','committee_members','person_phones','contact_prefs','section_links'];
   const _t0=Date.now();
   const TMO=12000;
   const CORE=new Set([0,1,36,37,40,42,17,12,35,65]);
@@ -1824,7 +1827,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.cd=r[71]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.emo=r[86]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.cd=r[71]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.emo=r[86]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[]; D.phn=r[91]?.data||[]; D.cpf=r[92]?.data||[]; D.slk=r[93]?.data||[];
   if(!(D.cl||[]).length && (D.care_op||[]).length) D.cl=D.care_op.map(x=>({...x}));
   mergeStubs();
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
@@ -3070,15 +3073,16 @@ async function openProfile(id){
         <div class="dim" style="font-size:12.5px">${esc(sec||'')}${y.group_name?' · '+esc(y.group_name):''}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
       <button class="btn gh sm" id="dFiles" title="Αρχεία του προσώπου">${ic('book',15)}</button>
       <button class="btn gh sm" id="dArch" title="${p.status==='Αρχειοθετημένος'?'Επαναφορά στους ενεργούς':'Αρχειοθέτηση'}">${ic('down',15)}</button>
-      <button class="btn sm" id="dEdit" title="Επεξεργασία στοιχείων">${ic('cog',15)} Επεξεργασία</button>
+      ${(ME.role==='admin'||(isMem&&leadsKid(p)))?`<button class="btn sm" id="dEdit" title="Επεξεργασία στοιχείων">${ic('cog',15)} Επεξεργασία</button>`:''}
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec" id="dEditBox" style="display:none;background:var(--accbg)">
       <h4>Επεξεργασία</h4>
       <div style="display:grid;gap:8px">
-        <label style="font-size:12px;color:var(--ink3)">Κινητό<input id="eP" value="${esc(p.phone||'')}"></label>
-        <label style="font-size:12px;color:var(--ink3)">Email<input id="eE" value="${esc(p.email||'')}"></label>
+        ${ME.role==='admin'?`<label style="font-size:12px;color:var(--ink3)">Κινητό<input id="eP" value="${esc(p.phone||'')}"></label>
+        <label style="font-size:12px;color:var(--ink3)">Email<input id="eE" value="${esc(p.email||'')}"></label>`
+        :'<div class="dim" style="font-size:12px">Τηλέφωνα & emails: με το ✎ στην «Επικοινωνία».</div>'}
         ${isMem?`<label style="font-size:12px;color:var(--ink3)">Υποομάδα<input id="eG" value="${esc(y.group_name||'')}" list="glist"></label>
-        <label style="font-size:12px;color:var(--ink3)">Τάξη <span class="dim">· χρονιά ${esc(YEAR)}</span>
+        ${ME.role==='admin'?`<label style="font-size:12px;color:var(--ink3)">Τάξη <span class="dim">· χρονιά ${esc(YEAR)}</span>
           <select id="eR">${(()=>{
             const cfg=(D.sc||[]).find(c=>c.section===sec&&c.has_members);
             const list=(cfg&&cfg.grades&&cfg.grades.length)?cfg.grades:GRADES;
@@ -3089,7 +3093,7 @@ async function openProfile(id){
               +list.map(g=>`<option${g===cur?' selected':''}>${esc(g)}</option>`).join('')
               +`<optgroup label="Άλλες τάξεις">${GRADES.filter(g=>!list.includes(g))
                   .map(g=>`<option${g===cur?' selected':''}>${esc(g)}</option>`).join('')}</optgroup>`;
-          })()}</select></label>
+          })()}</select></label>`:''}
         <datalist id="glist">${[...new Set(D.my.filter(x=>x.scout_year===YEAR&&x.section===sec).map(x=>x.group_name).filter(Boolean))].map(g=>`<option>${esc(g)}</option>`).join('')}</datalist>`
         :`<label style="font-size:12px;color:var(--ink3)">Ιδιότητα / ανάθεση<input id="eA" value="${esc(p.appointment&&p.appointment!=='-'?p.appointment:'')}"></label>`}
         <div style="display:flex;gap:8px"><button class="btn p sm" id="eSave">Αποθήκευση</button><button class="btn sm" id="eCancel">Άκυρο</button></div>
@@ -3129,15 +3133,10 @@ async function openProfile(id){
                  +tmpHTML):'')})()}
       ${kv('Τάξη',esc(y.grade||''))}
       ${kv('Ημ. γέννησης',sn.dob?fdate(sn.dob)+(agey(sn.dob)?` <span class="dim">(${agey(sn.dob)} ετών)</span>`:''):'')}
-      ${kv('Τηλέφωνο',p.phone?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'')}
-      ${kv('Email',p.email?`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`:'')}
       ${p.status==='Αρχειοθετημένος'?'<div style="margin-top:7px"><span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">Αρχειοθετημένος</span></div>':''}
       ${p.is_commissioner?'<div style="margin-top:7px"><span class="pill">Έφορος</span></div>':''}${p.is_network?'<span class="pill">Δίκτυο</span>':''}</div>
 
-    ${(gu.father_name||gu.mother_name)?`<div class="dsec"><h4>Γονείς & κηδεμόνες</h4>
-      ${[['Πατέρας',gu.father_name,gu.father_mobile,gu.father_email],['Μητέρα',gu.mother_name,gu.mother_mobile,gu.mother_email]].filter(x=>x[1]).map(([r,n,t,m])=>
-        `<div style="padding:5px 0"><div style="font-size:13.5px"><span class="dim" style="font-size:11.5px">${r}</span> ${esc(n)}</div>
-         <div style="font-size:12.5px">${t?`<a href="tel:${esc(t)}">${fphone(t)}</a>`:''}${m?` · <a href="mailto:${esc(m)}">${esc(m)}</a>`:''}</div></div>`).join('')}</div>`:''}
+    ${contactBlockHTML(p)}
     ${oneCarerHTML(p)}
 
     ${(()=>{
@@ -3184,6 +3183,7 @@ async function openProfile(id){
     ${histHTML(p)}
     ${labelsHTML(p)}`;
   drw.classList.add('on');
+  ctWire(p);
   wireLabels(p);
   oneCarerWire(p);    
   wireFiles({person_id:p.id},()=>openProfile(p.id));
@@ -3210,7 +3210,7 @@ async function openProfile(id){
   wireCerts(p,()=>openProfile(p.id));
   wireSchools(()=>openProfile(p.id));
   if(!isMem)wireVeh(p,()=>openProfile(p.id));
-  $('dEdit').onclick=()=>{const b=$('dEditBox');const on=b.style.display==='none';
+  if($('dEdit'))$('dEdit').onclick=()=>{const b=$('dEditBox');const on=b.style.display==='none';
     b.style.display=on?'block':'none'; if(on){b.scrollIntoView({block:'nearest'});const i=$('eP');if(i)i.focus()}};
   const df=$('dFiles'); if(df)df.onclick=()=>{const l=$('docList');
     if(l)l.scrollIntoView({behavior:'smooth',block:'center'}); const fi=$('docFile'); if(fi)fi.focus()};
@@ -3228,6 +3228,15 @@ async function openProfile(id){
   $('eCancel').onclick=()=>{$('dEditBox').style.display='none'};
   $('eSave').onclick=async()=>{
     const btn=$('eSave'); btn.disabled=true; btn.textContent='…';
+    if(ME.role!=='admin'){
+      const g=$('eG')?($('eG').value.trim()||null):undefined;
+      if(g!==undefined&&g!==(y.group_name||null)){
+        const err=await sgMoveOne(p.id,g,null);
+        if(err){btn.disabled=false; btn.textContent='Αποθήκευση'; return toast('Δεν αποθηκεύτηκε: '+err)}
+        toast('Αποθηκεύτηκε');
+      }
+      return openProfile(p.id);
+    }
     const bh={phone:$('eP').value.trim()||null,email:$('eE').value.trim()||null};
     if(!isMem&&$('eA'))bh.appointment=$('eA').value.trim()||null;
     Object.assign(p,bh);
@@ -3250,11 +3259,7 @@ function histHTML(p){
   const sh=(D.sh||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.start_date||'')<(a.start_date||'')?-1:1);
   const tr=(D.tr||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.date||'')<(a.date||'')?-1:1);
   const ho=(D.ho||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.award_date||'')<(a.award_date||'')?-1:1);
-  const em=(D.pe||[]).filter(x=>x.person_id===p.id);
-  let out='';
-  if(em.length>1||em.some(e=>e.label!=='προσωπικό'))
-    out+=`<div class="dsec"><h4>Ηλεκτρονικές διευθύνσεις</h4>${em.map(e=>
-      `<div class="kv"><b>${esc(e.label)}</b><span><a href="mailto:${esc(e.address)}">${esc(e.address)}</a>${e.is_primary?' <span class="pill" style="font-size:10px">κύριο</span>':''}</span></div>`).join('')}</div>`;
+  let out='';    
   if(sh.length){
     const yrs=sh.filter(x=>x.counts_for_service!==false).reduce((s,x)=>s+(x.duration_months||0),0);
     out+=`<div class="dsec"><h4>Διοικητικές μεταβολές <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:400">· ${sh.length}${yrs?` · ${Math.floor(yrs/12)} έτη ${yrs%12} μήνες υπηρεσίας`:''}</span></h4>
@@ -6902,11 +6907,10 @@ V.myprofile=()=>{
 
     <div class="card pad">
       <div class="kv"><span style="flex:1">Όνομα</span><b style="flex:0 1 230px;max-width:230px;padding-left:2px">${pn(me)}</b></div>
-      ${f('phone','Κινητό','tel')}
-      ${f('home_phone','Σταθερό','tel')}
-      ${f('email','Email','email')}
+      <div style="font-size:12.5px;color:var(--ink2);margin-top:8px">Τηλέφωνα & emails — ο πρώτος αριθμός είναι αυτός που καλούμε· σημείωσε ποιος έχει Viber.</div>
+      <div id="meCt"></div>
       ${f('home_address','Διεύθυνση')}
-      <button class="btn p" id="meSave" style="width:100%;margin-top:12px">Αποθήκευση</button>
+      <button class="btn p" id="meSave" style="width:100%;margin-top:12px">Αποθήκευση διεύθυνσης</button>
       <div id="meMsg" class="dim" style="font-size:12.5px;margin-top:8px;text-align:center"></div>
     </div>
 
@@ -6926,10 +6930,13 @@ V.myprofile=()=>{
         Ο περιορισμός επιβάλλεται από τη βάση δεδομένων, όχι από κρυμμένα κουμπιά.
       </div></div>`;
 
+  contactEditor(me.id,$('meCt'),ok=>{if(ok)V.myprofile()},{noCancel:true});
   const dr={};
   document.querySelectorAll('[data-me]').forEach(i=>i.onchange=()=>{dr[i.dataset.me]=i.value||null});
   $('meSave').onclick=async()=>{
-    const m=$('meMsg'); m.style.color='var(--ink2)'; m.textContent='Αποθήκευση…';
+    const m=$('meMsg');
+    if(!Object.keys(dr).length){m.style.color='var(--ink2)'; m.textContent='Καμία αλλαγή στη διεύθυνση. Τα τηλέφωνα/emails σώζονται με το δικό τους κουμπί.'; return}
+    m.style.color='var(--ink2)'; m.textContent='Αποθήκευση…';
     const {error}=await sb.from('badgeholders').update(dr).eq('id',me.id);
     if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
     Object.assign(me,dr); m.style.color='var(--ok)'; m.textContent='Αποθηκεύτηκε.'; toast('Τα στοιχεία ενημερώθηκαν');
@@ -7077,7 +7084,8 @@ V.mykids=()=>{
       <div class="pdocs">${reqs.map(r=>docRowHTML(p,r)).join('')}${docOrphansHTML(p)}</div>
       ${fl.length?`<div class="cflag">${fl.map(f=>`<b>${esc(f.kind)}:</b> ${esc(f.detail)}`).join(' · ')}</div>`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px">
-        <button class="btn sm" data-pe="${p.id}">${(VIEWAS&&VIEWAS.role==='parent')?'Στοιχεία επικοινωνίας':'Τα στοιχεία μας'}</button></div>
+        <button class="btn sm" data-pe="${p.id}">${(VIEWAS&&VIEWAS.role==='parent')?'Στοιχεία επικοινωνίας':'Τα στοιχεία μας'}</button>
+        ${slinkKidHTML(p)}</div>
     </div>`};
   const lensP=(VIEWAS&&VIEWAS.role==='parent'&&VIEWAS.pid)
     ? D.bh.find(b=>b.id===VIEWAS.pid) : null;
@@ -9753,8 +9761,10 @@ ${rows.map((r,i)=>`<Row>${r.map(c=>i===0?cell(c).replace('<Cell>','<Cell ss:Styl
 let SGSEC='Αγέλη';
 let SGTO=null;
 let SGFROM=null;    
+let SGSEC_SET=false;
 V.groups=()=>{
   const secs=['Αγέλη','Ομάδα','Κοινότητα'];
+  if(!SGSEC_SET){SGSEC_SET=true; const ls=leadSecs(); if(ME.role!=='admin'&&ls.length&&!ls.includes(SGSEC))SGSEC=secs.find(x=>ls.includes(x))||SGSEC}
   const sgs=(D.sg||[]).filter(s=>s.scout_year===YEAR&&s.section===SGSEC&&s.active!==false)
     .sort((a,b)=>(a.seq||0)-(b.seq||0)||a.name.localeCompare(b.name,'el'));
   const prevSg=(D.sg||[]).filter(s=>s.scout_year===prevYear(YEAR)&&s.section===SGSEC&&s.active!==false)
@@ -9793,7 +9803,9 @@ V.groups=()=>{
         <button class="btn sm" id="sgAdd">+</button>
         ${!sgs.length&&prevSg.length?`<button class="btn sm p" id="sgPrev">Φέρε τις περσινές (${prevSg.length})</button>`:''}
         ${sgs.length?'<button class="btn sm" id="sgPaste">Επικόλληση λίστας</button>':''}
-        <button class="btn sm" id="sgExp">${ic('down',14)} Εξαγωγή</button></div></div>
+        <button class="btn sm" id="sgExp">${ic('down',14)} Εξαγωγή</button>
+        <button class="btn sm" id="sgVb" title="Ποιος αριθμός Viber για κάθε παιδί και τους γονείς του">${ic('phone',14)} Λίστα Viber</button></div></div>
+    ${slinkCardHTML(SGSEC)}
     ${listBar('',false)}<div class="cgrid">${sgs.map(card).join('')||'<div class="card pad dim">Καμία υποομάδα ακόμη — γράψε όνομα πιο πάνω και πάτα +</div>'}</div>
     ${SGTO?`<div class="card pad" style="margin-bottom:12px;background:var(--accbg);border-color:var(--accln)">
       <b>Μοίρασμα σε «${esc(SGTO)}»</b>
@@ -9808,6 +9820,8 @@ V.groups=()=>{
         `<span class="pill${SGTO?' sgpick':''}" style="${SGTO?'cursor:pointer':''}"
           ${SGTO?`data-sgmove="${p.id}"`:''}><span class="${SGTO?'':'pn'}" ${SGTO?'':`data-p="${p.id}"`}>${pn(p)}</span></span>`).join('')}</div>`:''}`;
   wireVQ();
+  slinkWire(SGSEC);
+  const vbb=$('sgVb'); if(vbb)vbb.onclick=()=>viberExport(SGSEC,kids);
   document.querySelectorAll('[data-sgto]').forEach(b=>b.onclick=()=>{
     SGTO = (SGTO===b.dataset.sgto) ? null : b.dataset.sgto; V.groups()});
   const stop=$('sgStop'); if(stop)stop.onclick=()=>{SGTO=null; V.groups()};
@@ -9857,13 +9871,8 @@ V.groups=()=>{
 async function sgMoveOne(pid,to,from){
   const y=(D.my||[]).find(x=>x.person_id===pid&&x.scout_year===YEAR); if(!y)return 'δεν βρέθηκε εγγραφή χρονιάς';
   const today=isoLocal(new Date());
-  if(from&&from!==today){
-    const {data,error}=await sb.rpc('sg_move',{p_person:pid,p_year:YEAR,p_group:to,p_from:from});
-    if(error)return error.message; if(data&&data.error)return data.error;
-  } else {
-    const {error}=await sb.from('member_year').update({group_name:to}).eq('person_id',pid).eq('scout_year',YEAR);
-    if(error)return error.message;
-  }
+  const {data,error}=await sb.rpc('sg_move',{p_person:pid,p_year:YEAR,p_group:to,p_from:(from&&from!==today)?from:null});
+  if(error)return error.message; if(data&&data.error)return data.error;
   y.group_name=to; saveCache(); return null;
 }
 function sgPastePanel(sec,sgs,kids){
@@ -17614,6 +17623,281 @@ function guardiansBody(){
 function cp(t,l){navigator.clipboard.writeText(t).then(()=>toast(`Αντιγράφηκαν τα ${l}`))}
 function toast(m){const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--side);color:#fff;padding:10px 16px;border-radius:22px;font-size:13.5px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.28)';document.body.appendChild(d);setTimeout(()=>d.remove(),2300)}
 
+const CT_KINDS=['κινητό','σταθερό','εργασία','μόνο Viber'];
+const CT_SECS=['Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα'];
+const ctAdm=()=>ME.role==='admin';
+function leadSecs(){
+  const cy=curScoutYear();
+  return [...new Set((ME.hats||[]).filter(h=>!h.valid_to&&h.scope_level==='section'
+    &&/^(Αρχηγ|Υπαρχηγ)/.test(h.title||'')&&CT_SECS.includes(h.scope_value)
+    &&(!h.scout_year||h.scout_year===cy)).map(h=>h.scope_value))];
+}
+function ctSecCur(p){
+  const cy=curScoutYear();
+  const y=(D.my||[]).find(x=>x.person_id===p.id&&x.scout_year===cy&&!x.voided_at);
+  return (y&&y.section)||p.section||'';
+}
+function leadsKid(p){
+  if(!p||(p.kind||'')!=='Μέλος')return false;
+  if(ctAdm())return true;
+  return leadSecs().includes(ctSecCur(p));
+}
+function canEditContacts(pid){
+  if(!pid)return false;
+  if(ctAdm()||pid===ME.person_id)return true;
+  if(leadsKid(D.bh.find(b=>b.id===pid)))return true;
+  return (D.cl||[]).some(c=>c.carer_id===pid&&!c.valid_to&&!c.restricted
+    &&leadsKid(D.bh.find(b=>b.id===c.member_id)));
+}
+function ctStub(pid){
+  const b=D.bh.find(x=>x.id===pid); if(b)return b;
+  const c=(D.cl||[]).find(x=>x.carer_id===pid); return c?carerOfLink(c):null;
+}
+function ctFmt(n){
+  const s=String(n||'');
+  if(/^\+30\d{10}$/.test(s))return s.replace(/^\+30(\d{3})(\d{3})(\d{4})$/,'+30 $1 $2 $3');
+  return s.startsWith('+')?s:fphone(s);
+}
+function phonesOf(pid){
+  const rows=(D.phn||[]).filter(x=>x.person_id===pid).sort((a,b)=>(a.seq||0)-(b.seq||0));
+  if(rows.length)return rows;
+  const p=ctStub(pid); if(!p)return [];
+  const out=[], add=(n,k,v)=>{const s=String(n||'').replace(/\s+/g,'').trim();
+    if(!s||s==='-'||out.some(o=>o.number===s))return;
+    out.push({id:null,person_id:pid,number:s,kind:k,viber:v,_legacy:true})};
+  add(p.phone,/^2\d{7}$/.test(String(p.phone||'').replace(/\D/g,''))?'σταθερό':'κινητό',!/^2\d{7}$/.test(String(p.phone||'').replace(/\D/g,'')));
+  add(p.home_phone,'σταθερό',false); add(p.work_phone,'εργασία',false);
+  return out;
+}
+function emailsOf(pid){
+  const rows=(D.pe||[]).filter(x=>x.person_id===pid)
+    .sort((a,b)=>(b.is_primary?1:0)-(a.is_primary?1:0)||(a.seq||0)-(b.seq||0));
+  if(rows.length)return rows;
+  const p=ctStub(pid);
+  return p&&/@/.test(p.email||'')?[{id:null,person_id:pid,address:p.email,is_primary:true,_legacy:true}]:[];
+}
+function viberOf(kid){
+  const pref=(D.cpf||[]).find(x=>x.person_id===kid)||{};
+  if(pref.viber_phone_id){
+    const ph=(D.phn||[]).find(x=>x.id===pref.viber_phone_id);
+    if(ph)return {ph, via:ph.person_id!==kid?ph.person_id:null, note:pref.note||'', set:true};
+  }
+  const own=phonesOf(kid).find(x=>x.viber);
+  return {ph:own||null, via:null, note:pref.note||'', set:false};
+}
+const ctVb='<span class="pill" style="font-size:10px;padding:1px 6px;background:var(--accbg);color:var(--acc);border-color:transparent">Viber</span>';
+function ctPhonesLine(pid,compact){
+  const ps=phonesOf(pid);
+  if(!ps.length)return '<span class="dim" style="font-size:12.5px">— χωρίς τηλέφωνο —</span>';
+  return ps.map((x,i)=>`<div style="font-size:${i?'12':'13.5'}px;${i?'color:var(--ink2)':''}">
+      <a href="tel:${esc(x.number)}"${i?'':' style="font-weight:600"'}>${esc(ctFmt(x.number))}</a>
+      <span class="dim" style="font-size:11px">${esc(x.kind||'')}</span> ${x.viber?ctVb:''}
+      ${x.note?`<span class="dim" style="font-size:11px">· ${esc(x.note)}</span>`:''}</div>`)
+    .slice(0,compact?2:99).join('');
+}
+function ctMailsLine(pid){
+  const es=emailsOf(pid); if(!es.length)return '';
+  return es.map((e,i)=>`<div style="font-size:${i?'12':'13'}px"><a href="mailto:${esc(e.address)}">${esc(e.address)}</a></div>`).join('');
+}
+
+function contactBlockHTML(p){
+  const isKid=(p.kind||'')==='Μέλος';
+  const edit=id=>canEditContacts(id)?`<button class="btn gh sm" data-cted="${id}" title="Τηλέφωνα & emails">✎</button>`:'';
+  let h=`<div id="ctBlk"><div class="dsec"><div style="display:flex;align-items:center;gap:6px">
+      <h4 style="margin:0;flex:1">Επικοινωνία</h4>${edit(p.id)}</div>
+      <div data-cthost="${p.id}" style="margin-top:6px">${ctPhonesLine(p.id)}${ctMailsLine(p.id)}</div></div>`;
+  if(isKid){
+    const cs=carersOfPerson(p.id);
+    const canOrd=leadsKid(p)&&cs.length>1&&cs.every(x=>x.l&&x.l.id);
+    h+=`<div class="dsec"><h4>Γονείς & κηδεμόνες${cs.length>1?' <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:400">· με σειρά προτεραιότητας</span>':''}</h4>
+      ${cs.map((x,i)=>`<div style="padding:7px 0;${i?'border-top:1px solid var(--line)':''}">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="flex:1;min-width:0;font-size:13.5px"><b>${i+1}.</b> ${x.p._op?esc(nm(x.p)):`<span class="pn" data-p="${x.p.id}">${esc(nm(x.p))}</span>`}
+            <span class="dim" style="font-size:11.5px">· ${esc(x.l.relation||'κηδεμόνας')}${x.l.receives_comms===false?' · ΟΧΙ επικοινωνία':''}</span></div>
+          ${canOrd?`<button class="btn gh sm" data-cto="${x.l.id}|-1" ${i?'':'disabled'} aria-label="Πιο πάνω">↑</button>
+            <button class="btn gh sm" data-cto="${x.l.id}|1" ${i<cs.length-1?'':'disabled'} aria-label="Πιο κάτω">↓</button>`:''}
+          ${edit(x.p.id)}</div>
+        <div data-cthost="${x.p.id}" style="margin-top:3px">${ctPhonesLine(x.p.id)}${ctMailsLine(x.p.id)}</div></div>`).join('')
+        ||'<div class="dim" style="font-size:12.5px">Κανένας καταχωρημένος.</div>'}
+      ${ctViberHTML(p,cs)}</div>`;
+  }
+  return h+'</div>';
+}
+function ctViberHTML(kid,cs){
+  const v=viberOf(kid.id);
+  const who=v.via?((cs.find(x=>x.p.id===v.via)||{}).l||{}).relation||'γονέα':'';
+  const whoN=v.via?nm(ctStub(v.via)||{first_name:'',last_name:''}):'';
+  const can=canEditContacts(kid.id);
+  return `<div id="ctVb" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
+    <div style="display:flex;align-items:center;gap:6px;font-size:13px">
+      <span style="flex:1">${ctVb} ${v.ph?`<b>${esc(ctFmt(v.ph.number))}</b> <span class="dim" style="font-size:11.5px">${v.via?'· μέσω '+esc(who)+' '+esc(whoN):'· δικό του'}</span>`
+        :'<span class="dim">— το παιδί δεν έχει Viber —</span>'}
+        ${v.note?`<div class="dim" style="font-size:11.5px">${esc(v.note)}</div>`:''}</span>
+      ${can?'<button class="btn gh sm" id="ctVbEd">Αλλαγή</button>':''}</div>
+    <div id="ctVbBox"></div></div>`;
+}
+function ctViberEditor(kid){
+  const box=$('ctVbBox'); if(!box)return;
+  const cs=carersOfPerson(kid.id), pref=(D.cpf||[]).find(x=>x.person_id===kid.id)||{};
+  const own=phonesOf(kid.id).filter(x=>x.id);
+  const opt=(x,lbl)=>`<option value="${x.id}"${pref.viber_phone_id===x.id?' selected':''}>${esc(ctFmt(x.number))} · ${esc(lbl)}${x.viber?'':' (δεν έχει σημειωθεί Viber)'}</option>`;
+  box.setAttribute('data-ctediting','1');
+  box.innerHTML=`<div style="display:grid;gap:6px;margin-top:8px">
+    <select id="ctVbSel" style="font-size:12.5px">
+      <option value="">— αυτόματα: ο πρώτος δικός του αριθμός με Viber —</option>
+      ${own.length?`<optgroup label="Δικοί του">${own.map(x=>opt(x,x.kind)).join('')}</optgroup>`:''}
+      ${cs.map(x=>{const ps=phonesOf(x.p.id).filter(y=>y.id);
+        return ps.length?`<optgroup label="${esc((x.l.relation||'Κηδεμόνας')+' · '+nm(x.p))}">${ps.map(y=>opt(y,(x.l.relation||'γονέας')+' '+x.p.first_name)).join('')}</optgroup>`:''}).join('')}
+    </select>
+    <input id="ctVbNote" value="${esc(pref.note||'')}" maxlength="200" placeholder="Σημείωση — π.χ. «Viber στο ελληνικό του νούμερο»" style="font-size:12.5px">
+    <div class="dim" style="font-size:11.5px">Αν το παιδί έχει δικό του αριθμό μόνο για Viber, πρόσθεσέ τον στο ✎ της «Επικοινωνίας» με είδος «μόνο Viber».</div>
+    <div style="display:flex;gap:6px"><button class="btn p sm" id="ctVbSave">Αποθήκευση</button><button class="btn sm" id="ctVbX">Άκυρο</button></div></div>`;
+  $('ctVbX').onclick=()=>{box.innerHTML=''; box.removeAttribute('data-ctediting')};
+  $('ctVbSave').onclick=async()=>{
+    const b=$('ctVbSave'); b.disabled=true;
+    const ph=$('ctVbSel').value||null, note=$('ctVbNote').value.trim()||null;
+    const {error}=await sb.rpc('contact_viber_set',{p_kid:kid.id,p_phone:ph,p_note:note});
+    if(error){b.disabled=false; return toast('Δεν αποθηκεύτηκε: '+error.message)}
+    D.cpf=(D.cpf||[]).filter(x=>x.person_id!==kid.id).concat([{person_id:kid.id,viber_phone_id:ph,note}]);
+    toast('Το Viber ορίστηκε'); ctRedraw(kid);
+  };
+}
+function ctRedraw(p){
+  const el=$('ctBlk'); if(!el)return;
+  el.outerHTML=contactBlockHTML(p); ctWire(p);
+}
+function ctWire(p){
+  const root=$('ctBlk'); if(!root)return;
+  root.querySelectorAll('[data-cted]').forEach(b=>b.onclick=()=>{
+    const host=root.querySelector(`[data-cthost="${CSS.escape(b.dataset.cted)}"]`); if(!host)return;
+    b.style.display='none';
+    contactEditor(b.dataset.cted, host, ()=>ctRedraw(p));
+  });
+  root.querySelectorAll('[data-cto]').forEach(b=>b.onclick=async()=>{
+    const [lid,dir]=b.dataset.cto.split('|');
+    const ids=carersOfPerson(p.id).map(x=>x.l.id), i=ids.indexOf(lid), j=i+(+dir);
+    if(i<0||j<0||j>=ids.length)return;
+    [ids[i],ids[j]]=[ids[j],ids[i]];
+    root.querySelectorAll('[data-cto]').forEach(x=>x.disabled=true);
+    const {error}=await sb.rpc('care_order_save',{p_kid:p.id,p_links:ids});
+    if(error){toast('Δεν άλλαξε η σειρά: '+error.message); return ctRedraw(p)}
+    ids.forEach((id,k)=>[D.cl,D.care_op].forEach(arr=>(arr||[]).forEach(c=>{if(c.id===id)c.call_order=k+1})));
+    saveCache(); ctRedraw(p);
+  });
+  const ve=$('ctVbEd'); if(ve)ve.onclick=()=>ctViberEditor(p);
+}
+
+function contactEditor(pid, host, done, o){
+  o=o||{};
+  let ph=phonesOf(pid).map(x=>({number:ctFmt(x.number),kind:x.kind||'κινητό',viber:!!x.viber,note:x.note||''}));
+  let em=emailsOf(pid).map(x=>({address:x.address}));
+  const mv=(arr,i,d)=>{const j=i+d; if(j<0||j>=arr.length)return; [arr[i],arr[j]]=[arr[j],arr[i]]};
+  const btn=(a,i,n,k)=>`<button class="btn gh sm" data-${k}up="${i}" ${i?'':'disabled'} aria-label="Πιο πάνω">↑</button>
+      <button class="btn gh sm" data-${k}dn="${i}" ${i<n-1?'':'disabled'} aria-label="Πιο κάτω">↓</button>
+      <button class="btn gh sm" data-${k}x="${i}" aria-label="Αφαίρεση">✕</button>`;
+  const row='display:flex;gap:5px;flex-wrap:wrap;align-items:center;padding:5px 0;border-top:1px solid var(--line)';
+  host.setAttribute('data-ctediting','1');    
+  const draw=()=>{
+    host.innerHTML=`<div style="background:var(--accbg);border-radius:8px;padding:8px 9px;margin-top:4px">
+      <div class="dim" style="font-size:11.5px;margin-bottom:3px">Τηλέφωνα — <b>ο πρώτος είναι ο προτιμότερος</b>· αυτός φαίνεται στις λίστες</div>
+      ${ph.map((x,i)=>`<div style="${row}">
+        <input data-pn="${i}" value="${esc(x.number)}" inputmode="tel" placeholder="99 123456 ή +30 69…" aria-label="Αριθμός" style="flex:1 1 130px;min-width:120px;font-size:13px">
+        <select data-pk="${i}" aria-label="Είδος" style="flex:0 0 auto;max-width:118px;font-size:12.5px">${CT_KINDS.map(k=>`<option${k===x.kind?' selected':''}>${k}</option>`).join('')}</select>
+        <label style="font-size:12px;white-space:nowrap;display:flex;gap:3px;align-items:center"><input type="checkbox" data-pv="${i}"${x.viber?' checked':''}>Viber</label>
+        ${btn(ph,i,ph.length,'p')}
+        <input data-pnote="${i}" value="${esc(x.note)}" maxlength="120" placeholder="σημείωση (προαιρετικά)" aria-label="Σημείωση" style="flex:1 1 100%;font-size:12px"></div>`).join('')
+        ||'<div class="dim" style="font-size:12px;padding:4px 0">Κανένας αριθμός.</div>'}
+      <button class="btn sm" data-padd style="margin-top:4px">+ αριθμός</button>
+      <div class="dim" style="font-size:11.5px;margin:10px 0 3px">Emails — ο πρώτος είναι ο κύριος</div>
+      ${em.map((x,i)=>`<div style="${row}">
+        <input data-em="${i}" value="${esc(x.address)}" type="email" inputmode="email" placeholder="όνομα@…" aria-label="Email" style="flex:1 1 180px;min-width:150px;font-size:13px">
+        ${btn(em,i,em.length,'e')}</div>`).join('')
+        ||'<div class="dim" style="font-size:12px;padding:4px 0">Κανένα email.</div>'}
+      <button class="btn sm" data-eadd style="margin-top:4px">+ email</button>
+      <div style="display:flex;gap:6px;margin-top:10px"><button class="btn p sm" data-ctsave>Αποθήκευση</button>
+        ${o.noCancel?'':'<button class="btn sm" data-ctx>Άκυρο</button>'}</div></div>`;
+    const q=s=>host.querySelectorAll(s);
+    q('[data-pn]').forEach(i=>i.oninput=()=>{ph[+i.dataset.pn].number=i.value});
+    q('[data-pnote]').forEach(i=>i.oninput=()=>{ph[+i.dataset.pnote].note=i.value});
+    q('[data-pk]').forEach(s=>s.onchange=()=>{const r=ph[+s.dataset.pk]; r.kind=s.value;
+      if(s.value==='μόνο Viber'){r.viber=true; const c=host.querySelector(`[data-pv="${s.dataset.pk}"]`); if(c)c.checked=true}});
+    q('[data-pv]').forEach(c=>c.onchange=()=>{ph[+c.dataset.pv].viber=c.checked});
+    q('[data-em]').forEach(i=>i.oninput=()=>{em[+i.dataset.em].address=i.value});
+    q('[data-pup]').forEach(b=>b.onclick=()=>{mv(ph,+b.dataset.pup,-1);draw()});
+    q('[data-pdn]').forEach(b=>b.onclick=()=>{mv(ph,+b.dataset.pdn,1);draw()});
+    q('[data-px]').forEach(b=>b.onclick=()=>{ph.splice(+b.dataset.px,1);draw()});
+    q('[data-eup]').forEach(b=>b.onclick=()=>{mv(em,+b.dataset.eup,-1);draw()});
+    q('[data-edn]').forEach(b=>b.onclick=()=>{mv(em,+b.dataset.edn,1);draw()});
+    q('[data-ex]').forEach(b=>b.onclick=()=>{em.splice(+b.dataset.ex,1);draw()});
+    q('[data-padd]').forEach(b=>b.onclick=()=>{ph.push({number:'',kind:'κινητό',viber:true,note:''});draw();
+      const l=host.querySelectorAll('[data-pn]'); if(l.length)l[l.length-1].focus()});
+    q('[data-eadd]').forEach(b=>b.onclick=()=>{em.push({address:''});draw();
+      const l=host.querySelectorAll('[data-em]'); if(l.length)l[l.length-1].focus()});
+    q('[data-ctx]').forEach(b=>b.onclick=()=>{host.removeAttribute('data-ctediting'); done&&done(false)});
+    q('[data-ctsave]').forEach(b=>b.onclick=async()=>{
+      b.disabled=true; b.textContent='…';
+      const P=ph.filter(x=>String(x.number).trim()).map(x=>({number:String(x.number).trim(),kind:x.kind,viber:!!x.viber,note:String(x.note||'').trim()}));
+      const E=em.filter(x=>String(x.address).trim()).map(x=>({address:String(x.address).trim()}));
+      const {data,error}=await sb.rpc('contact_save',{p_person:pid,p_phones:P,p_emails:E});
+      if(error){b.disabled=false; b.textContent='Αποθήκευση'; return toast('Δεν αποθηκεύτηκε: '+error.message)}
+      D.phn=(D.phn||[]).filter(x=>x.person_id!==pid).concat((data&&data.phones)||[]);
+      D.pe=(D.pe||[]).filter(x=>x.person_id!==pid).concat((data&&data.emails)||[]);
+      const per=(data&&data.person)||{};
+      const bh=D.bh.find(x=>x.id===pid); if(bh)Object.assign(bh,per);
+      if(ME.rec&&ME.rec.id===pid)Object.assign(ME.rec,per);
+      [D.cl,D.care_op].forEach(arr=>(arr||[]).forEach(c=>{if(c.carer_id===pid){c.phone=per.phone||null;c.email=per.email||null}}));
+      saveCache(); toast('Αποθηκεύτηκε'); host.removeAttribute('data-ctediting'); done&&done(true);
+    });
+  };
+  draw();
+}
+
+const slinkAud=sec=>/Αγέλη/.test(sec)?['γονείς']:['γονείς','μέλη'];
+function slinkOf(sec,aud,yr){
+  return (D.slk||[]).find(x=>x.section===sec&&x.audience===aud&&x.scout_year===(yr||curScoutYear())&&x.url);
+}
+function slinkCardHTML(sec){
+  const cy=curScoutYear(); if(YEAR!==cy)return '';
+  const can=ctAdm()||leadSecs().includes(sec);
+  const rows=slinkAud(sec).map(a=>{const l=slinkOf(sec,a);
+    return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:5px 0;border-top:1px solid var(--line)">
+      <span style="flex:0 0 110px;font-size:12.5px">Viber ${a==='γονείς'?'γονέων':'μελών'}</span>
+      ${can?`<input data-slu="${a}" value="${esc(l?l.url:'')}" placeholder="https://invite.viber.com/…" aria-label="Σύνδεσμος πρόσκλησης" style="flex:1 1 200px;font-size:12.5px">
+        <button class="btn sm" data-sls="${a}">Αποθήκευση</button>`
+      :(l?`<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer" style="font-size:12.5px">Σύνδεσμος πρόσκλησης</a>`:'<span class="dim" style="font-size:12.5px">— δεν ορίστηκε —</span>')}</div>`}).join('');
+  if(!can&&!slinkAud(sec).some(a=>slinkOf(sec,a)))return '';
+  return `<div class="card pad" id="slkCard" style="margin-bottom:14px"><b>Ομάδες Viber · ${esc(sec)} ${esc(cy)}</b>
+    <div class="muted" style="font-size:12.5px;margin:3px 0 4px">Ο σύνδεσμος πρόσκλησης των γονέων φαίνεται στην πύλη γονέα, δίπλα σε κάθε παιδί του τμήματος.</div>${rows}</div>`;
+}
+function slinkWire(sec){
+  const card=$('slkCard'); if(!card)return;
+  card.querySelectorAll('[data-sls]').forEach(b=>b.onclick=async()=>{
+    const a=b.dataset.sls, inp=card.querySelector(`[data-slu="${a}"]`), url=(inp&&inp.value||'').trim();
+    if(url&&!/^https:\/\/\S+$/.test(url))return toast('Ο σύνδεσμος πρέπει να αρχίζει με https://');
+    b.disabled=true;
+    const {data,error}=await sb.rpc('section_link_save',{p_section:sec,p_audience:a,p_url:url||null,p_label:null});
+    b.disabled=false;
+    if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
+    D.slk=(D.slk||[]).filter(x=>x.id!==(data&&data.id)&&!(x.section===sec&&x.audience===a&&x.scout_year===curScoutYear())).concat(data?[data]:[]);
+    toast(url?'Ο σύνδεσμος αποθηκεύτηκε':'Ο σύνδεσμος αφαιρέθηκε');
+  });
+}
+function slinkKidHTML(kid){
+  const l=slinkOf(ctSecCur(kid),'γονείς'); if(!l)return '';
+  return `<a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${ic('phone',13)} Ομάδα Viber γονέων · ${esc(ctSecCur(kid))}</a>`;
+}
+
+function viberExport(sec,kids){
+  const vb=pid=>{const x=phonesOf(pid).find(y=>y.viber); return x?ctFmt(x.number):''};
+  const rows=[['Παιδί','Υποομάδα','Viber παιδιού','Ποιανού','Σημείωση','Γονέας 1','Viber γονέα 1','Γονέας 2','Viber γονέα 2']];
+  kids.slice().sort(sortByName).forEach(k=>{
+    const v=viberOf(k.id), cs=carersOfPerson(k.id).filter(x=>x.l.receives_comms!==false);
+    const via=v.via?(((cs.find(x=>x.p.id===v.via)||{}).l||{}).relation||'γονέας'):(v.ph?'δικό του':'');
+    rows.push([nm(k),(myOf(k)||{}).group_name||'',v.ph?ctFmt(v.ph.number):'',via,v.note||'',
+      cs[0]?nm(cs[0].p):'',cs[0]?vb(cs[0].p.id):'',cs[1]?nm(cs[1].p):'',cs[1]?vb(cs[1].p.id):'']);
+  });
+  exportRows(rows,`76-viber-${sec}-${YEAR}`,`Viber ${sec} ${YEAR}`);
+}
 const DLG_VERB=[
   [/^(ΟΡΙΣΤΙΚΗ|Οριστική|Οριστικό)/,             'Οριστική διαγραφή', 1],
   [/^Διαγραφή/,                                  'Διαγραφή', 1],
