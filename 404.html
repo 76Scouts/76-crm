@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-04 10:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-04 11:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -5441,6 +5441,14 @@ V.synod=()=>{
   const mem=D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα'&&p.status==='Ενεργός');
   const led=D.bh.filter(p=>isLed(p)&&secOf(p)==='Κοινότητα');
   const nextNo=year.reduce((m,s)=>Math.max(m,s.no||0),0)+1;
+  const synHeld=s=>synPast(s)||(s.status&&s.status!=='Προετοιμασία');
+  const synHasMin=s=>(D.synd||[]).some(d=>d.synod_id===s.id&&String(d.decision||'').trim())
+    ||(D.doc||[]).some(x=>x.synod_id===s.id);
+  const todo=[
+    ...list.filter(s=>ME.person_id&&(s.secretary_id===ME.person_id||s.chair_id===ME.person_id)&&synHeld(s)&&!synHasMin(s))
+      .map(s=>({s, t:`${s.secretary_id===ME.person_id?'Είσαι Γραμματέας':'Προεδρεύεις'} στη Σύνοδο αρ. ${s.no||'—'} (${fdate(s.held_on)}) — δεν έχουν γραφτεί πρακτικά.`})),
+    ...(canConveneSynod()?list.filter(s=>!s.chair_id&&synHeld(s)):[])
+      .map(s=>({s, t:`Η Σύνοδος αρ. ${s.no||'—'} (${fdate(s.held_on)}) δεν έχει Προεδρεύοντα και Γραμματέα — χωρίς αυτούς δεν γράφονται πρακτικά.`}))];
 
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
@@ -5474,6 +5482,9 @@ V.synod=()=>{
       </div>
     </div>
 
+    ${todo.map(x=>`<div class="card pad" style="margin-bottom:10px;border-left:3px solid var(--warn,#b45309);display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+      <span style="flex:1;min-width:200px;font-size:13px">${esc(x.t)}</span>
+      <button class="btn sm p" data-syn="${x.s.id}">Άνοιγμα</button></div>`).join('')}
     ${list.length?`<div class="card" style="overflow:auto"><table>
       <thead><tr><th>Ημ/νία</th><th>Αρ.</th><th class="hide-s">Είδος</th><th>Προεδρεύει</th><th>Παρόντες</th><th>Αποφάσεις</th><th></th></tr></thead>
       <tbody>${list.map(s=>{
@@ -5597,6 +5608,61 @@ async function synodDelete(id){
   toast('Η Σύνοδος διαγράφηκε οριστικά'); V.synod();
 }
 
+function synStepsHTML(s,present,decs){
+  const st=s.status||'Προετοιμασία', past=synPast(s);
+  const nmId=pid=>{const p=pid&&D.bh.find(b=>b.id===pid);return p?nm(p):''};
+  const hasMin=decs.some(d=>String(d.decision||'').trim())||(D.doc||[]).some(x=>x.synod_id===s.id);
+  const steps=[
+    {t:'Παρόντες', ok:present.size>0, who:'οποιοσδήποτε της Κοινότητας'},
+    {t:'Προεδρεύων και Γραμματέας', ok:!!s.chair_id,
+     who:'όποιος συγκάλεσε, ο Α.Κ.Α. ή ο Υ.Κ.Α. — από τους παρόντες',
+     val:s.chair_id?`${nmId(s.chair_id)}${s.secretary_id?' · '+nmId(s.secretary_id):''}`:''},
+    {t:'Θέματα', ok:decs.length>0, who:'ο Προεδρεύων, ο Γραμματέας ή ο Α.Κ.Α.'},
+    {t:'Έναρξη', ok:st!=='Προετοιμασία'||past,
+     who:past&&st==='Προετοιμασία'?'δεν χρειάζεται πια — η ημερομηνία πέρασε':'ο Προεδρεύων, ο Γραμματέας ή ο Α.Κ.Α.'},
+    {t:'Πρακτικά, κάτω από κάθε θέμα ή ως αρχείο', ok:hasMin, who:'ο Γραμματέας, ο Προεδρεύων ή ο Α.Κ.Α.'},
+    {t:'Λήξη', ok:st==='Ολοκληρωμένη', who:'ο Προεδρεύων, ο Γραμματέας ή ο Α.Κ.Α.'}];
+  const cur=steps.findIndex(x=>!x.ok);
+  const isCh=!!ME.person_id&&s.chair_id===ME.person_id, isSe=!!ME.person_id&&s.secretary_id===ME.person_id;
+  const conv=[...new Set([s.created_by,...(D.ph||[]).filter(h=>!h.valid_to&&['AKA','YKA'].includes(h.role_code)).map(h=>h.person_id)])]
+    .map(nmId).filter(Boolean);
+  const askWho='όποιος συγκάλεσε τη Σύνοδο ή ο Α.Κ.Α.'+(conv.length?' ('+conv.join(', ')+')':'');
+  let you;
+  if(canWriteSynod(s)){
+    const role=isSe?'Είσαι Γραμματέας. ':isCh?'Προεδρεύεις. ':'';
+    you=role+([
+      'Σημείωσε ποιοι ήρθαν, στους «Παρόντες» πιο κάτω.',
+      canConveneSynod()?'Διάλεξε Προεδρεύοντα και Γραμματέα από τους παρόντες και πάτα «Καταχώρηση». Χωρίς αυτό, ο Γραμματέας δεν μπορεί να γράψει πρακτικά.'
+        :`Προεδρεύοντα και Γραμματέα τους καταχωρεί ${askWho}.`,
+      'Πρόσθεσε τα θέματα, στα «Θέματα και πρακτικά» πιο κάτω.',
+      'Πάτα «Έναρξη» πάνω δεξιά μόλις ξεκινήσει η συνεδρίαση.',
+      'Γράψε το πρακτικό κάτω από κάθε θέμα και πάτα «Αποθήκευση πρακτικών» — ή ανέβασε τα πρακτικά ως αρχείο.',
+      past&&st==='Προετοιμασία'?'Πάτα «Έγινε — ολοκληρωμένη» πάνω δεξιά.':'Όταν τελειώσει η συνεδρίαση, πάτα «Λήξη». Τα πρακτικά μένουν επεξεργάσιμα.'
+    ][cur]||'Όλα τα βήματα έγιναν. Τα πρακτικά μένουν επεξεργάσιμα.');
+  }else if(!s.chair_id){
+    you=`Τα πρακτικά τα γράφουν ο Γραμματέας και ο Προεδρεύων — αλλά πρώτα πρέπει να καταχωρηθούν. Αν είσαι εσύ, ζήτα να σε καταχωρήσει ${askWho}.`
+      +(canMarkPresent(s)&&!present.size?' Μπορείς ήδη να σημειώσεις τους παρόντες.':'');
+  }else{
+    you=`Τα πρακτικά τα γράφει ${s.secretary_id?nmId(s.secretary_id)+' (Γραμματέας)':nmId(s.chair_id)+' (Προεδρεύων)'} ή ο Α.Κ.Α. Αν έπρεπε να είσαι εσύ, ζήτα να το διορθώσει ${askWho}.`;
+  }
+  const done=cur<0;
+  const row=(x,i)=>{const on=i===cur;
+    return `<div style="display:flex;gap:9px;align-items:flex-start;padding:3px 0${on?';font-weight:600':''}">
+      <span style="flex:0 0 18px;text-align:center;color:${x.ok?'var(--ok)':on?'var(--accent,var(--warn,#b45309))':'var(--dim,#999)'}">${x.ok?'✓':on?'●':'○'}</span>
+      <span style="flex:1;min-width:0;font-size:13px;line-height:1.45">${esc(x.t)}${x.val?` <span style="font-weight:400">— ${esc(x.val)}</span>`:''}
+        <span class="dim" style="display:block;font-weight:400;font-size:11.5px">${esc(x.who)}</span></span></div>`};
+  return `<details class="card pad" id="synSteps" style="margin-bottom:12px;border-left:3px solid ${done?'var(--ok)':'var(--warn,#b45309)'}"${done?'':' open'}>
+    <summary style="cursor:pointer;font-weight:600;font-size:13.5px">Πώς προχωρά η Σύνοδος${done?' · όλα έγιναν':` · βήμα ${cur+1} από ${steps.length}`}</summary>
+    <div style="margin-top:8px">${steps.map(row).join('')}</div>
+    <div style="margin-top:9px;padding:8px 10px;border-radius:8px;background:var(--soft,rgba(0,0,0,.04));font-size:13px;line-height:1.5">
+      <b>Εσύ:</b> ${esc(you)}</div>
+  </details>`;
+}
+function synStepsRedraw(s){const el=$('synSteps'); if(!el)return;
+  const d2=(D.synd||[]).filter(x=>x.synod_id===s.id).sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const p2=new Set((D.synp||[]).filter(x=>x.synod_id===s.id&&x.person_id).map(x=>x.person_id));
+  el.outerHTML=synStepsHTML(s,p2,d2)}
+
 let SYN_OPEN=null, SYN_PRINT=false;
 async function openSynod(id){
   const s=(D.syn||[]).find(x=>x.id===id); if(!s)return;
@@ -5620,7 +5686,7 @@ async function openSynod(id){
   const waiting=(D.kap||[]).filter(g=>g.deda>=6&&!g.approved_on);
 
   SYN_OPEN=id; SYN_PRINT=false; ROUTE='synod'; setUrl('synod');
-  const st=s.status||'Προετοιμασία', live=st!=='Προετοιμασία';
+  const st=s.status||'Προετοιμασία', live=st!=='Προετοιμασία'||synPast(s);
   $('ttl').textContent=`Σύνοδος ${s.no?'αρ. '+s.no:''}`;
   $('sub').textContent=`${fdate(s.held_on)} · ${s.kind||''}${s.special?' · '+s.special:''}`;
   $('view').innerHTML=(`
@@ -5629,19 +5695,16 @@ async function openSynod(id){
       <button class="btn sm gh" id="synPrt2">Φύλλο Πρακτικών</button>
       <span class="sp"></span>
       <span class="pill" style="${st==='Σε εξέλιξη'?'background:var(--okbg);color:var(--ok);border-color:transparent':''}">${esc(st)}</span>
-      ${canWriteSynod(s)&&st==='Προετοιμασία'?`<button class="btn sm p" id="synStart">Έναρξη</button>`:''}
+      ${canWriteSynod(s)&&st==='Προετοιμασία'&&!synPast(s)?`<button class="btn sm p" id="synStart">Έναρξη</button>`:''}
+      ${canWriteSynod(s)&&st==='Προετοιμασία'&&synPast(s)?`<button class="btn sm p" id="synDone">Έγινε — ολοκληρωμένη</button>`:''}
       ${canWriteSynod(s)&&st==='Σε εξέλιξη'?`<button class="btn sm" id="synEnd">Λήξη</button>`:''}
       ${canWriteSynod(s)&&st==='Ολοκληρωμένη'?`<button class="btn sm gh" id="synReopen">Άνοιγμα ξανά</button>`:''}
     </div>
-    ${st==='Προετοιμασία'?`<div class="card pad" style="margin-bottom:12px;border-left:3px solid var(--warn,#b45309)">
-      <b style="font-size:13.5px">Στήσιμο</b>
-      <div class="muted" style="margin-top:4px;font-size:13px;line-height:1.6">
-        Τρία πράγματα πριν αρχίσει: <b>ποιοι ήρθαν</b>, <b>ποιος προεδρεύει</b>, <b>ποια θέματα</b>.
-        Με την <b>Έναρξη</b> ανοίγουν τα πρακτικά, οι αποχωρήσεις και οι διαβεβαιώσεις.</div></div>`:''}
+    ${synStepsHTML(s,present,decs)}
 
     <div class="sec"><h3>Στοιχεία</h3></div>
     <div class="card pad">
-      ${canWriteSynod(s)?`<div class="grow">
+      ${canConveneSynod()?`<div class="grow">
         <label style="max-width:150px">Ημερομηνία<input type="date" id="ssD" value="${esc(s.held_on||'')}"></label>
         <label style="max-width:150px">Είδος<select id="ssK">
           ${['Τακτική','Έκτακτη','Ειδική'].map(k=>`<option${s.kind===k?' selected':''}>${k}</option>`).join('')}</select></label>
@@ -5716,7 +5779,7 @@ async function openSynod(id){
 ''}
     <div class="sec"><h3>Προεδρεύων και Γραμματέας</h3></div>
     <div class="card pad">
-      ${canWriteSynod(s)?`<div class="grow">
+      ${canConveneSynod()?`<div class="grow">
         <label>Προεδρεύει<select id="syCh2"></select></label>
         <label>Γραμματέας<select id="sySe2"></select></label>
       </div>
@@ -5724,9 +5787,11 @@ async function openSynod(id){
         <span class="dim" id="syOffMsg" style="font-size:11.5px;margin-left:8px"></span></div>
       <div class="dim" style="font-size:11.5px;margin-top:7px">
         Βγαίνουν από τους παρόντες. Μόλις καταχωρηθούν, ο προεδρεύων και ο γραμματέας
-        γράφουν θέματα και πρακτικά — ακόμη κι αν είναι Ανιχνευτές.</div>`
+        γράφουν θέματα και πρακτικά — ακόμη κι αν είναι Ανιχνευτές.
+        <b>Χωρίς καταχώρηση, ο Γραμματέας δεν μπορεί να γράψει.</b></div>`
       :`<div style="font-size:13px">Προεδρεύει <b>${(()=>{const c=D.bh.find(b=>b.id===s.chair_id);return c?esc(nm(c)):'—'})()}</b>
-        · Γραμματέας <b>${(()=>{const c=D.bh.find(b=>b.id===s.secretary_id);return c?esc(nm(c)):'—'})()}</b></div>`}
+        · Γραμματέας <b>${(()=>{const c=D.bh.find(b=>b.id===s.secretary_id);return c?esc(nm(c)):'—'})()}</b></div>
+        ${s.chair_id?'':`<div class="dim" style="font-size:11.5px;margin-top:5px">Δεν έχουν καταχωρηθεί ακόμη. Τους καταχωρεί όποιος συγκάλεσε τη Σύνοδο, ο Α.Κ.Α. ή ο Υ.Κ.Α. — από τους παρόντες.</div>`}`}
     </div>
 
     <div class="sec"><h3>Θέματα και πρακτικά</h3></div>
@@ -5801,23 +5866,27 @@ async function openSynod(id){
     </div>`);
 
   if($('synBack'))$('synBack').onclick=()=>{SYN_OPEN=null; SYN_PRINT=false; route('synod')};
+  const stepsRedraw=()=>synStepsRedraw(s);
 
-  const setStatus=async(v,extra)=>{
-    const {error}=await sb.from('synod').update(Object.assign({status:v},extra||{})).eq('id',id);
+  const setStatus=async v=>{
+    const {error}=await sb.rpc('synod_set_status',{p_synod:id, p_status:v});
     if(error){toast(error.message);return}
-    s.status=v; Object.assign(s, extra||{}); openSynod(id);
+    const {data:r}=await sb.from('synod').select('*').eq('id',id).single();
+    Object.assign(s, r||{status:v}); openSynod(id);
   };
   if($('synStart'))$('synStart').onclick=()=>{
     if(!present.size)return toast('Διάλεξε πρώτα ποιοι ήρθαν.');
     if(!s.chair_id)return toast('Η Σύνοδος θέλει προεδρεύοντα.');
     if(!decs.length)return toast('Όρισε τουλάχιστον ένα θέμα.');
-    setStatus('Σε εξέλιξη',{started_at:new Date().toISOString()});
+    setStatus('Σε εξέλιξη');
   };
+  if($('synDone'))$('synDone').onclick=async()=>{ if(!s.chair_id)return toast('Καταχώρησε πρώτα Προεδρεύοντα και Γραμματέα.');
+    if(await uiAsk('Η Σύνοδος έγινε στις '+fdate(s.held_on)+';\n\nΘα σημειωθεί ολοκληρωμένη. Τα πρακτικά μένουν επεξεργάσιμα.'))setStatus('Ολοκληρωμένη') };
   if($('synEnd'))$('synEnd').onclick=async ()=>{
     if(!await uiAsk('Λήξη της Συνόδου;\n\nΤα πρακτικά παραμένουν επεξεργάσιμα — η λήξη λέει ότι η συνεδρίαση τελείωσε.'))return;
-    setStatus('Ολοκληρωμένη',{ended_at:new Date().toISOString()});
+    setStatus('Ολοκληρωμένη');
   };
-  if($('synReopen'))$('synReopen').onclick=()=>setStatus('Σε εξέλιξη',{ended_at:null});
+  if($('synReopen'))$('synReopen').onclick=()=>setStatus('Σε εξέλιξη');
   if($('synPrt2'))$('synPrt2').onclick=()=>synodMinutes(id);
 
   const ssK=()=>{ if($('ssSpL'))$('ssSpL').style.display=$('ssK').value==='Ειδική'?'':'none' };
@@ -5889,7 +5958,7 @@ async function openSynod(id){
     await sb.from('synod_present').delete().eq('synod_id',id).eq('person_id',c.value);
     D.synp=(D.synp||[]).filter(x=>!(x.synod_id===id&&x.person_id===c.value));
     $('prN').textContent=document.querySelectorAll('.prx:checked').length+guests.length;
-    synOff2();
+    synOff2(); stepsRedraw();
   });
 
   function synOff2(){
@@ -5916,7 +5985,7 @@ async function openSynod(id){
     const {error}=await sb.from('synod').update({chair_id:ch, secretary_id:se}).eq('id',id);
     if(error){msg.textContent=error.message;return}
     s.chair_id=ch; s.secretary_id=se;
-    msg.textContent='Καταχωρήθηκε';
+    msg.textContent='Καταχωρήθηκε'; stepsRedraw();
     toast('Προεδρεύων και Γραμματέας καταχωρήθηκαν');
   };
 
@@ -5932,6 +6001,7 @@ async function openSynod(id){
       if(error){bad++;continue}
       d.decision=v; n++;
     }
+    if(n||q)stepsRedraw();
     msg.textContent=[n?`${n} αποθηκεύτηκαν`:'', q?`${q} θα σταλούν μόλις επανέλθει η σύνδεση`:'', bad?`${bad} δεν έγιναν δεκτά`:''].filter(Boolean).join(' · ')||'Καμία αλλαγή';
   };
 
@@ -18495,6 +18565,7 @@ const canWriteSynod=s=>canConveneSynod()
   ||!!(s&&ME.person_id&&(s.chair_id===ME.person_id
         ||s.secretary_id===ME.person_id||s.created_by===ME.person_id));
 const synFuture=s=>!!(s&&s.held_on)&&s.held_on>new Date().toISOString().slice(0,10);
+const synPast=s=>!!(s&&s.held_on)&&s.held_on<todayISO();
 const canArchiveSynod=s=>isAdminUI()
   ||myHats().some(h=>['AS','AKA'].includes(h.role_code))
   ||(synFuture(s)&&myHats().some(h=>['YAS','YKA'].includes(h.role_code)));
