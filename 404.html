@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-04 13:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-05 12:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1688,7 +1688,7 @@ async function loadAll(){
     sb.from('care_links').select('member_id').limit(0),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
     sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,invitees,gcal,prog_kind,stage').order('event_date').limit(3000),
-    sb.from('participations').select('id,person_id,event_id,status,role,is_staff,paid,channel,declared_at').limit(20000),    
+    sb.from('participations').select('id,person_id,event_id,status,role,is_staff,paid,channel,declared_at,declared_by,qf_entry,corrected_at').limit(20000),    
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
     sb.from('trainings').select('person_id,type,code,date,section,body').limit(5000),
@@ -6631,6 +6631,7 @@ async function declareAndOpen(ev, kid, parent){
   else window.open(url,'_blank','noopener');
 }
 
+function paSent(pa){ return !!pa && (pa.channel==='φόρμα Smartespot' || pa.qf_entry!=null || !!pa.paid) }
 function paStage(pa){
   if(!pa)return {t:'χωρίς δήλωση',c:''};
   if(pa.paid)return {t:'πληρωμένη',c:'ok'};
@@ -6661,10 +6662,14 @@ function kidActRow(e,ks,today){
           ${e.signup_note?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(e.signup_note)}</div>`:''}
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kids.map(({kid:k})=>{
             const has=(D.pa||[]).find(x=>x.person_id===k.id&&x.event_id===e.id);
-            if(has){ const st=paStage(has);
+            if(has){ const st=paStage(has), sent=paSent(has);
+              const who=has.declared_by?(D.bh||[]).find(b=>b.id===has.declared_by):null;
+              const by=sent?`<div class="dim" style="font-size:11.5px;flex-basis:100%">Δηλώθηκε${who?' από '+esc(nm(who)):''}${has.declared_at?' στις '+fdate(has.declared_at):''}${has.corrected_at?' · διορθώθηκε '+fdate(has.corrected_at):''}</div>`:'';
+              const act=e.form_url&&open
+                ? `<button class="btn sm" data-sign="${e.id}" data-k="${k.id}">${sent?'Διόρθωση στοιχείων':'Συνέχεια δήλωσης'} · ${esc(k.first_name)}</button>`
+                : sent&&e.form_url ? `<span class="dim" style="font-size:11.5px">Για αλλαγές: ο αρχηγός τμήματος</span>` : '';
               return `<span class="pill" style="background:var(--${st.c}bg);color:var(--${st.c});border-color:transparent">
-              ${st.c==='ok'?'✓ ':''}${esc(k.first_name)} — ${esc(st.t)}</span>${
-              e.form_url&&open&&!has.paid?`<button class="btn sm" data-sign="${e.id}" data-k="${k.id}">Εκ νέου δήλωση · ${esc(k.first_name)}</button>`:''}`; }
+              ${st.c==='ok'?'✓ ':''}${esc(k.first_name)} — ${esc(st.t)}</span>${act}${by}`; }
             if(!e.form_url)return '';
             if(!open)return `<span class="dim" style="font-size:12px">${esc(k.first_name)} · ${e.signup_closes&&e.signup_closes<today?'δηλώσεις κλειστές':e.signup_opens?'δηλώσεις από '+fdate(e.signup_opens):'δηλώσεις δεν άνοιξαν ακόμη'}</span>`;
             return `<button class="btn sm p" data-sign="${e.id}" data-k="${k.id}">Δήλωση · ${esc(k.first_name)}</button>`;
@@ -15584,6 +15589,7 @@ async function efFormsLoad(e){
         <td>${esc([s.ait_onoma,s.ait_epitheto].filter(Boolean).join(' ')||'—')}</td>
         <td class="dim" style="white-space:nowrap">${fdate(s.submitted_on)}</td>
         <td>${(()=>{const st=paStage(d); return st.c?`<span class="pill" style="background:var(--${st.c}bg);color:var(--${st.c});border-color:transparent">${esc(st.t)}</span>`:'<span class="dim">χωρίς δήλωση στο e76</span>'})()}
+          ${d&&d.corrected_at?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Ο γονιός διόρθωσε τα στοιχεία μετά τη δήλωση — ό,τι τυπώθηκε πριν μπορεί να είναι παλιό">διορθώθηκε ${fdate(d.corrected_at)}</span>`:''}
           ${p&&regMissing(p)?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Η δράση συνήθως θέλει ολοκληρωμένη εγγραφή της χρονιάς">χωρίς εγγραφή ${esc(YEAR)}</span>`:''}</td></tr>`}).join('')}</tbody></table></div>`;
 }
 
