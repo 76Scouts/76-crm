@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 14:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 15:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -9447,9 +9447,11 @@ function diakriseis(pid){
   out.held=held; return out;
 }
 
-let PGST=null, PGTAB='pinakas';
+let PGST=null, PGTAB='pinakas', PGGRP='';
 function progressBody(){
-  const kids=opKids(), stages=opStages();
+  const all=opKids(), grps=[...new Set(all.map(k=>((myOf(k)||{}).group_name)||''))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'el'));
+  if(PGGRP&&!grps.includes(PGGRP))PGGRP='';
+  const kids=PGGRP?all.filter(k=>((myOf(k)||{}).group_name)===PGGRP):all, stages=opStages();
   if(!stages.length)return $('view').innerHTML='<div class="uc"><h3>Δεν φορτώθηκε ο κατάλογος</h3><p>Δοκίμασε ανανέωση.</p></div>';
   if(!PGST||!stages.some(s=>s.id===PGST))PGST=stages[0].id;    
   const st=stages.find(s=>s.id===PGST), reqs=opReqs(st);
@@ -9515,6 +9517,8 @@ function progressBody(){
     <div class="card pad" style="margin-bottom:12px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
       ${stages.map(x=>`<button class="btn sm${x.id===PGST?' p':''}" data-st="${x.id}">${esc(x.label)}
         <span class="dim">${opReqs(x).length}</span></button>`).join('')}
+      ${grps.length?`<select id="pgGrp" style="max-width:170px"><option value="">Όλες οι ${esc(subgPl(PSEC))}</option>
+        ${grps.map(g=>`<option${g===PGGRP?' selected':''}>${esc(g)}</option>`).join('')}</select>`:''}
       <span class="sp"></span>
       <!-- ΠΟΙΟΣ ΕΞΕΤΑΣΕ. Σε μια συγκέντρωση εξετάζει ένας και περνά άλλος·
            αν κρατάγαμε μόνο «ποιος πάτησε», θα χανόταν το ποιος είδε. -->
@@ -9546,7 +9550,7 @@ function progressBody(){
             ${reqs.map(r=>cell(k,r)).join('')}
             <td style="padding:3px 10px;text-align:right;font-variant-numeric:tabular-nums;
               color:${n===reqs.length?'var(--ok)':'var(--ink2)'}">${n}/${reqs.length}</td></tr>`;
-        }).join('')||'<tr><td class="dim" style="padding:14px">Κανένα ενεργό μέλος στην Ομάδα.</td></tr>'}</tbody>
+        }).join('')||`<tr><td class="dim" style="padding:14px">Κανένα ενεργό μέλος${PGGRP?' σε αυτή την '+esc(subgOf(PSEC).toLowerCase()):''}.</td></tr>`}</tbody>
       </table></div>
     <div class="muted" style="font-size:12px;margin-top:9px">
       Ο αριθμός πάνω από κάθε στήλη είναι ο <b>επίσημος αριθμός της απαίτησης</b> στο βιβλιάριο.
@@ -9562,6 +9566,7 @@ function progressBody(){
 
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{PGTAB=b.dataset.tab;route(ROUTE)});
   document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{PGST=b.dataset.st;route(ROUTE)});
+  if($('pgGrp'))$('pgGrp').onchange=e=>{PGGRP=e.target.value;route(ROUTE)};
   ppWire('pgExam',ppLeaders());
   const ex=$('pgExam'); if(ex)ex.onchange=()=>{PGEXAM=ex.value||null};
   document.querySelectorAll('.pgc').forEach(b=>b.onclick=async()=>{
@@ -10096,6 +10101,129 @@ function kaneWire(){
     saveCache(); toast(`${data} σημειώθηκαν`);
     ids.forEach(id=>{ const l=document.querySelector(`.kn[value="${id}"]`); if(l)l.closest('label').remove() });
   };
+}
+
+let OVREQ='';
+const ovGroup=p=>((myOf(p)||{}).group_name)||'';
+function ovGoto(tab, mode){ if(mode)PSMODE=mode; SUBTAB['prog_'+PSEC]=tab; route(ROUTE); }
+
+function ovStatus(pid){
+  const nx=nextStep(pid,PSEC);
+  if(!nx)return {t:'όλα τα στάδια', ready:false, nx:null};
+  return {t:nx.st.label, n:nx.n, tot:nx.tot, ready:nx.tot>0&&nx.n===nx.tot, nx};
+}
+
+function overviewBody(){
+  const kids=opKids(), koin=PSEC==='Κοινότητα';
+  const groups=[...new Set(kids.map(ovGroup))].sort((a,b)=>(a?0:1)-(b?0:1)||a.localeCompare(b,'el'));
+  const q=psQueue().length;
+  const pend=PSEC!=='Κοινότητα'?pgPending(pgGroups()).length:0;
+  const kane=PSEC==='Ομάδα'?(D.mreq||[]).filter(m=>!m.kane_signed&&m.pigi!=='ιστορικό'&&kids.some(k=>k.id===m.person_id)
+    &&((D.rc2||[]).find(r=>r.id===m.requirement_id)||{}).section==='Ομάδα').length:0;
+  const kaW=koin?(D.mreq||[]).filter(m=>kids.some(k=>k.id===m.person_id)&&kaNeedsWrite(m)).length:0;
+  const kaS=koin?(D.mreq||[]).filter(m=>kids.some(k=>k.id===m.person_id)
+    &&KA_SIG_ROLES.some(role=>{const s=kaSigOf(m.id,role);return s&&!s.signed_on})).length:0;
+  const chip=(n,t,go)=>`<button class="btn sm${n?' p':''}" ${go}>${t} <b>${n}</b></button>`;
+  const queues=`<div class="card pad" style="margin-bottom:12px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+    <b style="font-size:13.5px;margin-right:4px">Εκκρεμούν</b>
+    ${koin?chip(kaW,'Καταγραφή Ανιχνευτή','data-ovgo="hk"')+chip(kaS,'Υπογραφή Η.Κ.Α.Δ.Ε.','data-ovgo="hk"')
+      :chip(q,'Αιτήματα / κόλλες','data-ovgo="req" data-ovm="queue"')+chip(pend,'Από συμμετοχή','data-ovgo="req" data-ovm="sess"')
+       +(PSEC==='Ομάδα'?chip(kane,'Δεν υπογράφηκαν στο ΚΑΝΕ','data-ovgo="req" data-ovm="queue"'):'')}
+  </div>`;
+
+  const card=g=>{
+    const ks=kids.filter(k=>ovGroup(k)===g), st=ks.map(k=>({k,s:ovStatus(k.id)}));
+    const by={}; st.forEach(x=>{by[x.s.t]=(by[x.s.t]||0)+1});
+    const ready=st.filter(x=>x.s.ready);
+    return `<div class="card pad" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b style="font-size:14px">${esc(g||'Χωρίς '+subgOf(PSEC).toLowerCase())}</b><span class="dim" style="font-size:12px">${ks.length}</span>
+        <span class="sp"></span>${Object.entries(by).map(([t,n])=>`<span class="pill" style="font-size:11px">${esc(t)} · ${n}</span>`).join('')}</div>
+      ${ready.length?`<div style="margin-top:7px;font-size:12.5px"><b style="color:var(--ok)">Έτοιμοι για απονομή:</b>
+        ${ready.map(x=>`${pn(x.k)} <span class="dim">(${esc(x.s.t)})</span>`).join(', ')}</div>`:''}
+      <div style="margin-top:6px">${st.map(x=>`<div class="kv" style="padding:3px 0;font-size:12.5px;border-top:1px solid var(--line)">
+        <span style="flex:1;min-width:0">${pn(x.k)}</span>
+        <span class="dim" style="font-size:11.5px">${esc(x.s.t)}${!koin&&x.s.tot?' · '+x.s.n+' από '+x.s.tot:''}</span>
+        ${x.s.ready?'<span class="pill" style="font-size:10.5px;margin-left:5px;background:var(--okbg);color:var(--ok);border-color:transparent">έτοιμος</span>':''}</div>`).join('')}</div>
+    </div>`};
+
+  const reqs=opStages().flatMap(st=>opReqs(st).map(r=>({...r,_st:st.label})));
+  if(OVREQ&&!reqs.some(r=>r.id===OVREQ))OVREQ='';
+
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:12px">
+      <b style="font-size:15px">Συνοπτικά ${esc(SECWORD[PSEC]||PSEC)}</b>
+      <div class="muted" style="font-size:12.5px;margin-top:5px">Πού βρίσκεται ο καθένας ανά ${esc(subgOf(PSEC).toLowerCase())}, ποιοι είναι έτοιμοι για απονομή και τι περιμένει.
+        ${koin?'Στην Κοινότητα δεν μετράμε ποσοστά — φαίνεται πού βρίσκεται ο καθένας.':''}</div></div>
+    ${queues}
+    ${groups.map(card).join('')||'<div class="uc"><h3>Κανένα ενεργό μέλος</h3></div>'}
+    <div class="sec"><h3>Απαίτηση → ποιοι</h3></div>
+    <div class="card pad" style="margin-bottom:12px">
+      <select id="ovReq" style="max-width:460px"><option value="">— διάλεξε απαίτηση —</option>
+        ${opStages().map(st=>`<optgroup label="${esc(st.label)}">${opReqs(st).map(r=>`<option value="${r.id}"${r.id===OVREQ?' selected':''}>${esc(reqNo(r))} · ${esc(r.label)}</option>`).join('')}</optgroup>`).join('')}</select>
+      <div id="ovWho" style="margin-top:9px">${ovWhoHTML(kids)}</div></div>
+    ${isAdminUI()?ovAdminHTML(kids):''}`;
+
+  document.querySelectorAll('[data-ovgo]').forEach(b=>b.onclick=()=>ovGoto(b.dataset.ovgo,b.dataset.ovm||null));
+  $('ovReq').onchange=e=>{OVREQ=e.target.value; $('ovWho').innerHTML=ovWhoHTML(kids)};
+}
+
+function ovWhoHTML(kids){
+  if(!OVREQ)return '<div class="dim" style="font-size:12.5px">Για σχεδιασμό προγράμματος: ποιοι την έχουν και ποιοι όχι.</div>';
+  const has=kids.filter(k=>reqDone(k.id,OVREQ)), not=kids.filter(k=>!reqDone(k.id,OVREQ));
+  return `<div style="display:flex;gap:18px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px"><b style="font-size:12.5px;color:var(--ok)">Την έχουν · ${has.length}</b>
+      ${has.map(k=>`<div style="font-size:12.5px;padding:2px 0">${pn(k)} <span class="dim">· ${reqDate(reqDone(k.id,OVREQ))}</span></div>`).join('')||'<div class="dim">—</div>'}</div>
+    <div style="flex:1;min-width:220px"><b style="font-size:12.5px">Δεν την έχουν · ${not.length}</b>
+      ${not.map(k=>`<div style="font-size:12.5px;padding:2px 0">${pn(k)}${ovGroup(k)?` <span class="dim">· ${esc(ovGroup(k))}</span>`:''}</div>`).join('')||'<div class="dim">—</div>'}</div></div>`;
+}
+
+function ovAdminHTML(kids){
+  const mine=m=>kids.some(k=>k.id===m.person_id)&&((D.rc2||[]).find(r=>r.id===m.requirement_id)||{}).section===PSEC;
+  const bd=(D.mreq||[]).filter(m=>m.pigi==='εκτός e76'&&mine(m)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const hist=(D.mreq||[]).filter(m=>m.pigi==='ιστορικό'&&mine(m)).length;
+  const row=m=>{ const p=D.bh.find(b=>b.id===m.person_id)||{}, r=(D.rc2||[]).find(x=>x.id===m.requirement_id)||{};
+    return `<div class="kv" style="border-top:1px solid var(--line);padding:6px 0;font-size:12.5px;align-items:flex-start">
+      <span style="flex:1">${pn(p)} · <b>${esc(reqNo(r))}</b> ${esc(r.label||'')}
+        <div class="dim" style="font-size:11.5px">${reqDate(m)} · ${typeof kaSigLine==='function'?kaSigLine(m):''}</div></span></div>` };
+  return `<div class="sec"><h3>Έλεγχος Α.Σ. — εκτός κανονικού δρόμου</h3><span class="n">${bd.length}</span></div>
+    <div class="card pad" style="margin-bottom:12px">
+      ${PSEC==='Κοινότητα'?(bd.length?bd.slice(0,100).map(row).join(''):'<div class="dim" style="font-size:12.5px">Κανένα πέρασμα εκτός e76.</div>'):''}
+      <div class="dim" style="font-size:12px;margin-top:6px">Από το χαρτί (ιστορικό): ${hist} εγγραφές.</div></div>`;
+}
+
+async function peerBoard(box){
+  box.innerHTML='<div class="dim pad">Φόρτωση…</div>';
+  const {data,error}=await sb.rpc('peer_board');
+  if(error||!data||!data.sec){ box.innerHTML='<div class="uc"><h3>Δεν υπάρχει ακόμη</h3><p>Δεν βρέθηκε ενωμοτία ή Κοινότητα για φέτος.</p></div>'; return; }
+  box.innerHTML=peerBoardHTML(data);
+  box.querySelectorAll('[data-psgo]').forEach(b=>b.onclick=()=>{ PSMODE='kolla'; SUBTAB['prog_Ομάδα']='req'; route('progOP') });
+}
+function peerBoardHTML(B){
+  const sec=B.sec, koin=sec==='Κοινότητα';
+  const has=(pid,rid)=>(B.rows||[]).find(x=>x.p===pid&&x.r===rid);
+  const held=(pid,cid)=>(B.awards||[]).some(x=>x.p===pid&&x.c===cid);
+  const stages=cardStages(sec);
+  const where=pid=>{ for(const st of stages){ if(held(pid,st.id))continue;
+      const rs=stageReqs(sec,st); return {st, rs, n:rs.filter(r=>has(pid,r.id)).length} } return null };
+  const people=(B.people||[]);
+  const me=mePid();
+  const mine=koin?[]:(D.prq||[]).filter(x=>x.requested_by===me&&x.status==='υποβλήθηκε');
+  return `<div class="card pad" style="margin-bottom:12px">
+      <b style="font-size:14.5px">${koin?'Η Κοινότητά μου':'Η ενωμοτία μου'+(B.group?' — '+esc(B.group):'')}</b>
+      <div class="dim" style="font-size:12px;margin-top:4px">Μόνο τι πέρασε ο καθένας και πότε.${koin?' Χωρίς σύγκριση — κάθε Ανιχνευτής έχει τον δικό του δρόμο.':''}</div>
+      ${!koin&&typeof klMyPatrols==='function'&&klMyPatrols().length?`<div style="margin-top:9px"><button class="btn sm p" data-psgo="1">Κόλλα ενωμοτίας</button>
+        ${mine.length?`<span class="dim" style="font-size:12px;margin-left:8px">${mine.length} δικές σου εγγραφές περιμένουν τον Α.Ο.Π.</span>`:''}</div>`:''}</div>
+    ${people.map(p=>{ const w=where(p.id);
+      const done=(B.rows||[]).filter(x=>x.p===p.id).map(x=>(D.rc2||[]).find(r=>r.id===x.r)).filter(r=>r&&r.section===sec);
+      return `<div class="card pad" style="margin-bottom:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13.5px">${esc(p.name)}</b>
+          ${koin&&p.group?`<span class="dim" style="font-size:11.5px">${esc(p.group)}</span>`:''}<span class="sp"></span>
+          <span class="dim" style="font-size:12px">${w?esc(w.st.label)+(koin?'':' · '+w.n+' από '+w.rs.length):'όλα τα στάδια'}</span></div>
+        ${w&&!koin?`<div style="margin-top:6px;display:flex;gap:3px;flex-wrap:wrap">${w.rs.map(r=>{ const x=has(p.id,r.id);
+          return `<span title="${esc(reqNo(r)+' · '+r.label)}${x&&x.d?' · '+fdate(x.d):''}" style="min-width:24px;text-align:center;font-size:10.5px;padding:2px 4px;border-radius:4px;
+            border:1px solid ${x?'var(--ok)':'var(--line2)'};background:${x?'var(--okbg)':'transparent'}">${esc(reqNo(r))}</span>` }).join('')}</div>`:''}
+        ${koin?`<div class="dim" style="font-size:12px;margin-top:5px">${done.length?'Πέρασε: '+done.map(r=>esc(r.code||r.label)).join(', '):'Τίποτα ακόμη.'}</div>`:''}
+      </div>` }).join('')||'<div class="dim pad">Κανένας.</div>'}`;
 }
 
 const ddmmyyyy = d => { if(!d) return '';
@@ -12817,11 +12945,13 @@ V.me=()=>{
   const p=M.p;
   const secs=mySections(p);
   if(!isLed(p) && secs.length && lensRole()!=='parent'){
+    const now=secOf(p), peer=['Ομάδα','Κοινότητα'].includes(now)
+      ?[{k:'peer', t:now==='Κοινότητα'?'Η Κοινότητά μου':'Η ενωμοτία μου', i:'users', d:'τι πέρασαν οι υπόλοιποι', fn:box=>peerBoard(box)}]:[];
     tabView('me_prog', secs.map(sec=>({
       k:'s_'+sec, t:sec, i:'award', d:'η πορεία μου στον κλάδο',
       fn:box=>{ box.innerHTML=myProgBody(p,sec);
         box.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go)); }
-    })), M.head+`<div class="sec"><h3>Προσκοπική Πρόοδος</h3></div>`);
+    })).concat(peer), M.head+`<div class="sec"><h3>Προσκοπική Πρόοδος</h3></div>`);
     return;
   }
   if(!isLed(p) || LENS_PERSONAL.includes(lensRole())){
@@ -22248,6 +22378,7 @@ function progScreen(sec, extra){
   PSEC=sec;
   return tabView('prog_'+sec, [
     {k:'lvl', t:'Στάδια ανέλιξης',    i:'trend', fn:progressBody, d:'πού βρίσκεται καθένας'},
+    ...(!psIamKid()?[{k:'sum', t:'Συνοπτικά', i:'grid', fn:overviewBody, d:'ανά ενωμοτία · έτοιμοι για απονομή · τι περιμένει'}]:[]),
     {k:'req', t:'Πέρασμα απαιτήσεων', i:'check', fn:passBody,     d:'καταχώρηση'},
     ...(canHistory()?[
     {k:'old', t:'Από το βιβλιαράκι', i:'book',  fn:histPassBody,  d:'ιστορικό — ό,τι είναι υπογεγραμμένο στο βιβλίο του παιδιού'},
