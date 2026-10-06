@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 16:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 16:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1508,6 +1508,7 @@ async function start(){
     if(_cached&&_to===ROUTE&&ROUTE===_r0)stay(); else route(_to); }
   const me=meRec();
   if(me)$('whoami').innerHTML=`<b style="color:var(--sidein)">${pn(me)}</b><div style="font-size:10.5px">${esc(ledLabel(me,true))}</div>`;
+  ntRebound();
 }
 
 const IDLE_MS=15*60*1000; let LAST_ACT=Date.now();
@@ -1687,7 +1688,7 @@ async function loadAll(){
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
     sb.from('care_links').select('member_id').limit(0),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
-    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,signup_notify,invitees,gcal,prog_kind,stage,planned_reqs').order('event_date').limit(3000),
+    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,signup_notify,signup_remind,invitees,gcal,prog_kind,stage,planned_reqs').order('event_date').limit(3000),
     sb.from('participations').select('id,person_id,event_id,status,role,is_staff,paid,channel,declared_at,declared_by,qf_entry,corrected_at').limit(20000),    
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
@@ -6828,19 +6829,20 @@ function signupOpen(ev){
   if(ev.signup_closes && ev.signup_closes<t)return false;
   return true;
 }
+async function paMark(ev, kid){
+  if((D.pa||[]).some(x=>x.person_id===kid.id&&x.event_id===ev.id))return true;
+  const rec={person_id:kid.id, event_id:ev.id, status:'Δηλώθηκε',
+    declared_by:ME.person_id||null, declared_at:new Date().toISOString(),
+    channel:'πύλη γονέα', paid:false};
+  const {error}=await sb.from('participations').insert(rec);
+  if(error){ toast('Δεν καταγράφηκε η δήλωση: '+error.message); return false }
+  (D.pa=D.pa||[]).push(rec); return true;
+}
 async function declareAndOpen(ev, kid, parent){
-  const existing=(D.pa||[]).find(x=>x.person_id===kid.id&&x.event_id===ev.id);
   const w=ev.form_url?window.open('','_blank'):null;
   const url=await esUrl(ev,kid,parent);
   if(!url){ if(w)w.close(); return toast('Δεν έχει οριστεί φόρμα για τη δράση.') }
-  if(!existing){
-    const rec={person_id:kid.id, event_id:ev.id, status:'Δηλώθηκε',
-      declared_by:ME.person_id||null, declared_at:new Date().toISOString(),
-      channel:'πύλη γονέα', paid:false};
-    const {error}=await sb.from('participations').insert(rec);
-    if(error)return toast('Δεν καταγράφηκε η δήλωση: '+error.message);
-    (D.pa=D.pa||[]).push(rec);
-  }
+  if(!(await paMark(ev,kid))){ if(w)w.close(); return }
   if(w){ try{w.opener=null}catch(e){} w.location.replace(url); }
   else window.open(url,'_blank','noopener');
 }
@@ -17253,60 +17255,85 @@ async function ntCall(body){
   if(!r.ok&&!j.error)j.error='Δεν απάντησε η αποστολή ('+r.status+').';
   return j;
 }
+const ntEve=d=>{const x=new Date(d+'T12:00:00'); x.setDate(x.getDate()-1); return x.toISOString().slice(0,10)};
 function ntHTML(e){
   if(!ntCan())return '';
   const open=signupOpen(e), today=new Date().toISOString().slice(0,10);
   const why=!e.form_url?'Ανοίγει όταν μπει η φόρμα της δράσης.'
     :e.signup_closes&&e.signup_closes<today?'Οι δηλώσεις έκλεισαν.'
     :e.signup_opens&&e.signup_opens>today?'Ανοίγει στις '+fdate(e.signup_opens)+', μαζί με τις δηλώσεις.':'';
+  const box=(k,t,btn,auto)=>`<div style="border-top:1px solid var(--line);padding-top:9px;margin-top:9px">
+      <div class="kv"><b style="flex:1;font-size:13px">${t}</b>${open?`<button class="btn sm" data-ntchk="${k}">${btn}</button>`:''}</div>${auto}</div>`;
+  const chk=(id,on,t)=>`<label style="display:flex;gap:6px;align-items:center;margin-top:6px;font-size:12.5px">
+      <input type="checkbox" id="${id}" style="width:auto"${on?' checked':''}> ${t}</label>`;
   return `<div class="card pad" id="efNt" style="margin-bottom:13px">
     <b style="font-size:14px">Ενημέρωση γονέων</b>
-    <div class="dim" style="font-size:12.5px;line-height:1.5;margin-top:3px">Email σε κάθε γονιό με τα παιδιά του που δεν δηλώθηκαν ακόμη —
-      με τον Α.Μ. τους και τον σύνδεσμο της φόρμας. Όποιος ενημερώθηκε για ένα παιδί δεν το ξαναπαίρνει.</div>
-    ${open?`<button class="btn sm" id="efNtChk" style="margin-top:8px">Ποιοι θα το πάρουν</button>`
-          :`<div class="dim" style="font-size:12.5px;margin-top:8px">${esc(why)}</div>`}
-    ${e.form_url?`<label style="display:flex;gap:6px;align-items:center;margin-top:9px;font-size:13px">
-      <input type="checkbox" id="efNtAuto" style="width:auto"${e.signup_notify?' checked':''}> Αυτόματα, την ημέρα που ανοίγουν οι δηλώσεις</label>`:''}
-    <div id="efNtOut" style="margin-top:8px;font-size:13px"></div></div>`;
+    <div class="dim" style="font-size:12.5px;line-height:1.5;margin-top:3px">Email σε κάθε γονιό με τα παιδιά του που δεν δηλώθηκαν ακόμη.
+      Με λογαριασμό e76 το κουμπί τον πάει στη φόρμα ήδη συμπληρωμένη· χωρίς, στην κενή φόρμα με τον Α.Μ. του παιδιού.
+      Όποιος πήρε ένα μήνυμα για ένα παιδί δεν το ξαναπαίρνει.</div>
+    ${why?`<div class="dim" style="font-size:12.5px;margin-top:8px">${esc(why)}</div>`:''}
+    ${e.form_url?box('άνοιγμα','«Άνοιξαν οι δηλώσεις»','Ποιοι θα το πάρουν',
+        chk('efNtAuto',e.signup_notify,'Αυτόματα, την ημέρα που ανοίγουν'+(e.signup_opens?' ('+fdate(e.signup_opens)+')':'')))
+      +(e.signup_closes?box('υπενθύμιση','Υπενθύμιση πριν κλείσουν','Ποιοι θα την πάρουν',
+        chk('efNtRem',e.signup_remind,'Αυτόματα, την παραμονή ('+fdate(ntEve(e.signup_closes))+') — μόνο όσοι δεν δηλώθηκαν'))
+        :`<div class="dim" style="font-size:12px;margin-top:9px">Υπενθύμιση: θέλει «Δηλώσεις μέχρι» στη δράση.</div>`):''}
+    <div id="efNtOut" style="margin-top:10px;font-size:13px"></div></div>`;
 }
-function ntSummary(c,un){
+function ntSummary(c,un,kind){
   const kids=(c.kids_to_notify||0), em=(c.emails||0);
-  return `<div><b>${em}</b> ${em===1?'γονιός':'γονείς'} · για <b>${kids}</b> ${kids===1?'παιδί':'παιδιά'} που δεν δηλώθηκαν.</div>
-    <div class="dim" style="font-size:12px;margin-top:2px">Δηλώθηκαν ήδη ${c.declared||0} από ${c.eligible||0}${c.already?` · ${c.already} γονείς ενημερώθηκαν ήδη`:''}.</div>
+  return `<div><b>${em}</b> ${em===1?'γονιός':'γονείς'} · για <b>${kids}</b> ${kids===1?'παιδί':'παιδιά'} που δεν δηλώθηκαν${c.with_acc?` · <span class="dim">${c.with_acc} με λογαριασμό e76</span>`:''}.</div>
+    <div class="dim" style="font-size:12px;margin-top:2px">Δηλώθηκαν ήδη ${c.declared||0} από ${c.eligible||0}${c.already?` · ${c.already} ${kind==='υπενθύμιση'?'πήραν ήδη την υπενθύμιση':'ενημερώθηκαν ήδη'}`:''}.</div>
     ${(un||[]).length?`<div style="margin-top:6px;font-size:12.5px"><span style="color:var(--warn)">Χωρίς γονιό με email — πείτε τους αλλιώς:</span>
       ${un.map(u=>esc(u.name)).join(' · ')}</div>`:''}`;
 }
 function ntWire(e){
-  const out=()=>$('efNtOut');
-  const au=$('efNtAuto');
-  if(au)au.onchange=async()=>{
-    const v=au.checked;
-    const {data,error}=await sb.from('events').update({signup_notify:v}).eq('id',e.id).select('id');
-    if(error||!(data||[]).length){au.checked=!v; return toast('Δεν άλλαξε: '+((error&&error.message)||'δεν έχεις δικαίωμα σε αυτή τη δράση'))}
-    e.signup_notify=v; saveCache(); toast(v?'Οι γονείς θα ενημερωθούν αυτόματα':'Χωρίς αυτόματη ενημέρωση');
-  };
-  const chk=$('efNtChk'); if(!chk)return;
-  chk.onclick=async()=>{
-    chk.disabled=true; out().innerHTML='<span class="dim">Έλεγχος…</span>';
-    const j=await ntCall({event_id:e.id}); chk.disabled=false;
-    if(j.error)return out().innerHTML=`<span style="color:var(--bad)">${esc(j.error)}</span>`;
-    if(!j.ok)return out().innerHTML=`<span class="dim">${esc(j.why||'—')}${j.opens?' — '+fdate(j.opens):''}</span>`;
-    const c=j.counts||{};
-    out().innerHTML=ntSummary(c,j.unreached)
-      +(c.emails?`<button class="btn sm p" id="efNtGo" style="margin-top:8px">Αποστολή σε ${c.emails} ${c.emails===1?'γονιό':'γονείς'}</button>`
-                :'<div class="dim" style="margin-top:6px">Δεν έμεινε κανείς να ενημερωθεί.</div>');
-    const go=$('efNtGo'); if(!go)return;
-    go.onclick=()=>{
-      if(!go.dataset.sure){go.dataset.sure='1'; go.textContent='Σίγουρα; Φεύγουν '+c.emails+' email τώρα'; return}
-      ntSend(e,go);
-    };
+  const flag=(id,col,on,off)=>{const x=$(id); if(!x)return;
+    x.onchange=async()=>{
+      const v=x.checked;
+      const {data,error}=await sb.from('events').update({[col]:v}).eq('id',e.id).select('id');
+      if(error||!(data||[]).length){x.checked=!v; return toast('Δεν άλλαξε: '+((error&&error.message)||'δεν έχεις δικαίωμα σε αυτή τη δράση'))}
+      e[col]=v; saveCache(); toast(v?on:off);
+    }};
+  flag('efNtAuto','signup_notify','Οι γονείς θα ενημερωθούν αυτόματα','Χωρίς αυτόματη ενημέρωση');
+  flag('efNtRem','signup_remind','Αυτόματη υπενθύμιση την παραμονή','Χωρίς αυτόματη υπενθύμιση');
+  document.querySelectorAll('[data-ntchk]').forEach(b=>b.onclick=()=>ntCheck(e,b.dataset.ntchk,b));
+}
+async function ntCheck(e,kind,btn){
+  const out=$('efNtOut'); if(btn)btn.disabled=true; out.innerHTML='<span class="dim">Έλεγχος…</span>';
+  const j=await ntCall({event_id:e.id,kind}); if(btn)btn.disabled=false;
+  if(j.error)return out.innerHTML=`<span style="color:var(--bad)">${esc(j.error)}</span>`;
+  if(!j.ok)return out.innerHTML=`<span class="dim">${esc(j.why||'—')}${j.opens?' — '+fdate(j.opens):''}</span>`;
+  const c=j.counts||{};
+  out.innerHTML=`<div style="font-weight:600;margin-bottom:4px">${kind==='υπενθύμιση'?'Υπενθύμιση':'«Άνοιξαν οι δηλώσεις»'}</div>`+ntSummary(c,j.unreached,kind)
+    +(c.emails?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center">
+        <span class="dim" style="font-size:12px">Δες το μήνυμα:</span>
+        <button class="btn sm gh" data-ntpv="0">χωρίς λογαριασμό</button>
+        <button class="btn sm gh" data-ntpv="1">με λογαριασμό e76</button>
+        <span class="sp"></span>
+        <button class="btn sm p" id="efNtGo">Αποστολή σε ${c.emails} ${c.emails===1?'γονιό':'γονείς'}</button></div>
+      <div id="efNtPv"></div>`
+     :'<div class="dim" style="margin-top:6px">Δεν έμεινε κανείς να το πάρει.</div>');
+  document.querySelectorAll('[data-ntpv]').forEach(b=>b.onclick=()=>ntPreview(e,kind,b.dataset.ntpv==='1',b));
+  const go=$('efNtGo'); if(!go)return;
+  go.onclick=()=>{
+    if(!go.dataset.sure){go.dataset.sure='1'; go.textContent='Σίγουρα; Φεύγουν '+c.emails+' email τώρα'; return}
+    ntSend(e,kind,go);
   };
 }
-async function ntSend(e,go){
+async function ntPreview(e,kind,acc,btn){
+  const box=$('efNtPv'); if(!box)return; if(btn)btn.disabled=true;
+  const j=await ntCall({event_id:e.id,kind,preview:true,acc}); if(btn)btn.disabled=false;
+  if(j.error||!j.ok)return box.innerHTML=`<div style="color:var(--bad);margin-top:6px">${esc(j.error||j.why||'—')}</div>`;
+  box.innerHTML=`<div style="margin-top:9px;font-size:12.5px"><span class="dim">Θέμα:</span> <b>${esc(j.subject||'')}</b>
+      ${j.sample?'':'<span class="dim"> · δείγμα με ψεύτικα ονόματα — κανένας τέτοιος παραλήπτης</span>'}</div>
+    <iframe id="efNtFrame" sandbox="" title="Προεπισκόπηση email" style="width:100%;max-width:560px;height:620px;border:1px solid var(--line);border-radius:10px;margin-top:6px;background:#fff"></iframe>`;
+  const f=$('efNtFrame'); if(f)f.srcdoc=j.html||'';
+}
+async function ntSend(e,kind,go){
   go.disabled=true; let sent=0, failed=[], quota=null, rem=1, j={};
   while(rem>0){
     $('efNtOut').innerHTML=`<span class="dim">Αποστολή… ${sent} μέχρι τώρα</span>`;
-    j=await ntCall({event_id:e.id,send:true});
+    j=await ntCall({event_id:e.id,kind,send:true});
     if(j.error||!j.ok)break;
     sent+=j.sent||0; quota=typeof j.quota==='number'?j.quota:quota; rem=j.remaining||0;
     failed=j.failed||[];
@@ -17316,6 +17343,26 @@ async function ntSend(e,go){
     +(j.error||(!j.ok&&j.why)?`<div style="color:var(--bad)">${esc(j.error||j.why)}</div>`:'')
     +(failed.length?`<div style="color:var(--bad);margin-top:4px">Δεν στάλθηκαν: ${failed.map(f=>esc(f.name)+' ('+esc(f.why)+')').join(' · ')}</div>`:'')
     +(rem>0&&!j.error?`<div class="dim" style="margin-top:4px">Έμειναν ${rem} — πάτα ξανά «Ποιοι θα το πάρουν».</div>`:'');
+}
+
+const NTRX=/^#dilosi=([0-9a-f-]{36})\.([0-9a-f-]{36})$/i;
+try{ const m=NTRX.exec(location.hash||'');
+  if(m){ localStorage.setItem('e76:dilosi',JSON.stringify({v:m[1]+'.'+m[2],at:Date.now()}));
+         history.replaceState(null,'',location.pathname+location.search); } }catch(e){}
+async function ntRebound(){
+  let v=null;
+  try{ const o=JSON.parse(localStorage.getItem('e76:dilosi')||'null'); localStorage.removeItem('e76:dilosi');
+       if(o&&o.v&&Date.now()-o.at<72e5)v=o.v }catch(e){}
+  if(!v)return false;
+  const [eid,kid]=v.split('.');
+  const ev=(D.ev||[]).find(x=>x.id===eid), k=(D.bh||[]).find(x=>x.id===kid);
+  if(!ev||!k){ toast('Αυτή η δήλωση δεν αφορά αυτόν τον λογαριασμό — δείτε «Τι έχουμε μπροστά».'); return false }
+  if(!signupOpen(ev)){ toast(ev.signup_closes&&ev.signup_closes<new Date().toISOString().slice(0,10)
+      ?'Οι δηλώσεις για «'+(ev.title||'')+'» έκλεισαν.':'Οι δηλώσεις για «'+(ev.title||'')+'» δεν είναι ανοιχτές.'); return false }
+  toast('Ανοίγει η φόρμα για '+(k.first_name||'')+'…');
+  const url=await esUrl(ev,k); if(!url)return false;
+  if(!(await paMark(ev,k)))return false;
+  location.assign(url); return true;
 }
 const SAMPLE={id:'__demo__',registry_no:'00000',first_name:'ΟΝΟΜΑ',last_name:'ΕΠΩΝΥΜΟ',
   birthplace:'—',home_address:'—',home_phone:'',phone:'',email:'',education_level:'',
