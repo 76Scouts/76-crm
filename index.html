@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 14:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 14:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1537,7 +1537,7 @@ function saveCache(now){
   if(_sct)return;
   _sct=setTimeout(()=>{_sct=null;_saveCacheNow()},1200);
 }
-const CACHE_SKIP=new Set(['cl','care_op','ecs','sen','med','gu','idrev','wl','wlc','wlct','elog','sapp','pe','cons','coh','phn','cpf']);
+const CACHE_SKIP=new Set(['cl','care_op','ecs','sen','med','gu','idrev','wl','wlc','wlct','elog','sapp','pe','cons','coh','phn','cpf','kap','kans']);   
 function _saveCacheNow(){try{if(!(D.bh||[]).length)return;
   const lite={}; Object.keys(D).forEach(k=>{ if(!CACHE_SKIP.has(k)) lite[k]=D[k]; });
   localStorage.setItem(CK,JSON.stringify({t:Date.now(),u:(ME&&ME.email)||null,D:lite}))}catch(e){}}
@@ -1738,7 +1738,7 @@ async function loadAll(){
     sb.from('requirement_catalog').select('*,progression_catalog!stage_catalog_id(label,ordinal)').limit(1000),
     sb.from('progression_catalog').select('*').limit(500),
     sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision').limit(20000),
-    sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared,date_precision,pigi,kane_signed,synod_id').limit(20000),
+    sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared,date_precision,pigi,kane_signed,synod_id,group_key').limit(20000),
     sb.from('progress_request').select('*').order('created_at',{ascending:false}).limit(2000),
     sb.from('progress_policy').select('*'),
     sb.from('ka_step').select('*').limit(5000),
@@ -1775,9 +1775,10 @@ async function loadAll(){
     pageAll('person_phones','id,person_id,number,kind,viber,seq,note'),
     sb.from('contact_prefs').select('person_id,viber_phone_id,note').limit(1000),
     sb.from('section_links').select('id,scout_year,section,audience,url,label').limit(500),
-    sb.from('progress_exemption').select('award_id,covers_stage_id,note')
+    sb.from('progress_exemption').select('award_id,covers_stage_id,note'),  
+    sb.from('ka_shared').select('*').limit(5000), sb.from('ka_shared_answer').select('*').limit(20000), sb.from('ka_answer').select('*').limit(20000), sb.from('ka_prompt').select('*').limit(1000)   
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc','wlct','rr','rl','event_member_open','structure_plan','structure_plan_row','warrants','committee_members','person_phones','contact_prefs','section_links','pex'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc','wlct','rr','rl','event_member_open','structure_plan','structure_plan_row','warrants','committee_members','person_phones','contact_prefs','section_links','pex','ka_shared','ka_shared_answer','ka_answer','ka_prompt'];
   const _t0=Date.now();
   const TMO=12000;
   const CORE=new Set([0,1,36,37,40,42,17,12,35,65]);
@@ -1828,7 +1829,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.cd=r[71]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.emo=r[86]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[]; D.phn=r[91]?.data||[]; D.cpf=r[92]?.data||[]; D.slk=r[93]?.data||[]; D.pex=r[94]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.cd=r[71]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.emo=r[86]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[]; D.phn=r[91]?.data||[]; D.cpf=r[92]?.data||[]; D.slk=r[93]?.data||[]; D.pex=r[94]?.data||[]; D.kash=r[95]?.data||[]; D.kasha=r[96]?.data||[]; D.kans=r[97]?.data||[]; D.kpr=r[98]?.data||[];
   if(!(D.cl||[]).length && (D.care_op||[]).length) D.cl=D.care_op.map(x=>({...x}));
   mergeStubs();
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
@@ -5103,16 +5104,6 @@ function drawer(title, html){
   $('drw').classList.add('on');
 }
 
-const DEDA=[
-  {n:1,t:'Θέμα και στόχοι',      d:'Συζήτηση με τον Α.Κ.Α.'},
-  {n:2,t:'Επικύρωση Συνόδου',    d:'Έντυπο έναρξης στην Ε.Ε.'},
-  {n:3,t:'Προετοιμασία',         d:'Ομάδα Εργασίας έως 4 άτομα'},
-  {n:4,t:'Διοργάνωση',           d:'Η δράση γίνεται'},
-  {n:5,t:'Αξιολόγηση',           d:'Από την Ο.Ε. και τους συμμετέχοντες'},
-  {n:6,t:'Αυτοκριτική',          d:'Έντυπο ολοκλήρωσης στην Ε.Ε.'},
-  {n:7,t:'Διαβεβαίωση',          d:'Παρουσίαση 15΄ · δύο υπογραφές'},
-];
-const DEDA_COL=['var(--ink3)','#9aa3ae','#9aa3ae','#f4c20d','#f4c20d','#f39c12','#27ae60','#27ae60'];
 
 const loadScript=src=>new Promise((ok,no)=>{ if(document.querySelector(`script[src="${src}"]`))return ok();
   const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('δεν φορτώθηκε '+src)); document.head.appendChild(s); });
@@ -5171,7 +5162,7 @@ function synAgendaImport(id, decs){
     $('aiGo').disabled=true;
     let keep=decs;
     if($('aiR').checked){
-      const empty=decs.filter(d=>!d.decision).map(d=>d.id);
+      const empty=decs.filter(d=>!d.decision&&(d.kind||'θέμα')==='θέμα').map(d=>d.id);
       if(empty.length){ const {error}=await sb.from('synod_decision').delete().in('id',empty);
         if(error){ $('aiGo').disabled=false; return toast('Δεν σβήστηκαν τα παλιά: '+error.message) }
         D.synd=(D.synd||[]).filter(x=>!empty.includes(x.id)); keep=decs.filter(d=>d.decision); }
@@ -5184,29 +5175,27 @@ function synAgendaImport(id, decs){
     drw.classList.remove('on'); toast(rows.length+' θέματα μπήκαν'); openSynod(id);
   };
 }
-const kaProg=(pid)=>(D.kap||[]).filter(g=>g.person_id===pid);
 function hkadePrint(people){
   const w=window.open('','_blank'); if(!w)return toast('Ο φυλλομετρητής μπλόκαρε το παράθυρο');
-  const reqs=(D.rc2||[]).filter(r=>r.section==='Κοινότητα'&&r.active!==false)
-    .sort((a,b)=>(a.stage_ordinal||0)-(b.stage_ordinal||0)||(a.ordinal||0)-(b.ordinal||0));
+  const reqs=kaReqList();
   const stages=[...new Map(reqs.map(r=>[r.stage_label,r.stage_label])).keys()];
   const today=fdate(new Date().toISOString().slice(0,10));
   const sheet=p=>{
-    const prog=kaProg(p.id), entry=(D.my||[]).find(y=>y.person_id===p.id&&y.section==='Κοινότητα');
-    const done=reqs.filter(r=>prog.some(g=>g.requirement_id===r.id&&g.approved_on)).length;
+    const entry=(D.my||[]).find(y=>y.person_id===p.id&&y.section==='Κοινότητα');
+    const done=reqs.filter(r=>!r.parent_id&&reqDone(p.id,r.id)).length, tot=reqs.filter(r=>!r.parent_id).length;
     const acts=(D.pa||[]).filter(x=>x.person_id===p.id).map(x=>(D.ev||[]).find(v=>v.id===x.event_id)).filter(Boolean)
       .sort((a,b)=>String(a.event_date).localeCompare(String(b.event_date)));
     return `<section class="sheet">
       <header><div><h1>Η.Κ.Α.Δ.Ε.</h1><div class="sub">Ημερολόγιο Κοινότητας Ανιχνευτών · 76ο Σύστημα Προσκόπων Στροβόλου</div></div>
         <div class="who"><b>${esc(nm(p))}</b>${p.scout_name?` <i>${esc(p.scout_name)}</i>`:''}
-          <div class="sub">${entry&&entry.start_date?'Εισδοχή '+fdate(entry.start_date)+' · ':''}${done} από ${reqs.length} απαιτήσεις</div></div></header>
+          <div class="sub">${entry&&entry.start_date?'Εισδοχή '+fdate(entry.start_date)+' · ':''}${done} από ${tot} απαιτήσεις</div></div></header>
       ${stages.map(stl=>{ const rs=reqs.filter(r=>r.stage_label===stl);
         return `<h2>${esc(stl||'')}</h2><table><thead><tr><th style="width:34px"></th><th>Απαίτηση</th>
-          <th style="width:130px">ΔΕΔΑ</th><th style="width:110px">Διαβεβαίωση</th><th style="width:200px">Υπογραφές</th></tr></thead><tbody>
-          ${rs.map(r=>{ const g=prog.find(x=>x.requirement_id===r.id), st=g?g.deda:0;
-            const sig=g?kaSig(g.id).map(s=>{const b=D.bh.find(x=>x.id===s.signer_id); return esc(s.role)+(b?': '+esc(nm(b)):'')}).join('<br>'):'';
-            return `<tr><td class="c">${esc(r.code||'')}</td><td>${esc(r.label||'')}</td>
-              <td>${st?st+' · '+esc(DEDA[st-1].t):'—'}</td><td>${g&&g.approved_on?fdate(g.approved_on):''}</td><td class="s">${sig}</td></tr>`}).join('')}
+          <th style="width:130px">Πηγή</th><th style="width:110px">Πέρασε</th><th style="width:220px">Υπογραφές</th></tr></thead><tbody>
+          ${rs.map(r=>{ const m=reqDone(p.id,r.id);
+            const sig=m?KA_SIG_ROLES.map(role=>{const x=kaSigOf(m.id,role); return x?esc(role)+': '+(x.signed_on?esc(x.ypegrapse||'')+' · '+fdate(x.signed_on):'<i>εκκρεμεί</i>'):''}).filter(Boolean).join('<br>'):'';
+            return `<tr><td class="c">${esc(r.code||'')}</td><td>${r.parent_id?'&emsp;':''}${esc(r.label||'')}</td>
+              <td>${m?esc(kaSource(m)):'—'}</td><td>${m&&m.date?fdate(m.date):''}</td><td class="s">${sig}</td></tr>`}).join('')}
           </tbody></table>`}).join('')}
       <h2>Δράσεις</h2>${acts.length?`<table><tbody>${acts.map(e=>`<tr><td>${esc(e.title||'')}</td><td style="width:140px">${fdate(e.event_date)}${e.nights?' · '+e.nights+' διαν.':''}</td></tr>`).join('')}</tbody></table>`:'<p class="sub">Καμία καταχωρημένη.</p>'}
       <footer>Εκτυπώθηκε ${today} από το e76 · Υπογραφή Α.Κ.Α. ____________________</footer>
@@ -5224,13 +5213,7 @@ function hkadePrint(people){
     <script>setTimeout(()=>print(),300)<\/script></body></html>`);
   w.document.close();
 }
-const kaSig =(gid)=>(D.kasig||[]).filter(s=>s.progress_id===gid);
 
-function dedaBar(step){
-  return `<span class="deda" title="ΔΕΔΑ ${step||0} από 7">${DEDA.map(s=>
-    `<i class="${s.n<=step?'on':''}" style="${s.n<=step?'background:'+DEDA_COL[step]:''}"
-        title="${s.n}. ${esc(s.t)} — ${esc(s.d)}"></i>`).join('')}</span>`;
-}
 
 
 function synodMinutes(id){
@@ -5571,7 +5554,7 @@ async function synodArchive(id, undo){
   const ttl=`${s.no?'αρ. '+s.no+' · ':''}${fdate(s.held_on)}`;
   let reason=null;
   if(!undo){
-    const held=(D.kap||[]).filter(g=>g.synod_id===id).length;
+    const held=(D.mreq||[]).filter(m=>m.synod_id===id).length;    
     const de=(D.synd||[]).filter(x=>x.synod_id===id).length;
     reason=await uiText(`Αρχειοθέτηση της Συνόδου ${ttl}.\n\n`
       +(held?`Προσοχή: έχει εγκρίνει ${held} απαιτήσεις Η.Κ.Α.Δ.Ε. — οι εγκρίσεις μένουν.\n`:'')
@@ -5592,7 +5575,7 @@ async function synodDelete(id){
   const s=(D.syn||[]).find(x=>x.id===id); if(!s)return;
   if(!isAdminUI()){toast('Οριστική διαγραφή μόνο από τον διαχειριστή — αρχειοθέτησέ την');return}
   if(!s.archived_at){toast('Αρχειοθέτησέ την πρώτα');return}
-  const held=(D.kap||[]).filter(g=>g.synod_id===id).length;
+  const held=(D.mreq||[]).filter(m=>m.synod_id===id).length;    
   if(held){toast('Δεν διαγράφεται: έχει εγκρίνει '+held+' απαιτήσεις Η.Κ.Α.Δ.Ε.');return}
   const de=(D.synd||[]).filter(x=>x.synod_id===id).length;
   const pr=(D.synp||[]).filter(x=>x.synod_id===id).length;
@@ -5685,7 +5668,6 @@ async function openSynod(id){
     .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
   const addKind=p=>isLed(p)?'led':isMem(p)?'mem':'other';
   const decs=(D.synd||[]).filter(x=>x.synod_id===id).sort((a,b)=>(a.seq||0)-(b.seq||0));
-  const waiting=(D.kap||[]).filter(g=>g.deda>=6&&!g.approved_on);
 
   SYN_OPEN=id; SYN_PRINT=false; ROUTE='synod'; setUrl('synod');
   const st=s.status||'Προετοιμασία', live=st!=='Προετοιμασία'||synPast(s);
@@ -5800,7 +5782,8 @@ async function openSynod(id){
     <div class="card pad">
       ${
 ''}
-      ${decs.length?decs.map(d=>`<div style="border-bottom:1px solid var(--line);padding:8px 0">
+      ${ ''}
+      ${decs.some(d=>d.kind!=='απαίτηση')?decs.filter(d=>d.kind!=='απαίτηση').map(d=>`<div style="border-bottom:1px solid var(--line);padding:8px 0">
           <b style="font-size:13.5px">${d.seq||''}. ${esc(d.topic)}</b>
           ${d.note?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(d.note)}</div>`:''}
           ${canWriteSynod(s)&&live?`<textarea class="dcM" data-d="${d.id}" rows="2"
@@ -5851,21 +5834,8 @@ async function openSynod(id){
     </details>`}
 
 
-    <div class="sec"><h3>Διαβεβαιώσεις απαιτήσεων</h3></div>
-    <div class="card pad">
-      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:9px">
-        Εμφανίζονται όσοι έφτασαν στο <b>ΔΕΔΑ 6</b> και ζητούν παρουσίαση.
-        Η έγκριση απαιτεί <b>δύο υπογραφές</b>: Α.Κ.Α. και Πρόεδρος Συνόδου.</div>
-      ${waiting.length?waiting.map(g=>{
-        const p=D.bh.find(b=>b.id===g.person_id)||{}, r=(D.rc2||[]).find(x=>x.id===g.requirement_id)||{};
-        return `<div class="kv" style="align-items:flex-start;border-top:1px solid var(--line);padding-top:8px">
-          <span style="flex:1"><b>${pn(p)}</b>
-            <div class="dim" style="font-size:12px">${esc(r.code||'')} · ${esc(r.label||'')}</div>
-            ${g.topic?`<div class="dim" style="font-size:11.5px">«${esc(g.topic)}»</div>`:''}</span>
-          ${canWriteSynod(s)&&live?`<button class="btn sm p" data-appr="${g.id}">Εγκρίθηκε</button>`
-             :`<span class="dim" style="font-size:11.5px">${live?'εγκρίνει ο Πρόεδρος':'μετά την Έναρξη'}</span>`}</div>`}).join('')
-       :'<div class="dim" style="font-size:13px">Καμία απαίτηση δεν περιμένει διαβεβαίωση.</div>'}
-    </div>`);
+    ${ ''}
+    ${kaSynodHTML(s,id,live)}`);
 
   if($('synBack'))$('synBack').onclick=()=>{SYN_OPEN=null; SYN_PRINT=false; route('synod')};
   const stepsRedraw=()=>synStepsRedraw(s);
@@ -6063,18 +6033,12 @@ async function openSynod(id){
   synProgWire(s,id);
   if($('dcAdd'))$('dcAdd').onclick=async()=>{
     const t=$('dcT').value.trim(); if(!t)return toast('Γράψε θέμα');
-    const rec={synod_id:id, seq:decs.length+1, topic:t, decision:$('dcD').value.trim()||null};
+    const rec={synod_id:id, seq:decs.reduce((m,d)=>Math.max(m,d.seq||0),0)+1, topic:t, decision:$('dcD').value.trim()||null};
     const {data,error}=await sb.from('synod_decision').insert(rec).select().single();
     if(error)return toast(error.message);
     (D.synd=D.synd||[]).push(data); openSynod(id);
   };
-  document.querySelectorAll('[data-appr]').forEach(b=>b.onclick=async()=>{
-    const gid=b.dataset.appr;
-    const {error}=await sb.from('ka_progress').update({deda:7, approved_on:s.held_on, synod_id:id}).eq('id',gid);
-    if(error)return toast(error.message);
-    const g=(D.kap||[]).find(x=>x.id===gid); if(g){g.deda=7;g.approved_on=s.held_on;g.synod_id=id}
-    toast('Εγκρίθηκε — μένουν οι δύο υπογραφές στο Η.Κ.Α.Δ.Ε.'); openSynod(id);
-  });
+  kaSynodWire(s,id);
 }
 
 
@@ -6222,9 +6186,67 @@ function kaWho(){
 let KAWHO=null;
 
 const kaStages=()=>[...new Map((D.rc2||[])
-  .filter(r=>r.section==='Κοινότητα'&&r.active!==false)
+  .filter(r=>r.section==='Κοινότητα'&&r.active!==false&&!r.retired_at)
   .map(r=>[r.stage_label,{label:r.stage_label,ord:r.stage_ordinal}])).values()]
   .sort((a,b)=>(a.ord||0)-(b.ord||0));
+
+function kaLocked(pid, r){
+  if((r.rule||{}).gated_by!=='all_other_requirements')return false;
+  return kaReqList().filter(x=>!x.parent_id&&x.stage_label===r.stage_label&&x.id!==r.id)
+    .some(x=>!reqDone(pid,x.id));
+}
+
+function kaRowHTML(who, r){
+  if(!r)return '';
+  const m=reqDone(who.id,r.id), isMe=mePid()===who.id, me=ME.person_id;
+  const kids=r.parent_id?[]:kaKids(r);
+  const locked=!m&&kaLocked(who.id,r);
+  const need=m&&kaNeedsWrite(m);
+  const sig=role=>m&&kaSigOf(m.id,role);
+  const sc=sig('Πρόεδρος Συνόδου'), sa=sig('Α.Κ.Α.');
+  const acts=m?[
+    sc&&!sc.signed_on&&me&&sc.signer_id===me?`<button class="btn sm p" data-kac="${m.id}" data-role="Πρόεδρος Συνόδου">Υπογράφω ως Πρόεδρος</button>`:'',
+    sa&&!sa.signed_on&&kaLeadUI()?`<button class="btn sm p" data-kac="${m.id}" data-role="Α.Κ.Α.">Υπογράφω</button>`:'',
+    ((sc&&!sc.signed_on)||(sa&&!sa.signed_on))&&(kaLeadUI()||isAdminUI())?`<button class="btn sm gh" data-kap="${m.id}">από το έντυπο</button>`:'',
+    ['Σύνοδος','εκτός e76'].includes(m.pigi)||kaShared(m)?`<button class="btn sm${need&&isMe?' p':''}" data-kaw="${m.id}">${isMe||isAdminUI()?(need?'Γράψε την καταγραφή':'Καταγραφή'):'Προβολή'}</button>`:''
+  ].join(''):'';
+  return `<div data-kar="${r.id}" style="border-top:1px solid var(--line);padding:9px 0${r.parent_id?';margin-left:24px':''}">
+    <div class="kv" style="align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <span style="flex:0 0 26px;font-weight:700;color:var(--ink3)">${esc(r.code||'')}</span>
+      <span style="flex:1;min-width:200px">
+        <b style="font-size:${r.parent_id?'12.5':'13.5'}px">${esc(r.label||'')}</b>
+        ${r.verifier&&r.verifier!=='Σύνοδος'?`<span class="pill" style="margin-left:5px;font-size:10.5px">${esc(r.verifier)}</span>`:''}
+        ${ ''}
+        ${r.description?`<div class="dim" style="font-size:12px;line-height:1.45;margin-top:3px">${esc(r.description)}</div>`
+          :r.parent_id?'':`<div class="dim" style="font-size:11.5px;margin-top:3px;font-style:italic">— χωρίς περιγραφή —</div>`}
+        <div style="font-size:12px;margin-top:4px">${m
+          ?`<span style="color:var(--ok)">● πέρασε ${reqDate(m)}</span> <span class="dim">· ${esc(kaSource(m))}</span>
+            ${need?' <span class="pill" style="font-size:10.5px;background:var(--warnbg);color:var(--warn);border-color:transparent">εκκρεμεί η καταγραφή'+(isMe?' σου':'')+'</span>':''}`
+          :`<span class="dim">${locked?'κλειδωμένη μέχρι να περάσουν οι υπόλοιπες του σταδίου':'δεν έχει περάσει'}${kids.length?' · '+kids.filter(c=>reqDone(who.id,c.id)).length+' από '+kids.length+' υποαπαιτήσεις':''}</span>`}</div>
+        ${m&&(sc||sa)?`<div class="dim" style="font-size:11.5px;margin-top:3px">${kaSigLine(m)}</div>`:''}
+        ${(r.rule||{}).months_since_entry?`<div class="dim" style="font-size:11px">απαιτούνται ${r.rule.months_since_entry} μήνες από την Εισδοχή</div>`:''}
+      </span>
+      ${acts?`<span style="display:flex;gap:5px;flex-wrap:wrap">${acts}</span>`:''}
+    </div></div>
+    ${kids.map(c=>kaRowHTML(who,c)).join('')}`;
+}
+
+function kaWireHk(who){
+  const redraw=rid=>{ const r=(D.rc2||[]).find(x=>x.id===rid); const top=r&&r.parent_id?r.parent_id:rid;
+    const el=document.querySelector(`[data-kar="${top}"]`);
+    if(!el)return stay();
+    (kaKids((D.rc2||[]).find(x=>x.id===top)||{})||[]).forEach(c=>{const k=document.querySelector(`[data-kar="${c.id}"]`); if(k)k.remove()});
+    el.outerHTML=kaRowHTML(who,(D.rc2||[]).find(x=>x.id===top)); kaWireHk(who) };
+  const rowOf=mid=>((D.mreq||[]).find(x=>x.id===mid)||{}).requirement_id;
+  document.querySelectorAll('[data-kac]').forEach(b=>b.onclick=async()=>{ b.disabled=true;
+    const rid=rowOf(b.dataset.kac); if(await kaSigClose(b.dataset.kac,b.dataset.role,false))redraw(rid); else b.disabled=false });
+  document.querySelectorAll('[data-kap]').forEach(b=>b.onclick=async()=>{
+    const mid=b.dataset.kap, pend=KA_SIG_ROLES.filter(role=>{const s=kaSigOf(mid,role);return s&&!s.signed_on});
+    if(!await uiAsk('Σημείωση «υπογράφηκε στο έντυπο» για: '+pend.join(' και ')+';'))return;
+    const rid=rowOf(mid); for(const role of pend)await kaSigClose(mid,role,true); redraw(rid) });
+  document.querySelectorAll('[data-kaw]').forEach(b=>b.onclick=()=>{
+    const m=(D.mreq||[]).find(x=>x.id===b.dataset.kaw); if(m)openKaWrite(who,m) });
+}
 
 function hkadeBody(){
   const anix=D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα'&&p.status==='Ενεργός')
@@ -6235,49 +6257,18 @@ function hkadeBody(){
     $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
         <b>Η.Κ.Α.Δ.Ε.</b>
         <div class="muted" style="margin-top:5px;font-size:13.5px">Διάλεξε Ανιχνευτή για να δεις το ημερολόγιό του.</div>
-        <div class="grow" style="margin-top:10px">${ppHTML('kaPick','',{ph:'Γράψε όνομα Ανιχνευτή…',style:'max-width:280px;flex:1'})}</div></div>`;
+        <div class="grow" style="margin-top:10px">${ppHTML('kaPick','',{ph:'Γράψε όνομα Ανιχνευτή…',style:'max-width:280px;flex:1'})}
+          ${kaLeadUI()||isAdminUI()?`<button class="btn sm" id="kaBd0">Πέρασμα εκτός e76</button>`:''}</div></div>`;
     ppWire('kaPick',anix,{note:p=>(myOf(p)||{}).group_name||''});
     $('kaPick').onchange=e=>{KAWHO=e.target.value||null; route(ROUTE)};
+    if($('kaBd0'))$('kaBd0').onclick=()=>kaBackdoor(null);
     return;
   }
 
-  const prog=kaProg(who.id);
-  const reqs=(D.rc2||[]).filter(r=>r.section==='Κοινότητα'&&r.active!==false)
-    .sort((a,b)=>(a.stage_ordinal||0)-(b.stage_ordinal||0)||(a.ordinal||0)-(b.ordinal||0));
-  const entry=(D.my||[]).find(y=>y.person_id===who.id);
+  const reqs=kaReqList();
+  const entry=(D.my||[]).find(y=>y.person_id===who.id&&y.section==='Κοινότητα');
   const isMe=(mePid()===who.id);
-
-  const row=r=>{
-    const g=prog.find(x=>x.requirement_id===r.id);
-    const step=g?g.deda:0, ok=g&&g.approved_on;
-    const sigs=g?kaSig(g.id):[];
-    const rule=r.rule||{};
-    const locked = rule.gated_by==='all_other_requirements' &&
-      reqs.filter(x=>x.stage_label===r.stage_label&&x.code!=='Στ')
-          .some(x=>!prog.find(p=>p.requirement_id===x.id&&p.approved_on));
-    return `<div class="kv" style="align-items:flex-start;border-top:1px solid var(--line);padding:9px 0">
-      <span style="flex:0 0 26px;font-weight:700;color:var(--ink3)">${esc(r.code)}</span>
-      <span style="flex:1;min-width:0">
-        <b style="font-size:13.5px">${esc(r.label)}</b>
-        ${r.badge?'<span class="dim" style="font-size:11px"> ● σήμα</span>':''}
-        ${r.verifier&&r.verifier!=='Σύνοδος'?`<span class="pill" style="margin-left:5px;font-size:10.5px">${esc(r.verifier)}</span>`:''}
-        ${
-''}
-        ${r.description?`<div class="dim" style="font-size:12px;line-height:1.45;margin-top:3px">${esc(r.description)}</div>`
-          :`<div class="dim" style="font-size:11.5px;margin-top:3px;font-style:italic">— χωρίς περιγραφή —</div>`}
-        <div style="margin-top:4px">${dedaBar(step)}
-          <span class="dim" style="font-size:11.5px;margin-left:7px">${
-            ok?'διαβεβαιώθηκε '+fdate(g.approved_on)
-             :step?('ΔΕΔΑ '+step+' — '+DEDA[step-1].t)
-             :(locked?'κλειδωμένη μέχρι να ολοκληρωθούν οι υπόλοιπες':'δεν ξεκίνησε')}</span></div>
-        ${sigs.length?`<div class="dim" style="font-size:11px;margin-top:3px">✍ ${sigs.map(s=>{
-          const b=D.bh.find(x=>x.id===s.signer_id);
-          return esc(s.role)+(b?': '+esc(nm(b)):'')}).join(' · ')}</div>`:''}
-        ${rule.months_since_entry?`<div class="dim" style="font-size:11px">απαιτούνται ${rule.months_since_entry} μήνες από την Εισδοχή</div>`:''}
-      </span>
-      <button class="btn sm${step?'':' p'}" data-deda="${r.id}"${locked?' disabled':''}>${step?'Άνοιγμα':'Ξεκίνα'}</button>
-    </div>`;
-  };
+  const pending=(D.mreq||[]).filter(m=>m.person_id===who.id&&kaNeedsWrite(m)).length;
 
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
@@ -6288,25 +6279,26 @@ function hkadeBody(){
           <div class="dim" style="font-size:12px">Η.Κ.Α.Δ.Ε. · ${esc(YEAR)}${
             entry&&entry.start_date?' · Εισδοχή '+fdate(entry.start_date):''}</div></div>
         ${!isMe&&anix.length>1?`${ppHTML('kaPick2',who.id,{ph:'Άλλος Ανιχνευτής…',style:'max-width:220px'})}`:''}
+        ${kaLeadUI()||isAdminUI()?`<button class="btn sm" id="kaBd">Πέρασμα εκτός e76</button>`:''}
         <button class="btn sm" id="kaPrint" title="Το Η.Κ.Α.Δ.Ε. σε χαρτί — για τη Σύνοδο ή για το αρχείο">${ic('down',14)} Εκτύπωση</button>
         ${!isMe&&anix.length>1?`<button class="btn sm gh" id="kaPrintAll" title="Ένα φύλλο ανά Ανιχνευτή">Όλοι (${anix.length})</button>`:''}
       </div>
       <div class="muted" style="margin-top:9px;font-size:12.5px;line-height:1.6">
-        ${isMe?'Το ημερολόγιό σου. <b>Το γράφεις εσύ</b> — ο Αρχηγός επικυρώνει, δεν συμπληρώνει αντί για σένα.'
-              :'Το ημερολόγιο του Ανιχνευτή. Το γράφει <b>ο ίδιος</b>· εσύ βλέπεις και επικυρώνεις.'}
+        ${isMe?'Το ημερολόγιό σου. Οι απαιτήσεις <b>περνούν στη Σύνοδο</b>· μετά <b>γράφεις εσύ</b> την καταγραφή τους.'
+              :'Το ημερολόγιο του Ανιχνευτή. Οι απαιτήσεις περνούν στη Σύνοδο· την καταγραφή τη γράφει <b>ο ίδιος</b>.'}
+        ${pending?`<br><b style="color:var(--warn)">${pending} ${pending===1?'απαίτηση περιμένει':'απαιτήσεις περιμένουν'} την καταγραφή${isMe?' σου':''}.</b>`:''}
         <br>Δύο συμβουλές από το ίδιο το έντυπο: <b>γράφε με σαφήνεια, γράφε με συντομία.</b>
-        Σημασία δεν έχει τι γράφεις για μια δράση, αλλά ότι συμμετείχες σε αυτή.
       </div>
     </div>
 
     ${kaStages().map(st=>{
-      const rs=reqs.filter(r=>r.stage_label===st.label);
-      const done=rs.filter(r=>prog.find(p=>p.requirement_id===r.id&&p.approved_on)).length;
+      const rs=reqs.filter(r=>r.stage_label===st.label&&!r.parent_id);
+      const done=rs.filter(r=>reqDone(who.id,r.id)).length;
       return `<div class="card pad" style="margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:9px">
           <b>${esc(st.label)}</b>
-          <span class="dim" style="font-size:12px">${done} από ${rs.length} διαβεβαιωμένες</span></div>
-        ${rs.map(row).join('')}
+          <span class="dim" style="font-size:12px">${done} από ${rs.length}</span></div>
+        ${rs.map(r=>kaRowHTML(who,r)).join('')}
       </div>`}).join('')}
 
     <div class="card pad">
@@ -6325,135 +6317,324 @@ function hkadeBody(){
   const pk=$('kaPick2'); if(pk)pk.onchange=e=>{ if(!e.target.value)return; KAWHO=e.target.value; route(ROUTE)};
   $('kaPrint').onclick=()=>hkadePrint([who]);
   const pa=$('kaPrintAll'); if(pa)pa.onclick=()=>hkadePrint(anix);
-  document.querySelectorAll('[data-deda]').forEach(b=>b.onclick=()=>openDeda(who, b.dataset.deda));
+  if($('kaBd'))$('kaBd').onclick=()=>kaBackdoor(who);
+  kaWireHk(who);
 };
 
-async function openDeda(who, reqId){
-  const r=(D.rc2||[]).find(x=>x.id===reqId)||{};
-  let g=(D.kap||[]).find(x=>x.person_id===who.id&&x.requirement_id===reqId);
-  if(!g){
-    const rec={person_id:who.id, requirement_id:reqId, scout_year:YEAR, deda:1,
-               klimakio_id:who.klimakio_id||null};
-    const {data,error}=await sb.from('ka_progress').insert(rec).select().single();
-    if(error)return toast(error.message);
-    (D.kap=D.kap||[]).push(data); g=data;
+const KA_SIG_ROLES=['Πρόεδρος Συνόδου','Α.Κ.Α.'];
+const kaLeadUI=()=>myHats().some(h=>['AKA','YKA'].includes(h.role_code));
+const kaStaffUI=()=>isAdminUI()||kaLeadUI()||(['section_head','section_assistant','commissioner'].includes(ME.role)
+  &&(typeof meRec==='function'&&meRec()&&secOf(meRec())==='Κοινότητα'));
+
+function kaReqList(){
+  const all=(D.rc2||[]).filter(r=>r.section==='Κοινότητα'&&r.active!==false&&!r.retired_at);
+  const top=all.filter(r=>!r.parent_id).sort((a,b)=>(a.stage_ordinal||0)-(b.stage_ordinal||0)||(a.ordinal||0)-(b.ordinal||0));
+  const out=[];
+  top.forEach(r=>{ out.push(r);
+    all.filter(c=>c.parent_id===r.id).sort((a,b)=>(a.ordinal||0)-(b.ordinal||0)).forEach(c=>out.push(c)) });
+  return out;
+}
+const kaReqName=r=>r?((r.code?r.code+' · ':'')+(r.label||'')):'—';
+const kaKids=r=>r&&r.id?(D.rc2||[]).filter(c=>c.parent_id===r.id&&c.active!==false&&!c.retired_at).sort((a,b)=>(a.ordinal||0)-(b.ordinal||0)):[];
+
+const kaSigOf=(mid,role)=>(D.psig||[]).find(s=>s.target==='ΑΠΑΙΤΗΣΗ'&&s.target_id===mid&&s.role===role);
+const kaGroup=m=>m.group_key||m.id;
+const kaShared=m=>(D.kash||[]).find(x=>x.group_key===kaGroup(m));
+const kaMine=(pid,rid)=>(D.kap||[]).find(g=>g.person_id===pid&&g.requirement_id===rid);
+function kaNeedsWrite(m){
+  if(!m||!['Σύνοδος','εκτός e76'].includes(m.pigi))return false;
+  const sh=kaShared(m), g=kaGroup(m);
+  if(sh&&(sh.topic||sh.together))return false;
+  if((D.kasha||[]).some(a=>a.group_key===g&&a.answer))return false;
+  const k=kaMine(m.person_id,m.requirement_id); if(k&&(k.self_review||k.solo))return false;
+  if((D.kans||[]).some(a=>a.person_id===m.person_id&&a.answer&&(D.kpr||[]).some(p=>p.id===a.prompt_id&&p.requirement_id===m.requirement_id)))return false;
+  return true;
+}
+function kaSource(m){
+  if(!m)return '';
+  if(m.pigi==='Σύνοδος'){ const s=(D.syn||[]).find(x=>x.id===m.synod_id); return 'Σύνοδος'+(s&&s.no?' αρ. '+s.no:''); }
+  if(m.pigi==='εκτός e76')return 'Σύνοδος εκτός e76';
+  return (typeof PIGI_TXT!=='undefined'&&PIGI_TXT[m.pigi])||m.pigi||'';
+}
+function kaSigLine(m){
+  return KA_SIG_ROLES.map(role=>{ const s=kaSigOf(m.id,role);
+    if(!s)return '';
+    return `<span style="margin-right:10px">${role}: ${s.signed_on
+      ?`<span style="color:var(--ok)">✍ ${esc(s.ypegrapse||'')} · ${fdate(s.signed_on)}${s.from_paper?' (από το έντυπο)':''}</span>`
+      :`<b style="color:var(--warn)">εκκρεμεί</b>${s.ypegrapse&&role==='Πρόεδρος Συνόδου'?' — '+esc(s.ypegrapse):''}`}</span>` }).join('');
+}
+
+const KA_MR_COLS='id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared,date_precision,pigi,kane_signed,synod_id,group_key';
+async function kaRefresh(filter){
+  let q=sb.from('member_requirement').select(KA_MR_COLS);
+  q=filter.group?q.eq('group_key',filter.group):filter.person?q.eq('person_id',filter.person):q.in('id',filter.ids||[]);
+  const {data:rows}=await q;
+  (rows||[]).forEach(r=>{ D.mreq=(D.mreq||[]).filter(x=>x.id!==r.id&&!(x.person_id===r.person_id&&x.requirement_id===r.requirement_id)); D.mreq.push(r) });
+  const ids=(rows||[]).map(r=>r.id);
+  if(ids.length){
+    const {data:sg}=await sb.from('v_progress_signatures').select('*').in('target_id',ids);
+    D.psig=(D.psig||[]).filter(s=>!ids.includes(s.target_id)).concat(sg||[]);
   }
-  const anix=D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα');
-  const evs=(D.ev||[]).slice().sort((a,b)=>(b.event_date||'').localeCompare(a.event_date||''));
-  const sigs=kaSig(g.id);
-  const isMe=(mePid()===who.id);
+  saveCache();
+  return rows||[];
+}
 
-  const stepBox=(n,body)=>`<div class="card pad" style="margin-bottom:10px;${g.deda<n?'opacity:.55':''}">
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">
-      <span style="flex:0 0 22px;height:22px;border-radius:50%;display:grid;place-items:center;
-        background:${g.deda>=n?DEDA_COL[g.deda]:'var(--line2)'};color:#fff;font-size:11.5px;font-weight:700">${n}</span>
-      <b style="font-size:13.5px">${DEDA[n-1].t}</b>
-      <span class="dim" style="font-size:11.5px">${DEDA[n-1].d}</span></div>${body}</div>`;
+let KASY={req:'', people:new Set(), note:''};
 
-  drawer(`${r.code} · ${r.label}`, `
-    <div class="card pad" style="margin-bottom:12px">
-      <div class="dim" style="font-size:12.5px;line-height:1.6">
-        Επτά βήματα, αλλά <b>δεν χρειάζονται όλα για κάθε απαίτηση</b> — έτσι το λέει το Βοήθημα.
-        Προχώρα όσα έχουν νόημα εδώ.</div>
-    </div>
+function kaSuggest(s,id){
+  const prev=(D.syn||[]).filter(x=>x.id!==id&&!x.archived_at&&x.section===s.section&&x.held_on&&x.held_on<s.held_on)
+    .map(x=>x.held_on).sort().pop()||'0000';
+  const decs=(D.synd||[]).filter(x=>x.synod_id===id&&x.kind==='απαίτηση');
+  const inDec=(rid,pid)=>decs.some(d=>d.payload&&d.payload.req===rid&&(d.payload.people||[]).includes(pid));
+  const koin=p=>p&&isMem(p)&&secOf(p)==='Κοινότητα';
+  const out=[];
+  (D.ss||[]).filter(x=>x.section==='Κοινότητα'&&(x.planned_reqs||[]).length&&x.session_date>prev&&x.session_date<=s.held_on)
+    .forEach(x=>out.push({date:x.session_date, title:x.title||'Συγκέντρωση', plan:x.planned_reqs,
+      people:(D.att||[]).filter(a=>a.session_id===x.id&&a.status==='Παρών').map(a=>a.person_id)}));
+  (D.ev||[]).filter(e=>!e.hidden&&(e.planned_reqs||[]).length&&(e.end_date||e.event_date)>prev&&(e.end_date||e.event_date)<=s.held_on)
+    .forEach(e=>out.push({date:e.end_date||e.event_date, title:e.title||'Δράση', plan:e.planned_reqs,
+      people:(D.pa||[]).filter(x=>x.event_id===e.id&&!x.is_staff&&!/^(ακυρ|αποσ)/i.test(x.status||'')).map(x=>x.person_id)}));
+  const rows=[];
+  out.forEach(g=>g.plan.forEach(rid=>{ const r=(D.rc2||[]).find(x=>x.id===rid);
+    if(!r||r.section!=='Κοινότητα')return;
+    const ppl=g.people.filter(pid=>koin(D.bh.find(b=>b.id===pid))&&!reqDone(pid,rid)&&!inDec(rid,pid));
+    if(ppl.length)rows.push({...g, rid, r, ppl});
+  }));
+  return rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+}
 
-    ${stepBox(1,`<div style="display:grid;gap:7px">
-      <input id="dT" placeholder="Θέμα" value="${esc(g.topic||'')}">
-      <textarea id="dA" rows="2" placeholder="Σκοπός και στόχοι">${esc(g.aim||'')}</textarea></div>`)}
+function kaDecRow(d,s){
+  const r=(D.rc2||[]).find(x=>x.id===(d.payload||{}).req);
+  const ppl=((d.payload||{}).people||[]).map(pid=>D.bh.find(b=>b.id===pid)).filter(Boolean);
+  const rows=(D.mreq||[]).filter(m=>m.group_key===d.id);
+  const passed=rows.length>0;
+  const me=ME.person_id;
+  const chairOk=!!d.chair_ok_on||(passed&&rows.every(m=>{const x=kaSigOf(m.id,'Πρόεδρος Συνόδου');return x&&x.signed_on}));
+  const akaOk=!!d.aka_ok_on||(passed&&rows.every(m=>{const x=kaSigOf(m.id,'Α.Κ.Α.');return x&&x.signed_on}));
+  const chairN=(()=>{const c=D.bh.find(b=>b.id===s.chair_id);return c?nm(c):'—'})();
+  const pill=(ok,t)=>`<span class="pill" style="font-size:11px${ok?';background:var(--okbg);color:var(--ok);border-color:transparent':''}">${ok?'✍ ':''}${t}${ok?'':' — εκκρεμεί'}</span>`;
+  return `<div class="kv" data-kadec="${d.id}" style="align-items:flex-start;border-top:1px solid var(--line);padding:9px 0;gap:8px;flex-wrap:wrap">
+    <span style="flex:1;min-width:220px">
+      <b style="font-size:13.5px">${esc(kaReqName(r))}</b>
+      <div style="font-size:12.5px;margin-top:2px">${ppl.map(p=>pn(p)).join(', ')||'<span class="dim">—</span>'}</div>
+      ${d.note?`<div class="dim" style="font-size:11.5px;margin-top:2px">«${esc(d.note)}»</div>`:''}
+      <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap">
+        ${pill(chairOk,'Πρόεδρος ('+esc(chairN)+')')}${pill(akaOk,'Α.Κ.Α./Υ.Κ.Α.')}
+        ${passed?`<span class="dim" style="font-size:11.5px;align-self:center">· πέρασε στο Η.Κ.Α.Δ.Ε. (${rows.length})</span>`
+          :`<span class="dim" style="font-size:11.5px;align-self:center">· περνά με την πρώτη υπογραφή</span>`}</div>
+    </span>
+    <span style="display:flex;gap:5px;flex-wrap:wrap">
+      ${!chairOk&&me&&me===s.chair_id?`<button class="btn sm p" data-kasign="${d.id}" data-role="Πρόεδρος Συνόδου">Υπογράφω ως Πρόεδρος</button>`:''}
+      ${!akaOk&&kaLeadUI()?`<button class="btn sm p" data-kasign="${d.id}" data-role="Α.Κ.Α.">Υπογράφω ως ${myHats().some(h=>h.role_code==='AKA')?'Α.Κ.Α.':'Υ.Κ.Α.'}</button>`:''}
+      ${!passed&&canWriteSynod(s)?`<button class="btn sm gh" data-kadel="${d.id}" title="Αφαίρεση — δεν έχει περάσει ακόμη">✕</button>`:''}
+    </span></div>`;
+}
 
-    ${stepBox(2,`<div class="kv"><span style="flex:1">Έντυπο έναρξης προς Ε.Ε.</span>
-      ${g.ee_notified_start?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">στάλθηκε ${fdate(g.ee_notified_start)}</span>`
-        :`<button class="btn sm" id="eeS">Σημείωσε ως απεσταλμένο</button>`}</div>`)}
+function kaSynodHTML(s,id,live){
+  const decs=(D.synd||[]).filter(x=>x.synod_id===id&&x.kind==='απαίτηση').sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const can=canWriteSynod(s)&&live&&!s.archived_at;
+  const sugg=can?kaSuggest(s,id):[];
+  const present=new Set((D.synp||[]).filter(x=>x.synod_id===id&&x.person_id).map(x=>x.person_id));
+  const mem=KOIN_MEM().sort((a,b)=>(present.has(a.id)?0:1)-(present.has(b.id)?0:1)||nm(a).localeCompare(nm(b),'el'));
+  const reqs=kaReqList();
+  return `<div class="sec"><h3>Απαιτήσεις Η.Κ.Α.Δ.Ε.</h3><span class="n">${decs.length}</span></div>
+    <div class="card pad" id="kaSyn">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:6px">
+        Κάθε απαίτηση περνά ως <b>απόφαση της Συνόδου</b>, με την ημερομηνία της (${fdate(s.held_on)}). Ένας ή πολλοί μαζί.
+        Υπογράφουν ο <b>Πρόεδρος</b> και ο <b>Α.Κ.Α./Υ.Κ.Α.</b> — όποιος από τους δύο την περάσει υπογράφει αυτόματα,
+        και η πρώτη υπογραφή τη γράφει στο Η.Κ.Α.Δ.Ε. Μετά, ο κάθε Ανιχνευτής γράφει ο ίδιος την καταγραφή του.</div>
+      <div id="kaDecs">${decs.map(d=>kaDecRow(d,s)).join('')||'<div class="dim" style="font-size:13px">Καμία απαίτηση σε αυτή τη Σύνοδο.</div>'}</div>
+      ${sugg.length?`<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:9px">
+        <div style="font-size:12.5px;font-weight:600;margin-bottom:4px">Έτοιμα θέματα από τις δράσεις</div>
+        ${sugg.slice(0,12).map((x,i)=>`<div class="kv" style="font-size:12.5px;padding:3px 0">
+          <span style="flex:1">${fdate(x.date)} · ${esc(x.title)} → <b>${esc(kaReqName(x.r))}</b> · ${x.ppl.length} Ανιχνευτές</span>
+          <button class="btn sm" data-kasug="${i}">Ως θέμα</button></div>`).join('')}</div>`:''}
+      ${can?`<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px;display:grid;gap:7px">
+        <div style="font-size:12.5px;font-weight:600">Νέα απαίτηση</div>
+        <select id="kaReq"><option value="">— απαίτηση —</option>
+          ${[...new Set(reqs.map(r=>r.stage_label))].map(stl=>`<optgroup label="${esc(stl||'')}">${reqs.filter(r=>r.stage_label===stl)
+            .map(r=>`<option value="${r.id}"${r.id===KASY.req?' selected':''}>${r.parent_id?' ':''}${esc(kaReqName(r))}</option>`).join('')}</optgroup>`).join('')}</select>
+        <div class="dim" style="font-size:11.5px">Ποιοι την πέρασαν${present.size?' — πρώτα οι παρόντες':''}:</div>
+        <div style="display:grid;gap:3px;max-height:200px;overflow:auto">${mem.map(p=>`<label class="kv" style="cursor:pointer;font-size:12.5px">
+          <input type="checkbox" class="kaP" value="${p.id}"${KASY.people.has(p.id)?' checked':''} style="width:auto;margin-right:7px">
+          <span style="flex:1">${pn(p)}</span><span class="dim kaH" data-p="${p.id}" style="font-size:11px">${present.has(p.id)?'παρών':''}</span></label>`).join('')}</div>
+        <input id="kaNote" placeholder="Σημείωση (προαιρετικό) — π.χ. ποια δράση" value="${esc(KASY.note)}">
+        <div><button class="btn sm p" id="kaAdd">Καταχώρηση</button></div>
+      </div>`:(live?'':`<div class="dim" style="font-size:11.5px;margin-top:9px">Απαιτήσεις περνούν όταν η Σύνοδος αρχίσει ή γίνει.</div>`)}
+    </div>`;
+}
 
-    ${stepBox(3,`<div class="dim" style="font-size:11.5px;margin-bottom:5px">Ομάδα Εργασίας — <b>έως 4 άτομα</b></div>
-      <div style="display:grid;gap:3px;max-height:150px;overflow:auto">
-        ${anix.map(p=>`<label class="kv" style="cursor:pointer;font-size:12.5px">
-          <input type="checkbox" class="oex" value="${p.id}"${(g.team||[]).includes(p.id)?' checked':''} style="width:auto;margin-right:7px">
-          ${pn(p)}</label>`).join('')}</div>
-      <input id="dP" placeholder="Ειδικός συνεργάτης (προαιρετικό)" value="${esc(g.partner||'')}" style="margin-top:7px">`)}
-
-    ${stepBox(4,`<select id="dE"><option value="">— χωρίς δράση —</option>
-      ${evs.map(e=>`<option value="${e.id}"${g.event_id===e.id?' selected':''}>${esc(e.title||'—')} · ${fdate(e.event_date)}</option>`).join('')}</select>`)}
-
-    ${stepBox(5,`<textarea id="dV" rows="2" placeholder="Αξιολόγηση της δράσης">${esc(g.evaluation||'')}</textarea>`)}
-
-    ${stepBox(6,`<textarea id="dS" rows="2" placeholder="Αυτοκριτική">${esc(g.self_review||'')}</textarea>
-      <div class="kv" style="margin-top:7px"><span style="flex:1">Έντυπο ολοκλήρωσης προς Ε.Ε.</span>
-      ${g.ee_notified_end?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">στάλθηκε ${fdate(g.ee_notified_end)}</span>`
-        :`<button class="btn sm" id="eeE">Σημείωσε ως απεσταλμένο</button>`}</div>`)}
-
-    ${stepBox(7, g.approved_on
-      ? (()=>{
-          const sy=(D.syn||[]).find(x=>x.id===g.synod_id);
-          const ch=sy&&D.bh.find(x=>x.id===sy.chair_id);
-          return `<div class="kv"><span style="flex:1">Διαβεβαιώθηκε στη Σύνοδο${sy&&sy.no?' αρ. '+esc(sy.no):''}</span>
-           <b>${fdate(g.approved_on)}</b></div>
-         ${sy?`<div class="dim" style="font-size:11.5px;margin-top:2px">Προεδρεύων: ${ch?esc(nm(ch)):'<i>δεν καταγράφηκε</i>'}</div>`
-             :`<div class="dim" style="font-size:11.5px;margin-top:2px"><i>Δεν καταγράφηκε σε ποια Σύνοδο.</i></div>`}
-         <div class="dim" style="font-size:12px;margin-top:6px">Υπογραφές Η.Κ.Α.Δ.Ε.:</div>`;
-        })()+`
-         <div style="display:grid;gap:5px;margin-top:5px">
-           ${['Α.Κ.Α.','Πρόεδρος Συνόδου'].map(role=>{
-             const s=sigs.find(x=>x.role===role);
-             const b=s?D.bh.find(x=>x.id===s.signer_id):null;
-             return `<div class="kv"><span style="flex:1;font-size:12.5px">${role}</span>
-               ${s?`<span style="color:var(--ok);font-size:12.5px">✍ ${esc(b?nm(b):'')} · ${fdate(s.signed_on)}</span>`
-                  :`<button class="btn sm" data-sign="${role}">Υπογράφω</button>`}</div>`}).join('')}
-         </div>
-         <div class="dim" style="font-size:11px;margin-top:7px">Υπογράφει ο καθένας μόνος του —
-           η βάση δεν δέχεται υπογραφή εκ μέρους άλλου. Και οι δύο θέσεις είναι
-           <b>ονομαστικές</b>, όπως στον πίνακα του Η.Κ.Α.Δ.Ε.: χωρίς Α.Κ.Α. <i>και</i>
-           Πρόεδρο Συνόδου δεν δίνεται διαβεβαίωση.</div>`
-      : `<div class="dim" style="font-size:12.5px">Η διαβεβαίωση δίνεται <b>στη Σύνοδο</b>, όχι εδώ.
-           Μόλις φτάσεις στο ΔΕΔΑ 6, η απαίτηση εμφανίζεται στο φύλλο της επόμενης Συνόδου.</div>`)}
-
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn p" id="dSave">Αποθήκευση</button>
-      ${g.deda<6?`<button class="btn" id="dNext">Επόμενο βήμα →</button>`:''}
-      <span class="sp"></span><span id="dMsg" class="dim" style="font-size:12.5px"></span></div>`);
-
-  const collect=()=>{
-    const team=[...document.querySelectorAll('.oex:checked')].map(x=>x.value);
-    if(team.length>4){toast('Η Ομάδα Εργασίας δεν ξεπερνά τα 4 άτομα');return null}
-    return {topic:$('dT').value.trim()||null, aim:$('dA').value.trim()||null,
-            team:team.length?team:null, partner:$('dP').value.trim()||null,
-            event_id:$('dE').value||null, evaluation:$('dV').value.trim()||null,
-            self_review:$('dS').value.trim()||null};
+function kaSynodWire(s,id){
+  const hint=()=>{ const rid=$('kaReq')&&$('kaReq').value;
+    document.querySelectorAll('.kaH').forEach(el=>{ const pid=el.dataset.p, has=rid&&reqDone(pid,rid);
+      el.textContent=has?'την έχει ήδη':((D.synp||[]).some(x=>x.synod_id===id&&x.person_id===pid)?'παρών':'') }) };
+  if($('kaReq'))$('kaReq').onchange=e=>{KASY.req=e.target.value; hint()};
+  document.querySelectorAll('.kaP').forEach(c=>c.onchange=()=>{ c.checked?KASY.people.add(c.value):KASY.people.delete(c.value) });
+  if($('kaNote'))$('kaNote').oninput=e=>{KASY.note=e.target.value};
+  const sugg=kaSuggest(s,id);
+  document.querySelectorAll('[data-kasug]').forEach(b=>b.onclick=()=>{ const x=sugg[+b.dataset.kasug]; if(!x)return;
+    KASY={req:x.rid, people:new Set(x.ppl), note:fdate(x.date)+' · '+x.title};
+    if($('kaReq'))$('kaReq').value=x.rid;
+    document.querySelectorAll('.kaP').forEach(c=>c.checked=KASY.people.has(c.value));
+    if($('kaNote'))$('kaNote').value=KASY.note; hint();
+    $('kaReq')&&$('kaReq').scrollIntoView({block:'center'}) });
+  hint();
+  if($('kaAdd'))$('kaAdd').onclick=async()=>{
+    if(!KASY.req)return toast('Διάλεξε απαίτηση');
+    if(!KASY.people.size)return toast('Διάλεξε ποιοι την πέρασαν');
+    const btn=$('kaAdd'); btn.disabled=true;
+    const {data,error}=await sb.rpc('synod_req_add',{p_synod:id, p_people:[...KASY.people], p_req:KASY.req, p_note:KASY.note||null});
+    btn.disabled=false;
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    const {data:row}=await sb.from('synod_decision').select('*').eq('id',data.id).single();
+    if(row)(D.synd=D.synd||[]).push(row);
+    if(data.perastike)await kaRefresh({group:data.id});
+    saveCache();
+    toast(data.perastike?`Πέρασε σε ${data.nea}${data.idi?' · '+data.idi+' την είχαν ήδη':''}`:'Καταχωρήθηκε — περιμένει υπογραφή Προέδρου ή Α.Κ.Α./Υ.Κ.Α.');
+    KASY={req:'', people:new Set(), note:''};
+    const box=$('kaDecs'); if(box&&row){ if(!box.querySelector('[data-kadec]'))box.innerHTML=''; box.insertAdjacentHTML('beforeend',kaDecRow(row,s)); kaWireRows(s,id) }
+    document.querySelectorAll('.kaP').forEach(c=>c.checked=false); if($('kaReq'))$('kaReq').value=''; if($('kaNote'))$('kaNote').value=''; hint();
   };
-  const save=async(extra={})=>{
-    const b=collect(); if(!b)return false;
-    const {error}=await sb.from('ka_progress').update({...b,...extra}).eq('id',g.id);
-    if(error){toast(/δικαίωμα|υπογραφ|ΔΕΔΑ/.test(error.message)?error.message:('Σφάλμα: '+error.message));return false}
-    Object.assign(g,b,extra); return true;
-  };
-  const step=async(n,extra={},synod=null,date=null)=>{
-    if(!await save(extra))return false;
-    const {data,error}=await sb.rpc('advance_ka',
-      {p_progress:g.id,p_deda:n,p_date:date,p_synod:synod,p_note:null});
-    if(error){toast('Σφάλμα: '+error.message);return false}
-    if(data&&data.error){toast(data.error);return false}
-    g.deda=Math.max(g.deda||0,n); if(n===7)g.approved_on=data.date;
-    D.kastep=D.kastep||[]; D.kastep.push({progress_id:g.id,deda:n,on_date:data.date});
-    return true;
-  };
-  $('dSave').onclick=async()=>{ if(await save()){toast('Αποθηκεύτηκε'); stay()} };
-  const nx=$('dNext');
-  if(nx)nx.onclick=async()=>{ const n=Math.min(7,(g.deda||1)+1);
-    if(n===2)return toast('Το βήμα 2 περνά από τη Σύνοδο — καταχωρείται εκεί.');
-    if(await step(n)){toast('Βήμα '+n); openDeda(who,reqId); route(ROUTE)} };
-  const es=$('eeS'); if(es)es.onclick=async()=>{
-    if(await step(2,{ee_notified_start:new Date().toISOString().slice(0,10)},g.synod_id)){openDeda(who,reqId)} };
-  const ee=$('eeE'); if(ee)ee.onclick=async()=>{
-    if(await step(6,{ee_notified_end:new Date().toISOString().slice(0,10)})){openDeda(who,reqId); route(ROUTE)} };
-  document.querySelectorAll('[data-sign]').forEach(b=>b.onclick=async()=>{
-    const {error}=await sb.from('ka_signature').insert({progress_id:g.id, signer_id:ME.person_id, role:b.dataset.sign});
-    if(error)return toast(/row-level/i.test(error.message)?'Υπογράφει μόνο ο ίδιος ο υπογράφων.'
-      :error.message.replace(/^.*?:\s*/,''));
-    D.kasig=D.kasig||[]; D.kasig.push({progress_id:g.id, signer_id:ME.person_id, role:b.dataset.sign, signed_on:new Date().toISOString().slice(0,10)});
-    toast('Υπογράφηκε'); openDeda(who,reqId);
+  kaWireRows(s,id);
+}
+function kaWireRows(s,id){
+  const redraw=did=>{ const d=(D.synd||[]).find(x=>x.id===did), el=document.querySelector(`[data-kadec="${did}"]`);
+    if(d&&el){el.outerHTML=kaDecRow(d,s); kaWireRows(s,id)} else if(el)el.remove() };
+  document.querySelectorAll('[data-kasign]').forEach(b=>b.onclick=async()=>{
+    const did=b.dataset.kasign, role=b.dataset.role; b.disabled=true;
+    const {data,error}=await sb.rpc('synod_req_sign',{p_decision:did, p_role:role});
+    if(error||(data&&data.error)){b.disabled=false; return toast('Σφάλμα: '+((error&&error.message)||data.error))}
+    const {data:row}=await sb.from('synod_decision').select('*').eq('id',did).single();
+    if(row){D.synd=(D.synd||[]).filter(x=>x.id!==did); D.synd.push(row)}
+    await kaRefresh({group:did});
+    toast(data.nea?`Υπογράφηκε — πέρασε σε ${data.nea}`:'Υπογράφηκε'); redraw(did);
+  });
+  document.querySelectorAll('[data-kadel]').forEach(b=>b.onclick=async()=>{
+    if(!await uiAsk('Αφαίρεση αυτής της απαίτησης από τη Σύνοδο;'))return;
+    const did=b.dataset.kadel;
+    const {data,error}=await sb.rpc('synod_req_remove',{p_decision:did});
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    D.synd=(D.synd||[]).filter(x=>x.id!==did); saveCache(); redraw(did); toast('Αφαιρέθηκε');
   });
 }
 
+function kaBackdoor(who){
+  const reqs=kaReqList(), mem=KOIN_MEM().sort(sortByName);
+  drawer('Πέρασμα εκτός e76', `
+    <div class="card pad" style="margin-bottom:10px;font-size:12.5px;line-height:1.6">
+      Για Σύνοδο που <b>δεν είναι καταχωρημένη στο e76</b> (π.χ. κοινή δράση με άλλη Κοινότητα).
+      Δηλώνεις <b>υποχρεωτικά</b> την ημερομηνία της Συνόδου και <b>ποιος προήδρευσε</b>.
+      Η υπογραφή του Προέδρου <b>μένει εκκρεμής</b> μέχρι να υπογράψει ο ίδιος στο e76 ή να σημειωθεί «από το έντυπο».
+      Η απαίτηση μετρά από την ημερομηνία της Συνόδου. Κάθε τέτοιο πέρασμα φαίνεται στον Α.Σ.</div>
+    <div style="display:grid;gap:8px">
+      <label>Απαίτηση<select id="kbReq"><option value="">—</option>
+        ${[...new Set(reqs.map(r=>r.stage_label))].map(stl=>`<optgroup label="${esc(stl||'')}">${reqs.filter(r=>r.stage_label===stl)
+          .map(r=>`<option value="${r.id}">${r.parent_id?' ':''}${esc(kaReqName(r))}</option>`).join('')}</optgroup>`).join('')}</select></label>
+      <label>Ημερομηνία Συνόδου<input type="date" id="kbDate" max="${todayISO()}"></label>
+      <label>Προήδρευσε (μέλος του 76ου)${ppHTML('kbChair','',{ph:'Γράψε όνομα…'})}</label>
+      <label>…ή όνομα, αν δεν είναι του 76ου<input id="kbChairN" placeholder="Ονοματεπώνυμο — Κοινότητα"></label>
+      <label>Ποια Σύνοδος / πού (προαιρετικό)<input id="kbWhere" placeholder="π.χ. Κοινή Σύνοδος με 12ο, Λευκωσία"></label>
+      <div class="dim" style="font-size:11.5px">Ποιοι την πέρασαν μαζί:</div>
+      <div style="display:grid;gap:3px;max-height:200px;overflow:auto">${mem.map(p=>`<label class="kv" style="cursor:pointer;font-size:12.5px">
+        <input type="checkbox" class="kbP" value="${p.id}"${who&&p.id===who.id?' checked':''} style="width:auto;margin-right:7px">${pn(p)}</label>`).join('')}</div>
+      <input id="kbNote" placeholder="Σημείωση (προαιρετικό)">
+      <div><button class="btn p" id="kbGo">Πέρασμα</button></div>
+    </div>`);
+  ppWire('kbChair',D.bh.filter(b=>b.status==='Ενεργός').sort(sortByName));
+  $('kbGo').onclick=async()=>{
+    const req=$('kbReq').value, dt=$('kbDate').value, ch=$('kbChair').value||null, chn=$('kbChairN').value.trim()||null;
+    const ppl=[...document.querySelectorAll('.kbP:checked')].map(x=>x.value);
+    if(!req)return toast('Διάλεξε απαίτηση'); if(!dt)return toast('Γράψε την ημερομηνία της Συνόδου');
+    if(!ch&&!chn)return toast('Γράψε ποιος προήδρευσε'); if(!ppl.length)return toast('Διάλεξε Ανιχνευτές');
+    const btn=$('kbGo'); btn.disabled=true;
+    const {data,error}=await sb.rpc('ka_backdoor',{p_people:ppl, p_req:req, p_date:dt, p_chair:ch, p_chair_name:ch?null:chn,
+      p_where:$('kbWhere').value.trim()||null, p_note:$('kbNote').value.trim()||null});
+    btn.disabled=false;
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    for(const pid of ppl)await kaRefresh({person:pid});
+    $('drw').classList.remove('on');
+    toast(`Πέρασε σε ${data.nea}${data.idi?' · '+data.idi+' την είχαν ήδη':''} — η υπογραφή του Προέδρου εκκρεμεί`);
+    stay();
+  };
+}
+
+async function kaSigClose(mid, role, paper){
+  const {data,error}=await sb.rpc('ka_sig_close',{p_mr:mid, p_role:role, p_paper:!!paper});
+  if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error)), false;
+  await kaRefresh({ids:[mid]}); toast(paper?'Σημειώθηκε από το έντυπο':'Υπογράφηκε'); return true;
+}
+
+function openKaWrite(who, m){
+  const r=(D.rc2||[]).find(x=>x.id===m.requirement_id)||{};
+  const isMe=mePid()===who.id, canEdit=isMe||isAdminUI();
+  const g=kaGroup(m), sh=kaShared(m)||{}, mine=kaMine(who.id,m.requirement_id)||{};
+  const mates=(D.mreq||[]).filter(x=>x.group_key&&x.group_key===m.group_key).map(x=>D.bh.find(b=>b.id===x.person_id)).filter(Boolean);
+  const prompts=(D.kpr||[]).filter(p=>p.requirement_id===m.requirement_id&&p.active!==false).sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+  const shAns=pid=>((D.kasha||[]).find(a=>a.group_key===g&&a.prompt_id===pid)||{}).answer||'';
+  const myAns=pid=>((D.kans||[]).filter(a=>a.person_id===who.id&&a.prompt_id===pid).sort((a,b)=>String(b.scout_year||'').localeCompare(String(a.scout_year||'')))[0]||{}).answer||'';
+  const ro=canEdit?'':' readonly';
+  const ta=(cls,pid,val,ph)=>`<textarea class="${cls}" data-pr="${pid||''}" rows="3" placeholder="${esc(ph||'')}"${ro}>${esc(val||'')}</textarea>`;
+  const evs=(D.ev||[]).filter(e=>(D.pa||[]).some(x=>x.event_id===e.id&&x.person_id===who.id)||e.id===sh.event_id)
+    .sort((a,b)=>String(b.event_date||'').localeCompare(String(a.event_date||'')));
+  const shP=prompts.filter(p=>p.shared), myP=prompts.filter(p=>!p.shared);
+  drawer(kaReqName(r), `
+    <div class="card pad" style="margin-bottom:10px;font-size:12.5px;line-height:1.6">
+      Πέρασε ${reqDate(m)} · ${esc(kaSource(m))}<div class="dim" style="font-size:11.5px;margin-top:3px">${kaSigLine(m)}</div>
+      ${canEdit?'':'<div class="dim" style="margin-top:5px">Το γράφει <b>ο ίδιος ο Ανιχνευτής</b> — εδώ βλέπεις μόνο.</div>'}</div>
+
+    <div class="sec"><h3>${mates.length>1?'Κοινή περιγραφή — '+mates.length+' μαζί':'Περιγραφή'}</h3></div>
+    <div class="card pad" style="margin-bottom:10px;display:grid;gap:7px">
+      ${mates.length>1?`<div class="dim" style="font-size:12px">Την πέρασαν μαζί: ${mates.map(p=>esc(nm(p))).join(', ')}.
+        Το κείμενο γράφεται <b>μία φορά</b> και φαίνεται σε όλους — γράψτε <b>και τι κάνατε μαζί και τι χωριστά</b>.</div>`:''}
+      ${shP.length?shP.map(p=>p.kind==='πρόσωπα'
+          ?`<div><div style="font-size:12.5px;font-weight:600">${esc(p.prompt)}</div>
+             <div class="dim" style="font-size:12.5px">${mates.length?mates.map(x=>esc(nm(x))).join(', '):esc(nm(who))}</div>
+             ${ta('kaSA',p.id,shAns(p.id),'Και ειδικός συνεργάτης / άλλοι, αν υπάρχουν')}</div>`
+          :`<div><div style="font-size:12.5px;font-weight:600">${esc(p.prompt)}</div>${ta('kaSA',p.id,shAns(p.id),'')}</div>`).join('')
+        :`<label>Θέμα, σκοπός, στόχοι${ta('kaS',0,sh.topic,'Τι κάναμε και γιατί')}</label>
+          <label>Τι κάναμε${mates.length>1?' μαζί':''} — στάδια, αξιολόγηση${ta('kaT',0,sh.together,'Πώς έγινε, τι βγήκε')}</label>`}
+      <label>Ειδικός συνεργάτης (προαιρετικό)<input id="kaPart" value="${esc(sh.partner||'')}"${ro}></label>
+      <label>Δράση στο e76 (αν υπάρχει)<select id="kaEv"${canEdit?'':' disabled'}><option value="">—</option>
+        ${evs.map(e=>`<option value="${e.id}"${e.id===sh.event_id?' selected':''}>${esc(e.title||'—')} · ${fdate(e.event_date)}</option>`).join('')}</select></label>
+      <div class="grow"><label style="max-width:190px">Έντυπο έναρξης στην Ε.Ε.<input type="date" id="kaEe1" value="${esc(sh.ee_start||'')}"${ro}></label>
+        <label style="max-width:190px">Έντυπο ολοκλήρωσης<input type="date" id="kaEe2" value="${esc(sh.ee_end||'')}"${ro}></label></div>
+    </div>
+
+    ${(isMe||kaStaffUI())?`<div class="sec"><h3>Προσωπικά</h3></div>
+    <div class="card pad" style="margin-bottom:10px;display:grid;gap:7px">
+      <div class="dim" style="font-size:11.5px">Τα βλέπουν μόνο ${isMe?'εσύ':'ο Ανιχνευτής'}, οι βαθμοφόροι της Κοινότητας και ο Α.Σ. — όχι οι άλλοι Ανιχνευτές.</div>
+      ${myP.map(p=>`<div><div style="font-size:12.5px;font-weight:600">${esc(p.prompt)}</div>${ta('kaMA',p.id,myAns(p.id),'')}</div>`).join('')}
+      ${mates.length>1?`<label>Τι έκανα εγώ χωριστά${ta('kaSolo',0,mine.solo,'')}</label>`:''}
+      <label>Αυτοκριτική${ta('kaSelf',0,mine.self_review,'Τι κράτησα, τι θα έκανα αλλιώς')}</label>
+    </div>`:''}
+    ${canEdit?`<div style="display:flex;gap:8px"><button class="btn p" id="kaSave">Αποθήκευση</button>
+      <span class="dim" style="font-size:11.5px;align-self:center">Γράφε με σαφήνεια, γράφε με συντομία.</span></div>`:''}`);
+  if(!canEdit)return;
+  $('kaSave').onclick=async()=>{
+    const sa={}; document.querySelectorAll('.kaSA').forEach(t=>sa[t.dataset.pr]=t.value);
+    const ma={}; document.querySelectorAll('.kaMA').forEach(t=>ma[t.dataset.pr]=t.value);
+    const v=c=>{const el=document.querySelector('.'+c); return el?el.value:null};
+    const shared={topic:v('kaS')!==null?v('kaS'):(sh.topic||''), together:v('kaT')!==null?v('kaT'):(sh.together||''),
+      partner:$('kaPart').value, event_id:$('kaEv').value||'', ee_start:$('kaEe1').value||'', ee_end:$('kaEe2').value||'', answers:sa};
+    const personal={self_review:v('kaSelf')||'', solo:v('kaSolo')!==null?v('kaSolo'):(mine.solo||''), answers:ma};
+    const btn=$('kaSave'); btn.disabled=true;
+    const {data,error}=await sb.rpc('ka_write',{p_mr:m.id, p_shared:shared, p_personal:personal});
+    btn.disabled=false;
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    const [a,b,c,d]=await Promise.all([
+      sb.from('ka_shared').select('*').eq('group_key',g),
+      sb.from('ka_shared_answer').select('*').eq('group_key',g),
+      sb.from('ka_answer').select('*').eq('person_id',who.id),
+      sb.from('ka_progress').select('*').eq('person_id',who.id)]);
+    D.kash=(D.kash||[]).filter(x=>x.group_key!==g).concat(a.data||[]);
+    D.kasha=(D.kasha||[]).filter(x=>x.group_key!==g).concat(b.data||[]);
+    D.kans=(D.kans||[]).filter(x=>x.person_id!==who.id).concat(c.data||[]);
+    D.kap=(D.kap||[]).filter(x=>x.person_id!==who.id).concat(d.data||[]);
+    saveCache(); $('drw').classList.remove('on'); toast('Αποθηκεύτηκε');
+    const row=document.querySelector(`[data-kar="${m.requirement_id}"]`);
+    if(row&&typeof kaRowHTML==='function'){ row.outerHTML=kaRowHTML(who, (D.rc2||[]).find(x=>x.id===m.requirement_id)); kaWireHk(who) } else stay();
+  };
+}
 function myKids(){
   if(VIEWAS&&VIEWAS.role==='parent'&&VIEWAS.pid){
     const p=D.bh.find(b=>b.id===VIEWAS.pid);
@@ -9226,9 +9407,13 @@ const LEV={'1':{t:'Ο ίδιος ο Πρόσκοπος',c:'var(--ink3)'},
 let PSEC='Ομάδα';
 const PCAT=()=>(D.pcat||[]).filter(x=>x.section===PSEC);
 const opStages=()=>PCAT().filter(x=>x.item_kind==='στάδιο'&&x.ordinal<50).sort((a,b)=>a.ordinal-b.ordinal);
-const opReqs=st=>(D.rc2||[]).filter(r=>r.section===PSEC&&r.stage_catalog_id===st.id
-                    &&r.item_kind!=='απαίτηση πτυχίου'&&r.active!==false)
-                 .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+const reqOrd=r=>{ const p=r.parent_id&&(D.rc2||[]).find(x=>x.id===r.parent_id);
+  return p?[(p.ordinal||0),(r.ordinal||0)]:[(r.ordinal||0),-1] };
+const byReqOrd=(a,b)=>{ const x=reqOrd(a), y=reqOrd(b); return x[0]-y[0]||x[1]-y[1] };
+const opReqs=st=>(D.rc2||[]).filter(r=>r.section===PSEC&&r.stage_catalog_id===st.id&&!r.parent_id
+                    &&r.item_kind!=='απαίτηση πτυχίου'&&r.active!==false&&!r.retired_at)
+                 .sort(byReqOrd);
+const reqNo=r=>r.code||r.ordinal;
 const opKids=()=>D.bh.filter(p=>isMem(p)&&secOf(p)===PSEC&&p.status==='Ενεργός'&&inScope(p))
                      .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
 const SECWORD={'Αγέλη':'Αγέλης','Ομάδα':'Ομάδας','Κοινότητα':'Κοινότητας'};
@@ -9269,7 +9454,7 @@ function progressBody(){
   if(!PGST||!stages.some(s=>s.id===PGST))PGST=stages[0].id;    
   const st=stages.find(s=>s.id===PGST), reqs=opReqs(st);
   if(PGTAB==='dafnes'&&PSEC!=='Ομάδα')PGTAB='pinakas';    
-  const write=ME.role==='admin'||PA&&PA.k==='leader';
+  const write=PSEC!=='Κοινότητα'&&(ME.role==='admin'||PA&&PA.k==='leader');
 
   const head=`<div class="card pad" style="margin-bottom:14px">
     <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
@@ -9315,7 +9500,7 @@ function progressBody(){
     const on=hasReq(k.id,r.id), L=LEV[r.verifier]||{};
     const rec=(D.mreq||[]).find(x=>x.person_id===k.id&&x.requirement_id===r.id);
     const sg=rec?sigsOf(rec.id):[];
-    const tip=[r.ordinal+'. '+r.label, r.description||'', L.t||'',
+    const tip=[reqNo(r)+'. '+r.label, r.description||'', PSEC==='Ομάδα'?L.t||'':'',
                rec&&rec.date?'Πέρασε '+fdate(rec.date):'', ...sg]
               .filter(Boolean).join('\n');
     return `<td style="padding:1px;text-align:center">
@@ -9336,9 +9521,10 @@ function progressBody(){
       <label style="display:flex;align-items:center;gap:5px;font-size:11.5px">
         <span class="dim">Εξέτασε:</span>
         ${ppHTML('pgExam',PGEXAM||'',{ph:'εγώ',style:'width:190px'})}</label>
-      <span class="dim" style="font-size:11.5px">Επίπεδο αξιολόγησης:</span>
+      ${ ''}
+      ${PSEC==='Ομάδα'?`<span class="dim" style="font-size:11.5px">Επίπεδο αξιολόγησης:</span>
       ${['1','2','3','4'].map(l=>`<span class="pill" style="font-size:10.5px">
-        <span class="dot" style="background:${LEV[l].c}"></span>${l} · ${esc(LEV[l].t)}</span>`).join('')}
+        <span class="dot" style="background:${LEV[l].c}"></span>${l} · ${esc(LEV[l].t)}</span>`).join('')}`:''}
     </div>
     <div class="card" style="overflow:auto">
       <table style="border-collapse:collapse;font-size:12px">
@@ -9350,8 +9536,8 @@ function progressBody(){
             <th style="padding:6px 10px">Σύνολο</th></tr>
           <tr><th style="position:sticky;left:0;background:var(--card);text-align:left;padding:2px 10px;
                 font-size:10.5px;color:var(--ink3)">${reqs.length} απαιτήσεις</th>
-            ${reqs.map(r=>`<th style="padding:0 1px 4px;font-size:9.5px;color:${(LEV[r.verifier]||{}).c||'var(--ink3)'}"
-              title="${esc((LEV[r.verifier]||{}).t||'')}">${esc(r.ordinal)}</th>`).join('')}<th></th></tr>
+            ${reqs.map(r=>`<th style="padding:0 1px 4px;font-size:9.5px;color:${PSEC==='Ομάδα'&&(LEV[r.verifier]||{}).c||'var(--ink3)'}"
+              title="${esc(r.label||'')}">${esc(reqNo(r))}</th>`).join('')}<th></th></tr>
         </thead>
         <tbody>${kids.map(k=>{
           const n=reqs.filter(r=>hasReq(k.id,r.id)).length;
@@ -9363,8 +9549,16 @@ function progressBody(){
         }).join('')||'<tr><td class="dim" style="padding:14px">Κανένα ενεργό μέλος στην Ομάδα.</td></tr>'}</tbody>
       </table></div>
     <div class="muted" style="font-size:12px;margin-top:9px">
-      Ο αριθμός πάνω από κάθε στήλη είναι ο <b>επίσημος αριθμός της απαίτησης</b> στο Παράρτημα «Α».
-      Το χρώμα του δείχνει <b>ποιος την κρίνει</b>. Πέρασε τον δείκτη πάνω από ένα κουτάκι για το πλήρες κείμενο.</div>`;
+      Ο αριθμός πάνω από κάθε στήλη είναι ο <b>επίσημος αριθμός της απαίτησης</b> στο βιβλιάριο.
+      ${PSEC==='Ομάδα'?'Το χρώμα του δείχνει <b>ποιος την κρίνει</b>.':''}
+      ${PSEC==='Κοινότητα'?'<b>Εδώ μόνο φαίνεται.</b> Στην Κοινότητα η απαίτηση περνά <b>στη Σύνοδο</b> (Απαιτήσεις Η.Κ.Α.Δ.Ε.) — με την ημερομηνία της και τις δύο υπογραφές — ή από «Πέρασμα εκτός e76» στο Η.Κ.Α.Δ.Ε.':''}</div>
+    ${ ''}
+    <details class="card pad" style="margin-top:10px" open><summary style="cursor:pointer;font-weight:600;font-size:13px">Τι είναι η κάθε απαίτηση · ${esc(st.label||'')}</summary>
+      <div style="margin-top:8px">${reqs.map(r=>{ const sub=PSEC==='Κοινότητα'&&typeof kaKids==='function'?kaKids(r):[];
+        return `<div style="border-top:1px solid var(--line);padding:6px 0;font-size:12.5px">
+          <b style="color:var(--ink3);display:inline-block;min-width:26px">${esc(reqNo(r))}</b> <b>${esc(r.label||'')}</b>
+          ${r.description?`<div class="dim" style="font-size:12px;line-height:1.5;margin:2px 0 0 30px">${esc(r.description)}</div>`:''}
+          ${sub.map(c=>`<div class="dim" style="font-size:12px;margin:2px 0 0 30px"><b>${esc(c.code||'')}</b> ${esc(c.label||'')}</div>`).join('')}</div>`}).join('')}</div></details>`;
 
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{PGTAB=b.dataset.tab;route(ROUTE)});
   document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{PGST=b.dataset.st;route(ROUTE)});
@@ -9429,8 +9623,8 @@ const psSessions=()=>(D.ss||[]).map(x=>({...x,
   .slice(0,60);
 const psStages=sec=>(D.pcat||[]).filter(x=>x.section===sec&&x.item_kind==='στάδιο'&&x.ordinal<50)
                      .sort((a,b)=>a.ordinal-b.ordinal);
-const psReqs=st=>(D.rc2||[]).filter(r=>r.stage_catalog_id===st.id&&r.item_kind!=='απαίτηση πτυχίου'&&r.active!==false)
-                     .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+const psReqs=st=>(D.rc2||[]).filter(r=>r.stage_catalog_id===st.id&&r.item_kind!=='απαίτηση πτυχίου'&&r.active!==false&&!r.retired_at)
+                     .sort(byReqOrd);
 const psDone=(pid,rid)=>(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id===rid);
 const psPend=(pid,rid)=>(D.prq||[]).find(x=>x.subject_id===pid&&x.requirement_id===rid&&x.status==='υποβλήθηκε');
 const psQueue=()=>(D.prq||[]).filter(x=>x.status==='υποβλήθηκε'
@@ -9514,6 +9708,16 @@ function passBody(){
   }
   if(PSMODE==='sess')return groupPassBody(head);
   if(PSMODE==='kolla'){ if(kid&&!klMyPatrols().length)PSMODE='ask'; else return kollaBody(head); }
+  if((PSMODE==='now'||PSMODE==='ask')&&(PSEC==='Κοινότητα'||(who&&secOf(who)==='Κοινότητα'))){
+    $('view').innerHTML=head+`<div class="uc"><h3>Στην Κοινότητα οι απαιτήσεις περνούν στη Σύνοδο</h3>
+      <p>Ως θέμα «Απαιτήσεις Η.Κ.Α.Δ.Ε.» της Συνόδου — με την ημερομηνία της, τον Πρόεδρο και τον Α.Κ.Α./Υ.Κ.Α.
+      Για Σύνοδο που δεν είναι στο e76: «Πέρασμα εκτός e76» στο Η.Κ.Α.Δ.Ε.</p>
+      <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn p" data-psgo="synod">Σύνοδοι</button><button class="btn" data-psgo="hkade">Η.Κ.Α.Δ.Ε.</button></div></div>`;
+    document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{PSMODE=b.dataset.m;PSSEL.clear();route(ROUTE)});
+    document.querySelectorAll('[data-psgo]').forEach(b=>b.onclick=()=>route(b.dataset.psgo));
+    return;
+  }
 
   const kids=psKids();
   const sess=PSSESS?(D.ss||[]).find(x=>x.id===PSSESS):null;
@@ -9640,10 +9844,11 @@ function passBody(){
 };
 
 async function reloadProgress(){
-  const [a,b]=await Promise.all([
-    sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared').limit(20000),
-    sb.from('progress_request').select('*').order('created_at',{ascending:false}).limit(2000)]);
-  if(a.data)D.mreq=a.data; if(b.data)D.prq=b.data; saveCache();
+  const [a,b,c]=await Promise.all([
+    sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared,date_precision,pigi,kane_signed,synod_id,group_key').limit(20000),
+    sb.from('progress_request').select('*').order('created_at',{ascending:false}).limit(2000),
+    sb.from('v_progress_signatures').select('*').limit(20000)]);
+  if(a.data)D.mreq=a.data; if(b.data)D.prq=b.data; if(c.data)D.psig=c.data; saveCache();
 }
 
 
@@ -9663,7 +9868,7 @@ function pgGroups(){
   }).filter(g=>g.mine);
   return [...ss,...ev].filter(g=>g.date);
 }
-const pgPending=gs=>gs.filter(g=>g.date<=isoLocal(new Date())&&g.plan.length&&g.people.length
+const pgPending=gs=>gs.filter(g=>g.sec!=='Κοινότητα'&&g.date<=isoLocal(new Date())&&g.plan.length&&g.people.length
   &&g.people.some(pid=>g.plan.some(rid=>!psDone(pid,rid))));
 
 function groupPassBody(head){
@@ -9711,7 +9916,7 @@ function groupPassBody(head){
         <input type="checkbox" class="pgr" value="${r.id}"${PSSEL.has(r.id)?' checked':''}>
         <span style="flex:1;min-width:0"><span style="color:var(--ink3);font-weight:700;font-size:12px">${esc(r.code||r.ordinal)}</span>
           <span style="font-size:13.5px"> ${esc(r.label)}</span>
-          ${r.verifier?`<span class="pill" style="margin-left:5px;font-size:10px;color:${L.c||''}">${esc(r.verifier)} · ${esc(L.t||'')}</span>`:''}</span></label>`}).join('')
+          ${r.verifier&&PGSEC==='Ομάδα'?`<span class="pill" style="margin-left:5px;font-size:10px;color:${L.c||''}">${esc(r.verifier)}${L.t?' · '+esc(L.t):''}</span>`:''}</span></label>`}).join('')
       ||'<div class="pad dim">Καμία απαίτηση σε αυτό το στάδιο.</div>'}</div>
     ${done?`<div class="sec"><h3>Ποιοι ήταν εκεί</h3><span class="n">${people.length}</span></div>
       <div class="card" style="margin-bottom:12px">${people.map(id=>{ const b=pgMem(id);
@@ -9720,7 +9925,8 @@ function groupPassBody(head){
           <span style="flex:1;font-size:13.5px">${pn(b)}</span><span class="dim pgh" data-p="${id}" style="font-size:11.5px"></span></label>`}).join('')
         ||'<div class="pad dim">Κανένα μέλος αυτού του τμήματος.</div>'}</div>`:''}
     <div class="card pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      ${done?'<button class="btn p" id="pgGo">Πέρασμα <span id="pgN"></span></button>':''}
+      ${done&&PGSEC!=='Κοινότητα'?'<button class="btn p" id="pgGo">Πέρασμα <span id="pgN"></span></button>':''}
+      ${PGSEC==='Κοινότητα'?'<span style="font-size:12.5px"><b>Κοινότητα:</b> δεν περνά από εδώ — το «θα περάσουμε» γίνεται <b>έτοιμο θέμα στην επόμενη Σύνοδο</b>.</span>':''}
       <button class="btn${done?'':' p'}" id="pgPlan">Αποθήκευση ως «θα περάσουμε»</button>
       <span class="dim" style="font-size:12px">Το «θα περάσουμε» δεν περνά τίποτα μόνο του — σε περιμένει εδώ μετά τη συγκέντρωση.</span>
     </div>`);
@@ -12991,7 +13197,7 @@ function exemptBy(pid, st){
 }
 const cardStages=sec=>(D.pcat||[]).filter(x=>x.section===sec&&x.item_kind==='στάδιο'
     &&x.active!==false&&x.label!=='Ανάβαση').sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
-const stageReqs=(sec,st)=>(D.rc2||[]).filter(r=>r.section===sec&&r.stage_catalog_id===st.id
+const stageReqs=(sec,st)=>(D.rc2||[]).filter(r=>r.section===sec&&r.stage_catalog_id===st.id&&!r.parent_id
     &&!r.retired_at&&r.active!==false).sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
 const reqDone=(pid,rid)=>(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id===rid);
 
@@ -13036,15 +13242,17 @@ function stageCard(pid, sec, st){
     :ex?`<span class="pill">απαλλαγή — ${esc(ex.a.label)}${ex.h.date?' · '+progDate(ex.h):''}</span>`
     :reqs.length&&n===reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span> <span class="pill" style="background:var(--accbg);color:var(--acc);border-color:transparent">έτοιμο για απονομή</span>`
     :reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span>`:'<span class="dim" style="font-size:12px">—</span>';
-  const line=r=>{ const d=reqDone(pid,r.id), ok=!!d||!!ex;
-    return `<div class="kv" style="padding:3px 0;font-size:12.5px">
+  const line=(r,sub)=>{ const d=reqDone(pid,r.id), ok=!!d||!!ex;
+    return `<div class="kv" style="padding:3px 0;font-size:${sub?'12px;margin-left:18px':'12.5px'}">
       <span class="dot" style="background:${ok?'var(--ok)':'var(--line2)'}"></span>
       <span style="flex:1;min-width:0;${ok?'':'color:var(--ink3)'}">${esc(r.code||'')} ${esc(r.label||'')}</span>
-      <span class="dim" style="font-size:11.5px;text-align:right">${d?reqDate(d)+pigiTag(d)+sigTag(d):ex?'καλύφθηκε':''}</span></div>` };
+      <span class="dim" style="font-size:11.5px;text-align:right">${d?reqDate(d)+pigiTag(d)+sigTag(d)
+        +(typeof kaNeedsWrite==='function'&&kaNeedsWrite(d)?'<span style="margin-left:5px">· εκκρεμεί περιγραφή</span>':''):ex?'καλύφθηκε':''}</span></div>` };
+  const kidsOf=r=>typeof kaKids==='function'?kaKids(r):[];
   return `<details class="card pad" style="margin-bottom:9px"${got||ex?'':(n?' open':'')}>
     <summary style="cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <b style="font-size:13.5px;flex:1;min-width:140px">${esc(st.label||'')}</b>${head}</summary>
-    ${reqs.length?`<div style="margin-top:9px">${reqs.map(line).join('')}</div>`
+    ${reqs.length?`<div style="margin-top:9px">${reqs.map(r=>line(r)+kidsOf(r).map(c=>line(c,true)).join('')).join('')}</div>`
       :'<div class="dim" style="margin-top:8px;font-size:12.5px">Δεν υπάρχουν καταγεγραμμένες απαιτήσεις για αυτό το στάδιο.</div>'}
   </details>`;
 }
