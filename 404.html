@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 15:31'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 15:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -17839,15 +17839,15 @@ function calBody(){
     let cells='';
     for(let i=0;i<start;i++)cells+='<div style="min-height:88px"></div>';
     for(let d=1;d<=days;d++){const it=items(d),td=(d===now.getDate()&&cm===now.getMonth()&&cy===now.getFullYear());
-      cells+=`<div style="min-height:88px;border:1px solid var(--line);border-radius:8px;padding:6px;background:${td?'var(--accbg)':'var(--card)'}">
+      cells+=`<div style="min-height:88px;min-width:0;border:1px solid var(--line);border-radius:8px;padding:6px;background:${td?'var(--accbg)':'var(--card)'}">
         <div style="font-size:12px;font-weight:${td?600:400};color:${td?'var(--acc)':'var(--ink3)'};margin-bottom:4px">${d}</div>
         ${it.slice(0,3).map(x=>`<div style="font-size:11px;line-height:1.35;margin-bottom:3px;padding:2px 5px;border-radius:4px;background:${x.b?'var(--accbg)':'var(--bg)'};border-left:2px solid ${x.c};${x.o?'opacity:.7;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.t)}</div>`).join('')}
         ${it.length>3?`<div class="dim" style="font-size:10.5px">+${it.length-3}</div>`:''}</div>`}
     $('view').innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:13px">
         <button class="btn sm" id="cPrev">←</button><b style="font-size:16px">${MON[cm]} ${cy}</b><button class="btn sm" id="cNext">→</button>
         <span class="sp"></span><button class="btn sm" id="cNow">Σήμερα</button></div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px">${['Δε','Τρ','Τε','Πε','Πα','Σα','Κυ'].map(d=>`<div class="dim" style="font-size:11px;text-align:center;font-weight:600">${d}</div>`).join('')}</div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">${cells}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:6px">${['Δε','Τρ','Τε','Πε','Πα','Σα','Κυ'].map(d=>`<div class="dim" style="font-size:11px;text-align:center;font-weight:600">${d}</div>`).join('')}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">${cells}</div>
       <div style="display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;font-size:12px" class="dim">
         <span>${sdot('Αγέλη')} ${sdot('Ομάδα')} ${sdot('Κοινότητα')} συγκεντρώσεις & θέματα</span><span><span class="dot" style="background:var(--acc)"></span> δράσεις</span><span><span class="dot" style="background:var(--warn)"></span> σημαντικά</span><span><span class="dot" style="background:var(--ink3)"></span> αργίες · σχολές · Γενική/Επαρχία</span><span>🎂 γενέθλια</span></div>`;
     $('cPrev').onclick=()=>{cm--;if(cm<0){cm=11;cy--}draw()};
@@ -18663,7 +18663,10 @@ function guardiansBody(){
   ['gsec','ggrp'].forEach(id=>$(id).addEventListener('change',draw)); draw();
 };
 function cp(t,l){navigator.clipboard.writeText(t).then(()=>toast(`Αντιγράφηκαν τα ${l}`))}
-function toast(m){const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--side);color:#fff;padding:10px 16px;border-radius:22px;font-size:13.5px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.28)';document.body.appendChild(d);setTimeout(()=>d.remove(),2300)}
+const DENY_RX=/row-level security|permission denied|42501|δεν επιτρέπεται|δεν έχεις δικαίωμα|δεν υπογράφεις|μόνο ο Α\.Σ\.|μόνο ο διαχειριστής/i;
+function denyLog(m){ try{ if(typeof sb==='undefined'||!ME||!ME.person_id)return; if(!DENY_RX.test(String(m||'')))return;
+  sb.rpc('log_denial',{p_screen:String((typeof ROUTE!=='undefined'&&ROUTE)||''), p_detail:String(m).slice(0,300)}).then(()=>{},()=>{}); }catch(e){} }
+function toast(m){denyLog(m);const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--side);color:#fff;padding:10px 16px;border-radius:22px;font-size:13.5px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.28)';document.body.appendChild(d);setTimeout(()=>d.remove(),2300)}
 
 const CT_KINDS=['κινητό','σταθερό','εργασία','μόνο Viber'];
 const CT_SECS=['Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα'];
@@ -22502,7 +22505,23 @@ V.access=()=>tabView('access',[
   {k:'grants',t:'Παραχωρήσεις',  i:'lock',   fn:grantsBody,       d:'προσωρινά, με ημερομηνία λήξης', nav:'roles'},
   {k:'labels',t:'Πρώτοι Βοηθοί',  i:'shield', fn:labelsBody,       d:'ποιος βλέπει ιατρικά ως Πρώτος Βοηθός — και για ποιο τμήμα', nav:'progfix'},
   {k:'matrix',t:'Πίνακας',       i:'lock',   fn:()=>matrixBody(), d:'ποιος διαβάζει και ποιος γράφει τι — από τις πολιτικές της βάσης', nav:'matrix'},
-  {k:'viewas',t:'Δες ως',        i:'users',  fn:()=>viewasBody(), d:'άνοιξε την εφαρμογή όπως τη βλέπει άλλος — από τη βάση', nav:'viewas'}]);
+  {k:'viewas',t:'Δες ως',        i:'users',  fn:()=>viewasBody(), d:'άνοιξε την εφαρμογή όπως τη βλέπει άλλος — από τη βάση', nav:'viewas'},
+  ...(isAdminUI()?[{k:'deny', t:'Αρνήσεις', i:'lock', fn:()=>denialsBody(), d:'τι αρνήθηκε το e76 και σε ποιον'}]:[])]);
+async function denialsBody(){
+  $('view').innerHTML='<div class="dim pad">Φόρτωση…</div>';
+  const {data,error}=await sb.from('access_denial').select('*').order('at',{ascending:false}).limit(300);
+  if(error){$('view').innerHTML='<div class="card pad">Σφάλμα: '+esc(error.message)+'</div>';return}
+  const rows=data||[];
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:12px"><b>Αρνήσεις πρόσβασης</b>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">Κάθε φορά που το e76 είπε «δεν επιτρέπεται» σε κάποιον: ποιος, πότε, σε ποια οθόνη και τι μήνυμα.
+      Αν ο ίδιος άνθρωπος κολλά στο ίδιο σημείο, μάλλον του λείπει καπέλο ή ρόλος.</div></div>
+    <div class="card">${rows.map(r=>{ const p=D.bh.find(b=>b.id===r.person_id);
+      return `<div class="kv" style="border-top:1px solid var(--line);padding:7px 12px;font-size:12.5px;align-items:flex-start">
+        <span style="flex:1;min-width:0">${p?pn(p):'<span class="dim">άγνωστος</span>'} <span class="dim">· ${esc(r.role||'')} · ${esc(r.screen||'')}</span>
+          <div class="dim" style="font-size:11.5px;margin-top:2px">${esc(r.detail||'')}</div></span>
+        <span class="dim" style="font-size:11.5px;white-space:nowrap">${fdate(String(r.at).slice(0,10))} ${esc(String(r.at).slice(11,16))}</span></div>`}).join('')
+      ||'<div class="pad dim">Καμία άρνηση.</div>'}</div>`;
+}
 V.enroll=()=>tabView('enroll',[
   {k:'reg', t:'Βεβαιώσεις μελών',  i:'book',   fn:enrollBody, d:'προς εκτύπωση'},
   {k:'led', t:'Ν.91(Ι) βαθμοφόρων',i:'shield', fn:certsBody,  d:'λευκά ποινικά και λήξεις'}]);
