@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 10:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 12:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1737,8 +1737,8 @@ async function loadAll(){
     sb.from('ka_signature').select('*').limit(3000),
     sb.from('requirement_catalog').select('*,progression_catalog!stage_catalog_id(label,ordinal)').limit(1000),
     sb.from('progression_catalog').select('*').limit(500),
-    sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via').limit(20000),
-    sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared').limit(20000),
+    sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision').limit(20000),
+    sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared,date_precision,pigi,kane_signed,synod_id').limit(20000),
     sb.from('progress_request').select('*').order('created_at',{ascending:false}).limit(2000),
     sb.from('progress_policy').select('*'),
     sb.from('ka_step').select('*').limit(5000),
@@ -1774,9 +1774,10 @@ async function loadAll(){
     sb.from('committee_members').select('*').limit(1000),
     pageAll('person_phones','id,person_id,number,kind,viber,seq,note'),
     sb.from('contact_prefs').select('person_id,viber_phone_id,note').limit(1000),
-    sb.from('section_links').select('id,scout_year,section,audience,url,label').limit(500)
+    sb.from('section_links').select('id,scout_year,section,audience,url,label').limit(500),
+    sb.from('progress_exemption').select('award_id,covers_stage_id,note')
   ];
-  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc','wlct','rr','rl','event_member_open','structure_plan','structure_plan_row','warrants','committee_members','person_phones','contact_prefs','section_links'];
+  const names=['badgeholders','member_year','sessions','attendance','certifications','guardians','sensitive','events','participations','person_medical','emergency_contacts','trainings','app_settings','request_types','requests','request_steps','reports','org_roles','person_hats','service_history','honors','person_emails','documents','person_certificates','certificate_types','vehicles','vehicle_links','vehicle_insurance','member_flags','doc_requirements','enrollment_docs','form_templates','consent_items','handovers','subgroups','care_links','profiles','section_config','fee_schedule','grants','role_catalog','mailboxes','klimakia','invitations','transfers','transfer_policy','app_meta','audit_log','v_accounts','consents','synod','synod_present','synod_decision','ka_progress','ka_signature','requirement_catalog','progression_catalog','member_progress','member_requirement','progress_request','progress_policy','ka_step','subgroup_roles','prog_category','venues','care_op','amx','idrev','vp','vpi','coh','cd','vds','legal','lacc','rtd','wcon','psig','pph','sapp','elog','wl','wlc','wlct','rr','rl','event_member_open','structure_plan','structure_plan_row','warrants','committee_members','person_phones','contact_prefs','section_links','pex'];
   const _t0=Date.now();
   const TMO=12000;
   const CORE=new Set([0,1,36,37,40,42,17,12,35,65]);
@@ -1827,7 +1828,7 @@ async function loadAll(){
   D.kap=r[53]?.data||[]; D.kasig=r[54]?.data||[];
   D.rc2=(r[55]?.data||[]).map(x=>({...x, stage_label:x.progression_catalog?.label,
                                         stage_ordinal:x.progression_catalog?.ordinal}));
-  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.cd=r[71]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.emo=r[86]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[]; D.phn=r[91]?.data||[]; D.cpf=r[92]?.data||[]; D.slk=r[93]?.data||[];
+  D.pcat=r[56]?.data||[]; D.mprog=r[57]?.data||[]; D.mreq=r[58]?.data||[]; D.prq=r[59]?.data||[]; D.ppol=r[60]?.data||[]; D.kastep=r[61]?.data||[]; D.sgr=r[62]?.data||[]; D.pcg=r[63]?.data||[]; D.ven=r[64]?.data||[]; D.care_op=r[65]?.data||[];   D.idrev=r[67]?.data||[]; D.vp=r[68]?.data||[]; D.vpi=r[69]?.data||[]; D.cd=r[71]?.data||[]; D.legal=r[73]?.data||[]; D.lacc=r[74]?.data||[]; D.rtd=r[75]?.data||[];   D.psig=r[77]?.data||[]; D.pph=r[78]?.data||[]; D.sapp=r[79]?.data||[]; D.wlc=r[82]?.data||[]; D.wlct=r[83]?.data||[]; D.emo=r[86]?.data||[]; D.war=r[89]?.data||[]; D.cmt=r[90]?.data||[]; D.phn=r[91]?.data||[]; D.cpf=r[92]?.data||[]; D.slk=r[93]?.data||[]; D.pex=r[94]?.data||[];
   if(!(D.cl||[]).length && (D.care_op||[]).length) D.cl=D.care_op.map(x=>({...x}));
   mergeStubs();
   const _th=(D.st||[]).find(x=>x.k==='thresholds'); if(_th&&_th.v)TH={...DEF_TH,..._th.v};
@@ -1884,6 +1885,7 @@ const NAV_DEV=['audit','access','roles','dataqa','outputs','mysys',
 const PROG_OF={'Αγέλη':'progAL','Ομάδα':'progOP','Κοινότητα':'progKA'};
 function progDate(x){
   if(!x||!x.date)return '<span class="dim">—</span>';
+  if(x.date_precision&&x.date_precision!=='ημέρα')return reqDate(x);
   const t=fdate(x.date);
   if(!x.date_approx)return esc(t);
   const why=x.date_source==='εγγραφή'?'από την ημερομηνία εγγραφής, όχι απονομής'
@@ -6564,6 +6566,8 @@ V.kidfile=()=>{
       <b>${pn(kid)}</b>${kid.scout_name?` <i class="osn">${esc(kid.scout_name)}</i>`:''}
       <div class="muted" style="margin-top:5px;font-size:13.5px">Η πορεία του στο Σύστημα, χρονιά με χρονιά.</div>
     </div>
+
+    ${kidProgCard(kid)}
 
     <div class="card" style="overflow:auto;margin-bottom:14px"><table>
       <thead><tr><th>Χρονιά</th><th>Τμήμα</th><th class="hide-s">Εξάδα/Ενωμοτία</th><th>Παρουσίες</th></tr></thead>
@@ -12350,63 +12354,6 @@ function meSimpleHTML(p){
   </div>`;
 }
 
-const YOUTH_SECS=['Αγέλη','Ομάδα','Κοινότητα'];
-function mySections(p){
-  const seen=[];
-  (D.my||[]).filter(y=>y.person_id===p.id&&!y.voided_at)
-    .sort((a,b)=>(a.scout_year||'').localeCompare(b.scout_year||''))
-    .forEach(y=>{ if(y.section&&YOUTH_SECS.includes(y.section)&&!seen.includes(y.section))seen.push(y.section) });
-  return YOUTH_SECS.filter(x=>seen.includes(x));    
-}
-function myProgBody(p, sec){
-  const stages=(D.pcat||[]).filter(x=>x.section===sec&&x.item_kind==='στάδιο'&&x.ordinal<50)
-    .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
-  const won=(D.mprog||[]).filter(x=>x.person_id===p.id);
-  const wonIn=k=>won.filter(x=>x.item_kind===k
-    && (D.pcat||[]).some(c=>c.id===x.catalog_id&&c.section===sec));
-  const done=rid=>(D.mreq||[]).find(x=>x.person_id===p.id&&x.requirement_id===rid);
-  const years=(D.my||[]).filter(y=>y.person_id===p.id&&!y.voided_at&&y.section===sec)
-    .map(y=>y.scout_year).sort();
-
-  const stageHTML=stages.map(st=>{
-    const reqs=(D.rc2||[]).filter(r=>r.section===sec&&r.stage_catalog_id===st.id&&!r.retired_at)
-      .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
-    const got=heldItem(p.id, st);
-    const n=reqs.filter(r=>done(r.id)).length;
-    return `<details class="card pad" style="margin-bottom:9px"${got?'':(n?' open':'')}>
-      <summary style="cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <b style="font-size:13.5px;flex:1;min-width:140px">${esc(st.label||'')}</b>
-        ${got?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">απονεμήθηκε${got.date?' · '+fdate(got.date):''}</span>`
-             :reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span>`
-             :'<span class="dim" style="font-size:12px">—</span>'}
-      </summary>
-      ${reqs.length?`<div style="margin-top:9px">${reqs.map(r=>{
-        const d=done(r.id);
-        return `<div class="kv" style="padding:3px 0;font-size:12.5px">
-          <span class="dot" style="background:${d?'var(--ok)':'var(--line2)'}"></span>
-          <span style="flex:1;min-width:0;${d?'':'color:var(--ink3)'}">${esc(r.code||'')} ${esc(r.label||'')}</span>
-          <span class="dim" style="font-size:11.5px">${d&&d.date?fdate(d.date):''}</span></div>`}).join('')}</div>`
-      :'<div class="dim" style="margin-top:8px;font-size:12.5px">Δεν υπάρχουν καταγεγραμμένες απαιτήσεις για αυτό το στάδιο.</div>'}
-    </details>`}).join('');
-
-  const spec=wonIn('ειδικότητα'), badge=wonIn('πτυχίο');
-  const pills=(t,arr)=>arr.length?`<div class="card pad" style="margin-bottom:9px">
-    <div class="dim" style="font-size:12px;margin-bottom:6px">${t}</div>
-    ${arr.map(x=>`<span class="pill" style="margin:3px 3px 0 0">${esc(x.label||'')}
-      ${x.date?`<span class="dim">${fdate(x.date)}</span>`:''}</span>`).join('')}</div>`:'';
-
-  return `<div class="dim" style="font-size:12px;margin-bottom:9px">
-      ${esc(sec)}${years.length?' · '+esc(years[0])+(years.length>1?' έως '+esc(years[years.length-1]):''):''}
-    </div>
-    ${sec==='Κοινότητα'
-      ? `<div class="card pad" style="margin-bottom:9px"><b style="font-size:13.5px">Η.Κ.Α.Δ.Ε.</b>
-          <div class="muted" style="margin-top:5px;font-size:13px">Η Κοινότητα δεν έχει αστέρια ούτε τρίφυλλα:
-            η πορεία γράφεται στο Ημερολόγιο και επικυρώνεται από τη Σύνοδο.</div>
-          <button class="btn sm p" data-go="progKA" style="margin-top:9px">Άνοιγμα Η.Κ.Α.Δ.Ε.</button></div>`
-      : ''}
-    ${stageHTML||'<div class="dim" style="font-size:13px">Δεν φορτώθηκε ο κατάλογος αυτού του κλάδου.</div>'}
-    ${pills('Ειδικότητες', spec)}${pills('Πτυχία', badge)}`;
-}
 
 V.me=()=>{
   const M=mePieces(); if(!M)return meGone();
@@ -12755,6 +12702,129 @@ const trLevel=t=>{
   if(k==='ΣΠΕΒ'||TR_PRE.test(s))        return 1;    
   return 0;
 };
+const YOUTH_SECS=['Αγέλη','Ομάδα','Κοινότητα'];
+const MONN=['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος',
+            'Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος'];
+function mySections(p){
+  const seen=new Set();
+  (D.my||[]).forEach(y=>{ if(y.person_id===p.id&&!y.voided_at&&YOUTH_SECS.includes(y.section))seen.add(y.section) });
+  (D.mprog||[]).forEach(x=>{ if(x.person_id!==p.id||!x.catalog_id)return;
+    const c=(D.pcat||[]).find(c=>c.id===x.catalog_id); if(c&&YOUTH_SECS.includes(c.section))seen.add(c.section) });
+  (D.mreq||[]).forEach(x=>{ if(x.person_id!==p.id)return;
+    const r=(D.rc2||[]).find(r=>r.id===x.requirement_id); if(r&&YOUTH_SECS.includes(r.section))seen.add(r.section) });
+  return YOUTH_SECS.filter(s=>seen.has(s));         
+}
+
+function reqDate(m){
+  if(!m)return '';
+  const pr=m.date_precision||(m.date?(m.date_approx?'χρονιά':'ημέρα'):'άγνωστη');
+  if(!m.date||pr==='άγνωστη')return '<span class="dim">χωρίς ημερομηνία</span>';
+  const x=new Date(m.date);
+  if(pr==='χρονιά')return `<span class="approx" title="ξέρουμε μόνο τη χρονιά">${x.getFullYear()}</span>`;
+  if(pr==='μήνας')return `<span class="approx" title="ξέρουμε μόνο τον μήνα">${MONN[x.getMonth()]} ${x.getFullYear()}</span>`;
+  return esc(fdate(m.date));
+}
+const PIGI_TXT={'συμμετοχή':'από συμμετοχή','αίτημα':'με αίτημα','Σύνοδος':'Σύνοδος',
+  'εκτός e76':'εκτός e76','ιστορικό':'από το χαρτί','απονομή':'με την απονομή','απαλλαγή':'απαλλαγή'};
+const pigiTag=m=>m&&PIGI_TXT[m.pigi]
+  ?`<span class="pill" style="font-size:10.5px;padding:0 6px;margin-left:5px">${PIGI_TXT[m.pigi]}</span>`:'';
+const sigTag=m=>(D.psig||[]).some(s=>s.target==='ΑΠΑΙΤΗΣΗ'&&s.target_id===m.id&&(s.ekkremei||!s.signed_on))
+  ?'<span class="dim" style="font-size:11px;margin-left:5px">· εκκρεμεί υπογραφή</span>':'';
+
+function exemptBy(pid, st){
+  for(const e of (D.pex||[]).filter(e=>e.covers_stage_id===st.id)){
+    const a=(D.pcat||[]).find(c=>c.id===e.award_id); const h=a&&heldItem(pid,a);
+    if(h)return {a,h};
+  }
+  return null;
+}
+const cardStages=sec=>(D.pcat||[]).filter(x=>x.section===sec&&x.item_kind==='στάδιο'
+    &&x.active!==false&&x.label!=='Ανάβαση').sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+const stageReqs=(sec,st)=>(D.rc2||[]).filter(r=>r.section===sec&&r.stage_catalog_id===st.id
+    &&!r.retired_at&&r.active!==false).sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+const reqDone=(pid,rid)=>(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id===rid);
+
+function nextStep(pid, sec){
+  for(const st of cardStages(sec)){
+    if(heldItem(pid,st)||exemptBy(pid,st))continue;
+    const reqs=stageReqs(sec,st);
+    return {st, n:reqs.filter(r=>reqDone(pid,r.id)).length, tot:reqs.length};
+  }
+  return null;
+}
+
+function promiseNote(pid, sec){
+  if(sec!=='Ομάδα')return '';
+  const cat=s=>(D.pcat||[]).find(c=>c.section===s&&c.item_kind==='στάδιο'&&c.label==='Υπόσχεση');
+  const o=cat('Ομάδα'), a=cat('Αγέλη');
+  if(!o||!a||heldItem(pid,o))return '';
+  const ha=heldItem(pid,a); if(!ha)return '';
+  return `<div class="card pad" style="margin-bottom:9px;font-size:12.5px">
+    <b>Υπόσχεση:</b> δόθηκε στην Αγέλη${ha.date?' — '+progDate(ha):''}. Υπόσχεση δίνεις μία φορά·
+    στην Ομάδα <b>ανανεώνεται</b> στην πρώτη της δράση και καταγράφεται τότε.</div>`;
+}
+
+function badgeLine(pid, sec){
+  const rows=(D.pcat||[]).filter(c=>c.section===sec&&(c.item_kind==='ειδικότητα'||c.item_kind==='πτυχίο'))
+    .map(c=>{ const reqs=(D.rc2||[]).filter(r=>r.stage_catalog_id===c.id&&!r.retired_at&&r.active!==false);
+      return {c, h:heldItem(pid,c), n:reqs.filter(r=>reqDone(pid,r.id)).length, tot:reqs.length} })
+    .filter(x=>x.h||x.n)
+    .sort((a,b)=>(a.h?0:1)-(b.h?0:1)||String(a.c.label).localeCompare(String(b.c.label),'el'));
+  if(!rows.length)return '';
+  const t=sec==='Αγέλη'?'Ειδικότητες':'Πτυχία';
+  return `<div class="card pad" style="margin-bottom:9px">
+    <div class="dim" style="font-size:12px;margin-bottom:6px">${t}</div>
+    ${rows.map(x=>`<span class="pill" style="margin:3px 3px 0 0${x.h?'':';opacity:.75'}">${esc(x.c.label||'')}
+      <span class="dim">${x.h?(x.h.date?progDate(x.h):''):x.n+' από '+x.tot}</span></span>`).join('')}</div>`;
+}
+
+function stageCard(pid, sec, st){
+  const reqs=stageReqs(sec,st), got=heldItem(pid,st), ex=!got&&exemptBy(pid,st);
+  const n=reqs.filter(r=>reqDone(pid,r.id)).length;
+  const head=got?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">απονεμήθηκε${got.date?' · '+progDate(got):''}</span>`
+    :ex?`<span class="pill">απαλλαγή — ${esc(ex.a.label)}${ex.h.date?' · '+progDate(ex.h):''}</span>`
+    :reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span>`:'<span class="dim" style="font-size:12px">—</span>';
+  const line=r=>{ const d=reqDone(pid,r.id), ok=!!d||!!ex;
+    return `<div class="kv" style="padding:3px 0;font-size:12.5px">
+      <span class="dot" style="background:${ok?'var(--ok)':'var(--line2)'}"></span>
+      <span style="flex:1;min-width:0;${ok?'':'color:var(--ink3)'}">${esc(r.code||'')} ${esc(r.label||'')}</span>
+      <span class="dim" style="font-size:11.5px;text-align:right">${d?reqDate(d)+pigiTag(d)+sigTag(d):ex?'καλύφθηκε':''}</span></div>` };
+  return `<details class="card pad" style="margin-bottom:9px"${got||ex?'':(n?' open':'')}>
+    <summary style="cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <b style="font-size:13.5px;flex:1;min-width:140px">${esc(st.label||'')}</b>${head}</summary>
+    ${reqs.length?`<div style="margin-top:9px">${reqs.map(line).join('')}</div>`
+      :'<div class="dim" style="margin-top:8px;font-size:12.5px">Δεν υπάρχουν καταγεγραμμένες απαιτήσεις για αυτό το στάδιο.</div>'}
+  </details>`;
+}
+
+function myProgBody(p, sec, opt){
+  opt=opt||{};
+  const years=(D.my||[]).filter(y=>y.person_id===p.id&&!y.voided_at&&y.section===sec).map(y=>y.scout_year).sort();
+  const nx=nextStep(p.id,sec);
+  const stages=cardStages(sec).map(st=>stageCard(p.id,sec,st)).join('');
+  return `<div class="dim" style="font-size:12px;margin-bottom:9px">
+      ${esc(sec)}${years.length?' · '+esc(years[0])+(years.length>1?' έως '+esc(years[years.length-1]):''):''}</div>
+    ${nx?`<div class="card pad" style="margin-bottom:9px;font-size:13px"><b>Επόμενο:</b> ${esc(nx.st.label)}
+       ${nx.tot?`<span class="dim">— ${nx.n} από ${nx.tot}${nx.tot>nx.n?' · λείπουν '+(nx.tot-nx.n):''}</span>`:''}</div>`:''}
+    ${promiseNote(p.id,sec)}
+    ${sec==='Κοινότητα'
+      ? `<div class="card pad" style="margin-bottom:9px"><b style="font-size:13.5px">Η.Κ.Α.Δ.Ε.</b>
+          <div class="muted" style="margin-top:5px;font-size:13px">Η Κοινότητα δεν έχει αστέρια ούτε τρίφυλλα:
+            η πορεία γράφεται στο Ημερολόγιο και επικυρώνεται από τη Σύνοδο.</div>
+          ${opt.parent?'':'<button class="btn sm p" data-go="progKA" style="margin-top:9px">Άνοιγμα Η.Κ.Α.Δ.Ε.</button>'}</div>`
+      : ''}
+    ${stages||'<div class="dim" style="font-size:13px">Δεν φορτώθηκε ο κατάλογος αυτού του κλάδου.</div>'}
+    ${badgeLine(p.id,sec)}`;
+}
+
+function kidProgCard(kid){
+  const secs=mySections(kid); if(!secs.length)return '';
+  const now=secOf(kid);
+  return `<div class="sec"><h3>Προσκοπική πρόοδος</h3></div>
+    ${secs.map(s=>`<details class="card pad" style="margin-bottom:10px"${s===now||secs.length===1?' open':''}>
+      <summary style="cursor:pointer"><b>${esc(s)}</b></summary>
+      <div style="margin-top:10px">${myProgBody(kid,s,{parent:true})}</div></details>`).join('')}`;
+}
 const SA_COL={'δηλώθηκε':'', 'στάλθηκε':'warn', 'έγινε δεκτός':'ok',
               'την πέρασε':'ok', 'δεν έγινε δεκτός':'bad', 'ακυρώθηκε':'bad'};
 const SA_SYN={
@@ -18618,7 +18688,7 @@ function stagePassBody(){
       <div class="muted" style="margin-top:5px;font-size:13.5px;line-height:1.6">
         Η <b>απονομή</b> είναι το γεγονός· οι απαιτήσεις είναι ο δρόμος. Καταχώρησε
         ό,τι φοράει το παιδί, ακόμη κι αν δεν έχεις τις απαιτήσεις του.
-        Σκέτη χρονιά αρκεί — μπαίνει ως «κατά προσέγγιση».</div>
+        Μέρα, μήνας («03/2024», «Μάρτιος 2024») ή σκέτη χρονιά — κρατιέται όσο ακριβής είναι.</div>
       <div class="grow" style="margin-top:11px">
         <label style="flex:1;max-width:280px">Ποιος
           ${ppHTML('spWho',SPWHO||'',{ph:'Γράψε όνομα…'})}</label>
@@ -18710,7 +18780,7 @@ function histPassBody(){
 
   $('view').innerHTML=`
     <p class="lede">Κράτα ${esc(bookOf(book))} του παιδιού ανοιχτό και τσέκαρε ό,τι είναι υπογεγραμμένο. Γράψε την ημερομηνία που
-      <b>πραγματικά</b> πέρασε — αν θυμάσαι μόνο τη χρονιά, γράψε <b>2024</b> και μπαίνει ως «κατά προσέγγιση».
+      <b>πραγματικά</b> πέρασε — αν θυμάσαι μόνο τη χρονιά, γράψε <b>2024</b> (ή <b>03/2024</b> αν θυμάσαι τον μήνα) — κρατιέται όσο ακριβής είναι.
       Ό,τι έχει ήδη περάσει δεν ξαναγράφεται.</p>
     ${bookBar()}
     <div class="card pad hsbar" style="margin-bottom:12px">
