@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-05 12:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 10:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -13312,10 +13312,10 @@ function issuesBody(){
    ]}];
   const tot=I.reduce((s,g)=>s+g.items.reduce((x,i)=>x+((i.pairs||i.l||[]).length),0),0);
   const crit=I[0].items.filter(i=>i.s==='bad').reduce((s,i)=>s+(i.l||[]).length,0)+dups.length;
-  const FLD={adt:'Αριθμός ταυτότητας', dob:'Ημερομηνία γέννησης'};
+  const FLD={adt:'Αριθμός ταυτότητας', dob:'Ημερομηνία γέννησης', phone:'Κινητό', email:'Email'};
   const idr=(D.idrev||[]).filter(x=>!x.decision);
   const idHTML = !idr.length ? '' : `<div class="card pad" style="margin-bottom:14px;border-color:var(--warn)">
-      <b>Ταυτότητα προς επιβεβαίωση <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${idr.length}</span></b>
+      <b>Στοιχεία προς επιβεβαίωση <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${idr.length}</span></b>
       <div class="muted" style="font-size:13px;margin:5px 0 11px;line-height:1.6">Μια υποβολή έφερε διαφορετική τιμή
         από αυτήν που ξέρουμε. Τα πιθανά είναι τρία: λάθος πληκτρολόγηση, διόρθωση παλιού λάθους,
         ή <b>λάθος πρόσωπο</b>. Μέχρι να αποφασίσεις, <b>δεν έχει γραφτεί τίποτα</b>.</div>
@@ -13326,7 +13326,7 @@ function issuesBody(){
             <b style="font-size:13.5px">${p?pn(p):'—'}</b>
             <div class="dim" style="font-size:12.5px;margin-top:2px">${esc(FLD[x.field]||x.field)}:
               <s>${esc(fmt(x.old_value)||'—')}</s> → <b style="color:var(--ink)">${esc(fmt(x.new_value))}</b></div>
-            <div class="dim" style="font-size:11.5px;margin-top:2px">Παλιό: ήταν ήδη στο μητρώο · Νέο: το έγραψε ο ίδιος σε φόρμα, ήρθε ${fdate(String(x.created_at||'').slice(0,10))}${x.submission_id?'':' (η υποβολή δεν υπάρχει πια)'}
+            <div class="dim" style="font-size:11.5px;margin-top:2px">Παλιό: ήταν ήδη στο μητρώο · Νέο: ${(x.field==='phone'||x.field==='email')&&x.note?esc(x.note):'το έγραψε ο ίδιος σε φόρμα'}, ήρθε ${fdate(String(x.created_at||'').slice(0,10))}${x.submission_id?'':' (η υποβολή δεν υπάρχει πια)'}
               <span data-idasked="${x.id}">${x.asked_on?' · ρωτήθηκε '+fdate(String(x.asked_on).slice(0,10)):''}</span></div></span>
           <span style="display:flex;gap:5px;flex-wrap:wrap">
             <button class="btn p sm" data-idok="${x.id}">Ισχύει το νέο</button>
@@ -13394,9 +13394,9 @@ function idAskWire(){
     if(error)return toast('Σφάλμα: '+error.message);
     x.asked_on=new Date().toISOString(); saveCache();
     const t=document.querySelector(`[data-idasked="${x.id}"]`); if(t)t.textContent=' · ρωτήθηκε '+fdate(isoLocal(new Date()));
-    const what=x.field==='dob'?'την ημερομηνία γέννησης':'τον αριθμό ταυτότητας';
+    const what={dob:'την ημερομηνία γέννησης',phone:'το κινητό σας',email:'το email σας'}[x.field]||'τον αριθμό ταυτότητας';
     if(p.email&&p.email!=='-'){
-      const body=`Καλησπέρα,\n\nστα στοιχεία σας στο 76ο Σύστημα Προσκόπων Στροβόλου βρήκαμε δύο διαφορετικές τιμές για ${what}. Μπορείτε να μας ${x.field==='dob'?'την':'τον'} επιβεβαιώσετε απαντώντας σε αυτό το μήνυμα;\n\nΕυχαριστούμε,\n76ο Σύστημα Προσκόπων Στροβόλου`;
+      const body=`Καλησπέρα,\n\nστα στοιχεία σας στο 76ο Σύστημα Προσκόπων Στροβόλου βρήκαμε δύο διαφορετικές τιμές για ${what}. Μπορείτε να μας ${x.field==='dob'?'την':x.field==='adt'?'τον':'το'} επιβεβαιώσετε απαντώντας σε αυτό το μήνυμα;\n\nΕυχαριστούμε,\n76ο Σύστημα Προσκόπων Στροβόλου`;
       location.href='mailto:'+encodeURIComponent(p.email)+'?subject='+encodeURIComponent('Επιβεβαίωση στοιχείων')+'&body='+encodeURIComponent(body);
     } else { location.href='tel:'+String(p.phone).replace(/\s/g,''); }
   });
@@ -17259,6 +17259,10 @@ V.dash=()=>{
       const d=licDef(), today=isoLocal(new Date()), nx=d.deadlines.find(([x])=>x>=today);
       const n=nx?Math.round((new Date(nx[0])-new Date(today))/864e5):null;
       return `<button class="tile ${n!==null&&n<=7?'bad':'warn'}" data-go="staff" data-vtabgo="license"><div class="k">${ic('shield',14)}Άδεια λειτουργίας</div><div class="v">${pd.length}</div><div class="s">εκκρεμούν${nx?' · '+(n===0?'σήμερα':'σε '+n+' μέρ'+(n===1?'α':'ες'))+' — '+esc(nx[1].split(' — ')[0]):''}</div></button>`})()}
+    ${(()=>{ 
+
+      if(!isAdminUI())return ''; const n=(D.idrev||[]).filter(x=>!x.decision).length; if(!n)return '';
+      return `<button class="tile warn" data-go="issues"><div class="k">${ic('alert',14)}Στοιχεία προς έλεγχο</div><div class="v">${n}</div><div class="s">αλλαγές από φόρμες — περιμένουν εσένα</div></button>`})()}
     <button class="tile ${risk.length?'bad':''}" data-go="attend" data-tab="risk"><div class="k">${ic('msg',14)}Λείπουν συχνά</div><div class="v">${risk.length}</div><div class="s">${risk.length?'θέλουν ένα τηλεφώνημα':'κανένα — όλα καλά'}</div></button>
     ${
 ''}
