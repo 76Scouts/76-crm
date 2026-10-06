@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 15:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 15:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -10131,21 +10131,6 @@ function overviewBody(){
        +(PSEC==='Ομάδα'?chip(kane,'Δεν υπογράφηκαν στο ΚΑΝΕ','data-ovgo="req" data-ovm="queue"'):'')}
   </div>`;
 
-  const card=g=>{
-    const ks=kids.filter(k=>ovGroup(k)===g), st=ks.map(k=>({k,s:ovStatus(k.id)}));
-    const by={}; st.forEach(x=>{by[x.s.t]=(by[x.s.t]||0)+1});
-    const ready=st.filter(x=>x.s.ready);
-    return `<div class="card pad" style="margin-bottom:10px">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <b style="font-size:14px">${esc(g||'Χωρίς '+subgOf(PSEC).toLowerCase())}</b><span class="dim" style="font-size:12px">${ks.length}</span>
-        <span class="sp"></span>${Object.entries(by).map(([t,n])=>`<span class="pill" style="font-size:11px">${esc(t)} · ${n}</span>`).join('')}</div>
-      ${ready.length?`<div style="margin-top:7px;font-size:12.5px"><b style="color:var(--ok)">Έτοιμοι για απονομή:</b>
-        ${ready.map(x=>`${pn(x.k)} <span class="dim">(${esc(x.s.t)})</span>`).join(', ')}</div>`:''}
-      <div style="margin-top:6px">${st.map(x=>`<div class="kv" style="padding:3px 0;font-size:12.5px;border-top:1px solid var(--line)">
-        <span style="flex:1;min-width:0">${pn(x.k)}</span>
-        <span class="dim" style="font-size:11.5px">${esc(x.s.t)}${!koin&&x.s.tot?' · '+x.s.n+' από '+x.s.tot:''}</span>
-        ${x.s.ready?'<span class="pill" style="font-size:10.5px;margin-left:5px;background:var(--okbg);color:var(--ok);border-color:transparent">έτοιμος</span>':''}</div>`).join('')}</div>
-    </div>`};
 
   const reqs=opStages().flatMap(st=>opReqs(st).map(r=>({...r,_st:st.label})));
   if(OVREQ&&!reqs.some(r=>r.id===OVREQ))OVREQ='';
@@ -10155,17 +10140,102 @@ function overviewBody(){
       <div class="muted" style="font-size:12.5px;margin-top:5px">Πού βρίσκεται ο καθένας ανά ${esc(subgOf(PSEC).toLowerCase())}, ποιοι είναι έτοιμοι για απονομή και τι περιμένει.
         ${koin?'Στην Κοινότητα δεν μετράμε ποσοστά — φαίνεται πού βρίσκεται ο καθένας.':''}</div></div>
     ${queues}
-    ${groups.map(card).join('')||'<div class="uc"><h3>Κανένα ενεργό μέλος</h3></div>'}
+    ${groups.map(g=>ovCard(g,kids)).join('')||'<div class="uc"><h3>Κανένα ενεργό μέλος</h3></div>'}
     <div class="sec"><h3>Απαίτηση → ποιοι</h3></div>
     <div class="card pad" style="margin-bottom:12px">
       <select id="ovReq" style="max-width:460px"><option value="">— διάλεξε απαίτηση —</option>
         ${opStages().map(st=>`<optgroup label="${esc(st.label)}">${opReqs(st).map(r=>`<option value="${r.id}"${r.id===OVREQ?' selected':''}>${esc(reqNo(r))} · ${esc(r.label)}</option>`).join('')}</optgroup>`).join('')}</select>
       <div id="ovWho" style="margin-top:9px">${ovWhoHTML(kids)}</div></div>
+    <div id="awBox">${awPendingHTML(kids)}</div>
     ${isAdminUI()?ovAdminHTML(kids):''}`;
 
   document.querySelectorAll('[data-ovgo]').forEach(b=>b.onclick=()=>ovGoto(b.dataset.ovgo,b.dataset.ovm||null));
   $('ovReq').onchange=e=>{OVREQ=e.target.value; $('ovWho').innerHTML=ovWhoHTML(kids)};
+  awWire(kids);
 }
+
+const AW_HAT={'Α.Ο.Π.':['AOP'],'Α.Σ.':['AS'],'Α.Α.Λ.':['AAL','BAL','YAL'],'Α.Κ.Α.':['AKA','YKA']};
+const awIsEf=r=>/Έφορος$/.test(r);
+const awCanUI=role=>awIsEf(role)?isAdminUI():myHats().some(h=>(AW_HAT[role]||[]).includes(h.role_code));
+const awRecUI=()=>isAdminUI()||myHats().some(h=>({'Ομάδα':['AOP'],'Αγέλη':['AAL','BAL','YAL'],'Κοινότητα':['AKA','YKA']}[PSEC]||[]).includes(h.role_code));
+const awSigs=mid=>(D.psig||[]).filter(s=>s.target==='ΠΤΥΧΙΟ'&&s.target_id===mid);
+function awRowHTML(m){
+  const p=D.bh.find(b=>b.id===m.person_id)||{}, sg=awSigs(m.id);
+  return `<div class="kv" data-aw="${m.id}" style="border-top:1px solid var(--line);padding:7px 0;align-items:flex-start;gap:8px;flex-wrap:wrap">
+    <span style="flex:1;min-width:220px;font-size:12.5px">${pn(p)} · <b>${esc(m.label||'')}</b> <span class="dim">· τελετή ${reqDate(m)}</span>
+      <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">${sg.map(s=>`<span class="pill" style="font-size:11px${s.signed_on?';background:var(--okbg);color:var(--ok);border-color:transparent':''}">${esc(s.role)}${s.signed_on
+        ?' ✍ '+esc(s.ypegrapse||'')+' · '+fdate(s.signed_on)+(s.vouched?' · καταχώρησε '+esc(s.vouched):''):' — εκκρεμεί'}</span>`).join('')}</div></span>
+    <span style="display:flex;gap:5px;flex-wrap:wrap">${sg.filter(s=>!s.signed_on&&awCanUI(s.role)).map(s=>
+      `<button class="btn sm${awIsEf(s.role)?'':' p'}" data-awsign="${m.id}" data-role="${esc(s.role)}">${awIsEf(s.role)?'Καταγραφή υπογραφής '+esc(s.role):'Υπογράφω ως '+esc(s.role)}</button>`).join('')}</span></div>`;
+}
+function awPendingHTML(kids){
+  const rows=(D.mprog||[]).filter(m=>kids.some(k=>k.id===m.person_id)&&awSigs(m.id).some(s=>!s.signed_on))
+    .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  return `<div class="sec"><h3>Απονομές που περιμένουν υπογραφή</h3><span class="n">${rows.length}</span></div>
+    <div class="card pad" style="margin-bottom:12px">${rows.map(awRowHTML).join('')
+      ||'<div class="dim" style="font-size:12.5px">Καμία. Οι απονομές γράφονται με την ημερομηνία της τελετής, από το «Έτοιμοι για απονομή».</div>'}</div>`;
+}
+async function awRefresh(mid){
+  const [a,b]=await Promise.all([sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision').eq('id',mid),
+    sb.from('v_progress_signatures').select('*').eq('target','ΠΤΥΧΙΟ').eq('target_id',mid)]);
+  D.mprog=(D.mprog||[]).filter(x=>x.id!==mid).concat(a.data||[]);
+  D.psig=(D.psig||[]).filter(x=>!(x.target==='ΠΤΥΧΙΟ'&&x.target_id===mid)).concat(b.data||[]);
+  saveCache();
+}
+function awWire(kids){
+  document.querySelectorAll('[data-awrec]').forEach(b=>b.onclick=()=>{
+    const p=D.bh.find(x=>x.id===b.dataset.awrec)||{}, c=(D.pcat||[]).find(x=>x.id===b.dataset.cat)||{};
+    drawer('Απονομή — '+(c.label||''), `<div style="display:grid;gap:8px">
+      <div style="font-size:13px">${pn(p)}</div>
+      <label>Ημερομηνία τελετής<input type="date" id="awD" value="${todayISO()}" max="${todayISO()}"></label>
+      <label>Σημείωση (προαιρετικό)<input id="awN" placeholder="π.χ. πού έγινε η τελετή"></label>
+      <div class="dim" style="font-size:11.5px">Γράφονται οι θέσεις υπογραφής της σκάλας· όποια καλύπτεις, υπογράφεται αμέσως.</div>
+      <div><button class="btn p" id="awGo">Καταχώρηση απονομής</button></div></div>`);
+    $('awGo').onclick=async()=>{ const btn=$('awGo'); btn.disabled=true;
+      const {data,error}=await sb.rpc('award_record',{p_person:p.id, p_catalog:c.id, p_date:$('awD').value, p_note:$('awN').value.trim()||null});
+      btn.disabled=false;
+      if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+      await awRefresh(data.id); $('drw').classList.remove('on'); toast('Καταχωρήθηκε η απονομή');
+      const g=ovGroup(p), card=document.querySelector(`[data-ovg="${CSS.escape(g)}"]`);
+      if(card)card.outerHTML=ovCard(g,kids); if($('awBox'))$('awBox').innerHTML=awPendingHTML(kids); awWire(kids);
+    };
+  });
+  document.querySelectorAll('[data-awsign]').forEach(b=>b.onclick=async()=>{
+    const mid=b.dataset.awsign, role=b.dataset.role;
+    const go=async(extra)=>{ const {data,error}=await sb.rpc('award_sign',{p_mp:mid, p_role:role, ...(extra||{})});
+      if(error||(data&&data.error)){toast('Σφάλμα: '+((error&&error.message)||data.error)); return false}
+      await awRefresh(mid); const el=document.querySelector(`[data-aw="${mid}"]`);
+      if(el){ if(awSigs(mid).some(s=>!s.signed_on)){el.outerHTML=awRowHTML((D.mprog||[]).find(x=>x.id===mid))} else el.remove() }
+      awWire(kids); toast('Υπογράφηκε'); return true };
+    if(!awIsEf(role)){ b.disabled=true; if(!await go())b.disabled=false; return; }
+    drawer('Υπογραφή '+role, `<div style="display:grid;gap:8px">
+      <div class="dim" style="font-size:12.5px">Ο Έφορος δεν είναι στο e76. Καταγράφεις την υπογραφή του από το έγγραφό του —
+        και η καταγραφή φέρει το όνομά σου ως εγγυητή.</div>
+      <label>Όνομα Εφόρου<input id="efN"></label>
+      <label>Ημερομηνία εγγράφου<input type="date" id="efD" max="${todayISO()}"></label>
+      <label>Αρ. εγγράφου / σημείωση (προαιρετικό)<input id="efX"></label>
+      <div><button class="btn p" id="efGo">Καταγραφή</button></div></div>`);
+    $('efGo').onclick=async()=>{ if(!$('efN').value.trim())return toast('Γράψε το όνομα του Εφόρου'); if(!$('efD').value)return toast('Γράψε την ημερομηνία του εγγράφου');
+      if(await go({p_name:$('efN').value.trim(), p_date:$('efD').value, p_note:$('efX').value.trim()||null}))$('drw').classList.remove('on') };
+  });
+}
+
+function ovCard(g,kids){
+    const koin=PSEC==='Κοινότητα';
+    const ks=kids.filter(k=>ovGroup(k)===g), st=ks.map(k=>({k,s:ovStatus(k.id)}));
+    const by={}; st.forEach(x=>{by[x.s.t]=(by[x.s.t]||0)+1});
+    const ready=st.filter(x=>x.s.ready);
+    return `<div class="card pad" data-ovg="${esc(g)}" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b style="font-size:14px">${esc(g||'Χωρίς '+subgOf(PSEC).toLowerCase())}</b><span class="dim" style="font-size:12px">${ks.length}</span>
+        <span class="sp"></span>${Object.entries(by).map(([t,n])=>`<span class="pill" style="font-size:11px">${esc(t)} · ${n}</span>`).join('')}</div>
+      ${ready.length?`<div style="margin-top:7px;font-size:12.5px"><b style="color:var(--ok)">Έτοιμοι για απονομή:</b>
+        ${ready.map(x=>`${pn(x.k)} <span class="dim">(${esc(x.s.t)})</span>${awRecUI()?` <button class="btn sm" data-awrec="${x.k.id}" data-cat="${x.s.nx.st.id}">Απονομή</button>`:''}`).join(', ')}</div>`:''}
+      <div style="margin-top:6px">${st.map(x=>`<div class="kv" style="padding:3px 0;font-size:12.5px;border-top:1px solid var(--line)">
+        <span style="flex:1;min-width:0">${pn(x.k)}</span>
+        <span class="dim" style="font-size:11.5px">${esc(x.s.t)}${!koin&&x.s.tot?' · '+x.s.n+' από '+x.s.tot:''}</span>
+        ${x.s.ready?'<span class="pill" style="font-size:10.5px;margin-left:5px;background:var(--okbg);color:var(--ok);border-color:transparent">έτοιμος</span>':''}</div>`).join('')}</div>
+    </div>`}
 
 function ovWhoHTML(kids){
   if(!OVREQ)return '<div class="dim" style="font-size:12.5px">Για σχεδιασμό προγράμματος: ποιοι την έχουν και ποιοι όχι.</div>';
@@ -13368,7 +13438,8 @@ function badgeLine(pid, sec){
 function stageCard(pid, sec, st){
   const reqs=stageReqs(sec,st), got=heldItem(pid,st), ex=!got&&exemptBy(pid,st);
   const n=reqs.filter(r=>reqDone(pid,r.id)).length;
-  const head=got?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">απονεμήθηκε${got.date?' · '+progDate(got):''}</span>`
+  const awPend=got&&(D.psig||[]).some(x=>x.target==='ΠΤΥΧΙΟ'&&x.target_id===got.id&&!x.signed_on);
+  const head=got?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">απονεμήθηκε${got.date?' · '+progDate(got):''}</span>${awPend?'<span class="dim" style="font-size:11px">· εκκρεμεί υπογραφή</span>':''}`
     :ex?`<span class="pill">απαλλαγή — ${esc(ex.a.label)}${ex.h.date?' · '+progDate(ex.h):''}</span>`
     :reqs.length&&n===reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span> <span class="pill" style="background:var(--accbg);color:var(--acc);border-color:transparent">έτοιμο για απονομή</span>`
     :reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span>`:'<span class="dim" style="font-size:12px">—</span>';
