@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 16:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 16:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1738,7 +1738,7 @@ async function loadAll(){
     sb.from('ka_signature').select('*').limit(3000),
     sb.from('requirement_catalog').select('*,progression_catalog!stage_catalog_id(label,ordinal)').limit(1000),
     sb.from('progression_catalog').select('*').limit(500),
-    sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision').limit(20000),
+    sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision,decision_id').limit(20000),
     sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared,date_precision,pigi,kane_signed,synod_id,group_key').limit(20000),
     sb.from('progress_request').select('*').order('created_at',{ascending:false}).limit(2000),
     sb.from('progress_policy').select('*'),
@@ -5269,6 +5269,7 @@ function synodMinutes(id){
 
 let SYNOM=null;    
 
+const SYN_OWN=['απαίτηση','απονομή'];
 const KOIN_MEM=()=>D.bh.filter(p=>isMem(p)&&secOf(p)==='Κοινότητα'&&p.status==='Ενεργός')
                        .sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
 const prevYear=y=>{const a=Number(String(y).slice(0,4))-1; return a+'-'+String((a+1)%100).padStart(2,'0')};
@@ -5784,7 +5785,7 @@ async function openSynod(id){
       ${
 ''}
       ${ ''}
-      ${decs.some(d=>d.kind!=='απαίτηση')?decs.filter(d=>d.kind!=='απαίτηση').map(d=>`<div style="border-bottom:1px solid var(--line);padding:8px 0">
+      ${decs.some(d=>!SYN_OWN.includes(d.kind))?decs.filter(d=>!SYN_OWN.includes(d.kind)).map(d=>`<div style="border-bottom:1px solid var(--line);padding:8px 0">
           <b style="font-size:13.5px">${d.seq||''}. ${esc(d.topic)}</b>
           ${d.note?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(d.note)}</div>`:''}
           ${canWriteSynod(s)&&live?`<textarea class="dcM" data-d="${d.id}" rows="2"
@@ -6406,6 +6407,7 @@ function kaSuggest(s,id){
 }
 
 function kaDecRow(d,s){
+  if(d.kind==='απονομή')return kaAwDecRow(d,s);
   const r=(D.rc2||[]).find(x=>x.id===(d.payload||{}).req);
   const ppl=((d.payload||{}).people||[]).map(pid=>D.bh.find(b=>b.id===pid)).filter(Boolean);
   const rows=(D.mreq||[]).filter(m=>m.group_key===d.id);
@@ -6463,7 +6465,7 @@ function kaSynodHTML(s,id,live){
         <input id="kaNote" placeholder="Σημείωση (προαιρετικό) — π.χ. ποια δράση" value="${esc(KASY.note)}">
         <div><button class="btn sm p" id="kaAdd">Καταχώρηση</button></div>
       </div>`:(live?'':`<div class="dim" style="font-size:11.5px;margin-top:9px">Απαιτήσεις περνούν όταν η Σύνοδος αρχίσει ή γίνει.</div>`)}
-    </div>`;
+    </div>${kaAwSynHTML(s,id,live)}`;
 }
 
 function kaSynodWire(s,id){
@@ -6497,6 +6499,7 @@ function kaSynodWire(s,id){
     const box=$('kaDecs'); if(box&&row){ if(!box.querySelector('[data-kadec]'))box.innerHTML=''; box.insertAdjacentHTML('beforeend',kaDecRow(row,s)); kaWireRows(s,id) }
     document.querySelectorAll('.kaP').forEach(c=>c.checked=false); if($('kaReq'))$('kaReq').value=''; if($('kaNote'))$('kaNote').value=''; hint();
   };
+  kaAwSynWire(s,id);
   kaWireRows(s,id);
 }
 function kaWireRows(s,id){
@@ -6508,16 +6511,100 @@ function kaWireRows(s,id){
     if(error||(data&&data.error)){b.disabled=false; return toast('Σφάλμα: '+((error&&error.message)||data.error))}
     const {data:row}=await sb.from('synod_decision').select('*').eq('id',did).single();
     if(row){D.synd=(D.synd||[]).filter(x=>x.id!==did); D.synd.push(row)}
-    await kaRefresh({group:did});
+    if(row&&row.kind==='απονομή')await kaAwRefresh(did); else await kaRefresh({group:did});
     toast(data.nea?`Υπογράφηκε — πέρασε σε ${data.nea}`:'Υπογράφηκε'); redraw(did);
   });
   document.querySelectorAll('[data-kadel]').forEach(b=>b.onclick=async()=>{
-    if(!await uiAsk('Αφαίρεση αυτής της απαίτησης από τη Σύνοδο;'))return;
+    if(!await uiAsk('Αφαίρεση αυτού του θέματος από τη Σύνοδο;'))return;
     const did=b.dataset.kadel;
     const {data,error}=await sb.rpc('synod_req_remove',{p_decision:did});
     if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
     D.synd=(D.synd||[]).filter(x=>x.id!==did); saveCache(); redraw(did); toast('Αφαιρέθηκε');
   });
+}
+
+let KAAW={cat:'', people:new Set(), note:''};
+const kaAwStages=()=>(D.pcat||[]).filter(c=>c.section==='Κοινότητα'&&c.item_kind==='στάδιο').sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
+const kaAwHas=(pid,cid)=>(D.mprog||[]).some(m=>m.person_id===pid&&m.catalog_id===cid);
+async function kaAwRefresh(did){
+  const {data:rows}=await sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision,decision_id').eq('decision_id',did);
+  const ids=(rows||[]).map(r=>r.id);
+  D.mprog=(D.mprog||[]).filter(x=>!ids.includes(x.id)).concat(rows||[]);
+  if(ids.length){ const {data:sg}=await sb.from('v_progress_signatures').select('*').eq('target','ΠΤΥΧΙΟ').in('target_id',ids);
+    D.psig=(D.psig||[]).filter(x=>!(x.target==='ΠΤΥΧΙΟ'&&ids.includes(x.target_id))).concat(sg||[]); }
+  saveCache(); return rows||[];
+}
+function kaAwDecRow(d,s){
+  const c=(D.pcat||[]).find(x=>x.id===(d.payload||{}).catalog);
+  const ppl=((d.payload||{}).people||[]).map(pid=>D.bh.find(b=>b.id===pid)).filter(Boolean);
+  const rows=(D.mprog||[]).filter(m=>m.decision_id===d.id), passed=rows.length>0||!!(d.chair_ok_on||d.aka_ok_on);
+  const me=ME.person_id, chairOk=!!d.chair_ok_on, akaOk=!!d.aka_ok_on;
+  const chairN=(()=>{const x=D.bh.find(b=>b.id===s.chair_id);return x?nm(x):'—'})();
+  const pill=(ok,t)=>`<span class="pill" style="font-size:11px${ok?';background:var(--okbg);color:var(--ok);border-color:transparent':''}">${ok?'✍ ':''}${t}${ok?'':' — εκκρεμεί'}</span>`;
+  return `<div class="kv" data-kadec="${d.id}" style="align-items:flex-start;border-top:1px solid var(--line);padding:9px 0;gap:8px;flex-wrap:wrap">
+    <span style="flex:1;min-width:220px">
+      <b style="font-size:13.5px">${esc(c?c.label:'Απονομή')}</b>
+      <div style="font-size:12.5px;margin-top:2px">${ppl.map(p=>pn(p)).join(', ')||'<span class="dim">—</span>'}</div>
+      ${d.note?`<div class="dim" style="font-size:11.5px;margin-top:2px">«${esc(d.note)}»</div>`:''}
+      <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap">
+        ${pill(chairOk,'Πρόεδρος ('+esc(chairN)+')')}${pill(akaOk,'Α.Κ.Α./Υ.Κ.Α.')}
+        <span class="dim" style="font-size:11.5px;align-self:center">· ${passed?'απονεμήθηκε'+(rows.length?' ('+rows.length+')':''):'περνά με την πρώτη υπογραφή'}</span></div>
+    </span>
+    <span style="display:flex;gap:5px;flex-wrap:wrap">
+      ${!chairOk&&me&&me===s.chair_id?`<button class="btn sm p" data-kasign="${d.id}" data-role="Πρόεδρος Συνόδου">Υπογράφω ως Πρόεδρος</button>`:''}
+      ${!akaOk&&kaLeadUI()?`<button class="btn sm p" data-kasign="${d.id}" data-role="Α.Κ.Α.">Υπογράφω ως ${myHats().some(h=>h.role_code==='AKA')?'Α.Κ.Α.':'Υ.Κ.Α.'}</button>`:''}
+      ${!passed&&canWriteSynod(s)?`<button class="btn sm gh" data-kadel="${d.id}" title="Αφαίρεση — δεν έχει περάσει ακόμη">✕</button>`:''}
+    </span></div>`;
+}
+function kaAwSynHTML(s,id,live){
+  const decs=(D.synd||[]).filter(x=>x.synod_id===id&&x.kind==='απονομή').sort((a,b)=>(a.seq||0)-(b.seq||0));
+  const can=canWriteSynod(s)&&live&&!s.archived_at, st=kaAwStages();
+  const mem=KOIN_MEM().sort((a,b)=>nm(a).localeCompare(nm(b),'el'));
+  return `<div class="sec"><h3>Απονομές</h3><span class="n">${decs.length}</span></div>
+    <div class="card pad" id="kaAwSyn">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:6px">
+        Η απονομή σταδίου περνά ως <b>απόφαση της Συνόδου</b>, με την ημερομηνία της (${fdate(s.held_on)}).
+        Υπογράφουν ο <b>Πρόεδρος της Συνόδου</b> και ο <b>Α.Κ.Α./Υ.Κ.Α.</b> — όποιος την περάσει υπογράφει αυτόματα,
+        η πρώτη υπογραφή τη γράφει, και ο δεύτερος υπογράφει όλους μαζί.</div>
+      <div id="kaAwDecs">${decs.map(d=>kaAwDecRow(d,s)).join('')||'<div class="dim" style="font-size:13px">Καμία απονομή σε αυτή τη Σύνοδο.</div>'}</div>
+      ${can?`<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px;display:grid;gap:7px">
+        <div style="font-size:12.5px;font-weight:600">Νέα απονομή</div>
+        <select id="kaAwCat"><option value="">— στάδιο —</option>${st.map(c=>`<option value="${c.id}"${c.id===KAAW.cat?' selected':''}>${esc(c.label)}</option>`).join('')}</select>
+        <div class="dim" style="font-size:11.5px">Σε ποιους — πρώτα όσοι είναι έτοιμοι:</div>
+        <div style="display:grid;gap:3px;max-height:200px;overflow:auto" id="kaAwPpl">${mem.map(p=>`<label class="kv" style="cursor:pointer;font-size:12.5px">
+          <input type="checkbox" class="kaAwP" value="${p.id}"${KAAW.people.has(p.id)?' checked':''} style="width:auto;margin-right:7px">
+          <span style="flex:1">${pn(p)}</span><span class="dim kaAwH" data-p="${p.id}" style="font-size:11px"></span></label>`).join('')}</div>
+        <input id="kaAwNote" placeholder="Σημείωση (προαιρετικό)" value="${esc(KAAW.note)}">
+        <div><button class="btn sm p" id="kaAwAdd">Καταχώρηση απονομής</button></div>
+      </div>`:(live?'':`<div class="dim" style="font-size:11.5px;margin-top:9px">Απονομές περνούν όταν η Σύνοδος αρχίσει ή γίνει.</div>`)}
+    </div>`;
+}
+function kaAwSynWire(s,id){
+  const hint=()=>{ const cid=$('kaAwCat')&&$('kaAwCat').value;
+    document.querySelectorAll('.kaAwH').forEach(el=>{ const pid=el.dataset.p;
+      if(!cid){el.textContent='';return}
+      const nx=nextStep(pid,'Κοινότητα');
+      el.textContent=kaAwHas(pid,cid)?'την έχει ήδη':(nx&&nx.st&&nx.st.id===cid&&nx.tot>0&&nx.n===nx.tot?'έτοιμος':'') }) };
+  if($('kaAwCat'))$('kaAwCat').onchange=e=>{KAAW.cat=e.target.value; hint()};
+  document.querySelectorAll('.kaAwP').forEach(c=>c.onchange=()=>{ c.checked?KAAW.people.add(c.value):KAAW.people.delete(c.value) });
+  if($('kaAwNote'))$('kaAwNote').oninput=e=>{KAAW.note=e.target.value};
+  hint();
+  if($('kaAwAdd'))$('kaAwAdd').onclick=async()=>{
+    if(!KAAW.cat)return toast('Διάλεξε στάδιο');
+    if(!KAAW.people.size)return toast('Διάλεξε σε ποιους');
+    const btn=$('kaAwAdd'); btn.disabled=true;
+    const {data,error}=await sb.rpc('synod_award_add',{p_synod:id, p_people:[...KAAW.people], p_catalog:KAAW.cat, p_note:KAAW.note||null});
+    btn.disabled=false;
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    const {data:row}=await sb.from('synod_decision').select('*').eq('id',data.id).single();
+    if(row)(D.synd=D.synd||[]).push(row);
+    if(data.perastike)await kaAwRefresh(data.id);
+    saveCache();
+    toast(data.perastike?`Απονεμήθηκε σε ${data.nea}${data.idi?' · '+data.idi+' την είχαν ήδη':''}`:'Καταχωρήθηκε — περιμένει υπογραφή Προέδρου ή Α.Κ.Α./Υ.Κ.Α.');
+    KAAW={cat:'', people:new Set(), note:''};
+    const box=$('kaAwDecs'); if(box&&row){ if(!box.querySelector('[data-kadec]'))box.innerHTML=''; box.insertAdjacentHTML('beforeend',kaAwDecRow(row,s)); kaWireRows(s,id) }
+    document.querySelectorAll('.kaAwP').forEach(c=>c.checked=false); if($('kaAwCat'))$('kaAwCat').value=''; if($('kaAwNote'))$('kaAwNote').value=''; hint();
+  };
 }
 
 function kaBackdoor(who){
@@ -10188,15 +10275,17 @@ function overviewBody(){
 const AW_HAT={'Α.Ο.Π.':['AOP'],'Α.Σ.':['AS'],'Α.Α.Λ.':['AAL','BAL','YAL'],'Α.Κ.Α.':['AKA','YKA']};
 const awIsEf=r=>/Έφορος$/.test(r);
 const awCanUI=role=>awIsEf(role)?isAdminUI():myHats().some(h=>(AW_HAT[role]||[]).includes(h.role_code));
-const awRecUI=()=>isAdminUI()||myHats().some(h=>({'Ομάδα':['AOP'],'Αγέλη':['AAL','BAL','YAL'],'Κοινότητα':['AKA','YKA']}[PSEC]||[]).includes(h.role_code));
+const awRecUI=()=>PSEC!=='Κοινότητα'&&(isAdminUI()||myHats().some(h=>({'Ομάδα':['AOP'],'Αγέλη':['AAL','BAL','YAL']}[PSEC]||[]).includes(h.role_code)));
 const awSigs=mid=>(D.psig||[]).filter(s=>s.target==='ΠΤΥΧΙΟ'&&s.target_id===mid);
+const awChair=m=>{const d=m&&(D.synd||[]).find(x=>x.id===m.decision_id), sy=d&&(D.syn||[]).find(x=>x.id===d.synod_id); return sy?sy.chair_id:null};
+const awCanSig=(s,m)=>s.role==='Πρόεδρος Συνόδου'?!!(ME.person_id&&awChair(m)===ME.person_id):awCanUI(s.role);
 function awRowHTML(m){
   const p=D.bh.find(b=>b.id===m.person_id)||{}, sg=awSigs(m.id);
   return `<div class="kv" data-aw="${m.id}" style="border-top:1px solid var(--line);padding:7px 0;align-items:flex-start;gap:8px;flex-wrap:wrap">
-    <span style="flex:1;min-width:220px;font-size:12.5px">${pn(p)} · <b>${esc(m.label||'')}</b> <span class="dim">· τελετή ${reqDate(m)}</span>
+    <span style="flex:1;min-width:220px;font-size:12.5px">${pn(p)} · <b>${esc(m.label||'')}</b> <span class="dim">· ${m.via==='Σύνοδος'?'Σύνοδος':'τελετή'} ${reqDate(m)}</span>
       <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">${sg.map(s=>`<span class="pill" style="font-size:11px${s.signed_on?';background:var(--okbg);color:var(--ok);border-color:transparent':''}">${esc(s.role)}${s.signed_on
         ?' ✍ '+esc(s.ypegrapse||'')+' · '+fdate(s.signed_on)+(s.vouched?' · καταχώρησε '+esc(s.vouched):''):' — εκκρεμεί'}</span>`).join('')}</div></span>
-    <span style="display:flex;gap:5px;flex-wrap:wrap">${sg.filter(s=>!s.signed_on&&awCanUI(s.role)).map(s=>
+    <span style="display:flex;gap:5px;flex-wrap:wrap">${sg.filter(s=>!s.signed_on&&awCanSig(s,m)).map(s=>
       `<button class="btn sm${awIsEf(s.role)?'':' p'}" data-awsign="${m.id}" data-role="${esc(s.role)}">${awIsEf(s.role)?'Καταγραφή υπογραφής '+esc(s.role):'Υπογράφω ως '+esc(s.role)}</button>`).join('')}</span></div>`;
 }
 function awPendingHTML(kids){
@@ -10204,10 +10293,10 @@ function awPendingHTML(kids){
     .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   return `<div class="sec"><h3>Απονομές που περιμένουν υπογραφή</h3><span class="n">${rows.length}</span></div>
     <div class="card pad" style="margin-bottom:12px">${rows.map(awRowHTML).join('')
-      ||'<div class="dim" style="font-size:12.5px">Καμία. Οι απονομές γράφονται με την ημερομηνία της τελετής, από το «Έτοιμοι για απονομή».</div>'}</div>`;
+      ||'<div class="dim" style="font-size:12.5px">Καμία. '+(PSEC==='Κοινότητα'?'Οι απονομές της Κοινότητας περνούν από Σύνοδο, με την ημερομηνία της.':'Οι απονομές γράφονται με την ημερομηνία της τελετής, από το «Έτοιμοι για απονομή».')+'</div>'}</div>`;
 }
 async function awRefresh(mid){
-  const [a,b]=await Promise.all([sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision').eq('id',mid),
+  const [a,b]=await Promise.all([sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision,decision_id').eq('id',mid),
     sb.from('v_progress_signatures').select('*').eq('target','ΠΤΥΧΙΟ').eq('target_id',mid)]);
   D.mprog=(D.mprog||[]).filter(x=>x.id!==mid).concat(a.data||[]);
   D.psig=(D.psig||[]).filter(x=>!(x.target==='ΠΤΥΧΙΟ'&&x.target_id===mid)).concat(b.data||[]);
@@ -10261,7 +10350,7 @@ function ovCard(g,kids){
         <b style="font-size:14px">${esc(g||'Χωρίς '+subgOf(PSEC).toLowerCase())}</b><span class="dim" style="font-size:12px">${ks.length}</span>
         <span class="sp"></span>${Object.entries(by).map(([t,n])=>`<span class="pill" style="font-size:11px">${esc(t)} · ${n}</span>`).join('')}</div>
       ${ready.length?`<div style="margin-top:7px;font-size:12.5px"><b style="color:var(--ok)">Έτοιμοι για απονομή:</b>
-        ${ready.map(x=>`${pn(x.k)} <span class="dim">(${esc(x.s.t)})</span>${awRecUI()?` <button class="btn sm" data-awrec="${x.k.id}" data-cat="${x.s.nx.st.id}">Απονομή</button>`:''}`).join(', ')}</div>`:''}
+        ${ready.map(x=>`${pn(x.k)} <span class="dim">(${esc(x.s.t)})</span>${awRecUI()?` <button class="btn sm" data-awrec="${x.k.id}" data-cat="${x.s.nx.st.id}">Απονομή</button>`:''}`).join(', ')}${koin?' <span class="dim">— περνούν από Σύνοδο (Σύνοδος › Απονομές)</span>':''}</div>`:''}
       <div style="margin-top:6px">${st.map(x=>`<div class="kv" style="padding:3px 0;font-size:12.5px;border-top:1px solid var(--line)">
         <span style="flex:1;min-width:0">${pn(x.k)}</span>
         <span class="dim" style="font-size:11.5px">${esc(x.s.t)}${!koin&&x.s.tot?' · '+x.s.n+' από '+x.s.tot:''}</span>
