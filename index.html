@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 12:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 13:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1682,12 +1682,12 @@ async function loadAll(){
   const q=[
     pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location,studying'),
     sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,voided_at,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
-    sb.from('sessions').select('id,session_date,section,scout_year,status,title,session_type,event_id,theme').order('session_date').limit(500),
+    sb.from('sessions').select('id,session_date,section,scout_year,status,title,session_type,event_id,theme,planned_reqs').order('session_date').limit(500),
     pageAll('attendance','session_id,person_id,status'),
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
     sb.from('care_links').select('member_id').limit(0),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
-    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,invitees,gcal,prog_kind,stage').order('event_date').limit(3000),
+    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,invitees,gcal,prog_kind,stage,planned_reqs').order('event_date').limit(3000),
     sb.from('participations').select('id,person_id,event_id,status,role,is_staff,paid,channel,declared_at,declared_by,qf_entry,corrected_at').limit(20000),    
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
@@ -9452,13 +9452,13 @@ function passBody(){
       ${kid?`<button class="btn sm${PSMODE==='ask'?' p':''}" data-m="ask">Ζητώ πέρασμα</button>`
            :`<button class="btn sm${PSMODE==='now'?' p':''}" data-m="now">Τώρα</button>
              <button class="btn sm${PSMODE==='queue'?' p':''}" data-m="queue">Ουρά${q?' · '+q:''}</button>
-             <button class="btn sm${PSMODE==='sess'?' p':''}" data-m="sess">Από συγκέντρωση</button>
+             <button class="btn sm${PSMODE==='sess'?' p':''}" data-m="sess">Από συγκέντρωση / δράση</button>
              ${canHistory()?`<button class="btn sm${PSMODE==='kane'?' p':''}" data-m="kane">Από ${esc(bookOf(PSMODE==='kane'?curBook():PSEC))}</button>`:''}`}
     </div>
     <div class="muted" style="margin-top:8px;font-size:12.5px;line-height:1.65">${
       PSMODE==='now'  ? 'Το παιδί μπροστά σου. Τσέκαρε και αποθήκευσε — <b>δεν υπάρχει δεύτερο έντυπο</b>.'
     : PSMODE==='queue'? 'Όταν έχεις γραμμή, καταχωρούν <b>τα ίδια τα παιδιά</b> ή ο Ενωμοτάρχης τους όσο περιμένουν. Εσύ επιβεβαιώνεις — έχεις ήδη υπογράψει.'
-    : PSMODE==='sess' ? 'Διάλεξε <b>συγκέντρωση ή δράση</b> και τι πέρασαν. Παίρνουν <b>όσοι ήταν παρόντες</b>, με την ημερομηνία της ίδιας της συγκέντρωσης. Οι απόντες δεν παίρνουν τίποτα.'
+    : PSMODE==='sess' ? 'Διάλεξε <b>συγκέντρωση ή δράση</b> και τι πέρασαν. Παίρνουν <b>όσοι ήταν εκεί</b> — ξετσεκάρεις όποιον δεν την έκανε — με την ημερομηνία της ίδιας της συγκέντρωσης/δράσης. Για όσες <b>έρχονται</b>, ορίζεις από πριν τι θα περάσει (προαιρετικό).'
     : PSMODE==='kane' ? 'Για όσα υπογράφτηκαν σε '+esc(bookOf(curBook()))+' και δεν καταγράφηκαν ποτέ. Διάλεξε <b>χρονιά</b>, όχι ημερομηνία — δεν την ξέρουμε και δεν την επινοούμε.'
     :                   'Δήλωσε τι πέρασες. Πάει στον βαθμοφόρο που σου υπέγραψε, για επιβεβαίωση.'}</div></div>`;
 
@@ -9507,6 +9507,7 @@ function passBody(){
     document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{PSMODE=b.dataset.m;PSSEL.clear();route(ROUTE)});
     return;
   }
+  if(PSMODE==='sess')return groupPassBody(head);
 
   const kids=psKids();
   const sess=PSSESS?(D.ss||[]).find(x=>x.id===PSSESS):null;
@@ -9640,6 +9641,116 @@ async function reloadProgress(){
 }
 
 
+let PGKEY=null, PGSEC=null, PGOFF=new Set();
+const pgMem=id=>{const b=D.bh.find(x=>x.id===id); return b&&isMem(b)?b:null};
+function pgGroups(){
+  const ss=(D.ss||[]).filter(s=>!PSEC||s.section===PSEC).map(s=>({
+    k:'s:'+s.id, kind:'session', id:s.id, date:s.session_date, sec:s.section, title:s.title||'Συγκέντρωση',
+    plan:s.planned_reqs||[],
+    people:(D.att||[]).filter(a=>a.session_id===s.id&&a.status==='Παρών').map(a=>a.person_id).filter(pgMem)}));
+  const ev=(D.ev||[]).filter(e=>!e.hidden).map(e=>{
+    const people=(D.pa||[]).filter(x=>x.event_id===e.id&&!x.is_staff&&!/^(ακυρ|αποσ)/i.test(x.status||''))
+      .map(x=>x.person_id).filter(id=>{const b=pgMem(id); return b&&(!PSEC||secOf(b)===PSEC)});
+    const sec=e.owner_section||e.section||null;
+    return {k:'e:'+e.id, kind:'event', id:e.id, date:e.end_date||e.event_date, sec, title:e.title||'Δράση',
+            plan:e.planned_reqs||[], people, mine:!PSEC||sec===PSEC||people.length>0};
+  }).filter(g=>g.mine);
+  return [...ss,...ev].filter(g=>g.date);
+}
+const pgPending=gs=>gs.filter(g=>g.date<=isoLocal(new Date())&&g.plan.length&&g.people.length
+  &&g.people.some(pid=>g.plan.some(rid=>!psDone(pid,rid))));
+
+function groupPassBody(head){
+  const today=isoLocal(new Date()), gs=pgGroups();
+  const past=gs.filter(g=>g.date<=today&&g.people.length).sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,80);
+  const soon=gs.filter(g=>g.date>today).sort((a,b)=>String(a.date).localeCompare(String(b.date))).slice(0,30);
+  const pend=pgPending(gs);
+  const g=gs.find(x=>x.k===PGKEY)||null;
+  const opt=x=>`<option value="${x.k}"${x.k===PGKEY?' selected':''}>${fdate(x.date)} · ${esc(x.title)}${
+    x.kind==='event'?' (δράση)':''}${x.people.length?' · '+x.people.length+(x.kind==='session'?' παρόντες':' συμμετέχοντες'):''}${x.plan.length?' · '+x.plan.length+' προγρ.':''}</option>`;
+  const secs=g?[...new Set([g.sec,...g.people.map(id=>secOf(pgMem(id)))].filter(s=>['Αγέλη','Ομάδα','Κοινότητα'].includes(s)))]:[];
+  if(g&&(!PGSEC||!secs.includes(PGSEC)))PGSEC=(PSEC&&secs.includes(PSEC))?PSEC:secs[0]||null;
+  const stages=PGSEC?psStages(PGSEC):[];
+  if(stages.length&&(!PSSTAGE||!stages.some(s=>s.id===PSSTAGE)))PSSTAGE=stages[0].id;
+  const st=stages.find(s=>s.id===PSSTAGE), reqs=st?psReqs(st):[];
+  const done=g&&g.date<=today, people=g?g.people.filter(id=>secOf(pgMem(id))===PGSEC):[];
+
+  $('view').innerHTML=head+`
+    ${pend.length?`<div class="card pad" style="margin-bottom:12px"><b style="font-size:13.5px">Εκκρεμεί πέρασμα</b>
+      <div class="dim" style="font-size:11.5px;margin-top:2px">Είχες ορίσει τι θα περάσει — έγιναν, αλλά δεν καταχωρήθηκαν σε όλους.</div>
+      ${pend.slice(0,8).map(x=>`<div class="kv" style="padding:4px 0;font-size:13px"><span style="flex:1">${fdate(x.date)} · ${esc(x.title)}</span>
+        <button class="btn sm" data-pg="${x.k}">Άνοιγμα</button></div>`).join('')}</div>`:''}
+    <div class="card pad" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="pgSel" style="max-width:380px"><option value="">— διάλεξε συγκέντρωση ή δράση —</option>
+        ${past.length?`<optgroup label="Έγιναν — πέρασμα">${past.map(opt).join('')}</optgroup>`:''}
+        ${soon.length?`<optgroup label="Έρχονται — ορίζεις τι θα περάσει">${soon.map(opt).join('')}</optgroup>`:''}</select>
+      ${secs.length>1?`<select id="pgSec" style="max-width:150px">${secs.map(s=>`<option${s===PGSEC?' selected':''}>${s}</option>`).join('')}</select>`:''}
+      ${g?`<span class="dim" style="font-size:11.5px">${done?'ημερομηνία: '+fdate(g.date)+' (της '+(g.kind==='session'?'συγκέντρωσης':'δράσης')+')':'δεν έγινε ακόμη — ορίζεις μόνο τι θα περάσει'}</span>`:''}
+      <span class="sp"></span>
+      ${g&&done?`<label style="display:flex;align-items:center;gap:5px;font-size:12px"><span class="dim">Πέρασε από:</span>
+        ${ppHTML('psExam',ME.person_id||'',{ph:'Γράψε όνομα…',style:'width:180px'})}</label>`:''}
+    </div>`
+  +(!g?'<div class="uc"><h3>Διάλεξε συγκέντρωση ή δράση</h3><p>Όσες έγιναν: τσεκάρεις τι πέρασαν οι παρόντες. Όσες έρχονται: ορίζεις από πριν τι θα περάσει.</p></div>'
+   :`<div class="card pad" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">
+      ${stages.map(x=>`<button class="btn sm${x.id===PSSTAGE?' p':''}" data-st="${x.id}">${esc(x.label)}</button>`).join('')}</div>
+    <div class="card" style="margin-bottom:12px">${reqs.map(r=>{ const L=LEV[r.verifier]||{};
+      return `<label class="kv" style="border-top:1px solid var(--line);padding:8px 12px;cursor:pointer">
+        <input type="checkbox" class="pgr" value="${r.id}"${PSSEL.has(r.id)?' checked':''}>
+        <span style="flex:1;min-width:0"><span style="color:var(--ink3);font-weight:700;font-size:12px">${esc(r.code||r.ordinal)}</span>
+          <span style="font-size:13.5px"> ${esc(r.label)}</span>
+          ${r.verifier?`<span class="pill" style="margin-left:5px;font-size:10px;color:${L.c||''}">${esc(r.verifier)} · ${esc(L.t||'')}</span>`:''}</span></label>`}).join('')
+      ||'<div class="pad dim">Καμία απαίτηση σε αυτό το στάδιο.</div>'}</div>
+    ${done?`<div class="sec"><h3>Ποιοι ήταν εκεί</h3><span class="n">${people.length}</span></div>
+      <div class="card" style="margin-bottom:12px">${people.map(id=>{ const b=pgMem(id);
+        return `<label class="kv" style="border-top:1px solid var(--line);padding:7px 12px;cursor:pointer">
+          <input type="checkbox" class="pgp" value="${id}"${PGOFF.has(id)?'':' checked'}>
+          <span style="flex:1;font-size:13.5px">${pn(b)}</span><span class="dim pgh" data-p="${id}" style="font-size:11.5px"></span></label>`}).join('')
+        ||'<div class="pad dim">Κανένα μέλος αυτού του τμήματος.</div>'}</div>`:''}
+    <div class="card pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      ${done?'<button class="btn p" id="pgGo">Πέρασμα <span id="pgN"></span></button>':''}
+      <button class="btn${done?'':' p'}" id="pgPlan">Αποθήκευση ως «θα περάσουμε»</button>
+      <span class="dim" style="font-size:12px">Το «θα περάσουμε» δεν περνά τίποτα μόνο του — σε περιμένει εδώ μετά τη συγκέντρωση.</span>
+    </div>`);
+  pgWire(g, people);
+}
+
+function pgWire(g, people){
+  document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{PSMODE=b.dataset.m;PSSEL.clear();route(ROUTE)});
+  const open=k=>{ PGKEY=k||null; PGOFF=new Set(); PSSTAGE=null; PGSEC=null;
+    const x=pgGroups().find(y=>y.k===PGKEY); PSSEL=new Set(x?x.plan:[]); route(ROUTE) };
+  if($('pgSel'))$('pgSel').onchange=e=>open(e.target.value);
+  document.querySelectorAll('[data-pg]').forEach(b=>b.onclick=()=>open(b.dataset.pg));
+  if($('pgSec'))$('pgSec').onchange=e=>{PGSEC=e.target.value; PSSTAGE=null; route(ROUTE)};
+  document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{PSSTAGE=b.dataset.st; route(ROUTE)});
+  if(!g)return;
+  if($('psExam'))ppWire('psExam',ppLeaders());
+  const count=()=>{ const on=people.filter(id=>!PGOFF.has(id));
+    if($('pgN'))$('pgN').textContent=PSSEL.size&&on.length?`(${on.length} × ${PSSEL.size})`:'';
+    document.querySelectorAll('.pgh').forEach(s=>{ const n=[...PSSEL].filter(r=>psDone(s.dataset.p,r)).length;
+      s.textContent=n?`την έχει ήδη (${n}) — μένει η παλιά ημερομηνία`:'' }) };
+  document.querySelectorAll('.pgr').forEach(c=>c.onchange=()=>{ c.checked?PSSEL.add(c.value):PSSEL.delete(c.value); count() });
+  document.querySelectorAll('.pgp').forEach(c=>c.onchange=()=>{ c.checked?PGOFF.delete(c.value):PGOFF.add(c.value); count() });
+  count();
+  if($('pgPlan'))$('pgPlan').onclick=async()=>{
+    const {data,error}=await sb.rpc('plan_requirements',{p_kind:g.kind,p_id:g.id,p_reqs:[...PSSEL]});
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    const row=(g.kind==='session'?D.ss:D.ev||[]).find(x=>x.id===g.id); if(row)row.planned_reqs=[...PSSEL];
+    saveCache(); toast(PSSEL.size?`Ορίστηκαν ${PSSEL.size} απαιτήσεις για «${g.title}»`:'Καθαρίστηκε το «θα περάσουμε»');
+  };
+  if($('pgGo'))$('pgGo').onclick=async()=>{
+    const on=people.filter(id=>!PGOFF.has(id));
+    if(!PSSEL.size)return toast('Δεν τσέκαρες απαίτηση');
+    if(!on.length)return toast('Δεν έμεινε κανένα παιδί τσεκαρισμένο');
+    const btn=$('pgGo'); btn.disabled=true;
+    const {data,error}=await sb.rpc('grant_from_group',{p_kind:g.kind,p_id:g.id,p_people:on,p_reqs:[...PSSEL],
+      p_examiner:($('psExam')&&$('psExam').value)||null});
+    btn.disabled=false;
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    toast(`${data.perasan} πέρασαν${data.itan_idi?' · '+data.itan_idi+' τις είχαν ήδη':''}${
+      data.den_epitrapike?' · '+data.den_epitrapike+' δεν επιτράπηκαν':''}${data.den_itan_ekei?' · '+data.den_itan_ekei+' δεν ήταν εκεί':''}`);
+    await reloadProgress(); stay();
+  };
+}
 
 const ddmmyyyy = d => { if(!d) return '';
   const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
