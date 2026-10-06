@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 13:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-06 14:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -9449,10 +9449,12 @@ function passBody(){
   const head=`<div class="card pad" style="margin-bottom:14px">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <b style="font-size:15px">Πέρασμα απαιτήσεων</b><span class="sp"></span>
-      ${kid?`<button class="btn sm${PSMODE==='ask'?' p':''}" data-m="ask">Ζητώ πέρασμα</button>`
+      ${kid?`<button class="btn sm${PSMODE==='ask'?' p':''}" data-m="ask">Ζητώ πέρασμα</button>
+             ${klMyPatrols().length?`<button class="btn sm${PSMODE==='kolla'?' p':''}" data-m="kolla">Κόλλα ενωμοτίας</button>`:''}`
            :`<button class="btn sm${PSMODE==='now'?' p':''}" data-m="now">Τώρα</button>
              <button class="btn sm${PSMODE==='queue'?' p':''}" data-m="queue">Ουρά${q?' · '+q:''}</button>
              <button class="btn sm${PSMODE==='sess'?' p':''}" data-m="sess">Από συγκέντρωση / δράση</button>
+             ${!PSEC||PSEC==='Ομάδα'?`<button class="btn sm${PSMODE==='kolla'?' p':''}" data-m="kolla">Πέρασα σήμερα</button>`:''}
              ${canHistory()?`<button class="btn sm${PSMODE==='kane'?' p':''}" data-m="kane">Από ${esc(bookOf(PSMODE==='kane'?curBook():PSEC))}</button>`:''}`}
     </div>
     <div class="muted" style="margin-top:8px;font-size:12.5px;line-height:1.65">${
@@ -9460,6 +9462,7 @@ function passBody(){
     : PSMODE==='queue'? 'Όταν έχεις γραμμή, καταχωρούν <b>τα ίδια τα παιδιά</b> ή ο Ενωμοτάρχης τους όσο περιμένουν. Εσύ επιβεβαιώνεις — έχεις ήδη υπογράψει.'
     : PSMODE==='sess' ? 'Διάλεξε <b>συγκέντρωση ή δράση</b> και τι πέρασαν. Παίρνουν <b>όσοι ήταν εκεί</b> — ξετσεκάρεις όποιον δεν την έκανε — με την ημερομηνία της ίδιας της συγκέντρωσης/δράσης. Για όσες <b>έρχονται</b>, ορίζεις από πριν τι θα περάσει (προαιρετικό).'
     : PSMODE==='kane' ? 'Για όσα υπογράφτηκαν σε '+esc(bookOf(curBook()))+' και δεν καταγράφηκαν ποτέ. Διάλεξε <b>χρονιά</b>, όχι ημερομηνία — δεν την ξέρουμε και δεν την επινοούμε.'
+    : PSMODE==='kolla'? 'Η κόλλα της Ομάδας: μία γραμμή ανά παιδί, οι <b>αριθμοί του ΚΑΝΕ</b> (π.χ. «48, 53» ή «54-56»), μία ημερομηνία. Για πτυχίο διάλεξε το πτυχίο και γράψε τους αριθμούς των απαιτήσεών του. Τα στελέχη στέλνουν στον Α.Ο.Π. για έγκριση.'
     :                   'Δήλωσε τι πέρασες. Πάει στον βαθμοφόρο που σου υπέγραψε, για επιβεβαίωση.'}</div></div>`;
 
   if(PSMODE==='queue'){
@@ -9488,7 +9491,8 @@ function passBody(){
               ${sg?' · υπέγραψε ο/η '+esc(nm(sg)):''}</div>
             ${x.note?`<div class="dim" style="font-size:11.5px;margin-top:2px">«${esc(x.note)}»</div>`:''}
           </span></label>`}).join('')}</div>`
-      :'<div class="uc"><h3>Καμία εκκρεμότητα</h3><p>Η ουρά είναι άδεια.</p></div>');
+      :'<div class="uc"><h3>Καμία εκκρεμότητα</h3><p>Η ουρά είναι άδεια.</p></div>')
+      +(PSEC==='Ομάδα'&&klStaff()?kaneList():'');
 
     const picked=()=>[...document.querySelectorAll('.psq:checked')].map(x=>x.value);
     if($('psAll'))$('psAll').onclick=()=>document.querySelectorAll('.psq').forEach(x=>x.checked=true);
@@ -9504,10 +9508,12 @@ function passBody(){
     if($('psOk'))  $('psOk').onclick  =()=>decide('εγκρίθηκε',false);
     if($('psBack'))$('psBack').onclick=()=>decide('αναπομπή',true);
     if($('psNo'))  $('psNo').onclick  =()=>decide('απορρίφθηκε',true);
+    kaneWire();
     document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{PSMODE=b.dataset.m;PSSEL.clear();route(ROUTE)});
     return;
   }
   if(PSMODE==='sess')return groupPassBody(head);
+  if(PSMODE==='kolla'){ if(kid&&!klMyPatrols().length)PSMODE='ask'; else return kollaBody(head); }
 
   const kids=psKids();
   const sess=PSSESS?(D.ss||[]).find(x=>x.id===PSSESS):null;
@@ -9671,8 +9677,13 @@ function groupPassBody(head){
   const secs=g?[...new Set([g.sec,...g.people.map(id=>secOf(pgMem(id)))].filter(s=>['Αγέλη','Ομάδα','Κοινότητα'].includes(s)))]:[];
   if(g&&(!PGSEC||!secs.includes(PGSEC)))PGSEC=(PSEC&&secs.includes(PSEC))?PSEC:secs[0]||null;
   const stages=PGSEC?psStages(PGSEC):[];
-  if(stages.length&&(!PSSTAGE||!stages.some(s=>s.id===PSSTAGE)))PSSTAGE=stages[0].id;
-  const st=stages.find(s=>s.id===PSSTAGE), reqs=st?psReqs(st):[];
+  const badges=PGSEC?(D.pcat||[]).filter(c=>c.section===PGSEC&&(c.item_kind==='ειδικότητα'||c.item_kind==='πτυχίο')&&!c.retired_at)
+    .sort((a,b)=>String(a.label).localeCompare(String(b.label),'el')):[];
+  const bdg=String(PSSTAGE||'').startsWith('B:')&&badges.some(b=>'B:'+b.id===PSSTAGE)?PSSTAGE.slice(2):null;
+  if(!bdg&&stages.length&&(!PSSTAGE||!stages.some(s=>s.id===PSSTAGE)))PSSTAGE=stages[0].id;
+  const st=stages.find(s=>s.id===PSSTAGE);
+  const reqs=bdg?(D.rc2||[]).filter(r=>r.stage_catalog_id===bdg&&r.active!==false&&!r.retired_at)
+      .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0)):st?psReqs(st):[];
   const done=g&&g.date<=today, people=g?g.people.filter(id=>secOf(pgMem(id))===PGSEC):[];
 
   $('view').innerHTML=head+`
@@ -9692,7 +9703,9 @@ function groupPassBody(head){
     </div>`
   +(!g?'<div class="uc"><h3>Διάλεξε συγκέντρωση ή δράση</h3><p>Όσες έγιναν: τσεκάρεις τι πέρασαν οι παρόντες. Όσες έρχονται: ορίζεις από πριν τι θα περάσει.</p></div>'
    :`<div class="card pad" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">
-      ${stages.map(x=>`<button class="btn sm${x.id===PSSTAGE?' p':''}" data-st="${x.id}">${esc(x.label)}</button>`).join('')}</div>
+      ${stages.map(x=>`<button class="btn sm${x.id===PSSTAGE?' p':''}" data-st="${x.id}">${esc(x.label)}</button>`).join('')}
+      ${badges.length?`<select id="pgBadge" style="max-width:220px${bdg?';border-color:var(--acc)':''}"><option value="">${PGSEC==='Αγέλη'?'Ειδικότητα…':'Πτυχίο…'}</option>
+        ${badges.map(b=>`<option value="${b.id}"${b.id===bdg?' selected':''}>${esc(b.label)}</option>`).join('')}</select>`:''}</div>
     <div class="card" style="margin-bottom:12px">${reqs.map(r=>{ const L=LEV[r.verifier]||{};
       return `<label class="kv" style="border-top:1px solid var(--line);padding:8px 12px;cursor:pointer">
         <input type="checkbox" class="pgr" value="${r.id}"${PSSEL.has(r.id)?' checked':''}>
@@ -9722,6 +9735,7 @@ function pgWire(g, people){
   document.querySelectorAll('[data-pg]').forEach(b=>b.onclick=()=>open(b.dataset.pg));
   if($('pgSec'))$('pgSec').onchange=e=>{PGSEC=e.target.value; PSSTAGE=null; route(ROUTE)};
   document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{PSSTAGE=b.dataset.st; route(ROUTE)});
+  if($('pgBadge'))$('pgBadge').onchange=e=>{PSSTAGE=e.target.value?'B:'+e.target.value:null; route(ROUTE)};
   if(!g)return;
   if($('psExam'))ppWire('psExam',ppLeaders());
   const count=()=>{ const on=people.filter(id=>!PGOFF.has(id));
@@ -9749,6 +9763,132 @@ function pgWire(g, people){
     toast(`${data.perasan} πέρασαν${data.itan_idi?' · '+data.itan_idi+' τις είχαν ήδη':''}${
       data.den_epitrapike?' · '+data.den_epitrapike+' δεν επιτράπηκαν':''}${data.den_itan_ekei?' · '+data.den_itan_ekei+' δεν ήταν εκεί':''}`);
     await reloadProgress(); stay();
+  };
+}
+let KL={date:'', rows:[]};
+const klNew=()=>({pid:'', badge:'', nums:'', kane:false});
+function klMyPatrols(){
+  const me=mePid(); if(!me)return [];
+  return (D.sg||[]).filter(g=>g.active!==false&&g.section==='Ομάδα'&&g.scout_year===curScoutYear()
+    &&(g.leader_id===me||g.second_id===me));
+}
+const klStaff=()=>['admin','superadmin','junior_admin','system_leader','section_head','section_assistant','commissioner']
+  .includes(ME.role)||!!ME.platform_admin;
+function klKids(){
+  const all=D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&secOf(p)==='Ομάδα');
+  if(klStaff())return all.sort(sortByName);
+  const gs=klMyPatrols().map(g=>g.name);
+  return all.filter(p=>(D.my||[]).some(y=>y.person_id===p.id&&!y.voided_at&&y.scout_year===curScoutYear()
+    &&gs.includes(y.group_name))).sort(sortByName);
+}
+const klBadges=()=>(D.pcat||[]).filter(c=>c.section==='Ομάδα'&&(c.item_kind==='ειδικότητα'||c.item_kind==='πτυχίο')&&!c.retired_at)
+  .sort((a,b)=>String(a.label).localeCompare(String(b.label),'el'));
+function klResolve(row){
+  const pool=(D.rc2||[]).filter(r=>r.section==='Ομάδα'&&r.active!==false&&!r.retired_at
+    &&(row.badge?r.stage_catalog_id===row.badge:r.item_kind!=='απαίτηση πτυχίου'&&r.item_kind!=='προϋπόθεση'));
+  const toks=[]; String(row.nums||'').split(/[\s,;]+/).filter(Boolean).forEach(t=>{
+    const m=t.match(/^(\d+)-(\d+)$/);
+    if(m&&+m[2]>=+m[1]&&+m[2]-+m[1]<40){for(let i=+m[1];i<=+m[2];i++)toks.push(String(i))} else toks.push(t)});
+  const ok=[], bad=[];
+  toks.forEach(t=>{ const r=pool.find(x=>String(x.code||'').toUpperCase()===t.toUpperCase());
+    r?(ok.some(y=>y.id===r.id)||ok.push(r)):bad.push(t) });
+  return {ok, bad};
+}
+function klLine(i){
+  const row=KL.rows[i], res=klResolve(row);
+  const has=r=>row.pid&&psDone(row.pid,r.id);
+  return `<div class="card pad kl-row" data-i="${i}" style="margin-bottom:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="flex:1;min-width:200px">${ppHTML('klP'+i,row.pid,{ph:'Παιδί…'})}</span>
+      <select class="kl-b" data-i="${i}" style="max-width:190px"><option value="">Τρίφυλλα (1–92)</option>
+        ${klBadges().map(b=>`<option value="${b.id}"${b.id===row.badge?' selected':''}>Πτυχίο ${esc(b.label)}</option>`).join('')}</select>
+      <input class="kl-n" data-i="${i}" value="${esc(row.nums)}" placeholder="π.χ. 48, 53" style="max-width:150px">
+      <label style="display:flex;gap:4px;align-items:center;font-size:12px"><input type="checkbox" class="kl-k" data-i="${i}"${row.kane?' checked':''} style="width:auto"> ΚΑΝΕ</label>
+    </div>
+    <div class="dim kl-prev" data-i="${i}" style="font-size:11.5px;margin-top:5px">${klPrev(row,res,has)}</div></div>`;
+}
+const klPrev=(row,res,has)=>res.ok.map(r=>`<span${has(r)?' style="text-decoration:line-through" title="την έχει ήδη"':''}>${esc(r.code)} ${esc(r.label)}</span>`).join(' · ')
+  +(res.bad.length?` <b style="color:var(--bad)">δεν υπάρχει: ${esc(res.bad.join(', '))}</b>`:'');
+
+function kollaBody(head){
+  if(!KL.date)KL.date=isoLocal(new Date());
+  if(!KL.rows.length)KL.rows=[klNew(),klNew(),klNew(),klNew()];
+  const staff=klStaff(), kids=klKids();
+  $('view').innerHTML=head+`
+    <div class="card pad" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <b style="font-size:14px">Πέρασα σήμερα</b>
+      <input id="klDate" type="date" value="${esc(KL.date)}" max="${isoLocal(new Date())}" style="max-width:150px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px"><span class="dim">Εξέτασε:</span>
+        ${ppHTML('klExam',ME.person_id||'',{ph:'Γράψε όνομα…',style:'width:190px'})}</label>
+      <span class="sp"></span>
+      <span class="dim" style="font-size:12px">${staff?'Ό,τι επιτρέπει το επίπεδό σου περνά αμέσως· τα υπόλοιπα πάνε στον Α.Ο.Π.'
+        :'Γράφεις για την ενωμοτία σου· ο Α.Ο.Π. τα εγκρίνει.'}</span>
+    </div>
+    ${kids.length?'':'<div class="uc"><h3>Δεν βρέθηκαν παιδιά</h3><p>Η κόλλα είναι για την Ομάδα — ή για τη δική σου ενωμοτία.</p></div>'}
+    <div id="klRows">${KL.rows.map((_,i)=>klLine(i)).join('')}</div>
+    <div class="card pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn sm" id="klAdd">+ γραμμή</button><span class="sp"></span>
+      <button class="btn p" id="klGo">${staff?'Καταχώρηση':'Αποστολή στον Α.Ο.Π.'}</button></div>`;
+  klWire(kids);
+}
+
+function klWire(kids){
+  document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{PSMODE=b.dataset.m;PSSEL.clear();route(ROUTE)});
+  ppWire('klExam',ppLeaders());
+  $('klDate').onchange=e=>{KL.date=e.target.value};
+  const prev=i=>{ const row=KL.rows[i], el=document.querySelector(`.kl-prev[data-i="${i}"]`);
+    if(el)el.innerHTML=klPrev(row,klResolve(row),r=>row.pid&&psDone(row.pid,r.id)) };
+  KL.rows.forEach((row,i)=>{ ppWire('klP'+i,kids,{note:p=>{const y=(D.my||[]).find(y=>y.person_id===p.id&&y.scout_year===curScoutYear());return y&&y.group_name||''}});
+    $('klP'+i).onchange=e=>{row.pid=e.target.value||''; prev(i)} });
+  document.querySelectorAll('.kl-b').forEach(s=>s.onchange=()=>{KL.rows[+s.dataset.i].badge=s.value; prev(+s.dataset.i)});
+  document.querySelectorAll('.kl-n').forEach(s=>s.oninput=()=>{KL.rows[+s.dataset.i].nums=s.value; prev(+s.dataset.i)});
+  document.querySelectorAll('.kl-k').forEach(s=>s.onchange=()=>{KL.rows[+s.dataset.i].kane=s.checked});
+  $('klAdd').onclick=()=>{ KL.rows.push(klNew()); const i=KL.rows.length-1;
+    $('klRows').insertAdjacentHTML('beforeend',klLine(i)); klWireRow(i,kids,prev) };
+  $('klGo').onclick=async()=>{
+    const rows=KL.rows.map(r=>({r,res:klResolve(r)})).filter(x=>x.r.pid&&x.res.ok.length);
+    if(KL.rows.some(r=>r.pid&&klResolve(r).bad.length))return toast('Υπάρχουν αριθμοί που δεν βρέθηκαν — διόρθωσέ τους πρώτα');
+    if(!rows.length)return toast('Δεν συμπλήρωσες καμία γραμμή');
+    const btn=$('klGo'); btn.disabled=true;
+    const {data,error}=await sb.rpc('kolla_submit',{p_date:KL.date, p_examiner:$('klExam').value||null,
+      p_rows:rows.map(x=>({person:x.r.pid, reqs:x.res.ok.map(r=>r.id), kane:!!x.r.kane}))});
+    btn.disabled=false;
+    if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
+    toast(`${data.perasan} πέρασαν${data.aitimata?' · '+data.aitimata+' στον Α.Ο.Π.':''}${data.idi?' · '+data.idi+' υπήρχαν ήδη':''}${data.den_egine?' · '+data.den_egine+' δεν έγιναν':''}`);
+    KL.rows=[klNew(),klNew(),klNew(),klNew()];
+    await reloadProgress(); stay();
+  };
+}
+function klWireRow(i,kids,prev){
+  const row=KL.rows[i];
+  ppWire('klP'+i,kids,{}); $('klP'+i).onchange=e=>{row.pid=e.target.value||''; prev(i)};
+  const q=s=>document.querySelector(`${s}[data-i="${i}"]`);
+  q('.kl-b').onchange=e=>{row.badge=e.target.value; prev(i)};
+  q('.kl-n').oninput=e=>{row.nums=e.target.value; prev(i)};
+  q('.kl-k').onchange=e=>{row.kane=e.target.checked};
+}
+
+function kaneList(){
+  const rows=(D.mreq||[]).filter(m=>!m.kane_signed&&m.pigi!=='ιστορικό').map(m=>({m,p:pgMem(m.person_id),
+      r:(D.rc2||[]).find(r=>r.id===m.requirement_id)})).filter(x=>x.p&&x.r&&x.r.section==='Ομάδα'&&secOf(x.p)==='Ομάδα'&&inScope(x.p))
+    .sort((a,b)=>sortByName(a.p,b.p)||String(a.m.date).localeCompare(String(b.m.date)));
+  return `<div class="sec" style="margin-top:16px"><h3>Δεν έχουν υπογραφεί στο ΚΑΝΕ</h3><span class="n">${rows.length}</span></div>
+    ${rows.length?`<div class="card">${rows.slice(0,300).map(x=>`<label class="kv" style="border-top:1px solid var(--line);padding:7px 12px;cursor:pointer">
+      <input type="checkbox" class="kn" value="${x.m.id}"><span style="flex:1;font-size:13px">${pn(x.p)} · <b>${esc(x.r.code||'')}</b> ${esc(x.r.label)}</span>
+      <span class="dim" style="font-size:11.5px">${reqDate(x.m)}</span></label>`).join('')}</div>
+      <div class="card pad"><button class="btn sm p" id="knGo">Υπογράφηκαν στο ΚΑΝΕ</button></div>`
+     :'<div class="card pad dim" style="font-size:12.5px">Όλα όσα πέρασαν έχουν υπογραφεί και στο ΚΑΝΕ.</div>'}`;
+}
+function kaneWire(){
+  if(!$('knGo'))return;
+  $('knGo').onclick=async()=>{
+    const ids=[...document.querySelectorAll('.kn:checked')].map(x=>x.value);
+    if(!ids.length)return toast('Διάλεξε πρώτα');
+    const {data,error}=await sb.rpc('kane_mark',{p_ids:ids,p_val:true});
+    if(error)return toast('Σφάλμα: '+error.message);
+    (D.mreq||[]).forEach(m=>{ if(ids.includes(m.id))m.kane_signed=true });
+    saveCache(); toast(`${data} σημειώθηκαν`);
+    ids.forEach(id=>{ const l=document.querySelector(`.kn[value="${id}"]`); if(l)l.closest('label').remove() });
   };
 }
 
@@ -12886,7 +13026,7 @@ function badgeLine(pid, sec){
   return `<div class="card pad" style="margin-bottom:9px">
     <div class="dim" style="font-size:12px;margin-bottom:6px">${t}</div>
     ${rows.map(x=>`<span class="pill" style="margin:3px 3px 0 0${x.h?'':';opacity:.75'}">${esc(x.c.label||'')}
-      <span class="dim">${x.h?(x.h.date?progDate(x.h):''):x.n+' από '+x.tot}</span></span>`).join('')}</div>`;
+      <span class="dim">${x.h?(x.h.date?progDate(x.h):''):x.n+' από '+x.tot}</span>${!x.h&&x.tot&&x.n===x.tot?' <b style="font-size:11px">· έτοιμο για απονομή</b>':''}</span>`).join('')}</div>`;
 }
 
 function stageCard(pid, sec, st){
@@ -12894,6 +13034,7 @@ function stageCard(pid, sec, st){
   const n=reqs.filter(r=>reqDone(pid,r.id)).length;
   const head=got?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">απονεμήθηκε${got.date?' · '+progDate(got):''}</span>`
     :ex?`<span class="pill">απαλλαγή — ${esc(ex.a.label)}${ex.h.date?' · '+progDate(ex.h):''}</span>`
+    :reqs.length&&n===reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span> <span class="pill" style="background:var(--accbg);color:var(--acc);border-color:transparent">έτοιμο για απονομή</span>`
     :reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span>`:'<span class="dim" style="font-size:12px">—</span>';
   const line=r=>{ const d=reqDone(pid,r.id), ok=!!d||!!ex;
     return `<div class="kv" style="padding:3px 0;font-size:12.5px">
