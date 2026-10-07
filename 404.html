@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-07 16:07'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-07 16:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -9652,22 +9652,19 @@ function progressBody(){
     return;
   }
 
-  const sigsOf=id=>(D.psig||[]).filter(x=>x.target==='ΑΠΑΙΤΗΣΗ'&&x.target_id===id)
-    .map(x=>x.role+': '+x.ypegrapse+(x.signed_on?' ('+fdate(x.signed_on)+')':''));
-  const cell=(k,r)=>{
-    const on=hasReq(k.id,r.id), L=LEV[r.verifier]||{};
-    const rec=(D.mreq||[]).find(x=>x.person_id===k.id&&x.requirement_id===r.id);
-    const sg=rec?sigsOf(rec.id):[];
-    const tip=[reqNo(r)+'. '+r.label, r.description||'', PSEC==='Ομάδα'?L.t||'':'',
-               rec&&rec.date?'Πέρασε '+fdate(rec.date):'', ...sg]
-              .filter(Boolean).join('\n');
+  const keep=new Set(); kids.forEach(k=>reqs.forEach(r=>{ if(!hasReq(k.id,r.id))keep.add(k.id+'|'+r.id) }));
+  PGSEL=new Set([...PGSEL].filter(x=>write&&keep.has(x)));
+  Object.keys(PGERR).forEach(x=>{ if(!keep.has(x))delete PGERR[x] });
+  PGGRID={k:kids.map(k=>k.id), r:reqs.map(r=>r.id), write}; PGANCH=null;
+  const cell=(k,r,i,j)=>{
+    const key=k.id+'|'+r.id;
     return `<td style="padding:1px;text-align:center">
-      <button class="pgc" data-k="${k.id}" data-r="${r.id}"${write?'':' disabled'}
-        title="${esc(tip)}"
-        style="width:20px;height:20px;border-radius:4px;cursor:${write?'pointer':'default'};
-          border:1.5px solid ${on?'var(--ok)':'var(--line2)'};
-          background:${on?'var(--ok)':'transparent'}"></button></td>`;
+      <button class="pgc" data-k="${k.id}" data-r="${r.id}" data-i="${i}" data-j="${j}"${write?'':' disabled'}
+        title="${esc(pgTip(k.id,r,key))}"
+        style="${pgStyle(hasReq(k.id,r.id),PGSEL.has(key),!!PGERR[key],write)}"></button></td>`;
   };
+  const today=isoLocal(new Date());
+  if(!PGDATE||PGDATE>today)PGDATE=today;
 
   $('view').innerHTML=head+`
     <div class="card pad" style="margin-bottom:12px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
@@ -9676,18 +9673,27 @@ function progressBody(){
       ${grps.length?`<select id="pgGrp" style="max-width:170px"><option value="">Όλες οι ${esc(subgPl(PSEC))}</option>
         ${grps.map(g=>`<option${g===PGGRP?' selected':''}>${esc(g)}</option>`).join('')}</select>`:''}
       <span class="sp"></span>
-      <!-- ΠΟΙΟΣ ΕΞΕΤΑΣΕ. Σε μια συγκέντρωση εξετάζει ένας και περνά άλλος·
-           αν κρατάγαμε μόνο «ποιος πάτησε», θα χανόταν το ποιος είδε. -->
-      <label style="display:flex;align-items:center;gap:5px;font-size:11.5px">
-        <span class="dim">Εξέτασε:</span>
-        ${ppHTML('pgExam',PGEXAM||'',{ph:'εγώ',style:'width:190px'})}</label>
       ${ ''}
       ${PSEC==='Ομάδα'?`<span class="dim" style="font-size:11.5px">Επίπεδο αξιολόγησης:</span>
       ${['1','2','3','4'].map(l=>`<span class="pill" style="font-size:10.5px">
         <span class="dot" style="background:${LEV[l].c}"></span>${l} · ${esc(LEV[l].t)}</span>`).join('')}`:''}
     </div>
+    ${
+
+      write?`<div class="card pad" id="pbBar" style="margin-bottom:10px;position:sticky;top:0;z-index:3;display:flex;gap:9px;flex-wrap:wrap;align-items:center;font-size:12px">
+      <b id="pbN" style="min-width:96px"></b>
+      <label style="display:flex;align-items:center;gap:5px"><span class="dim">Ημερομηνία:</span>
+        <input type="date" id="pbDate" value="${PGDATE}" max="${today}" style="width:140px"></label>
+      <label style="display:flex;align-items:center;gap:5px"><span class="dim">Εξέτασε:</span>
+        ${ppHTML('pgExam',PGEXAM||'',{ph:'κανείς άλλος',style:'width:170px'})}</label>
+      <label style="display:flex;align-items:center;gap:5px"><span class="dim">Υπέγραψε:</span>
+        ${ppHTML('pgSign',PGSIGN||'',{ph:'εγώ',style:'width:170px'})}</label>
+      <button class="btn sm p" id="pbGo">Πέρασμα</button>
+      <button class="btn sm" id="pbClr">Καθάρισμα</button>
+      <span class="dim" id="pbHint" style="flex-basis:100%;font-size:11.5px">Κλικ στο κουτάκι = επιλογή (κίτρινο, δεν γράφεται ακόμα) · Shift-κλικ ή σύρσιμο = πολλά μαζί · κλικ στον αριθμό = όλη η στήλη · ⇢ = όλη η γραμμή. Πράσινο κουτάκι = πέρασε· κλικ πάνω του για αφαίρεση.</span>
+    </div>`:''}
     <div class="card" style="overflow:auto">
-      <table style="border-collapse:collapse;font-size:12px">
+      <table style="border-collapse:collapse;font-size:12px;user-select:none">
         <thead>
           <tr><th style="position:sticky;left:0;background:var(--card);text-align:left;padding:6px 10px;min-width:170px"></th>
             ${reqs.map(r=>`<th style="padding:0;height:74px;vertical-align:bottom">
@@ -9696,15 +9702,16 @@ function progressBody(){
             <th style="padding:6px 10px">Σύνολο</th></tr>
           <tr><th style="position:sticky;left:0;background:var(--card);text-align:left;padding:2px 10px;
                 font-size:10.5px;color:var(--ink3)">${reqs.length} ${plu(reqs.length,'απαίτηση','απαιτήσεις')}</th>
-            ${reqs.map(r=>`<th style="padding:0 1px 4px;font-size:9.5px;color:${PSEC==='Ομάδα'&&(LEV[r.verifier]||{}).c||'var(--ink3)'}"
-              title="${esc(r.label||'')}">${esc(reqNo(r))}</th>`).join('')}<th></th></tr>
+            ${reqs.map(r=>`<th${write?` data-col="${r.id}"`:''} style="padding:0 1px 4px;font-size:9.5px;${write?'cursor:pointer;':''}color:${PSEC==='Ομάδα'&&(LEV[r.verifier]||{}).c||'var(--ink3)'}"
+              title="${esc((r.label||'')+(write?' — κλικ: όλη η στήλη':''))}">${esc(reqNo(r))}</th>`).join('')}<th></th></tr>
         </thead>
-        <tbody>${kids.map(k=>{
+        <tbody>${kids.map((k,i)=>{
           const n=reqs.filter(r=>hasReq(k.id,r.id)).length;
           return `<tr><td style="position:sticky;left:0;background:var(--card);padding:3px 10px;white-space:nowrap">
-              <span class="pn" data-p="${k.id}">${pn(k)}</span></td>
-            ${reqs.map(r=>cell(k,r)).join('')}
-            <td style="padding:3px 10px;text-align:right;font-variant-numeric:tabular-nums;
+              ${write?`<button class="pgrow" data-row="${k.id}" title="Επίλεξε όλη τη γραμμή" aria-label="Επίλεξε όλη τη γραμμή"
+                style="border:0;background:none;cursor:pointer;color:var(--ink3);padding:0 4px 0 0;font-size:12px">⇢</button>`:''}<span class="pn" data-p="${k.id}">${pn(k)}</span></td>
+            ${reqs.map((r,j)=>cell(k,r,i,j)).join('')}
+            <td data-tot="${k.id}" style="padding:3px 10px;text-align:right;font-variant-numeric:tabular-nums;
               color:${n===reqs.length?'var(--ok)':'var(--ink2)'}">${n}/${reqs.length}</td></tr>`;
         }).join('')||`<tr><td class="dim" style="padding:14px">Κανένα ενεργό μέλος${PGGRP?' σε αυτή την '+esc(subgOf(PSEC).toLowerCase()):''}.</td></tr>`}</tbody>
       </table></div>
@@ -9723,30 +9730,139 @@ function progressBody(){
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{PGTAB=b.dataset.tab;route(ROUTE)});
   document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{PGST=b.dataset.st;route(ROUTE)});
   if($('pgGrp'))$('pgGrp').onchange=e=>{PGGRP=e.target.value;route(ROUTE)};
+  if(write)pgWire();
+};
+
+let PGSEL=new Set(), PGANCH=null, PGDATE=null, PGSIGN=null, PGERR={}, PGGRID={k:[],r:[]}, PGDRAG=null, PGSKIP=false, PGMU=false;
+const sigsOf=id=>(D.psig||[]).filter(x=>x.target==='ΑΠΑΙΤΗΣΗ'&&x.target_id===id)
+  .map(x=>x.role+': '+x.ypegrapse+(x.signed_on?' ('+fdate(x.signed_on)+')':'')+(x.vouched?' · καταχώρησε '+x.vouched:''));
+function pgTip(pid,r,key){
+  const L=LEV[r.verifier]||{}, rec=(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id===r.id);
+  return [reqNo(r)+'. '+r.label, r.description||'', PSEC==='Ομάδα'?L.t||'':'',
+          rec&&rec.date?'Πέρασε '+fdate(rec.date):'', ...(rec?sigsOf(rec.id):[]),
+          PGERR[key]?'Δεν πέρασε: '+PGERR[key]:'', PGSEL.has(key)?'Επιλεγμένο — δεν γράφτηκε ακόμα':'']
+    .filter(Boolean).join('\n');
+}
+function pgStyle(on,sel,err,write){
+  const bd=on?'var(--ok)':err?'var(--bad)':sel?'#d4a400':'var(--line2)',
+        bg=on?'var(--ok)':sel?'#ffd84d':'transparent';
+  return `width:20px;height:20px;border-radius:4px;cursor:${write?'pointer':'default'};border:${err&&!on?'2px':'1.5px'} solid ${bd};background:${bg}`;
+}
+function pgPaint(pid,rid){
+  const b=document.querySelector(`.pgc[data-k="${pid}"][data-r="${rid}"]`); if(!b)return;
+  const r=(D.rc2||[]).find(x=>x.id===rid)||{id:rid,label:''}, key=pid+'|'+rid;
+  b.setAttribute('style',pgStyle(hasReq(pid,rid),PGSEL.has(key),!!PGERR[key],true));
+  b.title=pgTip(pid,r,key);
+}
+function pgTot(pid){
+  const c=document.querySelector(`[data-tot="${pid}"]`); if(!c)return;
+  const n=PGGRID.r.filter(r=>hasReq(pid,r)).length;
+  c.textContent=n+'/'+PGGRID.r.length; c.style.color=n===PGGRID.r.length?'var(--ok)':'var(--ink2)';
+}
+function pgBar(){
+  const n=PGSEL.size, el=$('pbN'), go=$('pbGo'), clr=$('pbClr');
+  if(el)el.textContent=n?n+' '+plu(n,'επιλεγμένο','επιλεγμένα'):'Τίποτα επιλεγμένο';
+  if(go)go.disabled=!n; if(clr)clr.disabled=!n&&!Object.keys(PGERR).length;
+}
+function pgRect(a,b){
+  const out=[], i0=Math.min(a.i,b.i), i1=Math.max(a.i,b.i), j0=Math.min(a.j,b.j), j1=Math.max(a.j,b.j);
+  for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){ const p=PGGRID.k[i], r=PGGRID.r[j];
+    if(p&&r&&!hasReq(p,r))out.push(p+'|'+r) }
+  return out;
+}
+const pgPos=b=>({i:+b.dataset.i, j:+b.dataset.j});
+function pgSetMany(keys,add){
+  keys.forEach(k=>{ if(add)PGSEL.add(k); else PGSEL.delete(k); delete PGERR[k]; const [p,r]=k.split('|'); pgPaint(p,r) });
+  pgBar();
+}
+function pgWire(){
   ppWire('pgExam',ppLeaders());
+  ppWire('pgSign',ppLeaders());
   const ex=$('pgExam'); if(ex)ex.onchange=()=>{PGEXAM=ex.value||null};
-  document.querySelectorAll('.pgc').forEach(b=>b.onclick=async()=>{
-    const pid=b.dataset.k, rid=b.dataset.r, cur=(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id===rid);
-    b.disabled=true;
-    if(cur){
+  const sg=$('pgSign'); if(sg)sg.onchange=()=>{PGSIGN=sg.value||null};
+  const dt=$('pbDate'); if(dt)dt.onchange=()=>{PGDATE=dt.value||null};
+  pgBar();
+  if(!PGMU){ PGMU=true; document.addEventListener('mouseup',()=>{ if(PGDRAG){ PGSKIP=PGDRAG.moved; PGDRAG=null } }) }
+
+  document.querySelectorAll('.pgc').forEach(b=>{
+    b.onmousedown=e=>{ if(e.button!==0||e.shiftKey||hasReq(b.dataset.k,b.dataset.r))return;
+      const key=b.dataset.k+'|'+b.dataset.r;
+      PGDRAG={a:pgPos(b), base:new Set(PGSEL), add:!PGSEL.has(key), moved:false} };
+    b.onmouseenter=()=>{ if(!PGDRAG)return; const rect=pgRect(PGDRAG.a,pgPos(b));
+      PGDRAG.moved=true;
+      const was=new Set(PGSEL); PGSEL=new Set(PGDRAG.base);
+      rect.forEach(k=>{ if(PGDRAG.add)PGSEL.add(k); else PGSEL.delete(k) });
+      new Set([...was,...PGSEL]).forEach(k=>{ if(was.has(k)!==PGSEL.has(k)){ const [p,r]=k.split('|'); pgPaint(p,r) } });
+      pgBar() };
+    b.onclick=async e=>{
+      if(PGSKIP){ PGSKIP=false; return }
+      const pid=b.dataset.k, rid=b.dataset.r, key=pid+'|'+rid, cur=(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id===rid);
+      if(!cur){
+        if(e.shiftKey&&PGANCH){ pgSetMany(pgRect(PGANCH,pgPos(b)),true) }
+        else { pgSetMany([key],!PGSEL.has(key)) }
+        PGANCH=pgPos(b); return;
+      }
+      b.disabled=true;
       if(!await uiAsk('Να αφαιρεθεί η απαίτηση; Θα σβηστούν και οι υπογραφές της.')){b.disabled=false;return}
       const {data,error}=await sb.rpc('progress_revoke',{p_id:cur.id});
-      if(error||(data&&data.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
+      b.disabled=false;
+      if(error||(data&&data.error))return toast('Σφάλμα: '+((error&&error.message)||data.error));
       D.mreq=D.mreq.filter(x=>x.id!==cur.id);
       D.psig=(D.psig||[]).filter(x=>!(x.target==='ΑΠΑΙΤΗΣΗ'&&x.target_id===cur.id));
-    }else{
-      const {data,error}=await sb.rpc('progress_record',
-        {p_person:pid, p_requirement:rid, p_date:isoLocal(new Date()), p_examiner:PGEXAM||null});
-      if(error||(data&&data.error)){b.disabled=false;return toast('Σφάλμα: '+((error&&error.message)||data.error))}
-      (D.mreq=D.mreq||[]).push({id:data.id, person_id:pid, requirement_id:rid,
-        date:isoLocal(new Date()), awarded_by:ME.person_id||null, via:'e76'});
-      const {data:sg}=await sb.from('v_progress_signatures').select('*')
-        .eq('target','ΑΠΑΙΤΗΣΗ').eq('target_id',data.id);
-      if(sg)(D.psig=D.psig||[]).push(...sg);
-    }
-    saveCache(); route(ROUTE);
+      saveCache(); pgPaint(pid,rid); pgTot(pid);
+    };
   });
-};
+  document.querySelectorAll('[data-col]').forEach(h=>h.onclick=()=>{
+    const j=PGGRID.r.indexOf(h.dataset.col); if(j<0)return;
+    const keys=pgRect({i:0,j},{i:PGGRID.k.length-1,j});
+    pgSetMany(keys,!keys.every(k=>PGSEL.has(k)));
+  });
+  document.querySelectorAll('[data-row]').forEach(h=>h.onclick=()=>{
+    const i=PGGRID.k.indexOf(h.dataset.row); if(i<0)return;
+    const keys=pgRect({i,j:0},{i,j:PGGRID.r.length-1});
+    pgSetMany(keys,!keys.every(k=>PGSEL.has(k)));
+  });
+  const clr=$('pbClr'); if(clr)clr.onclick=()=>{
+    const ks=[...PGSEL, ...Object.keys(PGERR)]; PGSEL=new Set(); PGERR={};
+    ks.forEach(k=>{ const [p,r]=k.split('|'); pgPaint(p,r) }); pgBar() };
+  const go=$('pbGo'); if(go)go.onclick=pgBatchGo;
+}
+async function pgBatchGo(){
+  const keys=[...PGSEL]; if(!keys.length)return;
+  const today=isoLocal(new Date()), d=($('pbDate')||{}).value||PGDATE;
+  if(!d)return toast('Βάλε ημερομηνία.');
+  if(d>today)return toast('Η ημερομηνία είναι στο μέλλον.');
+  PGDATE=d;
+  const me=ME.person_id||null, sgn=PGSIGN&&PGSIGN!==me?PGSIGN:null;
+  const who=id=>{ const p=(D.bh||[]).find(x=>x.id===id); return p?nm(p):'' };
+  const n=keys.length;
+  const msg=`Πέρασμα ${n} ${plu(n,'απαίτησης','απαιτήσεων')};\n\nΗμερομηνία: ${fdate(d)}\nΥπέγραψε: ${sgn?who(sgn):'εγώ'}`
+    +(PGEXAM&&PGEXAM!==(sgn||me)?`\nΕξέτασε: ${who(PGEXAM)}`:'')
+    +(sgn?`\nΚαταχωρείς εσύ — θα φαίνεται «καταχώρησε ${who(me)||'εγώ'}».`:'');
+  if(!await uiAsk(msg,{ok:'Πέρασμα'}))return;
+  const go=$('pbGo'); if(go)go.disabled=true;
+  const pairs=keys.map(k=>{ const [p,r]=k.split('|'); return {p,r} });
+  const {data,error}=await sb.rpc('progress_record_many',
+    {p_pairs:pairs, p_date:d, p_examiner:PGEXAM||null, p_signer:sgn});
+  if(error||(data&&data.error)){ pgBar(); return toast('Σφάλμα: '+((error&&error.message)||data.error)) }
+  const ok=[], bad=[];
+  (data.items||[]).forEach(x=>{ const key=x.p+'|'+x.r; PGSEL.delete(key);
+    if(x.ok){ delete PGERR[key]; ok.push(x);
+      if(!hasReq(x.p,x.r))(D.mreq=D.mreq||[]).push({id:x.id, person_id:x.p, requirement_id:x.r,
+        date:x.imerominia||d, awarded_by:me, via:'e76'}); }
+    else { PGERR[key]=x.error||'απορρίφθηκε'; bad.push(x) } });
+  const ids=ok.map(x=>x.id);
+  for(let i=0;i<ids.length;i+=100){
+    const part=ids.slice(i,i+100);
+    const {data:sg}=await sb.from('v_progress_signatures').select('*').eq('target','ΑΠΑΙΤΗΣΗ').in('target_id',part);
+    if(sg){ D.psig=(D.psig||[]).filter(x=>!(x.target==='ΑΠΑΙΤΗΣΗ'&&part.includes(x.target_id))); D.psig.push(...sg) }
+  }
+  saveCache();
+  (data.items||[]).forEach(x=>pgPaint(x.p,x.r));
+  [...new Set(ok.map(x=>x.p))].forEach(pgTot);
+  pgBar();
+  toast(`Πέρασαν ${ok.length}`+(bad.length?` · ${bad.length} δεν πέρασαν (κόκκινο περίγραμμα — δες τον λόγο πάνω στο κουτάκι)`:''));
+}
 
 
 
