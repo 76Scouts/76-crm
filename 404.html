@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-06 20:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-07 16:07'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -9301,7 +9301,8 @@ V.accounts=()=>{
             ${st>=4
             ?'<span class="dim" style="font-size:11.5px" title="Ο κωδικός είναι μόνο για την πρώτη είσοδο — αν ξέχασε το συνθηματικό, επαναφορά">έχει λογαριασμό</span>'
             :r.email
-            ?`<button class="btn sm" data-newinv="${r.id}" data-em="${esc(r.email)}">${r.kodikos?'Νέος':'Κωδικός'}</button>`
+            ?`<button class="btn sm" data-newinv="${r.id}" data-em="${esc(r.email)}">${r.kodikos?'Νέος':'Κωδικός'}</button>${
+              r.kodikos?` <button class="btn sm gh" data-revinv="${r.id}" style="color:var(--bad)" title="Ο κωδικός παύει να δουλεύει — π.χ. δεν θέλουμε ακόμη λογαριασμό">Ακύρωση</button>`:''}`
             :'<span class="dim" style="font-size:11.5px">θέλει email</span>'}</td></tr>`};
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
@@ -9431,6 +9432,16 @@ V.accounts=()=>{
       if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
       toast('Νέος κωδικός: '+data);
       await accPatch(b.dataset.newinv);
+    });
+    root.querySelectorAll('[data-revinv]').forEach(b=>b.onclick=async()=>{
+      const r=(D.ac||[]).find(x=>x.id===b.dataset.revinv)||{};
+      if(!await uiAsk('Ακύρωση του κωδικού του/της '+(r.onoma||'')+';\n\nΟ κωδικός παύει να δουλεύει. Αν χρειαστεί αργότερα, βγάζεις νέο.',{ok:'Ακύρωση κωδικού',danger:true}))return;
+      b.disabled=true;
+      const {data,error}=await sb.rpc('revoke_invite',{p_person:b.dataset.revinv});
+      if(error){b.disabled=false;return toast('Σφάλμα: '+error.message)}
+      (D.inv||[]).forEach(i=>{ if(i.person_id===b.dataset.revinv&&!i.used_on&&!i.revoked_on)i.revoked_on=new Date().toISOString() });
+      toast(data?'Ο κωδικός ακυρώθηκε':'Δεν υπήρχε ενεργός κωδικός');
+      await accPatch(b.dataset.revinv);
     });
   }
   accBindRow(document);
