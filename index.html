@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-08 12:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-08 13:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -6981,30 +6981,40 @@ function kidEvents(ks,today){
     .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,12);
   return {up,ev};
 }
+const kidLab=k=>k&&ME&&k.id===ME.person_id?'εγώ':esc(k.first_name);
+const kid16=k=>!!k&&secOf(k)==='Κοινότητα'&&(()=>{const a=typeof ageOf==='function'?ageOf(k):null; return a!==null&&a>=16})();
+const self16=p=>!!p&&(p.kind||'')==='Μέλος'&&kid16(p);
+const note16=k=>kid16(k)?`<div class="dim" style="font-size:11.5px;flex-basis:100%">${k.id===(ME&&ME.person_id)
+  ?'Έχεις κλείσει τα 16: στη φόρμα δίνεις και <b>τη δική σου συγκατάθεση</b> — εκτός από των γονιών σου.'
+  :esc(k.first_name)+' έχει κλείσει τα 16: η συγκατάθεση υπογράφεται <b>και από το ίδιο το μέλος</b> (ερώτηση στη φόρμα).'}</div>`:'';
+function kidActBtns(e,kids,today){
+  const open=signupOpen(e);
+  return kids.map(({kid:k})=>{
+            const has=(D.pa||[]).find(x=>x.person_id===k.id&&x.event_id===e.id);
+            if(has){ const st=paStage(has), sent=paSent(has);
+              const who=has.declared_by?(D.bh||[]).find(b=>b.id===has.declared_by):null;
+              const by=sent?`<div class="dim" style="font-size:11.5px;flex-basis:100%">Δηλώθηκε${who?' από '+esc(nm(who)):''}${has.declared_at?' στις '+fdate(has.declared_at):''}${has.corrected_at?' · διορθώθηκε '+fdate(has.corrected_at):''}</div>`:'';
+              const act=e.form_url&&open
+                ? `<button class="btn sm" data-sign="${e.id}" data-k="${k.id}">${sent?'Διόρθωση στοιχείων':'Συνέχεια δήλωσης'} · ${kidLab(k)}</button>`
+                : sent&&e.form_url ? `<span class="dim" style="font-size:11.5px">Για αλλαγές: ο αρχηγός τμήματος</span>` : '';
+              return `<span class="pill" style="background:var(--${st.c}bg);color:var(--${st.c});border-color:transparent">
+              ${st.c==='ok'?'✓ ':''}${esc(k.first_name)} — ${esc(st.t)}</span>${act}${by}`; }
+            if(!e.form_url)return '';
+            if(!open)return `<span class="dim" style="font-size:12px">${esc(k.first_name)} · ${e.signup_closes&&e.signup_closes<today?'δηλώσεις κλειστές':e.signup_opens?'δηλώσεις από '+fdate(e.signup_opens):'δηλώσεις δεν άνοιξαν ακόμη'}</span>`;
+            return `<button class="btn sm p" data-sign="${e.id}" data-k="${k.id}">Δήλωση · ${kidLab(k)}</button>`;
+          }).map((h,ix)=>h+(h&&e.form_url?note16(kids[ix].kid):'')).join('');
+}
+
 function kidActRow(e,ks,today){
   const forKid=kidForEv, invOk=(e,k)=>evInvOk(e,k.id,secOf(k));
         const kids=ks.filter(({kid:k})=>forKid(e,k)&&invOk(e,k));
-        const open=signupOpen(e);
         return `<div data-evrow="${e.id}" style="border-top:1px solid var(--line);padding:10px 0">
           <div class="kv"><b style="flex:1">${esc(e.title||'—')}</b>
             <span class="dim" style="font-size:12px">${fdate(e.event_date)}${e.fee?` · €${Number(e.fee).toFixed(2)}`:''}</span></div>
           ${e.place?`<div class="dim" style="font-size:11.5px">${esc(e.place)}</div>`:''}
           ${e.signup_closes?`<div class="dim" style="font-size:11.5px">Δηλώσεις μέχρι ${fdate(e.signup_closes)}</div>`:''}
           ${e.signup_note?`<div class="dim" style="font-size:11.5px;margin-top:2px">${esc(e.signup_note)}</div>`:''}
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kids.map(({kid:k})=>{
-            const has=(D.pa||[]).find(x=>x.person_id===k.id&&x.event_id===e.id);
-            if(has){ const st=paStage(has), sent=paSent(has);
-              const who=has.declared_by?(D.bh||[]).find(b=>b.id===has.declared_by):null;
-              const by=sent?`<div class="dim" style="font-size:11.5px;flex-basis:100%">Δηλώθηκε${who?' από '+esc(nm(who)):''}${has.declared_at?' στις '+fdate(has.declared_at):''}${has.corrected_at?' · διορθώθηκε '+fdate(has.corrected_at):''}</div>`:'';
-              const act=e.form_url&&open
-                ? `<button class="btn sm" data-sign="${e.id}" data-k="${k.id}">${sent?'Διόρθωση στοιχείων':'Συνέχεια δήλωσης'} · ${esc(k.first_name)}</button>`
-                : sent&&e.form_url ? `<span class="dim" style="font-size:11.5px">Για αλλαγές: ο αρχηγός τμήματος</span>` : '';
-              return `<span class="pill" style="background:var(--${st.c}bg);color:var(--${st.c});border-color:transparent">
-              ${st.c==='ok'?'✓ ':''}${esc(k.first_name)} — ${esc(st.t)}</span>${act}${by}`; }
-            if(!e.form_url)return '';
-            if(!open)return `<span class="dim" style="font-size:12px">${esc(k.first_name)} · ${e.signup_closes&&e.signup_closes<today?'δηλώσεις κλειστές':e.signup_opens?'δηλώσεις από '+fdate(e.signup_opens):'δηλώσεις δεν άνοιξαν ακόμη'}</span>`;
-            return `<button class="btn sm p" data-sign="${e.id}" data-k="${k.id}">Δήλωση · ${esc(k.first_name)}</button>`;
-          }).join('')}</div>
+          <div data-evbtns="${e.id}" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kidActBtns(e,kids,today)}</div>
         </div>`
 }
 function kidActWire(ks,root){
@@ -7015,7 +7025,9 @@ function kidActWire(ks,root){
     if(!e||!k)return;
     b.disabled=true; b.textContent='Άνοιγμα…';
     await declareAndOpen(e,k,meP);
-    const row=document.querySelector(`[data-evrow="${e.id}"]`); if(!row)return;
+    const row=document.querySelector(`[data-evrow="${e.id}"]`);
+    if(!row){ const bx=(root||document).querySelector(`[data-evbtns="${e.id}"]`)||document.querySelector(`[data-evbtns="${e.id}"]`);
+      if(bx){ bx.innerHTML=kidActBtns(e,ks,today); kidActWire(ks,bx) } return }
     row.outerHTML=kidActRow(e,ks,today);
     const fresh=document.querySelector(`[data-evrow="${e.id}"]`); if(fresh)kidActWire(ks,fresh);
   });
@@ -7131,7 +7143,9 @@ V.myprog=()=>{
 
   const row=(l,r,extra)=>`<div style="border-top:1px solid var(--line);padding:9px 0">
     <div class="kv"><b style="flex:1">${l}</b><span class="dim" style="font-size:12px">${r}</span></div>${extra||''}</div>`;
-  const st=e=>{ const has=(D.pa||[]).find(x=>x.person_id===p.id&&x.event_id===e.id);
+  const me16=self16(p), selfKs=[{kid:p}];
+  const st=e=>{ if(me16&&e.form_url&&evCat(e)!=='sxoli')return `<div data-evbtns="${e.id}" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kidActBtns(e,selfKs,today)}</div>`;
+    const has=(D.pa||[]).find(x=>x.person_id===p.id&&x.event_id===e.id);
     if(has)return `<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent;margin-top:5px">✓ ${has.paid?'δηλώθηκες · πληρωμένη':'δηλώθηκες'}</span>`;
     if(signupOpen(e))return `<div class="dim" style="font-size:12px;margin-top:4px">Ανοιχτές δηλώσεις${e.signup_closes?' μέχρι '+fdate(e.signup_closes):''} — τη δήλωση την κάνει ο γονέας σου.</div>`;
     return ''; };
@@ -7174,6 +7188,7 @@ V.myprog=()=>{
       <div style="margin-top:4px">${sxo.map(e=>row(esc(e.title||'—'),e.event_date?fdate(e.event_date):'ημερομηνία σύντομα',st(e))).join('')}</div></details>`:''}`;
   document.querySelectorAll('[data-mpv]').forEach(b=>b.onclick=()=>{
     try{localStorage.setItem('e76:myprogv',b.dataset.mpv)}catch(e){} V.myprog()});
+  if(me16)kidActWire(selfKs,$('view'));
 };
 let MXQ='', MXF='ola';
 V.matrix=()=>{
@@ -10669,10 +10684,11 @@ V.myforms=()=>{
 
 function fwKids(mine){
   const box=$('fwKids'); if(!box||!mine||typeof myKids!=='function')return;
-  const ks=myKids(); if(!ks.length)return;
+  let ks=myKids(), selfMode=false;
+  if(!ks.length){ const me=meRec(); if(mine&&self16(me)){ ks=[{kid:me}]; selfMode=true } else return; }
   const today=new Date().toISOString().slice(0,10);
   const ev=kidEvents(ks,today).ev.filter(e=>e.form_url);
-  box.innerHTML=`<div class="card pad" style="margin-top:14px"><b>Δηλώσεις για ${ks.length===1?'το παιδί σου':'τα παιδιά σου'}</b>
+  box.innerHTML=`<div class="card pad" style="margin-top:14px"><b>${selfMode?'Οι δηλώσεις σου':'Δηλώσεις για '+(ks.length===1?'το παιδί σου':'τα παιδιά σου')}</b>
     ${ev.length?`<div style="margin-top:9px">${ev.map(e=>kidActRow(e,ks,today)).join('')}</div>`
       :'<div class="dim" style="margin-top:8px;font-size:13px">Καμία ανοιχτή δήλωση δράσης αυτή τη στιγμή.</div>'}</div>
     <div id="fwHist"></div>`;
