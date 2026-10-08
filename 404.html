@@ -581,11 +581,13 @@ tr.argrow td{background:var(--bg2)}
 @media(max-width:430px){.pickwrap{margin:14px auto}.pickcard{padding:12px 13px;gap:10px}.pickcard .pt{font-size:14.5px}}
 .mob{display:none}
 @media(max-width:860px){
-  .side{position:fixed;left:0;top:0;bottom:0;width:min(272px,84vw);flex-basis:auto;transform:translateX(-100%);transition:.2s}
+  .side{position:fixed;left:0;top:0;bottom:0;width:min(272px,84vw);flex-basis:auto;transform:translateX(-100%);
+        transition:transform .2s ease-out;will-change:transform;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .side.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.3)}
+  body.navopen{overflow:hidden}
   .mob{display:inline-flex}
   .wrap{padding:12px}
-  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:39}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:39;touch-action:none}
   th{top:0}
   .hide-s{display:none}
   .top{padding:9px 12px;flex-wrap:wrap;gap:7px;row-gap:7px}
@@ -1217,7 +1219,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-08 23:34'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-09 00:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1511,18 +1513,30 @@ async function start(){
   ntRebound();
 }
 
-const IDLE_MS=15*60*1000; let LAST_ACT=Date.now();
+const IDLE_MS=15*60*1000; let LAST_ACT=Date.now(), SWALLOW_UNTIL=0;
+function homeRoute(){ return PA&&PA.k==='member'?'me':PA&&PA.k==='parent'?'mykids':'dash'; }
 function idleCheck(){
   if(document.visibilityState==='hidden')return;
-  if(Date.now()-LAST_ACT>IDLE_MS && typeof LOADED!=='undefined' && LOADED && navigator.onLine){
-    LAST_ACT=Date.now(); try{saveCache(true)}catch(e){}
-    location.replace(location.pathname+location.search); return true;
+  if(Date.now()-LAST_ACT>IDLE_MS && typeof LOADED!=='undefined' && LOADED){
+    LAST_ACT=Date.now(); return idleReset();
   }
   LAST_ACT=Date.now();
 }
+function idleReset(){
+  const home=homeRoute();
+  const dw=$('drw'), drawerOpen=!!(dw&&dw.classList.contains('on'));
+  if(dw)dw.classList.remove('on'); OPENPID=null;
+  try{ closeSide() }catch(e){}
+  try{ const pl=$('pal'); if(pl)pl.classList.remove('on') }catch(e){}
+  const moved=ROUTE!==home||drawerOpen;
+  if(moved){ route(home); try{window.scrollTo(0,0)}catch(e){} SWALLOW_UNTIL=Date.now()+800; }
+  if(navigator.onLine){ try{ Promise.resolve(loadAll()).then(()=>stayQ()).catch(()=>{}) }catch(e){} }
+  return moved;
+}
 if(typeof document!=='undefined'&&document.addEventListener){
-  ['wheel','mousemove'].forEach(ev=>document.addEventListener(ev,()=>idleCheck(),{capture:true,passive:true}));
-  ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,e=>{ if(idleCheck()){e.preventDefault&&e.preventDefault();e.stopPropagation&&e.stopPropagation();} },{capture:true,passive:false}));
+  ['wheel','mousemove','touchstart'].forEach(ev=>document.addEventListener(ev,()=>idleCheck(),{capture:true,passive:true}));
+  ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,e=>{ if(idleCheck()){e.preventDefault&&e.preventDefault();e.stopPropagation&&e.stopPropagation();} },{capture:true,passive:false}));
+  document.addEventListener('click',e=>{ if(Date.now()<SWALLOW_UNTIL){ SWALLOW_UNTIL=0; e.preventDefault(); e.stopPropagation(); } },{capture:true});
   document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible')idleCheck(); else LAST_ACT=Math.min(LAST_ACT,Date.now()); });
 }
 
@@ -1589,7 +1603,7 @@ function lazyFire(k){
     LZ[k]=data||[];
     if(LZ[k].length===1000){ try{ if(!CUT.includes(k))CUT.push(k); console.warn('e76: ΚΟΠΗΚΕ στις 1000 —',k);
       toast('Κόπηκαν δεδομένα στις 1000 γραμμές: '+k+' — χρειάζεται σελιδοποίηση') }catch(e){} }
-    if(LOADED&&ROUTE&&!document.querySelector('#view [data-ctediting]'))stay();
+    if(LOADED&&ROUTE&&!document.querySelector('#view [data-ctediting]'))stayQ();    
     try{ const dw=$('drw'); if(dw&&dw.classList.contains('on')&&OPENPID&&!dw.querySelector('[data-ctediting]'))openProfile(OPENPID) }catch(e){}
   }, e=>{ LZON[k]=null; console.warn('e76 τεμπέλικο '+k+':',e) });
 }
@@ -1859,9 +1873,9 @@ async function loadAll(){
       if(typeof renderPersona==='function'&&$('persona')){ renderPersona();
         if((PERSONAS||[]).map(p=>p.id).join()!==was){ renderNav();
           if(PA&&PA.id!==wasPA&&PA.k==='parent'&&['me','dash'].includes(ROUTE)){ route('mykids'); moved=true; } } } }catch(e){}
-    if(LOADED&&ROUTE&&!moved)stay(); });
+    if(LOADED&&ROUTE&&!moved)stayQ(); });
   saveCache(); qFlush();
-  ensurePhotos((D.pph||[]).map(x=>x.path).filter(Boolean)).then(()=>{if(ROUTE)route(ROUTE)});
+  ensurePhotos((D.pph||[]).map(x=>x.path).filter(Boolean)).then(n=>{if(n)photosSwap()});    
   try{ legalFooter(); legalGate() }catch(e){ console.warn('legal:',e) }
   const yrs=[...new Set([...D.my.map(x=>x.scout_year),...(D.sh||[]).map(x=>x.scout_year)].filter(Boolean))].sort().reverse();
   const nx=nextYear(yrs[0]||YEAR); if(nx&&!yrs.includes(nx))yrs.unshift(nx);    
@@ -2481,7 +2495,7 @@ function renderNav(){
     $('navlist').innerHTML=navHitsHTML(hits);
     $('navlist').querySelectorAll('[data-nh]').forEach(b=>b.onclick=()=>{
       const h=hits[+b.dataset.nh]; NAVQ=''; $('navq').value='';
-      if(h)h.go(); $('side').classList.remove('open'); document.querySelector('.scrim')?.remove(); });
+      closeSide(); if(h)requestAnimationFrame(()=>requestAnimationFrame(()=>h.go())); });
     return;
   }
   $('navlist').innerHTML=GROUPS.map(g=>{
@@ -2500,15 +2514,31 @@ function renderNav(){
     const tag=m.s==='soon'?'<span class="tag">Σύντομα</span>':m.s==='review'?'<span class="tag">Review</span>'
       :(pend[m.id]?`<span class="cnt pend" title="${pend[m.id]} περιμένουν εσένα">${pend[m.id]}</span>`:'');
     return `<button class="nav${ROUTE===m.id?' on':''}" data-r="${m.id}" title="${esc(SUBS[m.id]||m.t)}">${ic(m.i)}<span>${esc(m.t)}</span>${tag}</button>`;}).join('')}</div>`}).join('');
-  $('navwrap').querySelectorAll('.nav').forEach(b=>b.onclick=()=>{route(b.dataset.r);$('side').classList.remove('open');document.querySelector('.scrim')?.remove()});
+  $('navwrap').querySelectorAll('.nav').forEach(b=>b.onclick=()=>{ const r=b.dataset.r;
+    if($('side').classList.contains('open')){ closeSide(); requestAnimationFrame(()=>requestAnimationFrame(()=>route(r))); }
+    else route(r); });
   $('navwrap').querySelectorAll('[data-tog]').forEach(h=>h.onclick=()=>{
     const g=h.dataset.tog; NAVSHUT[g]=!NAVSHUT[g];
     try{localStorage.setItem('e76:navshut',JSON.stringify(NAVSHUT))}catch(e){}
     renderNav();});
 }
-$('mbtn').onclick=()=>{const s=$('side');s.classList.toggle('open');
-  if(s.classList.contains('open')){const d=document.createElement('div');d.className='scrim';d.onclick=()=>{s.classList.remove('open');d.remove()};document.body.appendChild(d);}
-  else document.querySelector('.scrim')?.remove();};
+function openSide(){ const s=$('side'); if(s.classList.contains('open'))return; s.classList.add('open'); document.body.classList.add('navopen');
+  const d=document.createElement('div'); d.className='scrim'; d.onclick=closeSide; document.body.appendChild(d); }
+function closeSide(){ const s=$('side'); if(s)s.classList.remove('open'); document.body.classList.remove('navopen');
+  document.querySelectorAll('.scrim').forEach(x=>x.remove()); }
+$('mbtn').onclick=()=>{ $('side').classList.contains('open')?closeSide():openSide(); };
+(function navSwipe(){
+  if(typeof document==='undefined'||!document.addEventListener)return;
+  let x0=null, y0=0, t0=0, fromEdge=false;
+  document.addEventListener('touchstart',e=>{ const t=e.touches&&e.touches[0]; if(!t||e.touches.length>1){x0=null;return}
+    const open=$('side').classList.contains('open'); fromEdge=!open&&t.clientX<24;
+    if(!open&&!fromEdge){x0=null;return}
+    x0=t.clientX; y0=t.clientY; t0=Date.now(); },{passive:true});
+  document.addEventListener('touchend',e=>{ if(x0===null)return; const t=e.changedTouches&&e.changedTouches[0]; if(!t){x0=null;return}
+    const dx=t.clientX-x0, dy=Math.abs(t.clientY-y0); x0=null;
+    if(Date.now()-t0>700||dy>Math.abs(dx))return;            
+    if(fromEdge&&dx>50)openSide(); else if(!fromEdge&&dx<-50)closeSide(); },{passive:true});
+})();
 
 const WIDE_VIEWS=new Set(['efolder','staff','cal','attend','members','leaders','guardians',
   'progAL','progOP','progKA','progress','exports','audit','reg','desk','year',
@@ -2684,6 +2714,21 @@ function stay(){
   const r=paint(m); back();
   if(r&&typeof r.then==='function')r.then(back).catch(()=>{});
   renderNav();
+}
+let STAYQ_T=null, TOUCHING=false, LAST_SCROLL=0;
+function stayQ(){
+  if(STAYQ_T)return;
+  const go=()=>{
+    if(TOUCHING||Date.now()-LAST_SCROLL<350){ STAYQ_T=setTimeout(go,250); return; }
+    STAYQ_T=null;
+    if(LOADED&&ROUTE&&!document.querySelector('#view [data-ctediting]'))stay();
+  };
+  STAYQ_T=setTimeout(go,120);
+}
+if(typeof document!=='undefined'&&document.addEventListener){
+  document.addEventListener('touchstart',()=>{TOUCHING=true},{capture:true,passive:true});
+  ['touchend','touchcancel'].forEach(ev=>document.addEventListener(ev,()=>{TOUCHING=false;LAST_SCROLL=Date.now()},{capture:true,passive:true}));
+  window.addEventListener('scroll',()=>{LAST_SCROLL=Date.now()},{passive:true});
 }
 window.addEventListener('hashchange',()=>{const h=hashRoute(); if(h&&(h!==ROUTE||!isFile))route(h)});
 
@@ -3467,10 +3512,20 @@ function legendHTML(route){
 const PHOTO=new Map();
 async function ensurePhotos(paths){
   const need=[...new Set(paths.filter(x=>x&&!/^https?:/.test(x)&&!PHOTO.has(x)))];
-  if(!need.length)return;
+  if(!need.length)return 0;
+  let n=0;
   try{const {data}=await sb.storage.from('e76').createSignedUrls(need,600);
-    (data||[]).forEach(d=>{if(d.signedUrl)PHOTO.set(d.path,d.signedUrl)});
+    (data||[]).forEach(d=>{if(d.signedUrl){PHOTO.set(d.path,d.signedUrl);n++}});
   }catch(e){}
+  return n;
+}
+function photosSwap(){
+  document.querySelectorAll('.avaph[data-ph]').forEach(el=>{
+    const url=PHOTO.get(el.getAttribute('data-ph')); if(!url)return;
+    const s=parseInt(el.style.width,10)||34, img=document.createElement('img');
+    img.className='ava'; img.src=url; img.width=s; img.height=s; img.alt='';
+    el.replaceWith(img);
+  });
 }
 const initialsOf=p=>((p.first_name||' ')[0]+(p.last_name||' ')[0]).toUpperCase();
 const photoOf=p=>((D.pph||[]).find(x=>x.person_id===(p&&p.id))||{}).path||'';
@@ -3478,7 +3533,7 @@ function avatar(p,size,editable){
   const s=size||34, pp=photoOf(p);
   const url=/^https?:/.test(pp)?pp:(pp?PHOTO.get(pp):null);
   const inner=url?`<img class="ava" src="${url}" width="${s}" height="${s}" alt="">`
-    :`<span class="avaph" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.36)}px">${esc(initialsOf(p))}</span>`;
+    :`<span class="avaph"${pp&&!/^https?:/.test(pp)?` data-ph="${esc(pp)}"`:''} style="width:${s}px;height:${s}px;font-size:${Math.round(s*.36)}px">${esc(initialsOf(p))}</span>`;
   return editable?`<span class="avawrap" id="avaBtn" title="Αλλαγή φωτογραφίας">${inner}<span class="avaedit">✎</span></span>`:inner;
 }
 const photoConsentOk=pid=>(D.cons||[]).some(c=>c.person_id===pid
