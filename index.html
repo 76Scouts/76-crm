@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-07 16:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-08 10:34'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22446,7 +22446,8 @@ function molaCells(yr){
   G.forEach(m=>m.sats.forEach(s=>cells[m.mi+'_'+s.si]={m,s,ev:[]}));
   const bySat={}; G.forEach(m=>m.sats.forEach(s=>bySat[s.iso]=m.mi+'_'+s.si));
   (D.ev||[]).filter(e=>e.scout_year===yr&&!e.hidden).forEach(e=>{
-    let key=e.sat_slot&&cells[e.sat_slot]?e.sat_slot:(e.event_date?bySat[sat(e.event_date)]:null);
+    let key=e.event_date?bySat[sat(e.event_date)]:null;
+    if(!key&&e.sat_slot&&cells[e.sat_slot])key=e.sat_slot;
     if(key&&cells[key])cells[key].ev.push(e);
   });
   Object.values(cells).forEach(c=>c.ev.sort((a,b)=>
@@ -22910,11 +22911,11 @@ async function molaSesOne(iso){
 }
 
 function molaSesPanel(){
-  const yr=YEAR, {G}=molaCells(yr), secs=['Αγέλη','Ομάδα','Κοινότητα'];
+  const yr=YEAR, {G,cells}=molaCells(yr), secs=['Αγέλη','Ομάδα','Κοινότητα'];
   const canSec=sec=>molaCanEdit({section:sec, klimakio_id:(molaKl().sy||{}).id});
   const can=secs.every(canSec);
   const K=molaKl();
-  const argSat=new Set(molaArgies(yr).map(a=>a.ev.sat_slot).filter(Boolean));
+  const argSat=new Set(Object.keys(cells).filter(k=>cells[k].ev.some(e=>isArgia(e))));
 
   const draw=()=>{
     const rows=G.flatMap(m=>m.sats.map(sv=>({m,s:sv})));
