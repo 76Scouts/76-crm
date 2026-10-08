@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-08 22:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-08 23:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1688,7 +1688,7 @@ async function loadAll(){
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
     sb.from('care_links').select('member_id').limit(0),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
-    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,arxigos_id,eidos_spk,tmima_spk,arrive_time,depart_time,return_time,release_time,transport,march_days,sail_days,sea_other,partners,dd_holder_id,sfh_id,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,signup_notify,signup_remind,invitees,gcal,prog_kind,stage,planned_reqs').order('event_date').limit(3000),
+    sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,arxigos_id,eidos_spk,tmima_spk,arrive_time,depart_time,return_time,release_time,transport,march_days,sail_days,sea_other,partners,dd_holder_id,sfh_id,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,form_url,signup_opens,signup_closes,signup_note,signup_notify,signup_remind,invitees,gcal,prog_kind,stage,planned_reqs,est_count').order('event_date').limit(3000),
     sb.from('participations').select('id,person_id,event_id,status,role,role2,days,is_staff,paid,channel,declared_at,declared_by,qf_entry,corrected_at').limit(20000),    
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
@@ -16616,7 +16616,7 @@ function V_efolder(){
       </div></div>`;
 
   const body = tab==='venue'  ? efGenika(e)
-             : tab==='people' ? efPeople(e,parts)
+             : tab==='people' ? efPower(e,parts)+efPeople(e,parts)
              : tab==='forms'  ? ntHTML(e)+'<div id="efForms" class="card"><div class="pad dim">Φόρτωση…</div></div>'
              : tab==='docs'   ? efDocs(e,parts)
              : tab==='phones' ? efPhones(e,parts)
@@ -16628,7 +16628,7 @@ function V_efolder(){
     try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(x){}
     V_efolder();});
   if(tab==='venue')  efGenikaWire(e);
-  if(tab==='people') efPeopleWire(e);
+  if(tab==='people'){ efPowerWire(e); efPeopleWire(e); }
   if(tab==='forms'){ ntWire(e); efFormsLoad(e); }
   if(tab==='docs')   efDocsWire(e,parts);
   if(tab==='phones') efPhonesWire(e,parts);
@@ -16708,6 +16708,38 @@ function venueEdit(vid, backEvent){
     D.ven=(D.ven||[]).filter(x=>x.id!==v.id); saveCache(); drw.classList.remove('on'); back();};
 }
 
+function efPower(e,parts){
+  const live=parts.filter(x=>!/ακυρ/i.test(x.pa.status||'')&&x.pa.status!==PA_NO);
+  const went=parts.filter(x=>paWent(x.pa)), past=evPast(e), est=e.est_count;
+  const split=l=>{const k=l.filter(x=>(x.p.kind||'')==='Μέλος').length; return `${pln(k,'μέλος','μέλη')} · ${l.length-k} βαθμ.`};
+  const vs=n=>est||est===0?` <span class="dim" style="font-size:13px;font-weight:500">${n-est>=0?'+':''}${n-est}</span>`:'';
+  return `<div class="card pad" style="margin-bottom:13px" id="efPow">
+    <div style="display:flex;gap:8px;align-items:baseline;margin-bottom:9px"><b>Δύναμη</b>
+      <span class="dim" style="font-size:12.5px">υπολογιζόμενη → δηλωμένοι → τελική</span></div>
+    <div class="tiles">
+      <div class="tile" style="cursor:default"><div class="k">Υπολογιζόμενη</div>
+        <div class="v"><input type="number" id="efEst" min="0" max="2000" inputmode="numeric" value="${est??''}" placeholder="—"
+          style="width:96px;font-size:20px;font-weight:600;padding:2px 6px"></div>
+        <div class="s">για τον προϋπολογισμό· αλλάζει όσο χρειάζεται</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Δηλωμένοι</div>
+        <div class="v">${live.length}${vs(live.length)}</div><div class="s">${split(live)}</div></div>
+      <div class="tile" style="cursor:default"><div class="k">Τελική</div>
+        <div class="v">${past?went.length+vs(went.length):'<span style="font-size:15px;font-weight:500;color:var(--ink3)">μετά τη δράση</span>'}</div>
+        <div class="s">${past?split(went):'όσοι επιβεβαιωθούν «Συμμετείχε»'}</div></div>
+    </div></div>`;
+}
+function efPowerWire(e){
+  const x=$('efEst'); if(!x)return;
+  x.onchange=async()=>{
+    const raw=x.value.trim(), v=raw===''?null:Math.max(0,Math.min(2000,Math.round(+raw)));
+    if(raw!==''&&!Number.isFinite(+raw)){x.value=e.est_count??'';return toast('Βάλε αριθμό')}
+    const {data,error}=await sb.from('events').update({est_count:v}).eq('id',e.id).select('id');
+    if(error||!(data||[]).length){x.value=e.est_count??''; return toast('Δεν αποθηκεύτηκε: '+((error&&error.message)||'δεν έχεις δικαίωμα σε αυτή τη δράση'))}
+    e.est_count=v; saveCache();
+    const box=$('efPow'); if(box){ box.outerHTML=efPower(e,efPersons(e.id)); efPowerWire(e); }    
+    toast(v===null?'Η υπολογιζόμενη δύναμη σβήστηκε':'Υπολογιζόμενη δύναμη: '+v);
+  };
+}
 function efPeople(e,parts){
   const led=parts.filter(x=>isLed(x.p)), kids=parts.filter(x=>(x.p.kind||'')==='Μέλος');
   const ratio=led.length?(kids.length/led.length).toFixed(1):'—';
@@ -17287,14 +17319,16 @@ function efdSign(e,parts,mode){
   const pa=new Map(efParts(e.id).filter(efdLive).map(x=>[x.person_id,x]));
   const people=(mode==='all'?efdPool(e):efdKids(parts).map(x=>x.p)).slice().sort(sortByName);
   if(!people.length)return toast(mode==='all'?'Κανένα μέλος για τη λίστα':'Κανένας δηλωμένος ακόμα');
+  const has16=people.some(kid16), cols=has16?8:7;
   const w=efdWin('Υπογραφές — '+(e.title||'')); if(!w)return;
-  const head=`<tr><th colspan="7" style="border:0;padding:0;text-align:left;font-weight:400">${efdHead(e,'Λίστα υπογραφών')}
+  const head=`<tr><th colspan="${cols}" style="border:0;padding:0;text-align:left;font-weight:400">${efdHead(e,'Λίστα υπογραφών')}
     <div class="decl"><b>ΔΗΛΩΣΗ ΓΟΝΕΑ / ΚΗΔΕΜΟΝΑ</b>Υπογράφοντας, ως γονέας ή νόμιμος κηδεμόνας του μέλους:
-      <ul style="margin:3px 0 0 18px;padding:0">${EFD_DECL.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div></th></tr>
+      <ul style="margin:3px 0 0 18px;padding:0">${EFD_DECL.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>${has16?
+      '<div style="margin-top:3px">Όποιος Ανιχνευτής έχει συμπληρώσει τα 16 υπογράφει <b>και ο ίδιος</b> ότι συναινεί.</div>':''}</div></th></tr>
     <tr><th style="width:4%">Α/Α</th><th style="width:15%">Επίθετο</th><th style="width:13%">Όνομα</th><th style="width:8%">Ημ/νία<br>Δήλωσης</th>
-      <th style="width:24%">Ονοματεπώνυμο Γονέα / Κηδεμόνα</th><th style="width:10%">Ημερομηνία<br>υπογραφής</th><th>Υπογραφή</th></tr>`;
+      <th style="width:${has16?20:24}%">Ονοματεπώνυμο Γονέα / Κηδεμόνα</th><th style="width:10%">Ημερομηνία<br>υπογραφής</th><th>Υπογραφή</th>${has16?'<th style="width:12%">Υπογραφή μέλους<br>(16+)</th>':''}</tr>`;
   const rows=people.map((p,i)=>`<tr style="height:9mm"><td class="c">${i+1}</td><td class="ep">${esc(p.last_name||'')}</td><td>${esc(p.first_name||'')}</td>
-    <td class="sm">${esc(efdDate(pa.get(p.id)))}</td><td></td><td></td><td></td></tr>`).join('');
+    <td class="sm">${esc(efdDate(pa.get(p.id)))}</td><td></td><td></td><td></td>${has16?(kid16(p)?'<td></td>':'<td class="c" style="background:#f2f2f2;color:#999">—</td>'):''}</tr>`).join('');
   efdPage(w,'Υπογραφές — '+(e.title||''),`<table><thead>${head}</thead><tbody>${rows}</tbody></table>`,true);
 }
 
@@ -23720,6 +23754,14 @@ async function gateLegalShow(code, fallbackMsg){
         ev.preventDefault(); gateLegalShow(x.dataset.gl)});
     });
 })();
+function legalHashCode(h){
+  let s=String(h||'').replace(/^#/,''); try{ s=decodeURIComponent(s) }catch(e){}
+  s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+  return ({'ΑΠΟΡΡΗΤΟ':'ΑΠΟΡΡΗΤΟ','PRIVACY':'ΑΠΟΡΡΗΤΟ','ΟΡΟΙ':'ΟΡΟΙ','TERMS':'ΟΡΟΙ'})[s]||null;
+}
+function legalFromHash(){ const c=legalHashCode(location.hash); if(c)gateLegalShow(c); return c; }
+window.addEventListener('hashchange',legalFromHash);
+legalFromHash();
 boot();
 </script>
 
