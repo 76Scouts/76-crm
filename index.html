@@ -1217,7 +1217,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-08 13:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-08 17:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3641,13 +3641,21 @@ function certExpiry(t, issued){
   if(t.date_basis==='λήξη'||!t.validity_months) return {exp:null};
   let e=addMonths(issued,t.validity_months);
   if(t.validity_days_adjust) e=addDays(e,t.validity_days_adjust);
+  if(t.validity_change_on&&t.validity_months_after){
+    let e2=addMonths(issued,t.validity_months_after);
+    if(t.validity_days_adjust) e2=addDays(e2,t.validity_days_adjust);
+    e = e2>=t.validity_change_on ? e2 : (e<t.validity_change_on?e:t.validity_change_on);
+  }
   return {exp:e};
 }
 function certRuleTxt(t){
   if(!t) return '';
   if(t.date_basis==='κυκλοφορία') return 'ως την προθεσμία ανανέωσης της επόμενης χρονιάς (συνήθως Μάρτιος)';
   if(!t.validity_months) return '';
-  return validTxt(t.validity_months)+(t.validity_days_adjust===-1?' μείον μία μέρα':'')+' μετά την έκδοση';
+  const base=validTxt(t.validity_months)+(t.validity_days_adjust===-1?' μείον μία μέρα':'')+' μετά την έκδοση';
+  return t.validity_change_on&&t.validity_months_after
+    ? base+' — από '+fdate(t.validity_change_on)+' '+validTxt(t.validity_months_after)
+    : base;
 }
 const PAPER_TBL={pc:'person_certificates',vi:'vehicle_insurance',vp:'vehicle_papers',doc:'documents'};
 function docLink(d){
