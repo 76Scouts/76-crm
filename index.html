@@ -326,6 +326,13 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 @media(prefers-color-scheme:dark){.mk.p,.mk.a{border-color:var(--line2)}}
 .mk{min-height:44px}
 .mk .mkst{font-size:11.5px;font-weight:600;color:var(--ok);flex:0 0 auto}
+.mk.mkerr{outline:2px dashed var(--bad);outline-offset:1px}
+.mbar{position:sticky;bottom:12px;z-index:30;margin-top:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;
+  background:var(--card);border:1px solid var(--line2);border-radius:22px;padding:7px 8px 7px 15px;box-shadow:0 6px 22px rgba(0,0,0,.18);font-size:12.5px}
+.mbar #mSt{flex:1;min-width:0;color:var(--ink2)}
+.mbar.ok{border-color:#9ed3bd;background:var(--okbg)}.mbar.ok #mSt{color:var(--ok);font-weight:600}
+.mbar.bad{border-color:var(--bad);background:var(--badbg)}.mbar.bad #mSt{color:var(--bad);font-weight:600}
+.mbar .btn{flex:0 0 auto;border-radius:18px}
 .mk.a .mkst{color:var(--bad)}
 .spark{width:100%;height:44px;display:block}
 @media print{
@@ -1228,7 +1235,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-10 13:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-10 19:52'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1610,6 +1617,11 @@ function setLang(l,save){
 }
 const CK='e76:cache', QK='e76:queue';
 let QUEUE=[]; try{QUEUE=JSON.parse(localStorage.getItem(QK)||'[]')}catch(e){}
+const ATT_BAD={};
+function attBadWhy(err){ const m=String((err&&err.message)||'');
+  return /[Ͱ-Ͽ]/.test(m)?m:(err&&err.code==='42501')?t('δεν έχεις δικαίωμα για αυτά τα παιδιά'):t('η βάση δεν τα δέχτηκε'); }
+function attBadSet(s,ids,err){ const b=ATT_BAD[s]=ATT_BAD[s]||{ids:new Set(),why:''};
+  if(err){ ids.forEach(i=>b.ids.add(i)); b.why=attBadWhy(err); } else ids.forEach(i=>b.ids.delete(i)); }
 let _sct=null;
 function saveCache(now){
   if(now===true)return _saveCacheNow();
@@ -1698,6 +1710,7 @@ async function qFlush(silent){
         else { refused.push(j.k); continue; }
       }catch(e){ left.push(j); continue; }
       const err=r&&r.error;
+      if(j.k==='att'||j.k==='attdel'){ if(!err||!netErr(err))attBadSet(j.s,j.p||[],err||null); }
       if(!err)continue;
       if(netErr(err)){ left.push(j); continue; }
       if(j.k==='att')saveFail('attendance','rpc:mark_attendance',[],err);
@@ -1714,7 +1727,7 @@ setInterval(()=>{if(navigator.onLine&&QUEUE.length)qFlush()},20000);
 window.addEventListener('offline',banner);
 function banner(){
   let b=$('offb');
-  const need=!navigator.onLine||QUEUE.length;
+  const need=(!navigator.onLine||QUEUE.length)&&!$('mBar');
   if(!need){b&&b.remove();return}
   if(!b){b=document.createElement('div');b.id='offb';b.className='noprint';
     b.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:70;background:var(--side);color:#fff;padding:8px 15px;border-radius:22px;font-size:13px;display:flex;gap:4px 9px;align-items:center;flex-wrap:wrap;justify-content:center;text-align:center;width:max-content;max-width:calc(100vw - 24px);box-shadow:0 6px 22px rgba(0,0,0,.3)';
@@ -19221,7 +19234,6 @@ function markBody(){
         <button class="btn sm" id="mNew"${canNew(defSec)?'':' style="display:none"'}>+ Νέα συγκέντρωση</button>
         <span class="sp"></span><span class="pill" id="mCnt"></span>
       </div>
-      <div class="dim" id="mSt" role="status" aria-live="polite" style="font-size:12px;margin-top:7px;min-height:16px"></div>
       <div id="mNewBox" style="display:none;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);display:none;gap:8px;align-items:center;flex-wrap:wrap">
         <input type="date" id="mDate" style="max-width:180px" aria-label="Ημερομηνία"><input id="mTitle" placeholder="Τίτλος (προαιρετικά)" style="max-width:230px" aria-label="Τίτλος">
         <!-- ΜΗΝΙΑΙΟ ΘΕΜΑ. Οι συγκεντρώσεις του ίδιου θέματος γράφουν το ΙΔΙΟ
@@ -19230,7 +19242,8 @@ function markBody(){
         <datalist id="mThemes">${[...new Set((D.ss||[]).map(x=>x.theme).filter(Boolean))]
           .sort().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
         <button class="btn p sm" id="mCreate">Δημιουργία</button></div></div>
-    <div id="mBody"></div>`;
+    <div id="mBody"></div>
+    <div id="mBar" class="mbar noprint"><span id="mSt" role="status" aria-live="polite"></span><button class="btn p sm" id="mSave">${t('Αποθήκευση')}</button></div>`;
   let STATE={},SES=null,TMR=null;
   const today=isoLocal(new Date());
   const fill=()=>{const sec=$('mSec').value;
@@ -19287,11 +19300,35 @@ function markBody(){
     const g=SES?gstPresent(SES.id):0;
     $('mCnt').textContent=`${p} παρόντες · ${a} απόντες${n-p-a>0?' · '+(n-p-a)+' χωρίς σημείωση':''}${g?' · +'+g+' νέοι':''}`;};
   const pending=()=>QUEUE.filter(j=>(j.k==='att'||j.k==='attdel')&&SES&&j.s===SES.id).reduce((n,j)=>n+j.p.length,0);
-  const status=(sending)=>{const e=$('mSt'); if(!e)return; const n=pending();
-    e.textContent=!n?(Object.keys(STATE).length?'✓ Όλα αποθηκευμένα':'')
+  const badIds=()=>{const b=SES&&ATT_BAD[SES.id]; return b?[...b.ids]:[]};
+  const status=(sending,ok)=>{const e=$('mSt'), bar=$('mBar'); if(!e)return; const n=pending(), bad=badIds();
+    document.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('mkerr',bad.includes(b.dataset.m)));
+    if(bar)bar.className='mbar noprint'+(bad.length?' bad':ok?' ok':'');
+    e.textContent=bad.length?t('⚠ {n} δεν αποθηκεύτηκαν ({why}) — πάτα «Αποθήκευση» για νέα δοκιμή',{n:bad.length,why:ATT_BAD[SES.id].why})
+      :ok?ok
+      :!n?(Object.keys(STATE).length?'✓ Όλα αποθηκευμένα':'')
       :!navigator.onLine?`Χωρίς σήμα — ${n} κρατήθηκαν στη συσκευή και θα σταλούν μόλις συνδεθείς`
       :sending?'Αποθήκευση…':`${n} περιμένουν αποστολή`;};
-  const put=(ids,st)=>{ if(!SES)return;
+  const saveNow=async()=>{ if(!SES)return; const sid=SES.id;
+    const bad=badIds(); if(bad.length){ const P=bad.filter(id=>STATE[id]==='p'), A=bad.filter(id=>STATE[id]==='a'), X=bad.filter(id=>!STATE[id]);
+      if(P.length)put(P,'p',true); if(A.length)put(A,'a',true); if(X.length)put(X,null,true); }
+    if(!navigator.onLine)return status();
+    status(true); await qFlush(true);
+    if(!SES||SES.id!==sid)return;
+    if(badIds().length||pending())return status();
+    const {data,error}=await sb.from('attendance').select('person_id,status').eq('session_id',sid);
+    if(!SES||SES.id!==sid)return;
+    if(error)return status(false,t('Δεν μπόρεσα να το επιβεβαιώσω — ξαναδοκίμασε'));
+    const srv={}; (data||[]).forEach(a=>srv[a.person_id]=a.status===dv('Παρών')?'p':'a');
+    const ids=[...document.querySelectorAll('[data-m]')].map(b=>b.dataset.m);
+    const miss=ids.filter(id=>(STATE[id]||null)!==(srv[id]||null));
+    if(miss.length){ attBadSet(sid,miss,{message:t('η βάση δεν τα έχει')}); return status(); }
+    const k=ids.filter(id=>STATE[id]).length;
+    status(false,t('✓ Επιβεβαιώθηκε από τη βάση: {k} σημειώσεις αποθηκευμένες',{k}));
+    toast(t('Αποθηκεύτηκαν ✓'));
+  };
+  $('mSave').onclick=saveNow;
+  const put=(ids,st,noSend)=>{ if(!SES)return;
     ids.forEach(id=>{ if(st)STATE[id]=st; else delete STATE[id]; });
     D.att=D.att.filter(a=>!(a.session_id===SES.id&&ids.includes(a.person_id)));
     if(st)ids.forEach(id=>D.att.push({session_id:SES.id,person_id:id,status:st==='p'?'Παρών':'Απών'}));
@@ -19301,6 +19338,7 @@ function markBody(){
     QUEUE.push(st?{k:'att',s:SES.id,p:ids,st:st==='p'?'Παρών':'Απών',t:Date.now()}:{k:'attdel',s:SES.id,p:ids,t:Date.now()});
     localStorage.setItem(QK,JSON.stringify(QUEUE));
     status(); banner();
+    if(noSend)return;
     clearTimeout(TMR); TMR=setTimeout(async()=>{ if(!navigator.onLine){status();return}
       status(true); await qFlush(true); status(); },900);
   };
