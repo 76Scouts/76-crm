@@ -1228,7 +1228,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-10 10:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-10 13:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4041,12 +4041,14 @@ function wireCerts(p,after){
 const DOC_KINDS=['Πιστοποιητικό Ν.91(Ι)','Πιστοποιητικό γέννησης','Ιατρικό','Εντολή / Ανάθεση','Βεβαίωση εκπαίδευσης','Πρόγραμμα δράσης','Έντυπο συμμετοχής','Φωτογραφία','Άλλο'];
 const fsize=n=>!n?'':n<1024?n+' B':n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(1)+' MB';
 const fileIcon=m=>/pdf/i.test(m||'')?'book':/image/i.test(m||'')?'award':'book';
+const fileErr=e=>/not.?found/i.test(String((e&&e.message)||e||''))
+  ?t('δεν έχεις πρόσβαση σε αυτό το χαρτί (ή δεν υπάρχει πια)'):String((e&&e.message)||'');
 async function docOpen(path){
   if(String(path).startsWith('drive:')){
     window.open('https://drive.google.com/file/d/'+String(path).slice(6)+'/view','_blank','noopener');return;}
   const w=window.open('','_blank');
   const {data,error}=await sb.storage.from('e76').createSignedUrl(path,120);
-  if(error||!data){ if(w)w.close(); return toast('Δεν άνοιξε: '+((error&&error.message)||'')) }
+  if(error||!data){ if(w)w.close(); return toast('Δεν άνοιξε: '+fileErr(error)) }
   if(w){ try{w.opener=null}catch(e){} w.location.replace(data.signedUrl); }
   else window.open(data.signedUrl,'_blank','noopener');
 }
@@ -4107,7 +4109,7 @@ async function docPreview(list,ix){
     let url;
     try{ url=await sign(it.path) }
     catch(e){
-      $('dpBody').innerHTML=`<span style="color:#f2cdc7;font-size:13px;padding:22px;text-align:center">Δεν άνοιξε: ${esc(e.message)}</span>`;
+      $('dpBody').innerHTML=`<span style="color:#f2cdc7;font-size:13px;padding:22px;text-align:center">Δεν άνοιξε: ${esc(fileErr(e))}</span>`;
       return;
     }
     const body=$('dpBody');
@@ -4292,11 +4294,35 @@ function filesHTML(list,ctx){
       <span class="dim" id="docMsg" style="font-size:12px"></span></div>
     <div class="dim" style="font-size:11.5px;margin-top:7px">Ιδιωτικός χώρος — τα αρχεία ανοίγουν με προσωρινό σύνδεσμο 2 λεπτών.</div></div>`;
 }
+const FILE_LOCK_MSG=()=>t('Το χαρτί αυτό το ανοίγουν ο κάτοχος και ο Α.Σ. Τα πιστοποιητικά ικανότητας (Πρώτες Βοήθειες, BLS, άδεια οδήγησης…) τα ανοίγουν και οι αρχηγοί/υπαρχηγοί του τμήματος ή όποιος έχει παραχώρηση. Το Ν.91 μόνο ο κάτοχος και ο Α.Σ.');
+async function fileLocks(){
+  const mine=pid=>!!pid&&pid===ME.person_id;
+  const items=[...document.querySelectorAll('.docopen[data-path],.certview[data-cert]')].map(a=>{
+    if(a.classList.contains('docopen')){
+      const d=(D.doc||[]).find(x=>x.path===a.dataset.path);
+      return {a, p:mine(d&&d.person_id)?null:a.dataset.path};
+    }
+    const c=(D.pc||[]).find(x=>x.id===a.dataset.cert), it=c&&!mine(c.person_id)&&certSides(c)[+a.dataset.ix||0];
+    return {a, p:it?it.path:null};
+  }).filter(x=>x.p&&!String(x.p).startsWith('drive:'));
+  if(!items.length)return;
+  const ask=[...new Set(items.map(x=>x.p))].slice(0,50);
+  const {data,error}=await sb.rpc('paths_openable',{p_paths:ask});
+  if(error||!Array.isArray(data))return;
+  const ok=new Set(data);
+  items.forEach(({a,p})=>{
+    if(!ask.includes(p)||ok.has(p))return;
+    a.classList.add('locked'); a.title=FILE_LOCK_MSG();
+    a.textContent='🔒 '+a.textContent.replace(/^👁\s*/,'');
+    a.onclick=e=>{e.preventDefault();toast(FILE_LOCK_MSG())};
+  });
+}
 function wireFiles(ctx,after){
   document.querySelectorAll('.docopen').forEach(a=>a.onclick=e=>{e.preventDefault();docPreview(a.dataset.path)});
   document.querySelectorAll('.certview').forEach(a=>a.onclick=e=>{e.preventDefault();
     const c=(D.pc||[]).find(x=>x.id===a.dataset.cert);
     if(c)docPreview(certSides(c),+a.dataset.ix||0);});
+  fileLocks();
   document.querySelectorAll('.docedit').forEach(b=>b.onclick=()=>{
     const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(d)docEdit(d, after);
   });
@@ -11338,6 +11364,7 @@ const CAPS=[
  {k:'enrollment',t:'Πιστοποιητικά εγγραφής',      d:'Δικαιολογητικά, συγκαταθέσεις'},
  {k:'medical',   t:'Ιατρικά & σημάνσεις',   d:'Χωριστά — δεν έρχεται μαζί με τα υπόλοιπα'},
  {k:'finance',   t:'Χρέωση & ταμείο',       d:'Ποσά εγγραφών, πληρωμές'},
+ {k:'certs',     t:t('Πιστοποιητικά ικανότητας'), d:t('Χαρτιά Πρώτων Βοηθειών, BLS, άδειας οδήγησης — για δελτία δράσης. Όχι Ν.91')},
  {k:'waitlist',  t:'Λίστα αναμονής',        d:'Παιδιά εκτός μητρώου — δώσ’ το μόνο στην επιτροπή'},
  {k:'admin',     t:'Διαχείριση',            d:'Ρόλοι, πρότυπα, ρυθμίσεις — μόνο ο Α.Σ. το δίνει'}
 ];
@@ -20978,7 +21005,7 @@ V.viewas=()=>{
 
 const CAP_GR={people:'Άνθρωποι',attendance:'Παρουσίες',progress:'Πρόοδος',events:'Δράσεις',
   medical:'Ιατρικά',enrollment:'Εγγραφές',finance:'Οικονομικά',documents:'Έγγραφα',
-  accounts:'Λογαριασμοί',synod:'Σύνοδος'};
+  accounts:'Λογαριασμοί',synod:'Σύνοδος',certs:t('Πιστοποιητικά ικανότητας')};
 async function vaDbReport(pid){
   const box=$('vaDb'); if(!box)return;
   box.innerHTML='<div class="dim" style="font-size:12.5px">Ρωτάω τη βάση ως αυτόν…</div>';
