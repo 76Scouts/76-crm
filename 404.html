@@ -1235,7 +1235,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-12 11:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-12 11:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19341,25 +19341,30 @@ function markBody(){
       :!n?(Object.keys(STATE).length?'✓ Όλα αποθηκευμένα':'')
       :!navigator.onLine?`Χωρίς σήμα — ${n} κρατήθηκαν στη συσκευή και θα σταλούν μόλις συνδεθείς`
       :sending?'Αποθήκευση…':`${n} περιμένουν αποστολή`;};
-  const saveNow=async()=>{ if(!SES)return; const sid=SES.id;
-    const bad=badIds(); if(bad.length){ const P=bad.filter(id=>STATE[id]==='p'), A=bad.filter(id=>STATE[id]==='a'), X=bad.filter(id=>!STATE[id]);
-      if(P.length)put(P,'p',true); if(A.length)put(A,'a',true); if(X.length)put(X,null,true); }
+  const resend=ids=>{ const P=ids.filter(id=>STATE[id]==='p'), A=ids.filter(id=>STATE[id]==='a'), X=ids.filter(id=>!STATE[id]);
+    if(P.length)put(P,'p',true); if(A.length)put(A,'a',true); if(X.length)put(X,null,true); };
+  const inQ=id=>QUEUE.some(j=>(j.k==='att'||j.k==='attdel')&&j.s===SES.id&&j.p.includes(id));
+  const saveNow=async(again)=>{ if(!SES)return; const sid=SES.id;
+    const bad=badIds(); if(bad.length)resend(bad);
     if(!navigator.onLine)return status();
     status(true); await qFlush(true);
     if(!SES||SES.id!==sid)return;
     if(badIds().length||pending())return status();
+    const snap={...STATE};
     const {data,error}=await sb.from('attendance').select('person_id,status').eq('session_id',sid);
     if(!SES||SES.id!==sid)return;
     if(error)return status(false,t('Δεν μπόρεσα να το επιβεβαιώσω — ξαναδοκίμασε'));
     const srv={}; (data||[]).forEach(a=>srv[a.person_id]=a.status===dv('Παρών')?'p':'a');
     const ids=[...document.querySelectorAll('[data-m]')].map(b=>b.dataset.m);
-    const miss=ids.filter(id=>(STATE[id]||null)!==(srv[id]||null));
+    const miss=ids.filter(id=>(STATE[id]||null)===(snap[id]||null)&&!inQ(id)&&(STATE[id]||null)!==(srv[id]||null));
+    if(miss.length&&again!==true){ resend(miss); return saveNow(true); }
     if(miss.length){ attBadSet(sid,miss,{message:t('η βάση δεν τα έχει')}); return status(); }
+    if(pending())return status();
     const k=ids.filter(id=>STATE[id]).length;
     status(false,t('✓ Επιβεβαιώθηκε από τη βάση: {k} σημειώσεις αποθηκευμένες',{k}));
     toast(t('Αποθηκεύτηκαν ✓'));
   };
-  $('mSave').onclick=saveNow;
+  $('mSave').onclick=()=>saveNow();
   const put=(ids,st,noSend)=>{ if(!SES)return;
     ids.forEach(id=>{ if(st)STATE[id]=st; else delete STATE[id]; });
     D.att=D.att.filter(a=>!(a.session_id===SES.id&&ids.includes(a.person_id)));
