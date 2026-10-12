@@ -1235,7 +1235,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-10 19:52'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-12 11:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -14535,12 +14535,12 @@ function issuesBody(){
             <b style="font-size:13.5px">${p?pn(p):'—'}</b>
             <div class="dim" style="font-size:12.5px;margin-top:2px">${esc(FLD[x.field]||x.field)}:
               <s>${esc(fmt(x.old_value)||'—')}</s> → <b style="color:var(--ink)">${esc(fmt(x.new_value))}</b></div>
-            <div class="dim" style="font-size:11.5px;margin-top:2px">Παλιό: ήταν ήδη στο μητρώο · Νέο: ${(x.field==='phone'||x.field==='email')&&x.note?esc(x.note):'το έγραψε ο ίδιος σε φόρμα'}, ήρθε ${fdate(String(x.created_at||'').slice(0,10))}${x.submission_id?'':' (η υποβολή δεν υπάρχει πια)'}
+            <div class="dim" style="font-size:11.5px;margin-top:2px">Παλιό: ήταν ήδη στο μητρώο · Νέο: ${x.note?esc(x.note):'το έγραψε ο ίδιος σε φόρμα'}, ήρθε ${fdate(String(x.created_at||'').slice(0,10))}${x.submission_id||x.note?'':' (η υποβολή δεν υπάρχει πια)'}
               <span data-idasked="${x.id}">${x.asked_on?' · ρωτήθηκε '+fdate(String(x.asked_on).slice(0,10)):''}</span></div></span>
           <span style="display:flex;gap:5px;flex-wrap:wrap">
-            <button class="btn p sm" data-idok="${x.id}">Ισχύει το νέο</button>
+            <button class="btn gh sm" data-idsrc="${x.id}" title="${t('Η δήλωση που έφερε την τιμή και τα ενυπόγραφα χαρτιά της οικογένειας')}">📄 ${t('Πηγή & χαρτιά')}</button><button class="btn p sm" data-idok="${x.id}">Ισχύει το νέο</button>
             <button class="btn gh sm" data-idno="${x.id}">Κράτα το παλιό</button>
-            ${p&&((p.email&&p.email!=='-')||(p.phone&&p.phone!=='-'))?`<button class="btn gh sm" data-idask="${x.id}">Ρώτα τον ίδιο</button>`:''}</span>
+            ${p&&((p.email&&p.email!=='-')||(p.phone&&p.phone!=='-'))?`<button class="btn gh sm" data-idask="${x.id}">Ρώτα τον ίδιο</button>`:''}</span><div id="idsrc_${x.id}" style="display:none;flex-basis:100%;margin-top:8px"></div>
         </div>`}).join('')}</div>`;
 
   $('view').innerHTML=idHTML+`<div class="card pad" style="margin-bottom:14px">
@@ -14591,10 +14591,42 @@ function issuesBody(){
     D.idrev=(D.idrev||[]).filter(x=>x.id!==id); saveCache();
     toast(ok?'Ενημερώθηκε':'Κρατήθηκε η παλιά τιμή'); stay();
   };
-  idAskWire();
+  idAskWire(); idSrcWire();
   document.querySelectorAll('[data-idok]').forEach(b=>b.onclick=()=>idDecide(b.dataset.idok,true,b));
   document.querySelectorAll('[data-idno]').forEach(b=>b.onclick=()=>idDecide(b.dataset.idno,false,b));
 };
+const ID_DOC_KINDS=[dv('Ενυπόγραφη εγγραφή'),dv('Έντυπο συγκαταθέσεων')];
+function idSrcWire(){
+  document.querySelectorAll('[data-idsrc]').forEach(b=>b.onclick=async()=>{
+    const x=(D.idrev||[]).find(r=>r.id===b.dataset.idsrc); const box=$('idsrc_'+b.dataset.idsrc);
+    if(!x||!box)return;
+    if(box.style.display==='block'){box.style.display='none';return}
+    box.style.display='block';
+    const kids=(D.cl||[]).filter(c=>c.carer_id===x.person_id&&!c.valid_to)
+      .map(c=>D.bh.find(q=>q.id===c.member_id)).filter(Boolean);
+    const who=[D.bh.find(q=>q.id===x.person_id),...kids].filter(Boolean);
+    const docs=(D.doc||[]).filter(d=>who.some(w=>w.id===d.person_id)&&ID_DOC_KINDS.includes(d.kind)&&d.path)
+      .map(d=>({path:d.path,label:(d.title||d.kind)+' — '+pn(who.find(w=>w.id===d.person_id))}));
+    let sub='';
+    if(x.submission_id){
+      box.innerHTML='<span class="dim" style="font-size:12px">…</span>';
+      const {data:f}=await sb.from('form_submission').select('form_name,submitted_on,submitted_by,payload').eq('id',x.submission_id).maybeSingle();
+      if(f){const P=f.payload||{};
+        const row=(lab,k)=>(P[k+'_onoma']||P[k+'_tilefono']||P[k+'_email'])
+          ?`<tr><td class="dim">${esc(lab)}</td><td>${esc([P[k+'_onoma'],P[k+'_sxesi']].filter(Boolean).join(' · '))}</td><td>${esc(P[k+'_tilefono']||'')}</td><td>${esc(P[k+'_email']||'')}</td></tr>`:'';
+        sub=`<div style="font-size:12.5px;margin-bottom:6px"><b>${esc(f.form_name||'')}</b> · ${fdate(String(f.submitted_on||'').slice(0,10))}${f.submitted_by?' · '+t('συμπλήρωσε')+': '+esc(f.submitted_by):''}</div>
+          <table style="font-size:12px;width:100%"><tbody>${row(t('Αιτών'),'ait')}${row(t('Επαφή 1'),'ec1')}${row(t('Επαφή 2'),'ec2')}</tbody></table>`;
+      } else sub=`<div class="dim" style="font-size:12px">${t('Η δήλωση δεν βρέθηκε (σβήστηκε).')}</div>`;
+    }
+    const es=/e-Scouts/.test(x.note||'')&&kids.length
+      ?`<div class="dim" style="font-size:12px;margin-top:6px">${t('Στο e-Scouts: στους γονείς του παιδιού')} ${kids.map(k=>esc(pn(k))+(k.registry_no?' ('+t('Α.Μ.')+' '+esc(k.registry_no)+')':'')).join(', ')}</div>`:'';
+    box.innerHTML=`<div style="background:var(--bg);border-radius:var(--rs);padding:8px 10px">${sub}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:${sub?'8':'0'}px">${docs.length
+        ?docs.map((d,i)=>`<button class="btn gh sm" data-idsdoc="${i}">📄 ${esc(d.label)}</button>`).join('')
+        :`<span class="dim" style="font-size:12px">${t('Κανένα ενυπόγραφο χαρτί στο e76 για αυτή την οικογένεια.')}</span>`}</div>${es}</div>`;
+    box.querySelectorAll('[data-idsdoc]').forEach(q=>q.onclick=()=>docPreview(docs,+q.dataset.idsdoc));
+  });
+}
 function idAskWire(){
   document.querySelectorAll('[data-idask]').forEach(b=>b.onclick=async()=>{
     const x=(D.idrev||[]).find(r=>r.id===b.dataset.idask); if(!x)return;
