@@ -326,7 +326,7 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 @media(prefers-color-scheme:dark){.mk.p,.mk.a{border-color:var(--line2)}}
 .mk{min-height:44px}
 .mk .mkst{font-size:11.5px;font-weight:600;color:var(--ok);flex:0 0 auto}
-.mk.mkerr{outline:2px dashed var(--bad);outline-offset:1px}
+.mk.mkerr,.cxN.mkerr{outline:2px dashed var(--bad);outline-offset:1px}
 .mbar{position:sticky;bottom:12px;z-index:30;margin-top:14px;display:flex;gap:10px;align-items:center;justify-content:space-between;
   background:var(--card);border:1px solid var(--line2);border-radius:22px;padding:7px 8px 7px 15px;box-shadow:0 6px 22px rgba(0,0,0,.18);font-size:12.5px}
 .mbar #mSt{flex:1;min-width:0;color:var(--ink2)}
@@ -1235,7 +1235,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-12 11:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-12 12:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19528,7 +19528,7 @@ function cashXRow(n,c){
   return `<div class="cashX" data-n="${n}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px">
     <span class="dim" style="font-size:12px;flex:0 0 auto">Έξτρα ${n}</span>
     <input class="cxA" inputmode="decimal" value="${c?Number(c.amount):''}" placeholder="€" style="width:80px;flex:0 0 80px" aria-label="Ποσό έξτρα ${n}">
-    <input class="cxN" maxlength="80" value="${esc(c&&c.note||'')}" placeholder="για τι; π.χ. βιβλιαράκια ΚΑΝΕ" style="flex:1 1 160px;min-width:140px" aria-label="Σκοπός έξτρα ${n}">
+    <input class="cxN" maxlength="80" value="${esc(c&&c.note||'')}" placeholder="${t('για τι; (υποχρεωτικό) π.χ. βιβλιαράκια ΚΑΝΕ')}" style="flex:1 1 160px;min-width:140px" aria-label="Σκοπός έξτρα ${n}">
     <select class="cxT" style="flex:0 0 auto;min-width:165px;max-width:210px" aria-label="Πώς μετρά το έξτρα ${n}">
       <option value="in"${!c||c.in_total!==false?' selected':''}>μέσα στο ταμείο</option>
       <option value="out"${c&&c.in_total===false?' selected':''}>επιπλέον, χωριστά</option></select></div>`;
@@ -19565,8 +19565,11 @@ function cashWire(sid){
     cashPut(sid,i.dataset.g||null,cashAmt(raw)); tot();});
   const xWire=row=>{const n=+row.dataset.n, A=row.querySelector('.cxA'), N=row.querySelector('.cxN'), T=row.querySelector('.cxT');
     const save=()=>{const raw=A.value.trim(); if(bad(raw))return toast('Γράψε ποσό, π.χ. 40');
-      const a=cashAmt(raw); cashPutX(sid,n,a===null?null:{a,note:N.value.trim().slice(0,80),it:T.value!=='out'}); tot();};
-    A.onchange=save; N.onchange=()=>{if(A.value.trim())save()}; T.onchange=()=>{if(A.value.trim())save()};};
+      const a=cashAmt(raw), why=N.value.trim();
+      N.classList.toggle('mkerr',a!==null&&!why);
+      if(a!==null&&!why){ try{N.focus()}catch(e){} return toast(t('Γράψε για τι είναι το έξτρα — χωρίς αιτιολογία δεν αποθηκεύεται')); }
+      cashPutX(sid,n,a===null?null:{a,note:N.value.trim().slice(0,80),it:T.value!=='out'}); tot();};
+    A.onchange=save; N.oninput=()=>{if(N.value.trim())N.classList.remove('mkerr')}; N.onchange=()=>{if(A.value.trim())save()}; T.onchange=()=>{if(A.value.trim())save()};};
   document.querySelectorAll('.cashX').forEach(xWire);
   const add=$('cashXAdd');
   if(add)add.onclick=()=>{
