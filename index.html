@@ -1235,7 +1235,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-12 12:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 12:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -16828,6 +16828,15 @@ function V_efolder(){
   if(tab==='certs')  efCertsWire(e,parts,endD);
 }
 
+function efApplicant(s,p){
+  const a=[s.ait_onoma,s.ait_epitheto].filter(Boolean).join(' ').trim();
+  if(!a)return '—';
+  const kn=p?nameKey(nm(p)):'', w=nameKey(a).split(/\s+/).filter(Boolean);
+  const self=!!p&&w.length>0&&w.every(x=>kn.includes(x));
+  if(self&&kid16(p))return `<span class="dim">${t('το ίδιο το μέλος')}</span>`;
+  if(self)return `${esc(a)} <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${t('κάτω των 16 — θέλει γονέα')}</span>`;
+  return esc(a);
+}
 async function efFormsLoad(e){
   const {data,error}=await sb.from('form_submission')
     .select('id,person_id,form_name,submitted_on,ait_onoma:payload->>ait_onoma,ait_epitheto:payload->>ait_epitheto')
@@ -16839,12 +16848,12 @@ async function efFormsLoad(e){
   const pa=(D.pa||[]).filter(x=>x.event_id===e.id);
   box.innerHTML=`<div class="pad" style="padding-bottom:4px"><b>${rows.length} ${rows.length===1?'φόρμα':'φόρμες'}</b>
       <span class="dim" style="font-size:12.5px"> · τα ιατρικά ανοίγουν από το ιατρικό δελτίο του παιδιού, όχι εδώ</span></div>
-    <div style="overflow:auto"><table><thead><tr><th>Παιδί</th><th>Ενωμοτία / εξάδα</th><th>Γονέας</th><th>Στάλθηκε</th><th>Κατάσταση</th></tr></thead>
+    <div style="overflow:auto"><table><thead><tr><th>Παιδί</th><th>Ενωμοτία / εξάδα</th><th>${t('Αιτητής')}</th><th>Στάλθηκε</th><th>Κατάσταση</th></tr></thead>
     <tbody>${rows.map(({s,p})=>{const my=p&&(D.my||[]).find(y=>y.person_id===p.id&&y.scout_year===YEAR&&!y.voided_at);
       const d=pa.find(x=>x.person_id===s.person_id);
       return `<tr><td>${p?pnm(p):'<span class="dim">—</span>'}</td>
         <td class="dim">${esc((my&&my.group_name)||'—')}</td>
-        <td>${esc([s.ait_onoma,s.ait_epitheto].filter(Boolean).join(' ')||'—')}</td>
+        <td>${efApplicant(s,p)}</td>
         <td class="dim" style="white-space:nowrap">${fdate(s.submitted_on)}</td>
         <td>${(()=>{const st=paStage(d); return st.c?`<span class="pill" style="background:var(--${st.c}bg);color:var(--${st.c});border-color:transparent">${esc(st.t)}</span>`:'<span class="dim">χωρίς δήλωση στο e76</span>'})()}
           ${d&&d.corrected_at?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Ο γονέας διόρθωσε τα στοιχεία μετά τη δήλωση — ό,τι τυπώθηκε πριν μπορεί να είναι παλιό">διορθώθηκε ${fdate(d.corrected_at)}</span>`:''}
