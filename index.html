@@ -366,12 +366,13 @@ th.srt.desc:after{content:"↓";opacity:.9}
 }
 .deda{display:inline-flex;gap:2px;vertical-align:middle}
 .deda i{display:block;width:9px;height:9px;border-radius:2px;background:var(--line2)}
-.sbar{display:inline-flex;width:44px;height:15px;border-radius:5px;overflow:hidden;border:1px solid var(--line2);vertical-align:middle;gap:1px;background:var(--line2)}
+.sbar{display:inline-flex;width:52px;height:15px;border-radius:5px;overflow:hidden;border:1px solid var(--line2);vertical-align:middle;gap:1px;background:var(--line2)}
 .sbar i{display:block;flex:1;height:100%}
-.sbar i.sec{flex:0 0 11px}
-.sbar.mini{width:34px;height:13px}
-.sbar.lg{width:78px;height:20px;border-radius:6px}
-.sbar.lg i.sec{flex:0 0 19px}
+.sbar i.sec{flex:0 0 15px;margin-right:1px;display:flex;align-items:center;justify-content:center;font:700 10px/1 system-ui,sans-serif;font-style:normal;letter-spacing:0}
+.sbar.mini{width:42px;height:13px}
+.sbar.mini i.sec{flex:0 0 13px;font-size:9px}
+.sbar.lg{width:88px;height:20px;border-radius:6px}
+.sbar.lg i.sec{flex:0 0 22px;font-size:13px}
 .bcol{background:var(--card);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;overflow:hidden}
 .bcol.over{border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg)}
 .bhead{padding:9px 12px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;color:#fff}
@@ -1234,7 +1235,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 13:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 13:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3466,9 +3467,11 @@ function leaderDot(p, sec, yr){
 
 
 const SB_EMPTY='var(--line)';
-function sbarDraw(segs,tips,mini,extraTitle){
+const secLet=s=>s?String(dv(s)).charAt(0).toUpperCase():'';
+function sbarDraw(segs,tips,mini,extraTitle,sec){
+  const L=secLet(sec);
   return `<span class="sbar${mini?' mini':''}" role="img" aria-label="${esc(tips.filter(Boolean).join(', '))}" title="${esc([extraTitle,...tips].filter(Boolean).join(' · '))}">${
-    segs.map((c,i)=>`<i class="${i===0?'sec':''}" style="background:${c}"${tips[i]?` title="${esc(tips[i])}"`:''}></i>`).join('')}</span>`;
+    segs.map((c,i)=>`<i class="${i===0?'sec':''}" style="background:${c}${i===0&&L?';color:'+onColor(c):''}"${tips[i]?` title="${esc(tips[i])}"`:''}>${i===0?L:''}</i>`).join('')}</span>`;
 }
 function statusBar(p,mini){
   const isMem=(p.kind||'')==='Μέλος', sec=secOf(p)||p.section;
@@ -3489,7 +3492,7 @@ function statusBar(p,mini){
     const w=warrantOf(p.id); push(RING[w.k]||SB_EMPTY, 'εντολή: '+RINGTXT[w.k]);
     push(inYear(p)?'#27ae60':SB_EMPTY, inYear(p)?'εγγεγραμμένος '+YEAR:'χωρίς εγγραφή '+YEAR);
   }
-  return sbarDraw(segs,tips,mini,nm(p));
+  return sbarDraw(segs,tips,mini,nm(p),sec);
 }
 
 
@@ -3498,14 +3501,14 @@ function statusBar(p,mini){
 
 const LEGENDS=()=>({
   sbarMember:{t:'Η μπάρα δίπλα στο όνομα — μέλη', items:[
-    ['var(--ageli)','1η λωρίδα (στενή): ο κλάδος'],
+    ['var(--ageli)',t('1η λωρίδα: ο κλάδος — χρώμα και αρχικό (Α Αγέλη · Ο Ομάδα · Κ Κοινότητα · Δ Δίκτυο)')],
     ['#27ae60','2η: εγγεγραμμένο φέτος'],['#f39c12','2η: η εγγραφή εκκρεμεί'],
     ['#27ae60','3η: υπάρχει ιατρικό δελτίο'],
     ['#27ae60','4η: υπάρχει επαφή έκτακτης ανάγκης'],
     ['var(--line)','γκρι σε οποιαδήποτε θέση: λείπει']]},
 
   sbarLeader:{t:'Η μπάρα δίπλα στο όνομα — βαθμοφόροι', items:[
-    ['var(--ageli)','1η λωρίδα (στενή): ο κλάδος'],
+    ['var(--ageli)',t('1η λωρίδα: ο κλάδος — χρώμα και αρχικό (Α Αγέλη · Ο Ομάδα · Κ Κοινότητα · Δ Δίκτυο)')],
     ...['ok','soon','expired'].map(k=>[CERTC[k],'2η: '+CERTTXT[k]]),
     ...TRC.map((c,i)=>[c,'3η: '+TRTXT[i]]),
     ...Object.keys(RING).filter(k=>RING[k]).map(k=>[RING[k],'4η: '+RINGTXT[k]]),
@@ -4499,7 +4502,7 @@ function showLegend(){
   const row=(sym,t,sub)=>`<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
      <span style="flex:0 0 78px">${sym}</span>
      <div><div style="font-size:13.5px">${t}</div>${sub?`<div class="dim" style="font-size:12px">${sub}</div>`:''}</div></div>`;
-  const bar=(segs,tips)=>sbarDraw(segs,tips||[],false).replace('class="sbar"','class="sbar lg"');
+  const bar=(sec,segs,tips)=>sbarDraw([SEC(sec),...segs],tips||[],false,'',sec).replace('class="sbar"','class="sbar lg"');
   const SEC=s=>SECCOLOR[s]||'#9aa3ae';
   const G='#27ae60', E=SB_EMPTY;
 
@@ -4541,30 +4544,30 @@ function showLegend(){
     ${SCOPE==='staff'||SCOPE==='tree'?'':`
     <div class="dsec"><h4>Μέλος — τέσσερα τμήματα</h4>
       <div class="dim" style="font-size:12px;margin-bottom:8px">κλάδος · εγγραφή · ιατρικό · επαφή έκτακτης ανάγκης</div>
-      ${row(bar([SEC('Αγέλη'),G,G,G]),'Όλα εντάξει','εγγεγραμμένο, με ιατρικό και επαφή')}
-      ${row(bar([SEC('Ομάδα'),'#f39c12',G,G]),'Η εγγραφή εκκρεμεί','πορτοκαλί στη 2η θέση')}
-      ${row(bar([SEC('Κοινότητα'),G,E,G]),'Λείπει ιατρικό δελτίο','γκρίζο στην 3η θέση')}
-      ${row(bar([SEC('Αγέλη'),G,G,E]),'Καμία επαφή έκτακτης ανάγκης','γκρίζο στην 4η θέση')}
-      ${row(bar([SEC('Ομάδα'),E,E,E]),'Χωρίς εγγραφή φέτος','μόνο ο κλάδος χρωματιστός')}
+      ${row(bar('Αγέλη',[G,G,G]),'Όλα εντάξει','εγγεγραμμένο, με ιατρικό και επαφή')}
+      ${row(bar('Ομάδα',['#f39c12',G,G]),'Η εγγραφή εκκρεμεί','πορτοκαλί στη 2η θέση')}
+      ${row(bar('Κοινότητα',[G,E,G]),'Λείπει ιατρικό δελτίο','γκρίζο στην 3η θέση')}
+      ${row(bar('Αγέλη',[G,G,E]),'Καμία επαφή έκτακτης ανάγκης','γκρίζο στην 4η θέση')}
+      ${row(bar('Ομάδα',[E,E,E]),'Χωρίς εγγραφή φέτος','μόνο ο κλάδος χρωματιστός')}
     </div>
 
     <div class="dsec"><h4>Βαθμοφόρος — πέντε τμήματα</h4>
       <div class="dim" style="font-size:12px;margin-bottom:8px">κλάδος · Ν.91(Ι) · εκπαίδευση · εντολή · εγγραφή</div>
-      ${row(bar([SEC('Αγέλη'),CERTC.ok,TRC[2],RING.entoli,G]),'Όλα εντάξει',
+      ${row(bar('Αγέλη',[CERTC.ok,TRC[2],RING.entoli,G]),'Όλα εντάξει',
             'Ν.91(Ι) σε ισχύ · Βασική εκπαίδευση · ενεργή Εντολή Διοίκησης')}
-      ${row(bar([SEC('Ομάδα'),CERTC.soon,TRC[2],RING.entoli,G]),'Το Ν.91(Ι) λήγει σύντομα',
+      ${row(bar('Ομάδα',[CERTC.soon,TRC[2],RING.entoli,G]),'Το Ν.91(Ι) λήγει σύντομα',
             `πορτοκαλί όταν απομένουν ≤ ${TH.certWarnDays||90} μέρες`)}
-      ${row(bar([SEC('Ομάδα'),CERTC.expired,TRC[2],RING.entoli,G]),'Το Ν.91(Ι) έληξε','')}
-      ${row(bar([SEC('Κοινότητα'),E,TRC[2],RING.entoli,G]),'Χωρίς Ν.91(Ι)','δεν έχει καταχωρηθεί')}
-      ${row(bar([SEC('Αγέλη'),CERTC.ok,TRC[1],RING.entoli,G]),'Μόνο Προκαταρκτική','κίτρινο στην 3η θέση')}
-      ${row(bar([SEC('Αγέλη'),CERTC.ok,E,RING.entoli,G]),'Χωρίς εκπαίδευση','γκρίζο στην 3η θέση')}
+      ${row(bar('Ομάδα',[CERTC.expired,TRC[2],RING.entoli,G]),'Το Ν.91(Ι) έληξε','')}
+      ${row(bar('Κοινότητα',[E,TRC[2],RING.entoli,G]),'Χωρίς Ν.91(Ι)','δεν έχει καταχωρηθεί')}
+      ${row(bar('Αγέλη',[CERTC.ok,TRC[1],RING.entoli,G]),'Μόνο Προκαταρκτική','κίτρινο στην 3η θέση')}
+      ${row(bar('Αγέλη',[CERTC.ok,E,RING.entoli,G]),'Χωρίς εκπαίδευση','γκρίζο στην 3η θέση')}
     </div>
 
     <div class="dsec"><h4>Η 4η θέση — κατάσταση εντολής</h4>
-      ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],RING.entoli,G]),'Ενεργή Εντολή Διοίκησης','πράσινο')}
-      ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],RING.anathesi,G]),'Ενεργή Ανάθεση Καθηκόντων','κίτρινο')}
-      ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],RING.expired,G]),'Έληξε','κόκκινο')}
-      ${row(bar([SEC('Ομάδα'),CERTC.ok,TRC[2],E,G]),'Δεν έχει αιτηθεί','γκρίζο')}
+      ${row(bar('Ομάδα',[CERTC.ok,TRC[2],RING.entoli,G]),'Ενεργή Εντολή Διοίκησης','πράσινο')}
+      ${row(bar('Ομάδα',[CERTC.ok,TRC[2],RING.anathesi,G]),'Ενεργή Ανάθεση Καθηκόντων','κίτρινο')}
+      ${row(bar('Ομάδα',[CERTC.ok,TRC[2],RING.expired,G]),'Έληξε','κόκκινο')}
+      ${row(bar('Ομάδα',[CERTC.ok,TRC[2],E,G]),'Δεν έχει αιτηθεί','γκρίζο')}
     </div>`}
 
     <div class="dsec"><h4>Το πρώτο τμήμα — ο κλάδος</h4>
