@@ -759,8 +759,8 @@ tr.argrow td{background:var(--bg2)}
     <div class="dim" style="font-size:11px;margin:-14px 0 18px" id="gver"></div>
     <div id="glang" class="langrow"></div>
     <div id="grec" style="display:none">
-      <input id="np1" type="password" placeholder="Νέος κωδικός (8+ χαρακτήρες)" autocomplete="new-password">
-      <input id="np2" type="password" placeholder="Επανάληψη νέου κωδικού" autocomplete="new-password">
+      <input id="np1" type="password" placeholder="Νέο συνθηματικό (8+ χαρακτήρες)" autocomplete="new-password">
+      <input id="np2" type="password" placeholder="Ξανά το νέο συνθηματικό" autocomplete="new-password">
       <button class="btn p" id="npSave" style="width:100%;justify-content:center;padding:11px">Αποθήκευση & είσοδος</button>
       <div id="npmsg" class="muted" style="font-size:13px;margin-top:10px"></div>
     </div>
@@ -775,8 +775,8 @@ tr.argrow td{background:var(--bg2)}
       <div style="flex:1;height:1px;background:var(--line)"></div>ή<div style="flex:1;height:1px;background:var(--line)"></div></div>
     <input id="gmail" type="text" placeholder="Email ή Αρ. Μητρώου" autocomplete="username">
     <div id="gpassWrap" style="position:relative">
-      <input id="gpass" type="password" placeholder="Κωδικός πρόσβασης" autocomplete="current-password" style="padding-right:42px">
-      <button type="button" id="geye" title="Εμφάνιση κωδικού"
+      <input id="gpass" type="password" placeholder="Συνθηματικό" autocomplete="current-password" style="padding-right:42px">
+      <button type="button" id="geye" title="Εμφάνιση συνθηματικού"
         style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;color:var(--ink3);font-size:16px;padding:4px 8px">👁</button>
     </div>
     <button class="btn p" id="gbtn" style="width:100%;justify-content:center;padding:11px">Είσοδος</button>
@@ -1246,7 +1246,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 16:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 16:36'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1285,12 +1285,12 @@ function tokenFromLink(s){
 let OTPMODE=false, RECOVER=false;
 function showRecovery(){
   $('glogin').style.display='none'; $('grec').style.display='block';
-  $('gtag').textContent='Όρισε νέο κωδικό πρόσβασης'; $('np1').focus();
+  $('gtag').textContent=t('Όρισε νέο συνθηματικό'); $('np1').focus();
 }
 $('npSave').onclick=async()=>{
   const a=$('np1').value,b=$('np2').value,m=$('npmsg');
   if(a.length<8){m.style.color='var(--bad)';m.textContent='Τουλάχιστον 8 χαρακτήρες';return}
-  if(a!==b){m.style.color='var(--bad)';m.textContent='Οι δύο κωδικοί δεν ταιριάζουν';return}
+  if(a!==b){m.style.color='var(--bad)';m.textContent=t('Τα δύο συνθηματικά δεν ταιριάζουν');return}
   m.style.color='var(--ink2)'; m.textContent='Αποθήκευση…';
   const {error}=await sb.auth.updateUser({password:a});
   if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
@@ -1303,7 +1303,7 @@ $('useOtp').onclick=e=>{e.preventDefault();OTPMODE=true;RECOVER=false;
 function eyeToggle(btnId, inpId){
   const b=$(btnId), i=$(inpId); if(!b||!i)return;
   b.onclick=()=>{const on=i.type==='password'; i.type=on?'text':'password';
-    b.textContent=on?'🙈':'👁'; b.title=on?'Κρύψε τον κωδικό':'Εμφάνιση κωδικού'; i.focus()};
+    b.textContent=on?'🙈':'👁'; b.title=on?t('Κρύψε το συνθηματικό'):t('Εμφάνιση συνθηματικού'); i.focus()};
 }
 eyeToggle('geye','gpass');
 
@@ -1979,11 +1979,14 @@ const NAV_MEMBER=[...NAV_SELF,'progKA'];
 const NAV_ANIX=['myprog','synod','groups','attend','progress','members'];
 const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile'];
 const NAV_PATROL=[...NAV_SELF,'attend','trends'];
-const NAV_LEADER=['dash','issues','trends','members','leaders','guardians',
+const NAV_LEADER_ALL=['dash','issues','trends','members','leaders','guardians',
   'attend','events','cal','groups','synod','staff','enroll',
   'progAL','progOP','progKA','missing','medical','enroll',
   'ledfile','me','mycerts','myschools','myveh'];
-const NAV_HEAD=[...NAV_LEADER,'efolder','access','viewas','approvals','inbox','intake','desk',
+const NAV_LEADER=['dash','attend','members','guardians','leaders','groups','events','cal',
+  'progAL','progOP','progKA','synod','missing',
+  'me','mycerts','myschools','myveh'];
+const NAV_HEAD=[...NAV_LEADER_ALL,'efolder','access','viewas','approvals','inbox','intake','desk',
   'handover','mails','year','dataqa','outputs','reports'];
 const NAV_DEV=['audit','access','roles','dataqa','outputs','mysys',
   'members','leaders','dedupe','intake'];
@@ -2017,7 +2020,7 @@ function navFor(role, sec){
   const mine = sec && PROG_OF[sec];
   if(!mine) return base;
   const others = Object.values(PROG_OF).filter(x=>x!==mine);
-  return base.filter(x=>!others.includes(x));
+  return base.filter(x=>!others.includes(x) && !(x==='synod' && sec!==dv('Κοινότητα')));
 }
 function myCards(me){
   if(!me)return [];
@@ -2061,7 +2064,7 @@ function buildPersonas(subject){
       const lb=me.appointment&&me.appointment!=='-'?me.appointment:(me.category||'Βαθμοφόρος');
       const sc=me.category==='ΑΣ'?'ΟΛΑ':(me.section||'ΟΛΑ');
       const nice=me.category==='ΑΣ'?'Αρχηγός Συστήματος':('Βαθμοφόρος · '+lb);
-      if(!out.some(o=>o.t===nice))out.push({id:'leader',t:nice,k:'leader',sc,
+      if(!out.some(o=>o.t===nice||(String(o.id).startsWith('hat:')&&o.k==='leader'&&o.sc===sc)))out.push({id:'leader',t:nice,k:'leader',sc,
         role:me.category==='ΑΣ'?'admin':(me.category==='Αρχηγός'?'head':'leader')});
     }
     if(me.is_commissioner)out.push({id:'com',t:'Έφορος',k:'leader',role:'commissioner',sc:'ΟΛΑ'});
@@ -2113,7 +2116,8 @@ function renderPersona(){
   sel.innerHTML=PERSONAS.map(p=>`<option value="${p.id}"${p.id===PA.id?' selected':''}>${esc(p.t)}</option>`).join('');
   sel.style.display=PERSONAS.length>1?'':'none';
   { const pers=LENS_PERSONAL.includes(PA&&PA.k)&&!VIEWAS;
-    const yr=$('yr'); if(yr)yr.style.display=pers?'none':'';
+    const plain=PA&&PA.k==='leader'&&PA.role==='leader'&&ME.role!=='admin'&&!VIEWAS;
+    const yr=$('yr'); if(yr)yr.style.display=(pers||plain)?'none':'';
     const one=PERSONAS.length<2; ['switchp','switchsep'].forEach(id=>{const x=$(id); if(x)x.style.display=one?'none':''});
     const vr=$('ver'); if(vr)vr.style.display=pers?'none':''; }
   sel.onchange=e=>{PA=PERSONAS.find(p=>p.id===e.target.value);localStorage.setItem('e76:persona',PA.id);
@@ -4866,6 +4870,7 @@ function ledCodeFallback(p){
   const A={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Δίκτυο':'ΠΔ'}[sec];
   if(!A) return cat==='P/T'?'P/T':'Βαθμ';
   if(cat==='Αρχηγός') return 'Α'+A;
+  if(cat===dv('Υπαρχηγός')) return dv('Υ')+A;    
   if(cat==='P/T')     return 'P/T';
   return 'Βαθμ';
 }
@@ -7520,15 +7525,15 @@ V.account=()=>{
       <button class="btn sm" data-r2="myprofile">${t('Άνοιγμα')} ›</button></div>`:''}
 
     <div class="card pad" style="margin-bottom:14px">
-      <b>Κωδικός</b>
+      <b>${t('Συνθηματικό')}</b>
       <div class="dim" style="font-size:12.5px;margin:5px 0 12px">Ο λογαριασμός δείχνει προσωπικά δεδομένα
         παιδιών. Μην τον μοιραστείς — ούτε «προσωρινά».</div>
-      <input type="password" id="ac0" placeholder="Ο τωρινός κωδικός" style="max-width:340px;margin-bottom:7px" autocomplete="current-password">
-      <input type="password" id="ac1" placeholder="Νέος κωδικός (8+ χαρακτήρες)" style="max-width:340px;margin-bottom:7px" autocomplete="new-password">
+      <input type="password" id="ac0" placeholder="${t('Το τωρινό συνθηματικό')}" style="max-width:340px;margin-bottom:7px" autocomplete="current-password">
+      <input type="password" id="ac1" placeholder="${t('Νέο συνθηματικό (8+ χαρακτήρες)')}" style="max-width:340px;margin-bottom:7px" autocomplete="new-password">
       <input type="password" id="ac2" placeholder="Ξανά, για σιγουριά" style="max-width:340px;margin-bottom:10px" autocomplete="new-password">
-      <div><button class="btn p" id="acPw">Αλλαγή κωδικού</button>
+      <div><button class="btn p" id="acPw">${t('Αλλαγή συνθηματικού')}</button>
         <span class="dim" id="acMsg" style="font-size:12.5px;margin-left:9px"></span></div>
-      <div class="dim" style="font-size:11.5px;margin-top:9px">${t('Ζητάμε και τον τωρινό κωδικό, για να μη μπορεί να τον αλλάξει κάποιος που βρήκε τη συσκευή σου ανοιχτή.')}</div></div>
+      <div class="dim" style="font-size:11.5px;margin-top:9px">${t('Ζητάμε και το τωρινό συνθηματικό, για να μη μπορεί να το αλλάξει κάποιος που βρήκε τη συσκευή σου ανοιχτή.')}</div></div>
 
     <div class="card pad">
       <b>Εμφάνιση</b>
@@ -7551,20 +7556,20 @@ V.account=()=>{
     await sb.auth.signOut(); location.reload()};
   $('acPw').onclick=async()=>{
     const old=$('ac0').value, a=$('ac1').value, b=$('ac2').value, m=$('acMsg');
-    if(!old)       return m.textContent='Γράψε πρώτα τον τωρινό κωδικό.';
+    if(!old)       return m.textContent=t('Γράψε πρώτα το τωρινό συνθηματικό.');
     if(a.length<8) return m.textContent='Τουλάχιστον 8 χαρακτήρες.';
     if(a!==b)      return m.textContent='Τα δύο δεν ταιριάζουν.';
     if(a===old)    return m.textContent='Ο νέος είναι ίδιος με τον παλιό.';
     m.textContent='…';
     const {error:bad}=await sb.auth.signInWithPassword({email:ME.email, password:old});
-    if(bad) return m.textContent='Ο τωρινός κωδικός δεν είναι σωστός.';
+    if(bad) return m.textContent=t('Το τωρινό συνθηματικό δεν είναι σωστό.');
     const {error}=await sb.auth.updateUser({password:a});
     if(error) return m.textContent='Σφάλμα: '+error.message;
     const {data:{user}}=await sb.auth.getUser();
     if(user) await sb.from('profiles').update({must_set_password:false,
       password_set_on:new Date().toISOString()}).eq('id',user.id);
     $('ac0').value=$('ac1').value=$('ac2').value='';
-    m.textContent='Άλλαξε.'; toast('Ο κωδικός άλλαξε')};
+    m.textContent='Άλλαξε.'; toast(t('Το συνθηματικό άλλαξε'))};
 };
 
 V.myprofile=()=>{
@@ -10031,7 +10036,7 @@ function progressBody(){
         ${ppHTML('pgSign',PGSIGN||'',{ph:'εγώ',style:'width:170px'})}</label>
       <button class="btn sm p" id="pbGo">Πέρασμα</button>
       <button class="btn sm" id="pbClr">Καθάρισμα</button>
-      <span class="dim" id="pbHint" style="flex-basis:100%;font-size:11.5px">Κλικ στο κουτάκι = επιλογή (κίτρινο, δεν γράφεται ακόμα) · Shift-κλικ ή σύρσιμο = πολλά μαζί · κλικ στον αριθμό = όλη η στήλη · ⇢ = όλη η γραμμή. Πράσινο κουτάκι = πέρασε· κλικ πάνω του για αφαίρεση.</span>
+      <span class="dim" id="pbHint" style="flex-basis:100%;font-size:11.5px">${t('Άγγιξε τα κουτάκια που θέλεις (γίνονται κίτρινα — δεν έχουν γραφτεί ακόμη), μετά «Πέρασμα». Ο αριθμός πάνω από μια στήλη τη διαλέγει όλη, το ⇢ όλη τη γραμμή. Πράσινο = πέρασε· άγγιξέ το για αφαίρεση. Στον υπολογιστή: Shift-κλικ ή σύρσιμο για πολλά μαζί.')}</span>
     </div>`:''}
     <div class="card" style="overflow:auto">
       <table style="border-collapse:collapse;font-size:12px;user-select:none">
@@ -13341,10 +13346,7 @@ function mePieces(){
 
   const certHTML=`<div class="sec" style="margin-top:0"><h3>Τα πιστοποιητικά μου</h3><span class="n">${(D.pc||[]).filter(x=>x.person_id===p.id).length}</span></div>
     <div class="card pad" style="margin-bottom:0;border-bottom:0;border-radius:var(--r) var(--r) 0 0">
-      <div class="dim" style="font-size:12.5px;line-height:1.6">Δηλώνεις εσύ, <b>επιβεβαιώνει ο Α.Σ.</b>
-        Μέχρι τότε το πιστοποιητικό φαίνεται εδώ αλλά <b>δεν μετράει</b> για το ποιος συνοδεύει σε δράση —
-        αλλιώς ο ελεγχόμενος θα έγραφε το αποτέλεσμα του ελέγχου. Ανέβασε και το αρχείο: χωρίς αυτό
-        ο Α.Σ. δεν έχει τι να επιβεβαιώσει.</div></div>
+      <div class="dim" style="font-size:12.5px;line-height:1.6">${t('Ανεβάζεις εσύ τη φωτογραφία ή το PDF και ο Αρχηγός Συστήματος το επιβεβαιώνει. Μέχρι να το επιβεβαιώσει, φαίνεται εδώ αλλά δεν μετράει ακόμη για τις δράσεις.')}</div></div>
     <div class="card pad">
       <div class="dim" style="font-size:12.5px;margin-bottom:10px">Ανέβασέ τα μόνος σου — πιστοποιητικό Ν.91, πρώτες βοήθειες, άδεια οδήγησης.
         Ο Α.Σ. τα βλέπει· δεν χρειάζεται να του τα στείλεις.</div>
@@ -19488,7 +19490,7 @@ function markBody(){
     $('mBody').innerHTML=`<div class="noprint" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         ${hq?'':'<button class="btn sm" id="mAllP">Οι υπόλοιποι παρόντες</button><button class="btn sm" id="mAllA">Οι υπόλοιποι απόντες</button>'}
         <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση</button></div>
-      <div class="dim noprint" style="font-size:12px;margin:-4px 0 10px">Άγγιγμα: Παρών → Απών → χωρίς σημείωση. Γράφεται αμέσως — και χωρίς σήμα.</div>
+      <div class="dim noprint" style="font-size:12px;margin:-4px 0 10px">${t('Άγγιξε ένα όνομα: μία φορά = Παρών, δεύτερη = Απών, τρίτη = σβήνει. Αποθηκεύεται αμέσως — κι αν πέσει το ίντερνετ, στέλνεται μόλις επανέλθει.')}</div>
       ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span>${Object.keys(gs).length>1?`<span class="sp"></span><button class="btn sm gh noprint" data-grpp="${esc(g)}">όλη η ${esc(g==='— χωρίς υποομάδα'?'ομάδα':'υποομάδα')} παρούσα</button>`:''}</div>
         <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}" aria-pressed="false"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}${isNewMember(p.id,SES.session_date)?NEWCHIP:''}</span><span class="mkst"></span></button>`).join('')}</div>`).join('')}
       ${ME.role!=='patrol_leader'&&!hq?`<div id="gstWrap" data-sid="${sid}"></div>`:''}
@@ -19618,11 +19620,12 @@ V.dash=()=>{
   const bySec={}; SECS_SHOW.forEach(s=>bySec[s]=mem.filter(p=>secOf(p)===s).length);
   const risk=riskList(), certs=certList();
   const soon=certs.filter(c=>c.days!==null&&c.days<=(TH.certWarnDays||90)&&c.days>=0).length, expd=certs.filter(c=>c.days!==null&&c.days<0).length, nocert=certs.filter(c=>c.none).length;
-  const nextS=D.ss.filter(s=>s.scout_year===YEAR&&new Date(s.session_date)>=new Date()).sort((a,b)=>a.session_date<b.session_date?-1:1)[0];
+  const nextS=D.ss.filter(s=>s.scout_year===YEAR&&(!MYSEC||s.section===MYSEC)&&(s.session_date||'')>=isoLocal(new Date())).sort((a,b)=>a.session_date<b.session_date?-1:1)[0];
   const lastS=D.ss.filter(s=>s.scout_year===YEAR&&new Date(s.session_date)<new Date()).pop();
+  const deputy=!!(PA&&PA.role==='leader'&&!isAdminUI());
 
   $('sub').textContent=[($('sub').textContent||'').replace(/\s*·?\s*\d{4}-\d{2}$/,''),YEAR].filter(Boolean).join(' · ');
-  $('view').innerHTML=`${todayHTML()}
+  $('view').innerHTML=`${MYSEC?weekHTML(MYSEC):''}${todayHTML()}
   <div class="tiles">
     ${[['Λυκόπουλα','Αγέλη'],['Πρόσκοποι','Ομάδα'],['Ανιχνευτές','Κοινότητα'],['Δικτυακοί','Δίκτυο']]
        .filter(([t,s])=>SECS_SHOW.includes(s)).map(([t,s])=>
@@ -19645,17 +19648,17 @@ V.dash=()=>{
     <button class="tile ${risk.length?'bad':''}" data-go="attend" data-tab="risk"><div class="k">${ic('msg',14)}Λείπουν συχνά</div><div class="v">${risk.length}</div><div class="s">${risk.length?'θέλουν ένα τηλεφώνημα':'κανένα — όλα καλά'}</div></button>
     ${
 ''}
-    <button class="tile ${(expd||nocert)?'bad':(soon?'warn':'')}" data-go="leaders" data-chip="cert:${expd?'bad':'warn'}"><div class="k">${ic('shield',14)}<span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Πιστοποιητικά Ν.91(Ι)</span></div><div class="v">${expd+soon}</div><div class="s">${expd?expd+' ληγμένα · ':''}${soon} λήγουν σε 90 μέρες</div></button>
-    <button class="tile ${nocert?'warn':''}" data-go="leaders" data-chip="cert:none"><div class="k">${ic('alert',14)}Χωρίς πιστοποιητικό</div><div class="v">${nocert}</div><div class="s">βαθμοφόροι χωρίς καταχώρηση</div></button>
-    <button class="tile act" data-go="guardians"><div class="k">${ic('msg',14)}Επικοινωνία γονέων</div><div class="v">${new Set((D.cl||[]).filter(c=>!c.valid_to).map(c=>c.member_id)).size}</div><div class="s">έτοιμες λίστες ανά τμήμα</div></button>
+    ${deputy?'':`<button class="tile ${expd?'bad':(soon?'warn':'')}" data-go="leaders" data-chip="cert:${expd?'bad':'warn'}"><div class="k">${ic('shield',14)}<span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Πιστοποιητικά Ν.91(Ι)</span></div><div class="v">${expd+soon}</div><div class="s">${expd?expd+' ληγμένα · ':''}${soon?soon+' '+t('λήγουν σε 90 μέρες'):(expd?'':t('κανένα δεν λήγει σύντομα'))}</div></button>`}
+    ${deputy?'':`<button class="tile ${nocert?'warn':''}" data-go="leaders" data-chip="cert:none"><div class="k">${ic('alert',14)}Χωρίς πιστοποιητικό</div><div class="v">${nocert}</div><div class="s">βαθμοφόροι χωρίς καταχώρηση</div></button>`}
+    <button class="tile act" data-go="guardians"><div class="k">${ic('msg',14)}Επικοινωνία γονέων</div><div class="v">${new Set((D.cl||[]).filter(c=>!c.valid_to).map(c=>c.member_id)).size}</div><div class="s">${t('τηλέφωνα & email γονέων')}</div></button>
   </div>
   ${bdayHTML()}
 
   <div class="sec"><h3>Πρόγραμμα</h3></div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
-    <div class="card pad"><div class="k muted" style="font-size:12px;display:flex;gap:6px;align-items:center">${ic('cal',14)}Επόμενη συγκέντρωση</div>
-      <div style="font-size:17px;font-weight:600;margin-top:7px">${nextS?fdate(nextS.session_date):'—'}</div>
-      <div class="dim" style="font-size:12.5px">${nextS?esc(nextS.section||'')+' · '+esc(nextS.title||''):'Δεν έχει προγραμματιστεί'}</div></div>
+${MYSEC?'':`    <div class="card pad"><div class="k muted" style="font-size:12px;display:flex;gap:6px;align-items:center">${ic('cal',14)}Επόμενη συγκέντρωση</div>
+      <div style="font-size:17px;font-weight:600;margin-top:7px">${nextS?fdateW(nextS.session_date):'—'}</div>
+      <div class="dim" style="font-size:12.5px">${nextS?esc(nextS.section||'')+(meetInfo(nextS.section)?' · '+esc(meetInfo(nextS.section)):(nextS.title?' · '+esc(nextS.title):'')):'Δεν έχει προγραμματιστεί'}</div></div>`}
     <div class="card pad"><div class="k muted" style="font-size:12px;display:flex;gap:6px;align-items:center">${ic('check',14)}Τελευταία καταχώρηση</div>
       <div style="font-size:17px;font-weight:600;margin-top:7px">${lastS?fdate(lastS.session_date):'—'}</div>
       <div class="dim" style="font-size:12.5px">${pln(D.att.length.toLocaleString('el'),'εγγραφή','εγγραφές')} παρουσιών φέτος</div></div>
@@ -19664,7 +19667,27 @@ V.dash=()=>{
       <div class="dim" style="font-size:12.5px">σε ${pln((()=>{const had=new Set(D.att.map(a=>a.session_id)); return D.ss.filter(s=>s.scout_year===YEAR&&had.has(s.id)).length})(),'συγκέντρωση','συγκεντρώσεις')} με παρουσίες</div></div>
   </div>`;
   bindTiles(); bindToday();
+  document.querySelectorAll('[data-mkses]').forEach(b=>b.onclick=()=>{ MKPRE={sec:b.dataset.mksec, ses:b.dataset.mkses};
+    SUBTAB.attend='put'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); });
 };
+function weekHTML(sec){
+  const today=isoLocal(new Date());
+  const ns=(D.ss||[]).filter(s=>s.section===sec&&s.scout_year===YEAR&&(s.session_date||'')>=today&&!/κυρώ|ναβλ/.test(s.status||''))
+    .sort((a,b)=>String(a.session_date).localeCompare(String(b.session_date)))[0]||null;
+  const mi=meetInfo(sec), isT=ns&&ns.session_date===today;
+  const dd=ns?Math.round((new Date(ns.session_date+'T12:00:00')-new Date(today+'T12:00:00'))/864e5):null;
+  const evs=(D.ev||[]).filter(e=>!e.hidden&&evStage(e)==='published'&&(e.event_date||'')>=today
+    &&evSecs(e).includes(sec)&&typeof signupOpen==='function'&&signupOpen(e));
+  const row=(icn,cls,h,sub,btn)=>`<div class="ptd${cls?' '+cls:''}"><span class="ptdi">${ic(icn,16)}</span>
+      <div style="flex:1;min-width:0"><div class="ptdh">${h}</div>${sub?`<div class="ptds">${sub}</div>`:''}</div>${btn||''}</div>`;
+  const rows=[row('cal',isT?'warn':'',ns?(isT?t('Σήμερα συγκέντρωση'):t('Επόμενη συγκέντρωση'))+' · '+esc(sec):t('Επόμενη συγκέντρωση')+' · '+esc(sec),
+      ns?`<b>${fdateW(ns.session_date)}</b>${dd>0?' · '+(dd===1?t('αύριο'):t('σε')+' '+pln(dd,t('μέρα'),t('μέρες'))):''}${mi?'<br>'+esc(mi):''}`:t('Δεν έχει προγραμματιστεί ακόμη.'),
+      isT?`<button class="btn p sm" data-mkses="${ns.id}" data-mksec="${esc(sec)}">${t('Πέρασε παρουσίες')}</button>`:'')]
+    .concat(evs.map(e=>{ const n=(D.pa||[]).filter(x=>x.event_id===e.id&&!/κυρ/i.test(x.status||'')).length;
+      return row('flag','',esc(e.title||'—'),`${fdateW(e.event_date)}${e.signup_closes?' · '+t('δηλώσεις μέχρι')+' '+fdate(e.signup_closes):''} · <b>${pln(n,t('δήλωση'),t('δηλώσεις'))}</b>`,
+        `<button class="btn sm" data-go="events">${t('Δράσεις')}</button>`)}));
+  return `<div class="card pad pdash" style="margin-bottom:14px"><b style="font-size:15px">${t('Αυτή την εβδομάδα')}</b><div class="ptdl">${rows.join('')}</div></div>`;
+}
 D.cash=D.cash||[];
 const CASH_UNIT={'Αγέλη':'εξάδας','Ομάδα':'ενωμοτίας','Κοινότητα':'ομίλου'};
 const cashRows=sid=>(D.cash||[]).filter(c=>c.session_id===sid);
@@ -19959,10 +19982,10 @@ function mineHTML(){
     return `<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
       <span class="pill" style="background:var(--${kk}bg);color:var(--${kk});border-color:transparent">${esc(x.kind)}</span>
       <b style="font-size:13.5px;flex:1;min-width:150px">${esc(x.what)}</b>
-      <span style="font-size:12.5px;color:var(--${kk})">${x.d==='9999-12-31'?'δεν καταχωρήθηκε ποτέ'
+      <span style="font-size:12.5px;color:var(--${kk})">${x.d==='9999-12-31'?''
         :(x.d<today?'έληξε '+fdate(x.d)+' · πριν '+pln(days(x.d),'μέρα','μέρες')+''
                    :'λήγει '+fdate(x.d)+' · σε '+pln(days(x.d),'μέρα','μέρες')+'')}</span>
-      ${w?'':`<span class="dim" style="font-size:12px">${esc(x.todo)}</span>`}
+      ${w?'':`<span class="dim" style="font-size:12px">${x.kind===dv('Ν.91(Ι)')&&x.d==='9999-12-31'?t('Το βγάζεις από την Αστυνομία και το ανεβάζεις εδώ.'):esc(x.todo)}</span>`}
       ${act(x)}</div>`};
   const hard=late.length+miss.length;
   return `<div class="sec"><h3>Δικά σου</h3><span class="n">${n}</span></div>
@@ -19986,7 +20009,8 @@ function todayItems(){
     const had=new Set((D.att||[]).map(a=>a.session_id));
     (D.ss||[]).filter(s=>s.scout_year===YEAR&&s.session_date>=wk&&s.session_date<=today
         &&['Συγκέντρωση','Ειδική συγκέντρωση'].includes(s.session_type||'Συγκέντρωση')
-        &&mine.has(s.section)&&(!ms||s.section===ms)&&!had.has(s.id))
+        &&mine.has(s.section)&&(!ms||s.section===ms)&&!had.has(s.id)
+        &&!(ms&&s.session_date===today))
       .sort((a,b)=>String(b.session_date).localeCompare(String(a.session_date)))
       .forEach(s=>items.push({k:s.session_date===today?'warn':'bad',
         t:(s.session_date===today?'Σήμερα':fdate(s.session_date))+' · '+s.section,
@@ -24082,8 +24106,8 @@ V.cal=()=>tabView('cal',[
   {k:'sxo',  t:'Σχολές',            i:'award', fn:sxoBody,     d:t('ποιες βλέπουν τα μέλη')}]);
 
 V.attend=()=>tabView('attend',[
-  {k:'see',  t:'Παρουσίες',         i:'trend', fn:attendBody,  d:'ποιος λείπει'},
-  {k:'put',  t:'Καταχώρηση',        i:'check', fn:markBody,    d:'σήμανση παρόντων'}]);
+  {k:'put',  t:'Καταχώρηση',        i:'check', fn:markBody,    d:'σήμανση παρόντων'},
+  {k:'see',  t:t('Ποιος λείπει'),      i:'trend', fn:attendBody,  d:'ποιος λείπει'}]);
 
 function progScreen(sec, extra){
   PSEC=sec;
