@@ -1083,8 +1083,7 @@ const NAV=[
  {g:'Πρόγραμμα', d:'Τι κάνουμε και ποιος ήρθε', items:[
    {id:'attend',t:'Παρουσίες',i:'check',s:'live'},
    {id:'cal',t:'Πρόγραμμα χρονιάς',i:'cal',s:'live'},
-   {id:'events',t:'Δράσεις',i:'flag',s:'live'},
-   {id:'efolder',t:'Φάκελος δράσης',i:'book',s:'live'}]},
+   {id:'events',t:'Δράσεις',i:'flag',s:'live'}]},
 
  {g:'Πρόοδος', d:'Πώς προχωρούν τα παιδιά — ένα τμήμα, ένα λεξιλόγιο', items:[
    {id:'progAL',t:'Πρόοδος ΑΛ',i:'award',s:'live'},
@@ -1235,7 +1234,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 12:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 13:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -7146,7 +7145,8 @@ function kidEvents(ks,today){
       return c==='drasi'||c==='ekdil'||((c==='ekso'||c==='sim')&&(signupOpen(e)||Array.isArray(e.invitees)))})
     .filter(e=>!Array.isArray(e.invitees)||ks.some(({kid:k})=>invOk(e,k)))
     .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,12);
-  return {up,ev};
+  const kp=e=>(D.pa||[]).some(x=>x.event_id===e.id&&ks.some(({kid:k})=>k.id===x.person_id));
+  return {up, ev:ev.filter(e=>evNeedsDecl(e,kp(e))), oth:ev.filter(e=>!evNeedsDecl(e,kp(e)))};
 }
 const kidLab=k=>k&&ME&&k.id===ME.person_id?'εγώ':esc(k.first_name);
 const kid16=k=>!!k&&secOf(k)==='Κοινότητα'&&(()=>{const a=typeof ageOf==='function'?ageOf(k):null; return a!==null&&a>=16})();
@@ -7206,10 +7206,10 @@ V.kidprog=()=>{
   const secs=[...new Set(ks.map(({kid:k})=>secOf(k)).filter(Boolean))];
   const ss=D.ss.filter(s=>secs.includes(s.section)&&(s.session_date||'')>=today)
     .sort((a,b)=>(a.session_date||'').localeCompare(b.session_date||'')).slice(0,12);
-  const {up,ev}=kidEvents(ks,today);
+  const {up,ev,oth}=kidEvents(ks,today);
   const forKid=kidForEv;
-  const dates=up.filter(e=>!ev.includes(e)&&(['sim','argia'].includes(evCat(e))||(evCat(e)==='ekso'&&evSecs(e).length)))
-    .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,6);
+  const dates=up.filter(e=>!ev.includes(e)&&(oth.includes(e)||['sim','argia'].includes(evCat(e))||(evCat(e)==='ekso'&&evSecs(e).length)))
+    .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,10);
 
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px"><b>Τι έχουμε μπροστά</b>
@@ -7228,7 +7228,7 @@ V.kidprog=()=>{
       :'<div class="dim" style="margin-top:8px;font-size:13px">Δεν έχουν ανακοινωθεί δράσεις ακόμη.</div>'}
     </div>
 
-    ${dates.length?`<div class="card pad" style="margin-top:14px"><b>Σημαντικές ημερομηνίες</b>
+    ${dates.length?`<div class="card pad" style="margin-top:14px"><b>${t('Εκδηλώσεις & σημαντικές ημερομηνίες')}</b>
       <div style="margin-top:9px">${dates.map(e=>`<div class="kv">
         <b style="flex:1">${esc(e.title||'—')}</b>
         <span class="dim" style="font-size:12px">${fdate(e.event_date)}${evTag(e)}</span></div>`).join('')}</div></div>`:''}
@@ -7297,14 +7297,14 @@ V.myprog=()=>{
   const days={};
   (D.ss||[]).filter(x=>x.section===sec&&(x.session_date||'')>=today).forEach(x=>{
     days[x.session_date]={d:x.session_date, t:x.title&&x.title!=='Συγκέντρωση '+sec?x.title:''} });
-  up.filter(e=>evCat(e)==='prog'&&evSecs(e).includes(sec)).forEach(e=>{
+  const hasPa=e=>(D.pa||[]).some(x=>x.event_id===e.id&&x.person_id===p.id);
+  up.filter(e=>(evCat(e)==='prog'||(evCat(e)==='drasi'&&!evNeedsDecl(e,hasPa(e))))&&evSecs(e).includes(sec)).forEach(e=>{
     const x=days[e.event_date]||(days[e.event_date]={d:e.event_date,t:''}); if(!x.t)x.t=e.title });
   const meets=Object.values(days).sort((a,b)=>a.d.localeCompare(b.d));
 
   const ekd=up.filter(e=>{const c=evCat(e);
-      return (['ekdil','sim','argia'].includes(c)&&mine(e))||(c==='ekso'&&evSecs(e).includes(sec)&&!signupOpen(e))}).sort(byD);
-  const acts=up.filter(e=>{const c=evCat(e);
-      return mine(e)&&(c==='drasi'||((c==='ekso'||c==='sim')&&signupOpen(e)))})
+      return !evNeedsDecl(e,hasPa(e))&&((['ekdil','sim','argia'].includes(c)&&mine(e))||(c==='ekso'&&evSecs(e).includes(sec)))}).sort(byD);
+  const acts=up.filter(e=>(mine(e)||(evCat(e)==='ekso'&&evSecs(e).includes(sec)))&&evNeedsDecl(e,hasPa(e)))
     .filter(e=>evInvOk(e,p.id,sec)&&!ekd.includes(e)).sort(byD);
   const sxo=(D.ev||[]).filter(e=>!e.hidden&&evPubFor(e,sec)&&evCat(e)==='sxoli'&&evOpenFor(e,sec)&&(!e.event_date||e.event_date>=today)).sort(byD);
 
@@ -16687,10 +16687,17 @@ const gcalMarks=e=>{const C=gcalCfg(), g=e.gcal||{}; const ks=Object.keys(g); if
 let EVF='act'; try{EVF=localStorage.getItem('e76:evf')||'act'}catch(e){}
 const evNeedsDecl=(e,hasPa)=>!['argia','sxoli'].includes(evCat(e))
   &&!!(hasPa||e.form_url||e.signup_opens||e.signup_closes||e.eidos_spk||EVCAT_ACT.includes(e.type));
-const EVF_OPT=[['act',t('Δράσεις (με δήλωση)')],['evt',t('Εκδηλώσεις & ειδικές συγκεντρώσεις')],['sim','Σημαντικά'],['prog','Θέματα συγκεντρώσεων'],
-  ['sxoli','Σχολές'],['ekso','Γενική / Επαρχία'],['argia','Αργίες'],['all','Όλα']];
-const evInF=(e,f,hasPa)=>f==='all'||(f==='act'?evNeedsDecl(e,hasPa)
-  :f==='evt'?(evIsAction(e)&&!evNeedsDecl(e,hasPa)):(evCat(e)===f&&!evNeedsDecl(e,hasPa)));
+const evEnd=e=>e.end_date||e.event_date||'';
+const EVF_OPT=[['act',t('Επόμενες')],['done',t('Έγιναν')],['all',t('Όλη η χρονιά')]];
+const evInF=(e,f,hasPa)=>evNeedsDecl(e,hasPa)&&(f==='all'||(f==='act'?evEnd(e)>=isoLocal(new Date()):evEnd(e)<isoLocal(new Date())));
+function evReady(e){
+  if(evEnd(e)<isoLocal(new Date()))return '';
+  const p=(c,t,ti)=>`<span class="pill" style="font-size:10.5px;background:var(--${c}bg);color:var(--${c});border-color:transparent"${ti?` title="${esc(ti)}"`:''}>${t}</span>`;
+  if(!e.form_url)return ' '+p('warn',t('χωρίς φόρμα δήλωσης'));
+  if(signupOpen(e))return ' '+p('ok',t('δηλώσεις ανοιχτές')+(e.signup_closes?' '+t('ως')+' '+fshort(e.signup_closes):''));
+  if(e.signup_opens&&e.signup_opens>isoLocal(new Date()))return ' '+p('warn',t('δηλώσεις από')+' '+fshort(e.signup_opens));
+  return ' '+p('',t('δηλώσεις κλειστές'));
+}
 const EMO_SECS=['Ομάδα','Κοινότητα'];
 const emoBtn=(e,sec)=>{const on=evOpenFor(e,sec);
   return `<button class="btn sm ${on?'p':'gh'}" data-emo="${e.id}" data-emosec="${sec}" aria-pressed="${on}" title="${on?'Τη βλέπουν τα μέλη — πάτα για να κρυφτεί':'Άνοιξέ τη στα μέλη'}">${on?'✓ ':''}${sec==='Κοινότητα'?'Ανιχνευτές':'Πρόσκοποι'}</button>`};
@@ -16711,6 +16718,19 @@ async function emoToggle(b){
   saveCache(); b.outerHTML=emoBtn(e,sec);    
   const nb=document.querySelector(`[data-emo="${e.id}"][data-emosec="${sec}"]`); if(nb)nb.onclick=()=>emoToggle(nb);
 }
+function sxoBody(){
+  const today=isoLocal(new Date());
+  const rows=(D.ev||[]).filter(e=>!e.hidden&&evCat(e)==='sxoli'&&(!e.scout_year||e.scout_year===YEAR))
+    .sort((a,b)=>String(a.event_date||'').localeCompare(String(b.event_date||'')));
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:13px"><b>${t('Σχολές')} ${esc(YEAR)}</b> <span class="dim">${rows.length}</span>
+      <div class="dim" style="font-size:12.5px;margin-top:4px">${t('Πατημένο = τη βλέπουν τα μέλη του τμήματος στο «Το πρόγραμμά μου». Για δήλωση μιλούν με τον αρχηγό τους.')}</div></div>
+    ${rows.length?`<div class="card" style="overflow:auto"><table><thead><tr><th>${t('Ημερομηνία')}</th><th>${t('Σχολή')}</th><th>${t('Ανοιχτή σε μέλη')}</th></tr></thead><tbody>${
+      rows.map(e=>`<tr${(e.end_date||e.event_date||'')<today?' style="opacity:.55"':''}><td style="white-space:nowrap">${e.event_date?fdate(e.event_date):'—'}</td>
+        <td><b>${esc(e.title||'—')}</b>${e.place?`<div class="dim" style="font-size:12px">${esc(e.place)}</div>`:''}</td>
+        <td style="white-space:nowrap">${isAdminUI()?EMO_SECS.map(x=>emoBtn(e,x)).join(' '):EMO_SECS.filter(x=>evOpenFor(e,x)).join(', ')||'—'}</td></tr>`).join('')}</tbody></table></div>`
+      :`<div class="uc"><h3>${t('Καμία σχολή φέτος')}</h3></div>`}`;
+  document.querySelectorAll('[data-emo]').forEach(b=>b.onclick=()=>emoToggle(b));
+}
 function evPkBtn(e){
   if(!evSecDrasi(e)||!['prog','drasi'].includes(evCat(e)))return '';
   const to=evCat(e)==='prog'?'drasi':'prog';
@@ -16720,9 +16740,9 @@ V.events=()=>{
   const cnt=id=>(D.pa||[]).filter(x=>x.event_id===id).length;
   const year=(D.ev||[]).filter(e=>(!e.scout_year||e.scout_year===YEAR)&&!e.hidden);
   if(!EVF_OPT.some(o=>o[0]===EVF))EVF='act';
-  const evs=year.filter(e=>evInF(e,EVF,cnt(e.id)>0)).sort((a,b)=>(a.event_date||'')<(b.event_date||'')?1:-1);
+  const evs=year.filter(e=>evInF(e,EVF,cnt(e.id)>0)).sort((a,b)=>EVF==='act'?String(a.event_date||'').localeCompare(String(b.event_date||'')):(a.event_date||'')<(b.event_date||'')?1:-1);
   const chips=EVF_OPT.map(([k,t])=>{const n=year.filter(e=>evInF(e,k,cnt(e.id)>0)).length;
-    return n||k==='act'||k===EVF?`<button class="btn sm ${k===EVF?'p':'gh'}" data-evf="${k}" aria-pressed="${k===EVF}">${t} <span class="dim">${n}</span></button>`:''}).join('');
+    return true?`<button class="btn sm ${k===EVF?'p':'gh'}" data-evf="${k}" aria-pressed="${k===EVF}">${t} <span class="dim">${n}</span></button>`:''}).join('');
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
         <b>Δράσεις ${esc(YEAR)}</b><span class="dim">${evs.length}</span><span class="sp"></span>
@@ -16739,11 +16759,10 @@ V.events=()=>{
           <label>Αρχηγός δράσης<select id="evA"><option value="">— αργότερα —</option>${(D.bh||[]).filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName).map(p=>`<option value="${p.id}">${esc(nm(p))}</option>`).join('')}</select></label></div>
         <div><button class="btn p sm" id="evSave">Δημιουργία και άνοιγμα φακέλου</button></div></div>
       ${evQuickHTML()}</div>
-    ${evs.length?listBar('',false)+`<div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Δράση</th><th class="hide-s">Τύπος</th><th class="hide-s">Τμήμα</th>${EVF==='sxoli'?'<th>Ανοιχτή σε μέλη</th>':''}<th>Συμμετοχές</th><th></th></tr></thead><tbody>${
+    ${evs.length?listBar('',false)+`<div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Δράση</th><th class="hide-s">Τύπος</th><th class="hide-s">Τμήμα</th><th>Συμμετοχές</th><th></th></tr></thead><tbody>${
       evs.map(e=>`<tr><td>${fdate(e.event_date)}${e.end_date&&e.end_date!==e.event_date?`<span class="dim"> → ${fshort(e.end_date)}</span>`:''}</td>
-        <td><b>${esc(e.title||'—')}</b>${stgPill(e)}${e.place?`<div class="dim" style="font-size:12px">${esc(e.place)}</div>`:''}</td>
-        <td class="hide-s dim">${EVF==='act'||EVF==='all'?`<span data-pkl="${e.id}" style="color:${EVCAT[evCat(e)].c}">${EVCAT[evCat(e)].t}</span>${e.type&&e.type!==EVCAT[evCat(e)].t?' · '+esc(e.type):''}${evPkBtn(e)}`:esc(e.type||'—')}</td><td class="hide-s">${evSecs(e).length?evSecs(e).map(x=>sdot(x)+' '+esc(x)).join('<br>'):'<span class="dim">Σύστημα</span>'}</td>
-        ${EVF==='sxoli'?`<td style="white-space:nowrap">${EMO_SECS.map(x=>emoBtn(e,x)).join(' ')}</td>`:''}
+        <td><b>${esc(e.title||'—')}</b>${stgPill(e)}${evReady(e)}${e.place?`<div class="dim" style="font-size:12px">${esc(e.place)}</div>`:''}</td>
+        <td class="hide-s dim">${true?`<span data-pkl="${e.id}" style="color:${EVCAT[evCat(e)].c}">${EVCAT[evCat(e)].t}</span>${e.type&&e.type!==EVCAT[evCat(e)].t?' · '+esc(e.type):''}${evPkBtn(e)}`:esc(e.type||'—')}</td><td class="hide-s">${evSecs(e).length?evSecs(e).map(x=>sdot(x)+' '+esc(x)).join('<br>'):'<span class="dim">Σύστημα</span>'}</td>
         <td><b>${cnt(e.id)}</b>${paPending(e)?`<div><span class="pill" style="font-size:10.5px;color:var(--warn)" title="Η δράση έγινε — άνοιξε «Συμμετοχές» και επιβεβαίωσε ποιοι ήρθαν">${paPending(e)} προς επιβεβαίωση</span></div>`:''}</td><td style="white-space:nowrap"><button class="btn sm p" data-efo="${e.id}">Φάκελος</button>
           <button class="btn sm gh" data-ev="${e.id}">Συμμετοχές</button>
           <button class="btn sm" data-evdoc="${e.id}" title="Έγγραφα της δράσης" aria-label="Έγγραφα της δράσης">${ic('book',13)} ${(D.doc||[]).filter(d=>d.event_id===e.id).length||''}</button>${isAdminUI()&&evStage(e)==='published'?`
@@ -16764,6 +16783,8 @@ V.events=()=>{
     const t=$('evT').value.trim(), d=$('evD').value, d2=$('evD2').value||null; if(!t||!d)return toast('Θέλει όνομα και ημερομηνία');
     if(d2&&d2<d)return toast('Η λήξη είναι πριν την έναρξη');
     const sec=$('evS').value||null, ty=$('evTy').value, vid=$('evV').value||null, aid=$('evA').value||null;
+    const same=(D.ev||[]).filter(x=>!x.hidden&&x.event_date===d&&(!sec||!evSecs(x).length||evSecs(x).includes(sec)));
+    if(same.length&&!await uiAsk(t('Υπάρχει ήδη την ίδια μέρα:')+'\n\n'+same.map(x=>'· '+(x.title||'—')).join('\n')+'\n\n'+t('Αν είναι η ίδια δράση, άνοιξε τον φάκελό της αντί για νέα. Νέα δράση παρ\' όλα αυτά;'),{ok:t('Νέα δράση')}))return;
     const main={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ'}[sec];
     const tags=main?[main+':Δράσεις']:sec?[]:[ty==='Εκδήλωση'?'ΣΥΣΤΗΜΑ:Εκδηλώσεις':'ΣΥΣΤΗΜΑ:Σημαντικά'];
     let kl=null; try{const K=molaKl(); kl=K.sy?K.sy.id:null}catch(e){}
@@ -23923,7 +23944,8 @@ footer{margin-top:8px;color:#6b7280;font-size:8pt;border-top:.6px solid #cfd4da;
 V.cal=()=>tabView('cal',[
   {k:'mola', t:'Μόλα',              i:'grid',  fn:molaBody,    d:'μήνες × Σάββατα — όλη η χρονιά σε μια ματιά'},
   {k:'year', t:'Ημερολόγιο',        i:'cal',   fn:calBody,     d:'όλα σε λίστα ημερομηνιών'},
-  {k:'ses',  t:'Συγκεντρώσεις',     i:'check', fn:sessionsBody,d:'ανά τμήμα'}]);
+  {k:'ses',  t:'Συγκεντρώσεις',     i:'check', fn:sessionsBody,d:'ανά τμήμα'},
+  {k:'sxo',  t:'Σχολές',            i:'award', fn:sxoBody,     d:t('ποιες βλέπουν τα μέλη')}]);
 
 V.attend=()=>tabView('attend',[
   {k:'see',  t:'Παρουσίες',         i:'trend', fn:attendBody,  d:'ποιος λείπει'},
