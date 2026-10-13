@@ -1235,7 +1235,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 12:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 12:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -7314,6 +7314,7 @@ V.myprog=()=>{
   const st=e=>{ if(me16&&e.form_url&&evCat(e)!=='sxoli')return `<div data-evbtns="${e.id}" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${kidActBtns(e,selfKs,today)}</div>`;
     const has=(D.pa||[]).find(x=>x.person_id===p.id&&x.event_id===e.id);
     if(has)return `<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent;margin-top:5px">✓ ${has.paid?'δηλώθηκες · πληρωμένη':'δηλώθηκες'}</span>`;
+    if(signupOpen(e)&&e.form_url&&evCat(e)!=='sxoli')return u16Box(e);
     if(signupOpen(e))return `<div class="dim" style="font-size:12px;margin-top:4px">Ανοιχτές δηλώσεις${e.signup_closes?' μέχρι '+fdate(e.signup_closes):''} — τη δήλωση την κάνει ο γονέας σου.</div>`;
     return ''; };
   const when=e=>fdate(e.event_date)+(e.end_date&&e.end_date!==e.event_date?' → '+fshort(e.end_date):'');
@@ -7355,8 +7356,34 @@ V.myprog=()=>{
       <div style="margin-top:4px">${sxo.map(e=>row(esc(e.title||'—'),e.event_date?fdate(e.event_date):'ημερομηνία σύντομα',st(e))).join('')}</div></details>`:''}`;
   document.querySelectorAll('[data-mpv]').forEach(b=>b.onclick=()=>{
     try{localStorage.setItem('e76:myprogv',b.dataset.mpv)}catch(e){} V.myprog()});
-  if(me16)kidActWire(selfKs,$('view'));
+  if(me16)kidActWire(selfKs,$('view')); else u16Wire(p);
 };
+let U16_ACC;    
+const u16Box=e=>`<div class="dim" style="font-size:12px;margin-top:4px">${t('Ανοιχτές δηλώσεις')}${e.signup_closes?' '+t('μέχρι')+' '+fdate(e.signup_closes):''} — ${t('είσαι κάτω των 16, τη δήλωση την κάνει ο γονέας σου.')}</div><div data-u16="${e.id}"></div>`;
+function u16Text(e,acc){
+  const p=meRec(), who=p?p.first_name:'', when=e.signup_closes?' '+t('Δηλώσεις μέχρι')+' '+fdate(e.signup_closes)+'.':'';
+  return acc>0
+    ? t('Για τη δράση «{e}» ({d}) του 76ου: μπες στο e76 (https://e.76.life) → «Τι έχουμε μπροστά» → «Δήλωση · {k}».',{e:e.title||'',d:fdate(e.event_date),k:who})+when
+    : t('Για τη δράση «{e}» ({d}) του 76ου, η φόρμα δήλωσης: {u}',{e:e.title||'',d:fdate(e.event_date),u:e.form_url})+when;
+}
+async function u16Wire(p){
+  const boxes=[...document.querySelectorAll('[data-u16]')]; if(!boxes.length)return;
+  if(U16_ACC===undefined){ const {data,error}=await sb.rpc('my_carers_with_account'); U16_ACC=error?null:Number(data||0); }
+  document.querySelectorAll('[data-u16]').forEach(b=>{
+    const e=(D.ev||[]).find(x=>x.id===b.dataset.u16); if(!e)return;
+    const acc=U16_ACC;
+    b.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
+      <button class="btn sm p" data-u16s="${e.id}">${t('📤 Στείλε στον γονέα σου')}</button>
+      <span class="dim" style="font-size:11.5px">${acc>0?t('μπαίνει στο e76 και κάνει τη δήλωση')
+        :acc===0?t('ο γονέας σου δεν έχει ακόμη λογαριασμό — του στέλνεις τη φόρμα'):''}</span></div>`;
+    b.querySelector('[data-u16s]').onclick=async()=>{
+      const txt=u16Text(e,acc===null?1:acc);
+      try{ if(navigator.share){ await navigator.share({text:txt}); return } }catch(x){ if(x&&x.name==='AbortError')return }
+      try{ await navigator.clipboard.writeText(txt); toast(t('Αντιγράφηκε — στείλ\' το στον γονέα σου (Viber, μήνυμα)')) }
+      catch(x){ await uiText(t('Αντίγραψε και στείλ\' το στον γονέα σου:'),txt) }
+    };
+  });
+}
 let MXQ='', MXF='ola';
 V.matrix=()=>{
   const rows=(D.amx||[]);
