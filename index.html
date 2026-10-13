@@ -1007,8 +1007,8 @@ const fdate=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+' '
 const fshort=d=>{if(!d)return'—';const x=new Date(d);return x.getDate()+' '+MON[x.getMonth()];};
 const fgr=s=>{if(!s)return'';const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s).trim());return m?p2(m[1])+'/'+p2(m[2])+'/'+m[3]:s;};
 const fphone=p=>{if(!p)return'';const d=String(p).replace(/\D/g,'');return d.length===8?d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3'):p;};
-const SC={'Αγέλη':'var(--ageli)','Ομάδα':'var(--omada)','Κοινότητα':'var(--koin)','Δίκτυο':'var(--diktyo)','Σύστημα':'var(--sys)','Γονείς':'#6b7280'};
-const SECFALLBACK={'Αγέλη':'#ffd000','Ομάδα':'#b3924f','Κοινότητα':'#1f6fb4','Δίκτυο':'#7f52c4','Μικρή Αγέλη':'#e08a3c','Σύστημα':'#48515f','Εφορεία':'#48515f','Γονείς':'#6b7280'};
+const SC=new Proxy({},{get:(_,k)=>(typeof k==='string'&&k in SECFALLBACK)?SECCOLOR[k]:undefined});
+const SECFALLBACK={'Αγέλη':'#ffd000','Ομάδα':'#b3924f','Κοινότητα':'#1f6fb4','Δίκτυο':'#7f52c4','Μικρή Αγέλη':'#7cc4ec','Σύστημα':'#48515f','Εφορεία':'#48515f','Γονείς':'#6b7280'};
 function onColor(c){
   const h=/^#?([0-9a-f]{6})$/i.exec(String(c||'').trim()); if(!h)return '#fff';
   const L=[0,2,4].map(i=>{const x=parseInt(h[1].slice(i,i+2),16)/255; return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)})
@@ -1235,7 +1235,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 14:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 15:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4781,7 +4781,7 @@ V.trends=()=>{
       <div class="dim" style="font-size:11.5px;display:flex;justify-content:space-between"><span>${fshort(pts[0].d)}</span><span>${ses.length} ${plu(ses.length,'συγκέντρωση','συγκεντρώσεις')}</span><span>${fshort(pts[pts.length-1].d)}</span></div>
       ${gk.length?`<div class="hr"></div><div style="display:grid;gap:6px">${gk.map(g=>{const v=Math.round(100*gs[g].p/gs[g].t);
         return `<div style="display:flex;align-items:center;gap:9px;font-size:13px"><span style="flex:0 0 118px">${esc(g)}</span>
-          <span style="flex:1;height:7px;background:var(--line);border-radius:4px;overflow:hidden"><span style="display:block;height:100%;width:${v}%;background:${SC[sec]}"></span></span>
+          <span style="flex:1;height:7px;background:var(--line);border-radius:4px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line2)"><span style="display:block;height:100%;width:${v}%;background:${SC[sec]};box-shadow:inset 0 0 0 1px rgba(17,22,29,.22)"></span></span>
           <span class="dim" style="flex:0 0 34px;text-align:right;font-variant-numeric:tabular-nums">${v}%</span></div>`}).join('')}</div>`:''}
     </div>`}).join('');
   $('view').innerHTML=blocks||'<div class="uc"><h3>Δεν υπάρχουν αρκετά δεδομένα</h3><p>Χρειάζονται καταχωρημένες συγκεντρώσεις.</p></div>';
@@ -8679,7 +8679,7 @@ function mysysBody(){
         <th class="hide-s">Τάξεις που δέχεται</th><th style="text-align:center">Ενεργό</th><th></th></tr></thead>
       <tbody>${secs.map(sc=>`<tr data-sc="${esc(sc.section)}">
         <td><b>${sdot(sc.section)} ${esc(sc.section)}</b></td>
-        <td><input type="color" class="sc-col" aria-label="Χρώμα · ${esc(sc.section)}" value="${esc(sc.color||SECCOLOR[sc.section]||'#888888')}"
+        <td><input type="color" class="sc-col" aria-label="Χρώμα · ${esc(sc.section)}" value="${esc(sc.color||SECCOLOR[sc.section]||'#888888')}"${sc.color_locked&&!(ME&&ME.platform_admin)?` disabled title="${t('Κλειδωμένο πανελλαδικά')}"`:''}
              style="width:38px;height:26px;padding:1px;border:1px solid var(--line)"></td>
         <td><input class="sc-label" aria-label="Ονομασία · ${esc(sc.section)}" value="${esc(sc.label||'')}" style="font-size:12.5px"></td>
         <td><input class="sc-totem" aria-label="Τοτέμ · ${esc(sc.section)}" value="${esc(sc.totem||'')}" placeholder="«…»" style="font-size:12.5px;max-width:130px"></td>
@@ -8740,7 +8740,7 @@ function mysysBody(){
         active:tr.querySelector('.sc-act').checked,
         ...(tr.querySelectorAll('.sc-gr').length
             ?{grades:[...tr.querySelectorAll('.sc-gr')].filter(c=>c.checked).map(c=>c.dataset.g)}:{}),
-        ...(tr.querySelector('.sc-col')?{color:tr.querySelector('.sc-col').value}:{})
+        ...(tr.querySelector('.sc-col:not([disabled])')?{color:tr.querySelector('.sc-col').value}:{})
       }).eq('klimakio_id',k.id).eq('section',tr.dataset.sc));
     const res=await Promise.all(jobs);
     const e=res.find(x=>x&&x.error);
