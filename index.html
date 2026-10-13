@@ -1246,7 +1246,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 15:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 16:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -7004,7 +7004,8 @@ const payInfo=()=>String(parentInfo().pay||'').trim();
 const fdateW=d=>d?t(MOLA_DAYNAME[new Date(String(d).slice(0,10)+'T12:00:00').getDay()])+' '+fdate(d):'—';
 const nextSess=(sec,today)=>(D.ss||[]).filter(s=>s.section===sec&&(s.session_date||'')>=today&&!/κυρώ|ναβλ/.test(s.status||''))
   .sort((a,b)=>(a.session_date||'').localeCompare(b.session_date||''))[0]||null;
-const payLab=m=>!m?'':m===dv('βλ. e-Scouts')?t('μέσω της εγγραφής — επιβεβαιώνεται'):m;
+const PAY_ES=dv('βλ. e-Scouts');
+const payLab=m=>!m?'':m===PAY_ES?t('σύνδεσμος JCC στο email — επιβεβαιώνεται'):m;
 
 
 V.kidhealth=()=>{
@@ -7319,7 +7320,7 @@ V.myfees=()=>{
       ${known?`<div class="tile ${tot?'warn':'ok'}" style="cursor:default"><div class="k">Υπόλοιπο</div>
         <div class="v">€${tot.toFixed(2)}</div><div class="s">${tot?'εκκρεμεί':'εξοφλημένο'}</div></div>`
       :`<div class="tile" style="cursor:default"><div class="k">Υπόλοιπο</div>
-        <div class="v" style="font-size:16px;font-weight:500">${t('Δεν υπάρχει χρέωση εδώ ακόμη')}</div><div class="s">${t('Θα εμφανιστεί μόλις καταχωρηθεί')}</div></div>`}
+        <div class="v" style="font-size:16px;font-weight:500">${rows.some(r=>r.y.pay_method===PAY_ES)?t('Η εγγραφή πληρώνεται με τον σύνδεσμο JCC του email'):t('Δεν υπάρχει χρέωση εδώ ακόμη')}</div><div class="s">${t('Θα φανεί εδώ μόλις επιβεβαιωθεί η πληρωμή')}</div></div>`}
     </div>
 
     <div class="card" style="overflow:auto"><table>
@@ -7773,6 +7774,9 @@ V.mykids=()=>{
   const owe=fees.reduce((a,v)=>a+v,0);
   if(owe>0)todo.push(row('card','warn',`${t('Συνδρομή')}: ${t('εκκρεμούν')} <b>€${owe.toFixed(2)}</b>`,
     payInfo()?esc(payInfo()):t('Δες πώς πληρώνεις στο «Τι οφείλω».'),go('myfees',t('Τι οφείλω'))));
+  const esKids=list.filter(({kid:k})=>{const y=(D.my||[]).find(x=>x.person_id===k.id&&x.scout_year===YEAR&&!x.voided_at); return y&&y.pay_method===PAY_ES});
+  if(!owe&&esKids.length)todo.push(row('card','',`${t('Πληρωμή εγγραφής')} ${esc(YEAR)} · ${esKids.map(({kid:k})=>esc(k.first_name)).join(', ')}`,
+    t('Με τον σύνδεσμο πληρωμής JCC που σου ήρθε με email από το e-Scouts. Αν πλήρωσες, δεν χρειάζεται τίποτα — θα φανεί εδώ μόλις επιβεβαιωθεί.'),go('myfees',t('Τι οφείλω'))));
   const missBy=list.map(({kid:k})=>({k,m:reqs.filter(r=>!docState(k,r).ok)})).filter(x=>x.m.length);
   const nMiss=missBy.reduce((a,x)=>a+x.m.length,0);
   if(nMiss)todo.push(row('shield','',`${pln(nMiss,t('έντυπο λείπει'),t('έντυπα λείπουν'))}`,
