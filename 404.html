@@ -1247,7 +1247,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 21:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 21:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1784,7 +1784,7 @@ function mergeStubs(){
 async function loadAll(){
   Object.keys(LZON).forEach(k=>{ if(LZON[k]==='ok'){ LZON[k]=null; lazyFire(k) } });
   const q=[
-    pageAll('badgeholders','id,registry_no,first_name,last_name,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location,studying'),
+    pageAll('badgeholders','id,registry_no,first_name,last_name,sex,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location,studying'),
     sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,voided_at,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
     sb.from('sessions').select('id,session_date,section,scout_year,status,title,session_type,event_id,theme,planned_reqs').order('session_date').limit(500),
     pageAll('attendance','session_id,person_id,status'),
@@ -20970,13 +20970,14 @@ function exportsBody(){
     {id:'members',t:secs?t('Μέλη τμήματος'):'Μέλη τμημάτων',d:'Ονοματεπώνυμο, Α.Μ., τμήμα, υποομάδα, τάξη, γονείς'},
     {id:'leaders',t:'Βαθμοφόροι',d:'Ονοματεπώνυμο, ιδιότητα, τμήμα, επικοινωνία, Ν.91(Ι)'},
     {id:'guardians',t:'Γονείς & κηδεμόνες',d:'Παιδί, πατέρας, μητέρα, τηλέφωνα, email'},
-    {id:'attend',t:'Παρουσίες',d:'Μία γραμμή ανά μέλος ανά συγκέντρωση'}
+    {id:'attend',t:'Παρουσίες',d:'Μία γραμμή ανά μέλος ανά συγκέντρωση'},
+    {id:'reg',t:t('Εγγραφές κλιμακίου (μορφή e-Scouts)'),d:t('Όπως το περσινό αρχείο για τα Δελτία: φύλλα ΟΛΟΙ · ΒΑΘΜ · ΑΛ · ΟΠ · ΚΑ, με φίλτρα — τριπλότυπο, Α.Μ., ημ. γέννησης, τμήμα, γονείς, πληρωμή')}
   ];
   $('view').innerHTML=`${secs?`<div class="card pad" style="margin-bottom:14px"><b>${t('Μόνο το τμήμα σου')}: ${esc(secs.join(' · ')||'—')}</b>
     <div class="muted" style="margin-top:5px">${t('Μέλη, γονείς, βαθμοφόροι και παρουσίες του τμήματός σου')} (<b>${esc(secs.join(' · ')||'—')}</b>). ${t('Τα επίσημα έντυπα προς Επαρχία και Σ.Π.Κ. τα βγάζει ο Αρχηγός Συστήματος.')}</div></div>`:''}<div class="card pad" style="margin-bottom:14px"><b>Καθαρά δεδομένα, όχι σελίδα εκτύπωσης.</b>
     <div class="muted" style="margin-top:5px">Μία γραμμή ανά εγγραφή, κεφαλίδες σε μία σειρά, ημερομηνίες ISO, καμία συγχώνευση κελιών. Έντυπο και δεδομένα δεν είναι το ίδιο προϊόν — τα έντυπα είναι στις δικές τους οθόνες, πιο κάτω.</div></div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">${opts.map(o=>`<div class="card pad"><b>${esc(o.t)}</b><div class="dim" style="font-size:12.5px;margin:5px 0 11px">${esc(o.d)}</div>
-    <button class="btn sm" data-x="${o.id}">${ic('down',14)} CSV</button></div>`).join('')}</div>
+    <button class="btn sm" data-x="${o.id}">${ic('down',14)} ${o.id==='reg'?'Excel':'CSV'}</button></div>`).join('')}</div>
   ${secs?'':`<div class="sec"><h3>Ψάχνεις έντυπο, όχι δεδομένα;</h3></div>
   <div class="card pad">
     <div class="muted" style="font-size:13.5px;line-height:1.65">Εδώ βγαίνουν <b>δεδομένα</b> —
@@ -20991,7 +20992,50 @@ function exportsBody(){
   document.querySelectorAll('[data-go2]').forEach(b=>b.onclick=()=>route(b.dataset.go2));
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>dl(b.dataset.x));
 };
+async function regBookXlsx(){
+  try{ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'); }
+  catch(e){ return toast(t('Δεν φόρτωσε η βιβλιοθήκη Excel — έλεγξε τη σύνδεση')); }
+  toast(t('Ετοιμάζω το αρχείο…'));
+  const secs=expSecs(), AL=dv('Αγέλη'), OP=dv('Ομάδα'), KA=dv('Κοινότητα');
+  const TAB={[AL]:dv('ΑΛ'),[OP]:dv('ΟΠ'),[KA]:dv('ΚΑ')}, TM={[AL]:dv('Λυκόπουλο'),[OP]:dv('Πρόσκοπος')};
+  const first=(cs,re)=>{const x=cs.find(c=>re.test(c.l.relation||'')); return x?(x.p.first_name||''):''};
+  const all=D.bh.filter(p=>{const y=myOf(p); if(!y||!y.registered||y.voided_at)return false;
+      const led=isLed(p); if(!led&&(p.kind||'')!==dv('Μέλος'))return false;
+      return led?expLedSec(p):expInSec(p)})
+    .map(p=>{const y=myOf(p)||{}, led=isLed(p), sec=secOf(p), cs=carersOfPerson(p.id), dob=dobOf(p);
+      const tm=led?dv('Βαθμοφόρος'):sec===KA?(/Κορίτσι|Γυναίκα/.test(p.sex||'')?dv('Ανιχνεύτρια'):dv('Ανιχνευτής')):(TM[sec]||sec||'');
+      const due=+y.fee_due||0, paid=+y.fee_paid||0;
+      const pay=(y.paid_on||(paid>0&&paid>=due))?dv('Πληρωμένη'):(due>0&&y.pay_method!==dv('βλ. e-Scouts'))?dv('Απλήρωτη'):'';
+      return {g:led?dv('ΒΑΘΜ'):(TAB[sec]||''), r:[y.triptycho_no||'', p.registry_no&&/^\d+$/.test(p.registry_no)?+p.registry_no:(p.registry_no||''),
+        ((p.first_name||'')+' '+(p.last_name||'')).trim(), dob?new Date(dob+'T00:00:00Z'):'', dv('76ο Σ.Π.'), tm,
+        p.phone||'-', first(cs,/πατ|father/i), first(cs,/μητ|mother/i), pay]}})
+    .sort((a,b)=>String(a.r[0]).localeCompare(String(b.r[0]),'el',{numeric:true})||a.r[2].localeCompare(b.r[2],'el'));
+  if(!all.length)return toast(t('Τίποτα για εξαγωγή'));
+  const H=[t('Αριθμός Τριπλοτύπου'),t('Αριθμός Μητρώου'),t('Ονοματεπώνυμο'),t('Ημ. Γέννησης'),t('Κλιμάκιο'),t('Τμήμα'),
+    t('Τηλέφωνο'),t('Όνομα Πατέρα'),t('Όνομα Μητέρας'),t('Πληρωμή')], W=[14,11,28,12,10,13,13,15,15,12];
+  const per=String(YEAR).replace(/^(\d{4})-(\d{2})$/,'$1-20$2'), today=fdate(isoLocal(new Date()));
+  const wb=new ExcelJS.Workbook(); wb.creator='e76';
+  [[dv('ΟΛΟΙ'),null],[dv('ΒΑΘΜ'),dv('ΒΑΘΜ')],[dv('ΑΛ'),dv('ΑΛ')],[dv('ΟΠ'),dv('ΟΠ')],[dv('ΚΑ'),dv('ΚΑ')]].forEach(([name,g])=>{
+    const rs=all.filter(x=>!g||x.g===g); if(g&&!rs.length)return;
+    const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:4}],
+      pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0}});
+    ws.getCell('A1').value=t('ΣΩΜΑ ΠΡΟΣΚΟΠΩΝ ΚΥΠΡΟΥ · ΕΓΓΡΑΦΕΣ ΠΡΟΣΚΟΠΙΚΟΥ ΚΛΙΜΑΚΙΟΥ'); ws.getCell('A1').font={bold:true,size:13};
+    ws.getCell('A2').value=t('76ο Σύστημα Προσκόπων Στροβόλου')+' · '+t('ΠΕΡΙΟΔΟΣ')+' '+per+' · '+today+' · '+pln(rs.length,t('εγγραφή'),t('εγγραφές'));
+    ws.getCell('A2').font={color:{argb:'FF555555'}};
+    const hr=ws.getRow(4); hr.values=H; hr.height=30;
+    hr.eachCell(c=>{ c.font={bold:true}; c.alignment={wrapText:true,vertical:'middle'};
+      c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEEEEEE'}}; c.border={bottom:{style:'thin',color:{argb:'FF999999'}}}; });
+    rs.forEach(x=>ws.addRow(x.r));
+    ws.getColumn(4).numFmt='dd/mm/yyyy';
+    W.forEach((w,i)=>{ ws.getColumn(i+1).width=w; });
+    ws.autoFilter={from:{row:4,column:1},to:{row:4,column:H.length}};
+  });
+  const out=await wb.xlsx.writeBuffer(), sx=secs&&secs.length?'-'+secs.join('-'):'';
+  saveBlob(out,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',`e76-eggrafes-klimakiou${sx}-${YEAR}.xlsx`);
+  toast(t('Κατέβηκε')+' · '+pln(all.length,t('εγγραφή'),t('εγγραφές')));
+}
 function dl(kind){
+  if(kind==='reg')return regBookXlsx();
   let rows=[];
   if(kind==='members')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Υποομάδα','Τάξη','Πατέρας','Κιν.Πατέρα','Μητέρα','Κιν.Μητέρας']].concat(
     D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός'&&expInSec(p)).sort(sortByName).map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
