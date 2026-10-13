@@ -27,8 +27,9 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // Η σελίδα της εφαρμογής (και μόνο αυτή — όχι η neos.html).
-  if (req.mode === 'navigate' && url.origin === location.origin && !/neos\.html$/.test(url.pathname)) {
+  // Η σελίδα της εφαρμογής (και μόνο αυτή — όχι η neos.html ούτε η anevasma.html: αυτόνομες
+  // σελίδες· αν περνούσαν από εδώ, θα έπαιρναν τη θέση της εφαρμογής στην αποθήκη).
+  if (req.mode === 'navigate' && url.origin === location.origin && !/(neos|anevasma)\.html$/.test(url.pathname)) {
     e.respondWith((async () => {
       const c = await caches.open(SHELL);
       try {
