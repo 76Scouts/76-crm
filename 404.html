@@ -1247,7 +1247,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 21:51'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 22:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -20999,6 +20999,10 @@ async function regBookXlsx(){
   const secs=expSecs(), AL=dv('Αγέλη'), OP=dv('Ομάδα'), KA=dv('Κοινότητα');
   const TAB={[AL]:dv('ΑΛ'),[OP]:dv('ΟΠ'),[KA]:dv('ΚΑ')}, TM={[AL]:dv('Λυκόπουλο'),[OP]:dv('Πρόσκοπος')};
   const first=(cs,re)=>{const x=cs.find(c=>re.test(c.l.relation||'')); return x?(x.p.first_name||''):''};
+  const catOf=p=>{ if(!isLed(p))return '';
+    const c=String(ledCode(p)||'').replace(/^ΥπΔ-/,'').split('-')[0];
+    if(c===dv('ΑΣ'))return c; if([dv('ΑΑΛ'),dv('ΑΟΠ'),dv('ΑΚΑ')].includes(c))return c;
+    return ({[AL]:dv('ΑΛ'),[OP]:dv('ΟΠ'),[KA]:dv('ΚΑ'),[dv('Δίκτυο')]:dv('ΔΙΚΤΥΟ')})[p.section]||'+'; };
   const all=D.bh.filter(p=>{const y=myOf(p); if(!y||!y.registered||y.voided_at)return false;
       const led=isLed(p); if(!led&&(p.kind||'')!==dv('Μέλος'))return false;
       return led?expLedSec(p):expInSec(p)})
@@ -21008,12 +21012,11 @@ async function regBookXlsx(){
       const pay=(y.paid_on||(paid>0&&paid>=due))?dv('Πληρωμένη'):(due>0&&y.pay_method!==dv('βλ. e-Scouts'))?dv('Απλήρωτη'):'';
       return {g:led?dv('ΒΑΘΜ'):(TAB[sec]||''), r:[y.triptycho_no||'', p.registry_no&&/^\d+$/.test(p.registry_no)?+p.registry_no:(p.registry_no||''),
         ((p.first_name||'')+' '+(p.last_name||'')).trim(), dob?new Date(dob+'T00:00:00Z'):'', dv('76ο Σ.Π.'), tm,
-        p.phone||'-', first(cs,/πατ|father/i), first(cs,/μητ|mother/i), pay,
-        [led?(p.section||''):sec,...(led?(p.extra_sections||[]):[])].filter(Boolean).join(' · ')]}})
+        p.phone||'-', first(cs,/πατ|father/i), first(cs,/μητ|mother/i), pay, catOf(p)]}})
     .sort((a,b)=>String(a.r[0]).localeCompare(String(b.r[0]),'el',{numeric:true})||a.r[2].localeCompare(b.r[2],'el'));
   if(!all.length)return toast(t('Τίποτα για εξαγωγή'));
   const H=[t('Αριθμός Τριπλοτύπου'),t('Αριθμός Μητρώου'),t('Ονοματεπώνυμο'),t('Ημ. Γέννησης'),t('Κλιμάκιο'),t('Τμήμα'),
-    t('Τηλέφωνο'),t('Όνομα Πατέρα'),t('Όνομα Μητέρας'),t('Πληρωμή'),t('Τμήμα 76ου')], W=[14,11,28,12,10,13,13,15,15,12,16];
+    t('Τηλέφωνο'),t('Όνομα Πατέρα'),t('Όνομα Μητέρας'),t('Πληρωμή'),t('Κατηγορία')], W=[14,11,28,12,10,13,13,15,15,12,11];
   const per=String(YEAR).replace(/^(\d{4})-(\d{2})$/,'$1-20$2'), today=fdate(isoLocal(new Date()));
   const wb=new ExcelJS.Workbook(); wb.creator='e76';
   [[dv('ΟΛΟΙ'),null],[dv('ΒΑΘΜ'),dv('ΒΑΘΜ')],[dv('ΑΛ'),dv('ΑΛ')],[dv('ΟΠ'),dv('ΟΠ')],[dv('ΚΑ'),dv('ΚΑ')]].forEach(([name,g])=>{
