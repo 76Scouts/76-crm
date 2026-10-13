@@ -1247,7 +1247,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 18:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-13 21:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2751,6 +2751,52 @@ if(typeof MutationObserver!=='undefined'){ let _a11yq=false;
 const csvCell=v=>{const s=v==null?'':String(v);return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
 const csvText=rows=>'\ufeff'+rows.map(r=>r.map(csvCell).join(';')).join('\r\n');
 function csvSave(rows,name){ saveBlob(csvText(rows),'text/csv;charset=utf-8',name) }
+async function ssmlToXlsx(xml, fname, opt){
+  opt=opt||{};
+  try{ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'); }
+  catch(e){ return false; }
+  if(typeof ExcelJS==='undefined') return false;
+  const NS='urn:schemas-microsoft-com:office:spreadsheet';
+  const doc=new DOMParser().parseFromString(xml,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length) return false;
+  const A=(el,k)=>el.getAttributeNS(NS,k)||el.getAttribute('ss:'+k)||'';
+  const kid=(el,n)=>el.getElementsByTagNameNS(NS,n)[0]||null;
+  const argb=c=>/^#[0-9a-f]{6}$/i.test(c||'')?'FF'+c.slice(1).toUpperCase():null;
+  const ST={};
+  [...doc.getElementsByTagNameNS(NS,'Style')].forEach(s=>{
+    const o={}, f=kid(s,'Font'), it=kid(s,'Interior'), al=kid(s,'Alignment'), bs=kid(s,'Borders');
+    if(f){ o.font={}; if(argb(A(f,'Color')))o.font.color={argb:argb(A(f,'Color'))};
+      if(A(f,'Bold')==='1')o.font.bold=true; if(A(f,'Size'))o.font.size=+A(f,'Size'); }
+    if(it&&argb(A(it,'Color'))) o.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb(A(it,'Color'))}};
+    if(al){ o.alignment={}; if(A(al,'Vertical')==='Top')o.alignment.vertical='top'; if(A(al,'WrapText')==='1')o.alignment.wrapText=true; }
+    if(bs&&bs.children.length){ const b0=bs.children[0], c={argb:argb(A(b0,'Color'))||'FFBFBFBF'};
+      o.border={top:{style:'thin',color:c},bottom:{style:'thin',color:c},left:{style:'thin',color:c},right:{style:'thin',color:c}}; }
+    ST[A(s,'ID')]=o;
+  });
+  const wb=new ExcelJS.Workbook(); wb.creator='e76';
+  [...doc.getElementsByTagNameNS(NS,'Worksheet')].forEach((wsEl,wi)=>{
+    const name=(A(wsEl,'Name')||(t('Φύλλο')+' '+(wi+1))).replace(/[\\/?*\[\]:]/g,' ').slice(0,31);
+    const ws=wb.addWorksheet(name, opt.freeze?{views:[{state:'frozen',ySplit:opt.freeze}]}:{});
+    if(wsEl.getElementsByTagName('Landscape').length) ws.pageSetup.orientation='landscape';
+    const wid=[]; let ri=0, maxC=0;
+    [...wsEl.getElementsByTagNameNS(NS,'Row')].forEach(rEl=>{
+      ri++; const row=ws.getRow(ri); if(A(rEl,'Height'))row.height=+A(rEl,'Height');
+      [...rEl.getElementsByTagNameNS(NS,'Cell')].forEach((cEl,ci)=>{
+        const d=kid(cEl,'Data'), txt=d?d.textContent:'', cell=row.getCell(ci+1);
+        cell.value = d&&A(d,'Type')==='Number'&&txt!==''&&isFinite(+txt) ? +txt : txt;
+        const s=ST[A(cEl,'StyleID')]; if(s){ if(s.font)cell.font=s.font; if(s.fill)cell.fill=s.fill;
+          if(s.alignment)cell.alignment=s.alignment; if(s.border)cell.border=s.border; }
+        const L=Math.max(...String(txt).split('\n').map(x=>x.length)); wid[ci]=Math.max(wid[ci]||0,L); maxC=Math.max(maxC,ci+1);
+      });
+      row.commit&&row.commit();
+    });
+    wid.forEach((w,i)=>{ ws.getColumn(i+1).width=Math.min(Math.max(8,w+2),48); });
+    if(opt.filter&&ri>1&&maxC) ws.autoFilter={from:{row:1,column:1},to:{row:1,column:maxC}};
+  });
+  const out=await wb.xlsx.writeBuffer();
+  saveBlob(out,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',fname);
+  return true;
+}
 function parseDateTxt(s){
   s=String(s||'').trim(); if(!s)return '';
   let d,m,y,k;
@@ -11096,9 +11142,9 @@ function honoursBody(){
 function exportRows(rows,name,title){
   if(!rows||rows.length<2)return toast('Τίποτα για εξαγωγή');
   const csv=()=>csvSave(rows,name+'.csv');
-  const xls=()=>{  
+  const xls=async()=>{  
     const cell=v=>{const s=String(v==null?'':v);
-      const num=/^-?\d+([.,]\d+)?$/.test(s)&&s.length<15;
+      const num=/^-?(0|[1-9]\d{0,6})([.,]\d+)?$/.test(s);
       return `<Cell><Data ss:Type="${num?'Number':'String'}">${esc(num?s.replace(',','.'):s)}</Data></Cell>`};
     const xml=`<?xml version="1.0" encoding="UTF-8"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
@@ -11106,7 +11152,9 @@ function exportRows(rows,name,title){
 <Worksheet ss:Name="${esc((title||name).slice(0,28))}"><Table>
 ${rows.map((r,i)=>`<Row>${r.map(c=>i===0?cell(c).replace('<Cell>','<Cell ss:StyleID="h">'):cell(c)).join('')}</Row>`).join('\n')}
 </Table></Worksheet></Workbook>`;
-    saveBlob(xml,'application/vnd.ms-excel',name+'.xls')};
+    toast(t('Ετοιμάζω το αρχείο…'));
+    if(await ssmlToXlsx(xml,name+'.xlsx',{freeze:1,filter:1})) return;
+    toast(t('Δεν φόρτωσε η βιβλιοθήκη Excel — κατεβαίνει CSV (ανοίγει κι αυτό στο Excel)')); csv()};
   const pdf=()=>{
     const head=rows[0], body=rows.slice(1);
     openPrint(title||name,`<div class="fpage" style="min-height:auto">
@@ -11119,7 +11167,7 @@ ${rows.map((r,i)=>`<Row>${r.map(c=>i===0?cell(c).replace('<Cell>','<Cell ss:Styl
       <div class="dim" style="font-size:12.5px">${esc(title||name)} · ${pln(rows.length-1,'εγγραφή','εγγραφές')}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec" style="border:0;display:flex;flex-direction:column;gap:8px">
-      <button class="btn p" id="exX" style="justify-content:center">Excel (.xls)</button>
+      <button class="btn p" id="exX" style="justify-content:center">${t('Excel (.xlsx)')}</button>
       <button class="btn" id="exP" style="justify-content:center">PDF / Εκτύπωση</button>
       <button class="btn gh" id="exC" style="justify-content:center">CSV</button>
       <div class="dim" style="font-size:11.5px;margin-top:6px">Το Excel ανοίγει και σε Numbers. Το PDF βγαίνει από το παράθυρο εκτύπωσης — «Αποθήκευση ως PDF».</div></div>`;
@@ -16658,14 +16706,14 @@ function formsBody(){
     {id:'reg',t:'Κατάλογος Εγγραφών Κλιμακίου',d:'Το βασικό θεσμικό έντυπο προς την Επαρχία'},
     {id:'inv',t:'Απογραφή Μελών',d:'Δύναμη κλιμακίου ανά κλάδο και τμήμα'},
     {id:'att',t:'Παρουσιολόγιο',d:'Με τις συγκεντρώσεις της Μόλας — Αγέλη/Ομάδα υφιστάμενα και νέα, Κοινότητα ανά όμιλο'}
-  ];
+  ].filter(f=>!expSecs()||f.id==='att');    
   $('view').innerHTML=`<div class="card pad noprint" style="margin-bottom:14px">
       <b>Έντυπα προς εκτύπωση</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Πιστά στη σελίδα, με κεφαλίδα και υπογραφές. Τα <b>δεδομένα</b> βγαίνουν χωριστά από τις Εξαγωγές σε καθαρό CSV — έντυπο και δεδομένα δεν είναι το ίδιο πράγμα.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${F.map(f=>`<button class="btn sm" data-f="${f.id}">${esc(f.t)}</button>`).join('')}</div></div>
     <div id="fout"></div>`;
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>form(b.dataset.f));
-  form('reg');
+  if(!expSecs())form('reg');
 };
 async function form(kind){
   const head=(t)=>letterhead(t);
@@ -16692,8 +16740,9 @@ async function form(kind){
         <td><b>${D.bh.filter(p=>p.status==='Ενεργός'&&((p.kind||'')==='Μέλος'?inYear(p):true)).length}</b></td></tr></tbody></table>`+sign;
   }
   if(kind==='att'){
-    const sec=await uiChoose('Παρουσιολόγιο για ποιο τμήμα;',
-      ['Αγέλη','Ομάδα','Κοινότητα'].map(x=>({v:x,t:x,primary:x==='Αγέλη'}))); if(!sec)return;
+    const own=expSecs(), ch=(own&&own.length?own:['Αγέλη','Ομάδα','Κοινότητα']);
+    const sec=ch.length===1?ch[0]:await uiChoose('Παρουσιολόγιο για ποιο τμήμα;',
+      ch.map((x,i)=>({v:x,t:x,primary:i===0}))); if(!sec)return;
     const when=await uiChoose('Για ποιες μέρες;',[{v:'day',t:'Μόνο σήμερα',primary:true},{v:'year',t:'Όλη η χρονιά'}]); if(!when)return;
     let by=null;
     if(sec!=='Κοινότητα'){
@@ -20912,18 +20961,23 @@ V.warrants=()=>{
       <td class="hide-s dim">${esc(fgr(sd.LeaderDate)||'—')}</td></tr>`}).join('')}</tbody></table></div>`;
 };
 
+const expSecs=()=>(isAdminUI()||lensRole()==='dev')?null:leadSecs();
+const expInSec=p=>{const s=expSecs(); return !s||s.includes(secOf(p))};
+const expLedSec=p=>{const s=expSecs(); return !s||s.includes(p.section)||(p.extra_sections||[]).some(x=>s.includes(x))};
 function exportsBody(){
+  const secs=expSecs();
   const opts=[
-    {id:'members',t:'Μέλη τμημάτων',d:'Ονοματεπώνυμο, Α.Μ., τμήμα, υποομάδα, τάξη, γονείς'},
+    {id:'members',t:secs?t('Μέλη τμήματος'):'Μέλη τμημάτων',d:'Ονοματεπώνυμο, Α.Μ., τμήμα, υποομάδα, τάξη, γονείς'},
     {id:'leaders',t:'Βαθμοφόροι',d:'Ονοματεπώνυμο, ιδιότητα, τμήμα, επικοινωνία, Ν.91(Ι)'},
     {id:'guardians',t:'Γονείς & κηδεμόνες',d:'Παιδί, πατέρας, μητέρα, τηλέφωνα, email'},
     {id:'attend',t:'Παρουσίες',d:'Μία γραμμή ανά μέλος ανά συγκέντρωση'}
   ];
-  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px"><b>Καθαρά δεδομένα, όχι σελίδα εκτύπωσης.</b>
+  $('view').innerHTML=`${secs?`<div class="card pad" style="margin-bottom:14px"><b>${t('Μόνο το τμήμα σου')}: ${esc(secs.join(' · ')||'—')}</b>
+    <div class="muted" style="margin-top:5px">${t('Μέλη, γονείς, βαθμοφόροι και παρουσίες του τμήματός σου')} (<b>${esc(secs.join(' · ')||'—')}</b>). ${t('Τα επίσημα έντυπα προς Επαρχία και Σ.Π.Κ. τα βγάζει ο Αρχηγός Συστήματος.')}</div></div>`:''}<div class="card pad" style="margin-bottom:14px"><b>Καθαρά δεδομένα, όχι σελίδα εκτύπωσης.</b>
     <div class="muted" style="margin-top:5px">Μία γραμμή ανά εγγραφή, κεφαλίδες σε μία σειρά, ημερομηνίες ISO, καμία συγχώνευση κελιών. Έντυπο και δεδομένα δεν είναι το ίδιο προϊόν — τα έντυπα είναι στις δικές τους οθόνες, πιο κάτω.</div></div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">${opts.map(o=>`<div class="card pad"><b>${esc(o.t)}</b><div class="dim" style="font-size:12.5px;margin:5px 0 11px">${esc(o.d)}</div>
     <button class="btn sm" data-x="${o.id}">${ic('down',14)} CSV</button></div>`).join('')}</div>
-  <div class="sec"><h3>Ψάχνεις έντυπο, όχι δεδομένα;</h3></div>
+  ${secs?'':`<div class="sec"><h3>Ψάχνεις έντυπο, όχι δεδομένα;</h3></div>
   <div class="card pad">
     <div class="muted" style="font-size:13.5px;line-height:1.65">Εδώ βγαίνουν <b>δεδομένα</b> —
       μία γραμμή ανά εγγραφή, για Excel. Τα <b>έντυπα</b> είναι αλλού:</div>
@@ -20933,25 +20987,26 @@ function exportsBody(){
     <div class="dim" style="font-size:12px;margin-top:9px">
       <b>Έντυπα προς Σ.Π.Κ.</b> — συμπληρωμένα με τα δικά μας δεδομένα: Κατάλογος Εγγραφών
       Κλιμακίου, Απογραφή Μελών, κενό παρουσιολόγιο.
-      <b>Πρότυπα εγγράφων</b> — κενά, δικά μας, προς συμπλήρωση στο χέρι.</div></div>`;
+      <b>Πρότυπα εγγράφων</b> — κενά, δικά μας, προς συμπλήρωση στο χέρι.</div></div>`}`;
   document.querySelectorAll('[data-go2]').forEach(b=>b.onclick=()=>route(b.dataset.go2));
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>dl(b.dataset.x));
 };
 function dl(kind){
   let rows=[];
   if(kind==='members')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Υποομάδα','Τάξη','Πατέρας','Κιν.Πατέρα','Μητέρα','Κιν.Μητέρας']].concat(
-    D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός').sort(sortByName).map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
+    D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός'&&expInSec(p)).sort(sortByName).map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
       return [p.registry_no,p.last_name,p.first_name,secOf(p),y.group_name,y.grade,g.father_name,g.father_mobile,g.mother_name,g.mother_mobile]}));
   if(kind==='leaders')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Ιδιότητα','Τηλέφωνο','Email','Λήξη Ν.91(Ι)']].concat(
-    D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName).map(p=>{const c=D.cert.find(x=>x.person_id===p.id)||{};
+    D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός'&&expLedSec(p)).sort(sortByName).map(p=>{const c=D.cert.find(x=>x.person_id===p.id)||{};
       return [p.registry_no,p.last_name,p.first_name,p.section,p.appointment||p.category,p.phone,p.email,c.sexoxarto_expiry]}));
   if(kind==='guardians')rows=[['Α.Μ.παιδιού','Παιδί','Τμήμα','Πατέρας','Κιν.Πατέρα','Email πατέρα','Μητέρα','Κιν.Μητέρας','Email μητέρας']].concat(
-    D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)).sort(sortByName).map(p=>{const g=gOf(p.registry_no)||{};
+    D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&expInSec(p)).sort(sortByName).map(p=>{const g=gOf(p.registry_no)||{};
       return [p.registry_no,nm(p),secOf(p),g.father_name,g.father_mobile,g.father_email,g.mother_name,g.mother_mobile,g.mother_email]}));
   if(kind==='attend'){rows=[['Ημερομηνία','Τμήμα','Α.Μ.','Ονοματεπώνυμο','Κατάσταση']];
-    D.ss.filter(s=>s.scout_year===YEAR).forEach(s=>D.att.filter(a=>a.session_id===s.id).forEach(a=>{const p=D.bh.find(x=>x.id===a.person_id);if(p)rows.push([s.session_date,s.section,p.registry_no,nm(p),a.status])}));}
+    D.ss.filter(s=>s.scout_year===YEAR&&(!expSecs()||expSecs().includes(s.section))).forEach(s=>D.att.filter(a=>a.session_id===s.id).forEach(a=>{const p=D.bh.find(x=>x.id===a.person_id);if(p)rows.push([s.session_date,s.section,p.registry_no,nm(p),a.status])}));}
   const T={members:'Μέλη',leaders:'Βαθμοφόροι',guardians:'Γονείς',attend:'Παρουσίες'};
-  exportRows(rows,`e76-${kind}-${YEAR}`,(T[kind]||kind)+' '+YEAR);
+  const sx=expSecs(), tg=sx&&sx.length?'-'+sx.join('-'):'';
+  exportRows(rows,`e76-${kind}${tg}-${YEAR}`,(T[kind]||kind)+(sx&&sx.length?' '+sx.join(' · '):'')+' '+YEAR);
   toast('Κατέβηκε '+pln(rows.length,'γραμμή','γραμμές')+'');
 }
 
@@ -22444,7 +22499,7 @@ V.outputs=()=>tabView('outputs',[
   {k:'exp',    t:'Εξαγωγές',        i:'down',   fn:exportsBody,      d:'δεδομένα για εμάς — Excel/CSV'},
   {k:'blank',  t:'Κενά πρότυπα',    i:'book',   fn:templatesBody,    d:'τυπώνεις και συμπληρώνει άνθρωπος'},
   {k:'filled', t:'Συμπληρωμένα',    i:'book',   fn:formsBody,        d:'με τα δικά μας δεδομένα, έτοιμα για υπογραφή'},
-  {k:'spk',    t:'Σ.Π.Κ.',          i:'down',   fn:spkExportBody,    d:'στη μορφή που τα ζητούν'}]);
+  {k:'spk',    t:'Σ.Π.Κ.',          i:'down',   fn:spkExportBody,    d:'στη μορφή που τα ζητούν', adm:1}].filter(x=>!x.adm||!expSecs()));
 
 V.certq=()=>{ const a=routeAlias('certq'); SUBTAB[a[0]]=a[1]; V[a[0]]() };   
 V.vpapers=()=>{ const a=routeAlias('vpapers'); SUBTAB[a[0]]=a[1]; V[a[0]]() };   
@@ -23601,7 +23656,7 @@ function molaLegend(){
 }
 
 const XL_COLS=['ΣΥΣΤΗΜΑ','ΑΛ','ΟΠ','ΚΑ','ΣΧΟΛΕΣ','ΓΕΝΙΚΗ','ΕΠΑΡΧΙΑ','ΑΡΓΙΕΣ','ΒΑΘΜΟΦΟΡΩΝ'];
-function molaExcel(yr, keep, tag){
+async function molaExcel(yr, keep, tag){
   const {G,cells}=molaCells(yr), MAINS=molaMains();
   const ok = typeof keep==='function' ? keep : ()=>true;
   const xe=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -23673,7 +23728,8 @@ function molaExcel(yr, keep, tag){
 <Worksheet ss:Name="Λίστα"><Table>${g2}</Table>
   <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><Print><Landscape/></Print></WorksheetOptions></Worksheet>
 </Workbook>`;
-  saveBlob(xml,'application/vnd.ms-excel','e76-mola-'+yr+(tag?'-'+tag:'')+'.xls');
+  if(!await ssmlToXlsx(xml,'e76-mola-'+yr+(tag?'-'+tag:'')+'.xlsx',{})){
+    saveBlob(xml,'application/vnd.ms-excel','e76-mola-'+yr+(tag?'-'+tag:'')+'.xls'); }
   toast('Κατέβηκε — δύο φύλλα: Πλέγμα και Λίστα');
 }
 function molaJson(yr, keep){
