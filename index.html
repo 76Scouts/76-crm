@@ -1247,7 +1247,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-13 23:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-14 00:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -16713,7 +16713,7 @@ function formsBody(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${F.map(f=>`<button class="btn sm" data-f="${f.id}">${esc(f.t)}</button>`).join('')}</div>
       ${expSecs()?'':`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line)"><b>${t('Excel όπως το e-Scouts')}</b>
         <div class="muted" style="margin-top:4px;font-size:13px">${t('Πανομοιότυπα με τις αναφορές του e-Scouts — ίδιες στήλες, συγχωνευμένα κελιά, γραμματοσειρές και λογότυπο — με τα δεδομένα του e76.')}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${[['CSA006',t('Κατάλογος Εγγραφών Περιόδου')],['CSA004',t('Συγκεντρωτική Κατάσταση Εγγραφών')],['CSA007',t('Απογραφή Μελών')]]
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${[['CSA006',t('Κατάλογος Εγγραφών Περιόδου')],['CSA004',t('Συγκεντρωτική Κατάσταση Εγγραφών')],['CSA007',t('Απογραφή Μελών')],['CSA015',t('Βαθμοφόροι κάτοχοι Εντολής Διοίκησης')]]
           .map(([k,l])=>`<button class="btn sm" data-esc="${k}">${ic('down',14)} ${esc(l)} <span class="dim">· ${k}</span></button>`).join('')}</div></div>`}</div>
     <div id="fout"></div>`;
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>form(b.dataset.f));
@@ -21158,6 +21158,19 @@ async function escForm(key){
     if(bad)toast(t('Χωρίς Α.Δ.Τ.')+': '+bad);
     escFees(rows); const S=k=>rows.reduce((a,r)=>a+r[k],0);
     Object.assign(ctx,{'Ssys':S('sys'),'Sep':S('ep'),'Sasf':S('asf'),'Stam':S('tam'),'Sspk':S('spk'),'Stot':S('tot')});
+    return escSave(key,rows,ctx);
+  }
+  if(key==='CSA015'){
+    const w=await uiChoose(t('Ποιες εντολές;'),[{v:'all',t:t('Όλες (ιστορικό)'),primary:true},{v:'now',t:t('Μόνο όσες ισχύουν σήμερα')}]); if(!w)return;
+    const today=isoLocal(new Date()), BH=new Map(D.bh.map(p=>[p.id,p]));
+    const rows=(D.sh||[]).filter(h=>/^\d+$/.test(h.appointment_no||'')&&/^76/.test(h.notes||'')&&BH.has(h.person_id)
+        &&(w==='all'||(h.start_date&&h.start_date<=today&&(!h.end_date||h.end_date>=today))))
+      .sort((a,b)=>(+a.appointment_no)-(+b.appointment_no))
+      .map((h,i)=>{const p=BH.get(h.person_id);
+        return {aa:i+1, ed:+h.appointment_no, am:/^\d+$/.test(p.registry_no||'')?+p.registry_no:(p.registry_no||''),
+          name:((p.first_name||'')+' '+(p.last_name||'')).trim(), duty:h.appointment||'', klim:h.notes||'',
+          req:ESC_U(h.request_date), from:ESC_U(h.start_date), to:ESC_U(h.end_date)}});
+    if(!rows.length)return toast(t('Τίποτα για εξαγωγή'));
     return escSave(key,rows,ctx);
   }
   if(key==='CSA007'){
