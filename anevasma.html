@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Ανέβασμα δικαιολογητικού — 76ο Σύστημα Προσκόπων Στροβόλου</title>
+<style>
+:root{--ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--line:#e2e8f0;--card:#fff;--bg:#f6f7f9;
+--brand:#1e3a8a;--ok:#16a34a;--okbg:#dcfce7;--bad:#dc2626;--badbg:#fee2e2}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);
+font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 60px}
+.wrap{width:100%;max-width:460px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px 22px;
+box-shadow:0 1px 3px rgba(15,23,42,.06)}
+.logo{display:block;margin:0 auto 18px;width:64px;height:64px}
+h1{font-size:20px;font-weight:650;margin:0 0 6px;text-align:center;letter-spacing:-.01em}
+.sub{text-align:center;color:var(--ink2);font-size:14.5px;margin:0 0 22px}
+.who{background:var(--bg);border-radius:12px;padding:14px 16px;margin-bottom:20px}
+.who .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)}
+.who .v{font-size:17px;font-weight:600;margin-top:2px}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:26px 18px;text-align:center;
+cursor:pointer;transition:.15s;background:var(--bg)}
+.drop:hover,.drop.over{border-color:var(--brand);background:#eef2ff}
+.drop .ic{font-size:30px;line-height:1}
+.drop .t{font-weight:600;margin-top:8px;font-size:15px}
+.drop .s{color:var(--ink3);font-size:12.5px;margin-top:4px}
+input[type=file]{display:none}
+.file{display:flex;gap:10px;align-items:center;background:var(--bg);border-radius:11px;
+padding:11px 13px;margin-top:14px;font-size:14px}
+.file b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.file .x{border:0;background:none;color:var(--ink3);font-size:19px;cursor:pointer;padding:0 2px}
+button.go{width:100%;margin-top:18px;padding:15px;border:0;border-radius:12px;background:var(--brand);
+color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit}
+button.go:disabled{opacity:.45;cursor:default}
+.msg{border-radius:12px;padding:14px 16px;font-size:14.5px;margin-top:16px;line-height:1.5}
+.msg.ok{background:var(--okbg);color:#14532d}
+.msg.bad{background:var(--badbg);color:#7f1d1d}
+.note{color:var(--ink3);font-size:12.5px;text-align:center;margin-top:18px;line-height:1.6}
+.done{text-align:center;padding:12px 0}
+.done .tick{width:56px;height:56px;border-radius:50%;background:var(--okbg);color:var(--ok);
+display:grid;place-items:center;margin:0 auto 14px;font-size:28px}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.35);
+border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card" id="card">
+  <img class="logo" alt="76ο Σύστημα Προσκόπων Στροβόλου"
+       src="https://76.life/wp-content/uploads/2024/08/76ScoutsLogo300-1.png">
+  <div id="body"><p class="sub">Φόρτωση…</p></div>
+  <p class="note">76ο Σύστημα Προσκόπων Στροβόλου<br>
+     Το αρχείο φυλάσσεται στον φάκελο του παιδιού και το βλέπουν μόνο οι υπεύθυνοι βαθμοφόροι.</p>
+</div></div>
+
+<script>
+const FN  = 'https://cofiscmvdagizlchrian.supabase.co/functions/v1/parent-upload';
+const KEY = 'sb_publishable_OvYhjMAqZ9ty6T2De2by-g_uJ6mnm50';
+const H   = { apikey: KEY, Authorization: 'Bearer ' + KEY };
+const $   = id => document.getElementById(id);
+const tok = (new URLSearchParams(location.search).get('t') || '').trim().toLowerCase();
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let chosen = null;
+
+function fail(t){ $('body').innerHTML = '<h1>Δεν έγινε</h1><div class="msg bad">' + esc(t) + '</div>'; }
+function bytes(n){ return n < 1048576 ? Math.round(n/1024) + ' KB' : (n/1048576).toFixed(1) + ' MB'; }
+
+async function boot(){
+  if(!tok) return fail('Ο σύνδεσμος είναι ελλιπής. Ανοίξτε τον ακριβώς όπως τον λάβατε.');
+  let r;
+  try { r = await fetch(FN + '?t=' + encodeURIComponent(tok), { headers: H }); }
+  catch { return fail('Δεν υπάρχει σύνδεση στο διαδίκτυο.'); }
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok) return fail(d.error || 'Ο σύνδεσμος δεν είναι έγκυρος.');
+
+  $('body').innerHTML =
+    '<h1>' + esc(d.label) + '</h1>' +
+    '<p class="sub">Ανεβάστε το αρχείο για το παιδί σας</p>' +
+    '<div class="who"><div class="k">Μέλος</div><div class="v">' + esc(d.child) + '</div>' +
+      (d.year ? '<div class="k" style="margin-top:8px">Προσκοπική χρονιά</div><div class="v" style="font-size:15px">' + esc(d.year) + '</div>' : '') +
+    '</div>' +
+    '<label class="drop" id="drop"><div class="ic">📄</div>' +
+      '<div class="t">Διαλέξτε αρχείο ή φωτογραφία</div>' +
+      '<div class="s">PDF ή φωτογραφία · έως 12 MB</div>' +
+      '<input type="file" id="f" accept="application/pdf,image/jpeg,image/png,image/heic,image/webp"></label>' +
+    '<div id="picked"></div>' +
+    '<button class="go" id="go" disabled>Αποστολή</button>' +
+    '<div id="out"></div>';
+
+  const drop = $('drop'), f = $('f');
+  ['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', ev => { if(ev.dataTransfer.files[0]) pick(ev.dataTransfer.files[0]); });
+  f.addEventListener('change', () => { if(f.files[0]) pick(f.files[0]); });
+
+  function pick(file){
+    if(file.size > 12*1024*1024) return show('bad','Το αρχείο είναι πολύ μεγάλο (όριο 12 MB).');
+    chosen = file;
+    $('picked').innerHTML = '<div class="file"><span>📎</span><b>' + esc(file.name) + '</b>' +
+      '<span style="color:var(--ink3);font-size:12.5px">' + bytes(file.size) + '</span>' +
+      '<button class="x" id="rm" title="Αφαίρεση">✕</button></div>';
+    $('rm').onclick = () => { chosen = null; f.value = ''; $('picked').innerHTML = ''; $('go').disabled = true; };
+    $('out').innerHTML = '';
+    $('go').disabled = false;
+  }
+  function show(k,t){ $('out').innerHTML = '<div class="msg ' + k + '">' + esc(t) + '</div>'; }
+
+  $('go').onclick = async () => {
+    if(!chosen) return;
+    $('go').disabled = true;
+    $('go').innerHTML = '<span class="spin"></span>Γίνεται αποστολή…';
+    const fd = new FormData();
+    fd.append('file', chosen);
+    let res, dd;
+    try { res = await fetch(FN + '?t=' + encodeURIComponent(tok), { method:'POST', headers:H, body:fd }); dd = await res.json(); }
+    catch { $('go').disabled = false; $('go').textContent = 'Αποστολή'; return show('bad','Η αποστολή διακόπηκε. Δοκιμάστε ξανά.'); }
+    if(!res.ok){ $('go').disabled = false; $('go').textContent = 'Αποστολή'; return show('bad', dd.error || 'Κάτι πήγε στραβά.'); }
+    $('body').innerHTML = '<div class="done"><div class="tick">✓</div>' +
+      '<h1>Το λάβαμε</h1><p class="sub">Ευχαριστούμε. Δεν χρειάζεται να κάνετε κάτι άλλο.</p></div>';
+  };
+}
+boot();
+</script>
+</body>
+</html>
