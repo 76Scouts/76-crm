@@ -477,6 +477,20 @@ td.mcell:hover .madd{opacity:1}
   table.mola th.mmon{width:70px;font-size:10px}
   td.mcell{min-width:118px}
 }
+.trv{--tc1:#2a78d6;--tc2:#eb6834;--tc3:#1baf7a;--tc4:#eda100;--tc5:#e87ba4;--tc6:#008300;--tc7:#6250d6;--tc8:#e34948}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .trv{--tc1:#3987e5;--tc2:#d95926;--tc3:#199e70;--tc4:#c98500;--tc5:#d55181;--tc6:#008300;--tc7:#9085e9;--tc8:#e66767}}
+:root[data-theme="dark"] .trv{--tc1:#3987e5;--tc2:#d95926;--tc3:#199e70;--tc4:#c98500;--tc5:#d55181;--tc6:#008300;--tc7:#9085e9;--tc8:#e66767}
+.trw{position:relative;min-height:190px}.trv-svg{display:block;max-width:100%;touch-action:pan-y}
+.trg{stroke:var(--line);stroke-width:1}.trt{fill:var(--ink3);font-size:10.5px;font-variant-numeric:tabular-nums}
+.trl{fill:var(--ink2);font-size:11px}.trl.b{fill:var(--ink);font-weight:600}
+.trx{stroke:var(--ink3);stroke-width:1;stroke-dasharray:3 3}
+.trs{transition:opacity .15s}.trs.fade{opacity:.12}
+.trtip{position:absolute;top:6px;z-index:5;background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:180px;pointer-events:none}
+.trr{display:flex;align-items:center;gap:7px;margin-top:4px}.trr span{margin-left:auto;padding-left:12px;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.trr i,.trc i{display:inline-block;width:14px;height:2.5px;border-radius:2px;flex:0 0 14px}
+.trleg{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.trc{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;color:var(--ink);background:transparent;border:1px solid var(--line2);border-radius:16px;padding:4px 10px;cursor:pointer;min-height:32px}
+.trc.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 @media(max-width:640px){
   .card>table:not(.mola):not(.grid-tbl),
   .card>div>table:not(.mola):not(.grid-tbl){display:block}
@@ -1247,7 +1261,7 @@ const SUBS={
 };
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 
-const BUILD='2026-10-14 00:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-14 09:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4825,33 +4839,112 @@ async function ocrAssist(file, o){
 }
 const V={};
 
+const TR_UNIT={[dv('Αγέλη')]:dv('εξάδα'),[dv('Ομάδα')]:dv('ενωμοτία'),[dv('Κοινότητα')]:dv('όμιλος')};
+function trData(sec){
+  const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR&&sesDone(s)&&sesCount(s).marked)
+    .sort((a,b)=>a.session_date<b.session_date?-1:1);
+  if(!ses.length)return null;
+  const kids=D.bh.filter(p=>(p.kind||'')===dv('Μέλος')&&p.status===dv('Ενεργός')&&inYear(p)&&secOf(p)===sec);
+  const none=t('χωρίς')+' '+t(TR_UNIT[sec]||dv('ομάδα'));
+  const gOf=p=>(myOf(p)||{}).group_name||none;
+  const order=(D.sg||[]).filter(g=>g.section===sec&&g.scout_year===YEAR&&g.active!==false)
+    .sort((a,b)=>(a.seq||0)-(b.seq||0)||String(a.name).localeCompare(String(b.name),'el')).map(g=>g.name);
+  const names=[...new Set(kids.map(gOf))].sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);
+    if(a===none)return 1; if(b===none)return -1;
+    return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'el')});
+  const pres=new Set(D.att.filter(a=>a.status===dv('Παρών')).map(a=>a.session_id+'|'+a.person_id));
+  const groups=(names.length>1?names:[]).slice(0,8).map((g,i)=>{const m=kids.filter(p=>gOf(p)===g);
+    return {g, c:'var(--tc'+(i+1)+')', n:m.length, pts:ses.map(s=>{const p=m.filter(k=>pres.has(s.id+'|'+k.id)).length;
+      return {p, v:m.length?Math.round(100*p/m.length):0}})}});
+  const all=ses.map(s=>{const c=sesCount(s);return {p:c.p, n:c.n, v:c.n?Math.round(100*c.p/c.n):0}});
+  return {sec, ses, all, groups};
+}
+const trGeo=W=>{const narrow=W<520; return {W, H:narrow?190:220, L:34, R:narrow?10:118, T:12, B:26, narrow}};
+const trMon=d=>{const x=new Date(d); return x.getDate()+' '+MON[x.getMonth()].slice(0,3)};
+const trShort=(d,names)=>{ const w=names.map(n=>String(n).split(' ')[0]); const same=names.length>1&&w.every(x=>x===w[0]);
+  return n=>same&&String(n).includes(' ')?String(n).slice(String(n).indexOf(' ')+1):String(n); };
+function trSvg(d,Wpx){
+  const g0=trGeo(Wpx||640), {W,H,L,R,T,B}=g0, n=d.ses.length;
+  const x=i=>n>1?L+i*(W-L-R)/(n-1):L+(W-L-R)/2, y=v=>T+(1-v/100)*(H-T-B);
+  const line=(pts)=>pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const grid=[0,50,100].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="trg"/>
+    <text x="${L-6}" y="${y(v)+3.5}" class="trt" text-anchor="end">${v}%</text>`).join('');
+  const maxT=Math.max(2,Math.floor((W-L-R)/62)), step=Math.max(1,Math.ceil((n-1)/(maxT-1)||1));
+  const tk=[]; for(let i=0;i<n;i+=step)tk.push(i); if(tk[tk.length-1]!==n-1){ if(n-1-tk[tk.length-1]<step*0.6)tk.pop(); tk.push(n-1); }
+  const ticks=tk.map(i=>`<text x="${x(i)}" y="${H-8}" class="trt" text-anchor="${n>1&&i===0?'start':n>1&&i===n-1?'end':'middle'}">${esc(trMon(d.ses[i].session_date))}</text>`).join('');
+  const dots=n<=16;
+  const gl=d.groups.map((g,k)=>`<g class="trs" data-k="${k}"><path d="${line(g.pts)}" fill="none" stroke="${g.c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots?g.pts.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.v)}" r="3.5" fill="${g.c}" stroke="var(--card)" stroke-width="2"/>`).join(''):''}</g>`).join('');
+  const al=`<g class="trs" data-k="all"><path d="${line(d.all)}" fill="none" stroke="var(--ink)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots?d.all.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.v)}" r="4.5" fill="var(--ink)" stroke="var(--card)" stroke-width="2"/>`).join(''):''}</g>`;
+  const sh=trShort(d,d.groups.map(g=>g.g));
+  const labs=g0.narrow?[]:[{t:t('Όλο το τμήμα'),v:d.all[n-1].v,c:'var(--ink)',w:3.5,k:'all'}].concat(d.groups.map((g,k)=>({t:sh(g.g),v:g.pts[n-1].v,c:g.c,w:2,k})))
+    .map(o=>({...o,yy:y(o.v)})).sort((a,b)=>a.yy-b.yy);
+  labs.forEach((o,i)=>{ if(i&&o.yy<labs[i-1].yy+13)o.yy=labs[i-1].yy+13; });
+  const over=labs.length?labs[labs.length-1].yy-(H-B):0; if(over>0)labs.forEach(o=>o.yy-=over);
+  const lt=labs.map(o=>`<g class="trs" data-k="${o.k}"><line x1="${W-R+8}" x2="${W-R+20}" y1="${o.yy}" y2="${o.yy}" stroke="${o.c}" stroke-width="${o.w}" stroke-linecap="round"/>
+    <text x="${W-R+25}" y="${o.yy+3.5}" class="trl${o.k==='all'?' b':''}">${esc(String(o.t).length>14?String(o.t).slice(0,13)+'…':o.t)}</text></g>`).join('');
+  return `<svg class="trv-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(t('Παρουσίες ανά συγκέντρωση')+' — '+d.sec)}">${grid}${ticks}${gl}${al}${lt}
+    <line class="trx" x1="0" x2="0" y1="${T}" y2="${H-B}" style="display:none"/>
+    <rect class="trh" x="${L-10}" y="0" width="${W-L-R+20}" height="${H}" fill="transparent"/></svg>`;
+}
+function trBlock(sec){
+  const d=trData(sec); if(!d)return '';
+  const n=d.ses.length, avg=Math.round(d.all.reduce((a,p)=>a+p.v,0)/n), lastS=d.ses[n-1], last=d.all[n-1];
+  let trend='';
+  if(n>=6){ const f=d.all.slice(0,3).reduce((a,p)=>a+p.v,0)/3, l=d.all.slice(-3).reduce((a,p)=>a+p.v,0)/3, dl=Math.round(l-f);
+    trend=`<span class="pill" style="${dl<-8?'background:var(--badbg);color:var(--bad);border-color:transparent':dl>8?'background:var(--okbg);color:var(--ok);border-color:transparent':''}" title="${esc(t('τελευταίες 3 συγκεντρώσεις σε σχέση με τις 3 πρώτες'))}">${dl>0?'+':''}${dl} ${t('μον.')}</span>`; }
+  const gAvg=g=>Math.round(g.pts.reduce((a,p)=>a+p.v,0)/n);
+  const leg=`<div class="trleg"><button class="trc on" data-k="all"><i style="background:var(--ink);height:3.5px"></i>${t('Όλο το τμήμα')} <span class="dim">${avg}%</span></button>${
+    d.groups.map((g,k)=>`<button class="trc" data-k="${k}"><i style="background:${g.c}"></i>${esc(g.g)} <span class="dim">${gAvg(g)}%</span></button>`).join('')}</div>`;
+  const risk=riskList().filter(r=>r.sec===sec);
+  const rk=risk.length?`<div class="hr"></div><b style="font-size:13.5px">${t('Χρειάζονται ένα τηλέφωνο')} <span class="dim">· ${risk.length}</span></b>
+    <div style="display:grid;gap:5px;margin-top:8px">${risk.slice(0,10).map(r=>`<div style="display:flex;gap:9px;align-items:baseline;font-size:13px;flex-wrap:wrap">
+      <span style="flex:1 1 160px">${pn(r.p)} <span class="dim">· ${esc(r.grp||'—')}</span></span>
+      <span class="dim">${r.miss3>=2?esc(t('έλειψε')+' '+r.miss3+' '+t('από τις 3 τελευταίες')):r.pct!==null?esc(r.pct+'% '+t('στις 6 τελευταίες')):''}${r.last?' · '+esc(t('τελευταία φορά')+' '+fshort(r.last)):''}</span></div>`).join('')}
+      ${risk.length>10?`<div class="dim" style="font-size:12px">+${risk.length-10} ${t('ακόμα — στον Πίνακα')}</div>`:''}</div>`:'';
+  const cell=(p,nn)=>`${p}/${nn} <span class="dim">${nn?Math.round(100*p/nn):0}%</span>`;
+  const tbl=`<details style="margin-top:10px"><summary class="dim" style="font-size:12.5px;cursor:pointer">${t('Οι αριθμοί σε πίνακα')}</summary>
+    <div style="overflow-x:auto;margin-top:8px"><table style="font-size:12.5px"><thead><tr><th>${t('Συγκέντρωση')}</th><th>${t('Όλο το τμήμα')}</th>${d.groups.map(g=>`<th>${esc(g.g)}</th>`).join('')}</tr></thead>
+    <tbody>${d.ses.map((s,i)=>`<tr><td>${esc(fdate(s.session_date))}</td><td>${cell(d.all[i].p,d.all[i].n)}</td>${d.groups.map(g=>`<td>${cell(g.pts[i].p,g.n)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
+  return `<div class="card pad trv" data-sec="${esc(sec)}" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">${sdot(sec)}<b>${esc(sec)}</b><span class="sp"></span>
+      <span class="dim" style="font-size:12.5px">${t('μέσος όρος')}</span><span style="font-size:20px;font-weight:600;letter-spacing:-.02em">${avg}%</span>${trend}</div>
+    <div class="dim" style="font-size:12.5px;margin:2px 0 6px">${n} ${plu(n,t('συγκέντρωση'),t('συγκεντρώσεις'))} · ${t('τελευταία')} ${esc(fshort(lastS.session_date))}: <b style="color:var(--ink)">${last.p}/${last.n}</b> (${last.v}%)</div>
+    <div class="trw"></div>${leg}${rk}${tbl}</div>`;
+}
+function trWire(card,d){
+  const box=card.querySelector('.trw'), g0=trGeo(Math.max(280,Math.floor(box.clientWidth||640)));
+  box.innerHTML=trSvg(d,g0.W)+'<div class="trtip" style="display:none"></div>';
+  const sel=card.querySelector('.trc.sel'); if(sel)card.querySelectorAll('.trs').forEach(s=>s.classList.toggle('fade',s.dataset.k!==sel.dataset.k&&s.dataset.k!=='all'));
+  const svg=box.querySelector('svg'), tip=box.querySelector('.trtip'), cx=box.querySelector('.trx'), hit=box.querySelector('.trh');
+  const {W,L,R}=g0, n=d.ses.length, x=i=>n>1?L+i*(W-L-R)/(n-1):L+(W-L-R)/2;
+  const show=e=>{ const r=svg.getBoundingClientRect(), vx=(e.clientX-r.left)*W/r.width;
+    let i=n>1?Math.round((vx-L)/((W-L-R)/(n-1))):0; i=Math.max(0,Math.min(n-1,i));
+    cx.setAttribute('x1',x(i)); cx.setAttribute('x2',x(i)); cx.style.display='';
+    const a=d.all[i];
+    tip.innerHTML=`<b>${esc(fdate(d.ses[i].session_date))}</b><div class="trr"><i style="background:var(--ink);height:3px"></i>${t('Όλο το τμήμα')}<span>${a.p}/${a.n} · ${a.v}%</span></div>${
+      d.groups.map(g=>`<div class="trr"><i style="background:${g.c}"></i>${esc(g.g)}<span>${g.pts[i].p}/${g.n} · ${g.pts[i].v}%</span></div>`).join('')}`;
+    tip.style.display='block';
+    const px=x(i)/W*r.width, tw=tip.offsetWidth;
+    tip.style.left=Math.max(0,Math.min(r.width-tw,px+(px>r.width/2?-tw-12:12)))+'px'; };
+  hit.addEventListener('pointermove',show); hit.addEventListener('pointerdown',show);
+  hit.addEventListener('pointerleave',()=>{tip.style.display='none'; cx.style.display='none'});
+  if(card.dataset.w)return; card.dataset.w='1';
+  card.querySelectorAll('.trc').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k, on=!b.classList.contains('sel');
+    card.querySelectorAll('.trc').forEach(x=>x.classList.toggle('sel',on&&x===b));
+    card.querySelectorAll('.trs').forEach(s=>s.classList.toggle('fade',on&&s.dataset.k!==k&&s.dataset.k!=='all'));
+  });
+}
 V.trends=()=>{
-  const secs=['Αγέλη','Ομάδα','Κοινότητα'];
-  const blocks=secs.map(sec=>{
-    const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR&&sesDone(s)&&sesCount(s).marked).sort((a,b)=>a.session_date<b.session_date?-1:1);
-    if(!ses.length)return '';
-    const pts=ses.map(s=>{const c=sesCount(s);return{d:s.session_date,v:c.n?Math.round(100*c.p/c.n):0,n:c.p}});
-    const w=560,h=44,mx=100;
-    const path=pts.map((p,i)=>`${i?'L':'M'}${(i/(pts.length-1||1)*w).toFixed(1)},${(h-p.v/mx*h).toFixed(1)}`).join(' ');
-    const avg=Math.round(pts.reduce((s,p)=>s+p.v,0)/pts.length);
-    const first=pts.slice(0,3).reduce((s,p)=>s+p.v,0)/Math.min(3,pts.length), last=pts.slice(-3).reduce((s,p)=>s+p.v,0)/Math.min(3,pts.length);
-    const dl=Math.round(last-first);
-    const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&secOf(p)===sec&&inYear(p));
-    const gs={}; kids.forEach(p=>{const g=(myOf(p)||{}).group_name||'—';const r=D.att.filter(a=>a.person_id===p.id&&ses.some(s=>s.id===a.session_id));
-      if(!r.length)return; gs[g]=gs[g]||{p:0,t:0}; gs[g].p+=r.filter(x=>x.status==='Παρών').length; gs[g].t+=r.length});
-    const gk=Object.keys(gs).sort((a,b)=>gs[b].p/gs[b].t-gs[a].p/gs[a].t);
-    return `<div class="card pad" style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:9px;margin-bottom:4px">${sdot(sec)}<b>${esc(sec)}</b>
-        <span class="sp"></span><span style="font-size:20px;font-weight:600;letter-spacing:-.02em">${avg}%</span>
-        <span class="pill" style="${dl<-8?'background:var(--badbg);color:var(--bad);border-color:transparent':dl>8?'background:var(--okbg);color:var(--ok);border-color:transparent':''}">${dl>0?'+':''}${dl} μον. τάση</span></div>
-      <svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="${SC[sec]}" stroke-width="2" stroke-linejoin="round"/></svg>
-      <div class="dim" style="font-size:11.5px;display:flex;justify-content:space-between"><span>${fshort(pts[0].d)}</span><span>${ses.length} ${plu(ses.length,'συγκέντρωση','συγκεντρώσεις')}</span><span>${fshort(pts[pts.length-1].d)}</span></div>
-      ${gk.length?`<div class="hr"></div><div style="display:grid;gap:6px">${gk.map(g=>{const v=Math.round(100*gs[g].p/gs[g].t);
-        return `<div style="display:flex;align-items:center;gap:9px;font-size:13px"><span style="flex:0 0 118px">${esc(g)}</span>
-          <span style="flex:1;height:7px;background:var(--line);border-radius:4px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line2)"><span style="display:block;height:100%;width:${v}%;background:${SC[sec]};box-shadow:inset 0 0 0 1px rgba(17,22,29,.22)"></span></span>
-          <span class="dim" style="flex:0 0 34px;text-align:right;font-variant-numeric:tabular-nums">${v}%</span></div>`}).join('')}</div>`:''}
-    </div>`}).join('');
-  $('view').innerHTML=blocks||'<div class="uc"><h3>Δεν υπάρχουν αρκετά δεδομένα</h3><p>Χρειάζονται καταχωρημένες συγκεντρώσεις.</p></div>';
+  const own=(typeof expSecs==='function')?expSecs():null;
+  const secs=[dv('Αγέλη'),dv('Ομάδα'),dv('Κοινότητα')].filter(s=>!own||!own.length||own.includes(s));
+  const html=secs.map(trBlock).join('');
+  $('view').innerHTML=html||`<div class="uc"><h3>${t('Δεν υπάρχουν αρκετά δεδομένα')}</h3><p>${t('Χρειάζονται καταχωρημένες συγκεντρώσεις.')}</p></div>`;
+  const draw=()=>document.querySelectorAll('.trv').forEach(c=>{const d=trData(c.dataset.sec); if(d)trWire(c,d)});
+  draw();
+  if(!window.__trRz){ window.__trRz=1; let tm; window.addEventListener('resize',()=>{clearTimeout(tm); tm=setTimeout(()=>{ if(document.querySelector('.trv .trw'))draw(); },150)}); }
 };
 
 const SECCFG=()=>(D.sc||[]).filter(s=>s.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
