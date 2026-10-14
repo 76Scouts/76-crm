@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-14 16:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-14 16:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2788,7 +2788,7 @@ function route(r){
   $('sub').textContent=[sc?'Μόνο '+sc:'', SUBS[ROUTE]||''].filter(Boolean).join(' · ');
   try{const w=document.querySelector('.wrap');
     if(w)w.classList.toggle('wide', WIDE_VIEWS.has(ROUTE));}catch(e){}
-  renderNav(); renderVaBand(); renderFullBand(); window.scrollTo(0,0);
+  renderNav(); renderVaBand(); renderFullBand(); if(typeof renderExpBand==='function')renderExpBand(); window.scrollTo(0,0);
   if(m.s==='live'){
     if(VIEWAS&&vaHidesRoute(ROUTE)){ vaBlocked(m); return; }
     paint(m);
@@ -21266,7 +21266,8 @@ function exportsBody(){
     {id:'leaders',t:'Βαθμοφόροι',d:'Ονοματεπώνυμο, ιδιότητα, τμήμα, επικοινωνία, Ν.91(Ι)'},
     {id:'guardians',t:'Γονείς & κηδεμόνες',d:'Παιδί, πατέρας, μητέρα, τηλέφωνα, email'},
     {id:'attend',t:'Παρουσίες',d:'Μία γραμμή ανά μέλος ανά συγκέντρωση'},
-    {id:'warrants',t:t('Αριθμοί Εντολών & Αναθέσεων'),d:t('Όλοι οι βαθμοφόροι του 76ου: αριθμός, είδος, Α.Μ., ονοματεπώνυμο, τμήμα, καθήκοντα, ημερομηνίες, σε ισχύ')},
+    ...(xmWar()?[{id:'warrants',t:t('Αριθμοί Εντολών & Αναθέσεων'),d:t('Όλοι οι βαθμοφόροι του 76ου: αριθμός, είδος, Α.Μ., ονοματεπώνυμο, τμήμα, καθήκοντα, ημερομηνίες, σε ισχύ')}]:[]),
+    ...EXPX_MORE.filter(x=>x.ok()).map(x=>({id:x.id,t:x.t,d:x.d})),    
     {id:'reg',t:t('Εγγραφές κλιμακίου (μορφή e-Scouts)'),d:t('Όπως το περσινό αρχείο για τα Δελτία: φύλλα ΟΛΟΙ · ΒΑΘΜ · ΑΛ · ΟΠ · ΚΑ, με φίλτρα — τριπλότυπο, Α.Μ., ημ. γέννησης, τμήμα, γονείς, πληρωμή')}
   ];
   $('view').innerHTML=`${secs?`<div class="card pad" style="margin-bottom:14px"><b>${t('Μόνο το τμήμα σου')}: ${esc(secs.join(' · ')||'—')}</b>
@@ -21360,11 +21361,12 @@ async function warrantsXlsx(){
   const rows=[[t('Αρ.'),t('Είδος'),t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Καθήκοντα'),t('Κλιμάκιο'),t('Αίτηση'),t('Από'),t('Έως'),t('Σε ισχύ')]].concat(
     W.map(h=>[h.appointment_no,h.warrant_type||'',h.registry_no,cleanLast(h.last_name),h.first_name,h.section||'',h.appointment||'',h.klimakio||'',
       h.request_date||'',h.start_date||'',h.end_date||'',live(h)?t('Ναι'):t('Όχι')]));
-  exportRows(rows,`e76-entoles-76-${isoLocal(new Date())}`,t('Εντολές & Αναθέσεις 76ου'));    
+  exportRows(rows,xmName(t('Εντολές & Αναθέσεις 76ου'),isoLocal(new Date())),t('Εντολές & Αναθέσεις 76ου'));    
 }
 function dl(kind){
   if(kind==='reg')return regBookXlsx();
   if(kind==='warrants')return warrantsXlsx();
+  { const xm=EXPX_MORE.find(x=>x.id===kind); if(xm)return xm.run(); }
   let rows=[];
   if(kind==='members')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Υποομάδα','Τάξη','Πατέρας','Κιν.Πατέρα','Μητέρα','Κιν.Μητέρας']].concat(
     D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός'&&expInSec(p)).sort(sortByName).map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
@@ -21498,6 +21500,117 @@ async function escForm(key){
     o.tot=o.ma+o.lyk+o.pro+o.ani+o.mpd+o.vath;
     return escSave(key,[o],ctx);
   }
+}
+const XM_ISO=()=>isoLocal(new Date());
+const xmSecs=()=>{const s=expSecs(); return s&&s.length?s:[dv('Αγέλη'),dv('Ομάδα'),dv('Κοινότητα')]};
+const xmTag=()=>{const s=expSecs(); return s&&s.length?' '+s.join(' - '):''};
+const xmName=(what,when)=>'e76 — '+what+' — '+when;
+const xmKids=secs=>D.bh.filter(p=>(p.kind||'')===dv('Μέλος')&&p.status===dv('Ενεργός')&&inYear(p)&&secs.includes(secOf(p)))
+  .sort((a,b)=>String(secOf(a)).localeCompare(String(secOf(b)),'el')||sortByName(a,b));
+const xmWar=()=>isAdminUI()||['head','dev'].includes(lensRole());
+const xmLast=s=>cleanLast(s);
+
+async function xmWarExpiring(){
+  const W=await warrants76(); if(!W)return;
+  const today=XM_ISO(), lim=isoLocal(new Date(Date.now()+60*864e5));
+  const renewed=h=>W.some(o=>o!==h&&o.registry_no===h.registry_no&&o.start_date&&o.start_date>h.start_date&&(o.end_date||'9999')>(h.end_date||''));
+  const rows=W.filter(h=>h.end_date&&h.end_date>=today&&h.end_date<=lim&&!renewed(h))
+    .sort((a,b)=>a.end_date.localeCompare(b.end_date));
+  exportRows([[t('Λήγει'),t('Μέρες'),t('Αρ.'),t('Είδος'),t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Καθήκοντα'),t('Από')]].concat(
+    rows.map(h=>[h.end_date,Math.round((new Date(h.end_date)-new Date(today))/864e5),h.appointment_no,h.warrant_type||'',h.registry_no,xmLast(h.last_name),h.first_name,h.section||'',h.appointment||'',h.start_date||''])),
+    xmName(t('Εντολές που λήγουν σε 60 μέρες'),today),t('Εντολές που λήγουν σε 60 μέρες'));
+}
+function xmReady(){
+  const today=XM_ISO();
+  const last=(pid,code)=>(D.pc||[]).filter(c=>c.person_id===pid&&c.type_code===code).sort((a,b)=>String(b.expires_on||'').localeCompare(String(a.expires_on||'')))[0];
+  const st=e=>!e?t('δεν υπάρχει'):e<today?t('έληξε'):e<=isoLocal(new Date(Date.now()+90*864e5))?t('λήγει σε 90 μέρες'):t('σε ισχύ');
+  const L=D.bh.filter(p=>isLed(p)&&p.status===dv('Ενεργός')&&expLedSec(p)).sort(sortByName);
+  const rows=[[t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Ιδιότητα'),t('Ν.91(Ι) λήξη'),t('Ν.91(Ι)'),t('Πρώτες Βοήθειες λήξη'),t('Πρώτες Βοήθειες'),t('BLS λήξη'),t('BLS'),t('Άδεια οδήγησης λήξη')]].concat(
+    L.map(p=>{const n=certState(p.id)||{}, fa=last(p.id,dv('ΠΡΩΤΕΣ_ΒΟΗΘΕΙΕΣ')), bl=last(p.id,'BLS'), dr=last(p.id,dv('ΑΔΕΙΑ_ΟΔΗΓΗΣΗΣ'));
+      const ne=n.exp||'';
+      return [p.registry_no,p.last_name,p.first_name,p.section||'',p.appointment||p.category||'',ne,n.k==='na'?t('δεν χρειάζεται'):st(ne),
+        fa&&fa.expires_on||'',st(fa&&fa.expires_on),bl&&bl.expires_on||'',st(bl&&bl.expires_on),dr?(dr.expires_on||t('χωρίς λήξη')):'']}));
+  exportRows(rows,xmName(t('Πιστοποιητικά βαθμοφόρων')+xmTag(),today),t('Πιστοποιητικά βαθμοφόρων'));
+}
+function xmHon(){
+  if(!isAdminUI())return toast(t('Τα έτη υπηρεσίας τα βγάζει ο Αρχηγός Συστήματος'));
+  const lv=l=>(HON_LEVELS.find(L=>L.lvl===l)||{}).t||'';
+  const rows=[[t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Χρόνια (επιβεβαιωμένα)'),t('εκ των οποίων με Ε.Δ.'),t('Χρόνια προς έλεγχο'),t('Πρώτη χρονιά'),t('Τελευταία χρονιά'),t('Έχει'),t('Δικαιούται'),t('Επόμενη'),t('Κατάσταση')]].concat(
+    honRows().map(x=>[x.p.registry_no,x.p.last_name,x.p.first_name,x.y.n,x.y.entoli,x.y.review,x.y.first||'',x.y.last||'',
+      x.got?lv(x.got):(x.old.length?t('παλιά διάκριση'):''),x.reach?lv(x.reach):'',x.next?x.next.t+' ('+x.next.yrs+')':'',
+      x.due?t('υποψήφιος'):x.check?t('έλεγχος (παλιά διάκριση)'):x.soon?t('κοντά'):'']));
+  exportRows(rows,xmName(t('Έτη υπηρεσίας και διακρίσεις'),XM_ISO()),t('Έτη υπηρεσίας και διακρίσεις'));
+}
+function xmProg(secs){
+  secs=secs||xmSecs();
+  const rows=[[t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Υποομάδα'),t('Τελευταίο στάδιο'),t('Επόμενο στάδιο'),t('Πέρασε'),t('Από'),t('Έτοιμος για απονομή'),t('Λείπουν')]].concat(
+    xmKids(secs).map(p=>{const sec=secOf(p), ka=sec===dv('Κοινότητα');
+      const held=cardStages(sec).filter(st=>heldItem(p.id,st)).pop(), nx=nextStep(p.id,sec);
+      const miss=nx?stageReqs(sec,nx.st).filter(r=>!reqDone(p.id,r.id)).map(r=>reqNo(r)+' '+r.label).join(' · '):'';
+      return [p.registry_no,p.last_name,p.first_name,sec,(myOf(p)||{}).group_name||'',held?held.label:'',nx?nx.st.label:t('όλα τα στάδια'),
+        ka||!nx?'':nx.n,ka||!nx?'':nx.tot,nx&&nx.tot>0&&nx.n===nx.tot?t('Ναι'):'',miss]}));
+  exportRows(rows,xmName(t('Πρόοδος')+' '+secs.join(' - '),YEAR),t('Πρόοδος')+' '+secs.join(' · ')+' '+YEAR);
+}
+function xmAttKid(){
+  const P=dv('Παρών'), A=dv('Απών');
+  const rows=[[t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Υποομάδα'),t('Συγκεντρώσεις'),t('Παρών'),t('Απών'),t('Χωρίς σημείωση'),t('Προσέλευση %'),t('Τελευταία παρουσία')]].concat(
+    xmKids(xmSecs()).map(p=>{const sec=secOf(p);
+      const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR&&sesDone(s)).sort((a,b)=>a.session_date<b.session_date?-1:1);
+      const map={}; D.att.filter(a=>a.person_id===p.id).forEach(a=>map[a.session_id]=a.status);
+      const pr=ses.filter(s=>map[s.id]===P), ab=ses.filter(s=>map[s.id]===A).length, seen=pr[pr.length-1];
+      return [p.registry_no,p.last_name,p.first_name,sec,(myOf(p)||{}).group_name||'',ses.length,pr.length,ab,ses.length-pr.length-ab,
+        ses.length?Math.round(100*pr.length/ses.length):'',seen?seen.session_date:'']}));
+  exportRows(rows,xmName(t('Παρουσίες ανά παιδί')+xmTag(),YEAR),t('Παρουσίες ανά παιδί')+' '+YEAR);
+}
+function xmMiss(){
+  const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0)), today=XM_ISO();
+  const head=[t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Υποομάδα')].concat(reqs.map(r=>r.label),[t('Ιατρική δήλωση'),t('Επαφή έκτακτης ανάγκης'),t('Email γονέα'),t('Εγγραφή εξοφλήθηκε'),t('Λείπουν')]);
+  const rows=[head].concat(xmKids(xmSecs()).map(p=>{
+    const docs=reqs.map(r=>edHas(p,r)?'✓':t('λείπει'));
+    const m=(D.med||[]).find(x=>x.person_id===p.id), med=!m?t('λείπει'):(m.valid_until&&m.valid_until<today?t('έληξε'):'✓');
+    const ec=(D.ecs||[]).some(e=>e.person_id===p.id)?'✓':t('λείπει');
+    const g=gOf(p.registry_no)||{}, mail=(g.father_email||g.mother_email)?'✓':t('λείπει');
+    const y=myOf(p)||{}, due=+y.fee_due||0, paid=+y.fee_paid||0, fee=(y.paid_on||(due>0&&paid>=due))?'✓':(due>0?t('όχι'):'');
+    const cells=docs.concat([med,ec,mail,fee]);
+    return [p.registry_no,p.last_name,p.first_name,secOf(p),y.group_name||''].concat(cells,[cells.filter(c=>c!=='✓'&&c!=='').length]);
+  }));
+  exportRows(rows,xmName(t('Τι λείπει ανά παιδί')+xmTag(),YEAR),t('Τι λείπει ανά παιδί')+' '+YEAR);
+}
+
+const EXPX_MORE=[
+  {id:'wexp',  t:t('Εντολές που λήγουν'),            d:t('Όσες λήγουν τις επόμενες 60 μέρες και δεν έχουν ήδη επόμενη — για να ετοιμάσεις τις ανανεώσεις'), ok:xmWar, run:xmWarExpiring},
+  {id:'ready', t:t('Πιστοποιητικά βαθμοφόρων'),      d:t('Ν.91(Ι), Πρώτες Βοήθειες, BLS, άδεια οδήγησης — λήξεις και τι λείπει'), ok:()=>true, run:xmReady},
+  {id:'hon',   t:t('Έτη υπηρεσίας & διακρίσεις'),    d:t('Χρόνια υπηρεσίας, προς έλεγχο, διάκριση που έχει και που δικαιούται'), ok:()=>isAdminUI(), run:xmHon},
+  {id:'prog',  t:t('Πρόοδος μελών'),                 d:t('Τελευταίο και επόμενο στάδιο, έτοιμοι για απονομή, τι λείπει'), ok:()=>true, run:()=>xmProg()},
+  {id:'attkid',t:t('Παρουσίες ανά παιδί'),           d:t('Συγκεντρώσεις, παρών, απών, προσέλευση, τελευταία παρουσία'), ok:()=>true, run:xmAttKid},
+  {id:'miss',  t:t('Τι λείπει ανά παιδί'),           d:t('Δικαιολογητικά, ιατρική δήλωση, επαφή έκτακτης ανάγκης, email γονέα, εξόφληση'), ok:()=>true, run:xmMiss}];
+
+const XB_OLD={members:t('Μέλη'),leaders:t('Βαθμοφόροι'),guardians:t('Γονείς'),attend:t('Παρουσίες (όλες οι γραμμές)'),reg:t('Εγγραφές κλιμακίου'),warrants:t('Αριθμοί εντολών')};
+const XB_MAP={members:['members','miss'], leaders:['leaders','ready','wexp','warrants'], ledfile:['ready','wexp','warrants','hon'],
+  staff:['leaders','warrants'], guardians:['guardians'], attend:['attkid','attend'], progAL:['prog'], progOP:['prog'], progKA:['prog'],
+  honours:['hon'], enroll:['miss','ready'], missing:['miss'], desk:['miss','reg'], reg:['reg']};
+const XB_PROGSEC={progAL:dv('Αγέλη'),progOP:dv('Ομάδα'),progKA:dv('Κοινότητα')};
+function xbItems(r){
+  if(VIEWAS||!canNav('outputs'))return [];
+  return (XB_MAP[r]||[]).map(id=>{
+    if(XB_OLD[id]){ if(id==='warrants'&&!xmWar())return null; return {id,t:XB_OLD[id]}; }
+    const x=EXPX_MORE.find(e=>e.id===id); return x&&x.ok()?{id,t:x.t}:null;
+  }).filter(Boolean);
+}
+function xbRun(id){
+  if(id==='prog'&&XB_PROGSEC[ROUTE]){ const s=XB_PROGSEC[ROUTE], own=expSecs(); if(own&&own.length&&!own.includes(s))return; return xmProg([s]); }
+  const x=EXPX_MORE.find(e=>e.id===id); if(x)return x.run();
+  return dl(id);
+}
+function renderExpBand(){
+  try{ const v=$('view'); if(!v||!v.parentNode)return;
+    let b=document.getElementById('expband');
+    if(!b){ b=document.createElement('div'); b.id='expband'; b.className='noprint'; v.parentNode.insertBefore(b,v); }
+    const it=xbItems(ROUTE);
+    b.innerHTML=it.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end;margin:0 0 8px;font-size:12px">
+      <span class="dim">${ic('down',13)} ${t('Εξαγωγή σε Excel')}:</span>${it.map(x=>`<button class="btn sm gh" data-xb="${esc(x.id)}">${esc(x.t)}</button>`).join('')}</div>`:'';
+    b.querySelectorAll('[data-xb]').forEach(x=>x.onclick=()=>xbRun(x.dataset.xb));
+  }catch(e){}
 }
 const pal=$('pal');
 function openPal(){pal.classList.add('on');$('palq').value='';$('palq').focus();palDraw('')}
