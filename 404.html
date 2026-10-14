@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-14 13:54'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-14 16:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -11707,7 +11707,8 @@ function honYears(rows){
   (rows||[]).forEach(r=>{ if(!r.scout_year)return;
     const counts=r.warrant_type==='Εντολή Διοίκησης'||r.counts_for_service===true;
     if(!counts)return;
-    if(String(r.needs_review||'').trim())rev.add(r.scout_year);
+    const nr=String(r.needs_review||'').trim();    
+    if(nr&&nr!=='false')rev.add(r.scout_year);
     else { ok.add(r.scout_year); if(r.warrant_type==='Εντολή Διοίκησης')ent.add(r.scout_year); } });
   [...ok].forEach(y=>rev.delete(y));
   const ys=[...ok].sort();
@@ -16896,9 +16897,10 @@ function formsBody(){
       <b>Έντυπα προς εκτύπωση</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Πιστά στη σελίδα, με κεφαλίδα και υπογραφές. Τα <b>δεδομένα</b> βγαίνουν χωριστά από τις Εξαγωγές σε καθαρό CSV — έντυπο και δεδομένα δεν είναι το ίδιο πράγμα.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${F.map(f=>`<button class="btn sm" data-f="${f.id}">${esc(f.t)}</button>`).join('')}</div>
-      ${expSecs()?'':`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line)"><b>${t('Excel όπως το e-Scouts')}</b>
+      ${`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line)"><b>${t('Excel όπως το e-Scouts')}</b>
         <div class="muted" style="margin-top:4px;font-size:13px">${t('Πανομοιότυπα με τις αναφορές του e-Scouts — ίδιες στήλες, συγχωνευμένα κελιά, γραμματοσειρές και λογότυπο — με τα δεδομένα του e76.')}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${[['CSA006',t('Κατάλογος Εγγραφών Περιόδου')],['CSA004',t('Συγκεντρωτική Κατάσταση Εγγραφών')],['CSA007',t('Απογραφή Μελών')],['CSA015',t('Βαθμοφόροι κάτοχοι Εντολής Διοίκησης')]]
+          .filter(([k])=>!expSecs()||k==='CSA015')    
           .map(([k,l])=>`<button class="btn sm" data-esc="${k}">${ic('down',14)} ${esc(l)} <span class="dim">· ${k}</span></button>`).join('')}</div></div>`}</div>
     <div id="fout"></div>`;
   document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>form(b.dataset.f));
@@ -21264,10 +21266,11 @@ function exportsBody(){
     {id:'leaders',t:'Βαθμοφόροι',d:'Ονοματεπώνυμο, ιδιότητα, τμήμα, επικοινωνία, Ν.91(Ι)'},
     {id:'guardians',t:'Γονείς & κηδεμόνες',d:'Παιδί, πατέρας, μητέρα, τηλέφωνα, email'},
     {id:'attend',t:'Παρουσίες',d:'Μία γραμμή ανά μέλος ανά συγκέντρωση'},
+    {id:'warrants',t:t('Αριθμοί Εντολών & Αναθέσεων'),d:t('Όλοι οι βαθμοφόροι του 76ου: αριθμός, είδος, Α.Μ., ονοματεπώνυμο, τμήμα, καθήκοντα, ημερομηνίες, σε ισχύ')},
     {id:'reg',t:t('Εγγραφές κλιμακίου (μορφή e-Scouts)'),d:t('Όπως το περσινό αρχείο για τα Δελτία: φύλλα ΟΛΟΙ · ΒΑΘΜ · ΑΛ · ΟΠ · ΚΑ, με φίλτρα — τριπλότυπο, Α.Μ., ημ. γέννησης, τμήμα, γονείς, πληρωμή')}
   ];
   $('view').innerHTML=`${secs?`<div class="card pad" style="margin-bottom:14px"><b>${t('Μόνο το τμήμα σου')}: ${esc(secs.join(' · ')||'—')}</b>
-    <div class="muted" style="margin-top:5px">${t('Μέλη, γονείς, βαθμοφόροι και παρουσίες του τμήματός σου')} (<b>${esc(secs.join(' · ')||'—')}</b>). ${t('Τα επίσημα έντυπα προς Επαρχία και Σ.Π.Κ. τα βγάζει ο Αρχηγός Συστήματος.')}</div></div>`:''}${secs?'':`<div class="card pad" style="margin-bottom:14px"><b>Καθαρά δεδομένα, όχι σελίδα εκτύπωσης.</b>
+    <div class="muted" style="margin-top:5px">${t('Μέλη, γονείς, βαθμοφόροι και παρουσίες του τμήματός σου')} (<b>${esc(secs.join(' · ')||'—')}</b>), ${t('και οι αριθμοί εντολών όλου του 76ου για τα δελτία δράσης')}. ${t('Τα επίσημα έντυπα προς Επαρχία και Σ.Π.Κ. τα βγάζει ο Αρχηγός Συστήματος — εκτός από το CSA015 (εντολές όπως το e-Scouts), που είναι στα «Συμπληρωμένα».')}</div></div>`:''}${secs?'':`<div class="card pad" style="margin-bottom:14px"><b>Καθαρά δεδομένα, όχι σελίδα εκτύπωσης.</b>
     <div class="muted" style="margin-top:5px">Μία γραμμή ανά εγγραφή, κεφαλίδες σε μία σειρά, ημερομηνίες ISO, καμία συγχώνευση κελιών. Έντυπο και δεδομένα δεν είναι το ίδιο προϊόν — τα έντυπα είναι στις δικές τους οθόνες, πιο κάτω.</div></div>`}
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">${opts.map(o=>`<div class="card pad"><b>${esc(o.t)}</b><div class="dim" style="font-size:12.5px;margin:5px 0 11px">${esc(o.d)}</div>
     <button class="btn sm" data-x="${o.id}">${ic('down',14)} Excel</button></div>`).join('')}</div>
@@ -21351,8 +21354,17 @@ async function regBookXlsx(){
   saveBlob(out,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',`e76-eggrafes-klimakiou${sx}-${YEAR}.xlsx`);
   toast(t('Κατέβηκε')+' · '+pln(all.length,t('εγγραφή'),t('εγγραφές')));
 }
+async function warrantsXlsx(){
+  const W=await warrants76(); if(!W)return;
+  const today=isoLocal(new Date()), live=h=>!!h.start_date&&h.start_date<=today&&(!h.end_date||h.end_date>=today);
+  const rows=[[t('Αρ.'),t('Είδος'),t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Καθήκοντα'),t('Κλιμάκιο'),t('Αίτηση'),t('Από'),t('Έως'),t('Σε ισχύ')]].concat(
+    W.map(h=>[h.appointment_no,h.warrant_type||'',h.registry_no,cleanLast(h.last_name),h.first_name,h.section||'',h.appointment||'',h.klimakio||'',
+      h.request_date||'',h.start_date||'',h.end_date||'',live(h)?t('Ναι'):t('Όχι')]));
+  exportRows(rows,`e76-entoles-76-${isoLocal(new Date())}`,t('Εντολές & Αναθέσεις 76ου'));    
+}
 function dl(kind){
   if(kind==='reg')return regBookXlsx();
+  if(kind==='warrants')return warrantsXlsx();
   let rows=[];
   if(kind==='members')rows=[['Α.Μ.','Επώνυμο','Όνομα','Τμήμα','Υποομάδα','Τάξη','Πατέρας','Κιν.Πατέρα','Μητέρα','Κιν.Μητέρας']].concat(
     D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός'&&expInSec(p)).sort(sortByName).map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
@@ -21446,8 +21458,13 @@ async function escSave(key,rows,ctx){
   saveBlob(out,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',key+'.xlsx');
   toast(t('Κατέβηκε')+' · '+key+'.xlsx');
 }
+async function warrants76(){
+  const {data,error}=await sb.rpc('warrant_numbers_76');
+  if(error){ toast(t('Δεν ήρθαν οι εντολές')+': '+error.message); return null; }
+  return data||[];
+}
 async function escForm(key){
-  if(expSecs())return toast(t('Τα θεσμικά έντυπα τα βγάζει ο Αρχηγός Συστήματος'));
+  if(expSecs()&&key!=='CSA015')return toast(t('Τα θεσμικά έντυπα τα βγάζει ο Αρχηγός Συστήματος'));
   toast(t('Ετοιμάζω το αρχείο…'));
   const ctx=escCtx();
   if(key==='CSA006'||key==='CSA004'){
@@ -21466,14 +21483,11 @@ async function escForm(key){
   }
   if(key==='CSA015'){
     const w=await uiChoose(t('Ποιες εντολές;'),[{v:'all',t:t('Όλες (ιστορικό)'),primary:true},{v:'now',t:t('Μόνο όσες ισχύουν σήμερα')}]); if(!w)return;
-    const today=isoLocal(new Date()), BH=new Map(D.bh.map(p=>[p.id,p]));
-    const rows=(D.sh||[]).filter(h=>/^\d+$/.test(h.appointment_no||'')&&/^76/.test(h.notes||'')&&BH.has(h.person_id)
-        &&(w==='all'||(h.start_date&&h.start_date<=today&&(!h.end_date||h.end_date>=today))))
-      .sort((a,b)=>(+a.appointment_no)-(+b.appointment_no))
-      .map((h,i)=>{const p=BH.get(h.person_id);
-        return {aa:i+1, ed:+h.appointment_no, am:/^\d+$/.test(p.registry_no||'')?+p.registry_no:(p.registry_no||''),
-          name:((p.first_name||'')+' '+cleanLast(p.last_name)).trim(), duty:h.appointment||'', klim:h.notes||'',
-          req:ESC_U(h.request_date), from:ESC_U(h.start_date), to:ESC_U(h.end_date)}});
+    const today=isoLocal(new Date()), W=await warrants76(); if(!W)return;
+    const rows=W.filter(h=>w==='all'||(h.start_date&&h.start_date<=today&&(!h.end_date||h.end_date>=today)))
+      .map((h,i)=>({aa:i+1, ed:+h.appointment_no, am:/^\d+$/.test(h.registry_no||'')?+h.registry_no:(h.registry_no||''),
+          name:((h.first_name||'')+' '+cleanLast(h.last_name)).trim(), duty:h.appointment||'', klim:h.klimakio||'',
+          req:ESC_U(h.request_date), from:ESC_U(h.start_date), to:ESC_U(h.end_date)}));
     if(!rows.length)return toast(t('Τίποτα για εξαγωγή'));
     return escSave(key,rows,ctx);
   }
