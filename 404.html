@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-15 11:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-15 12:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -18357,7 +18357,7 @@ const dlKids=e=>efPersons(e.id).filter(x=>!isLed(x.p)&&efdLive(x.pa));
 const dlP=id=>id?(D.bh||[]).find(b=>b.id===id)||null:null;
 const dlIsFA=x=>x.pa.role==='Πρώτος Βοηθός'||x.pa.role2==='Πρώτος Βοηθός';
 function dlAppt(p,day){ day=day||new Date().toISOString().slice(0,10);
-  const s=(D.sh||[]).filter(x=>x.person_id===p.id&&(!x.start_date||x.start_date<=day)&&(!x.end_date||x.end_date>=day))
+  const s=(D.sh||[]).filter(x=>x.person_id===p.id&&(x.start_date?(x.start_date<=day&&(!x.end_date||x.end_date>=day)):warPending(x)))
     .sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')))[0];
   return (s&&s.appointment_no)||'ΕΚΚΡΕΜΕΙ'}
 const dlKath=p=>DL.HAT[((typeof hatOfYear==='function'&&hatOfYear(p,YEAR))||{}).role_code]||'';
@@ -21358,14 +21358,17 @@ async function regBookXlsx(){
 const warInYear=(h,y)=>{ const s=String(y||YEAR).slice(0,4), from=s+'-09-01', to=(+s+1)+'-08-31';
   if(h.start_date)return h.start_date<=to&&(!h.end_date||h.end_date>=from);
   return !h.end_date&&!!h.request_date&&h.request_date>=from&&h.request_date<=to; };
+const warPending=h=>!!h&&!h.start_date&&!h.end_date&&!!h.request_date&&warInYear(h);
+const warLive=(h,day)=>{ day=day||isoLocal(new Date());
+  return warPending(h)?h.request_date<=day:(!!h.start_date&&h.start_date<=day&&(!h.end_date||h.end_date>=day)); };
 async function warrantsXlsx(){
   const w=await uiChoose(t('Ποιες εντολές;'),[{v:'year',t:t('Της χρονιάς')+' '+YEAR,primary:true},{v:'all',t:t('Όλο το ιστορικό')}]); if(!w)return;
   let W=await warrants76(); if(!W)return;
   if(w==='year')W=W.filter(h=>warInYear(h));
-  const today=isoLocal(new Date()), live=h=>!!h.start_date&&h.start_date<=today&&(!h.end_date||h.end_date>=today);
+  const today=isoLocal(new Date()), live=h=>warLive(h,today);
   const rows=[[t('Αρ.'),t('Είδος'),t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Καθήκοντα'),t('Κλιμάκιο'),t('Αίτηση'),t('Από'),t('Έως'),t('Σε ισχύ')]].concat(
     W.map(h=>[h.appointment_no,h.warrant_type||'',h.registry_no,cleanLast(h.last_name),h.first_name,h.section||'',h.appointment||'',h.klimakio||'',
-      h.request_date||'',h.start_date||'',h.end_date||'',live(h)?t('Ναι'):t('Όχι')]));
+      h.request_date||'',h.start_date||'',h.end_date||'',warPending(h)?t('Ναι — εκκρεμεί έγκριση'):live(h)?t('Ναι'):t('Όχι')]));
   const lab=w==='year'?YEAR:t('ιστορικό');
   exportRows(rows,xmName(t('Εντολές & Αναθέσεις 76ου')+' '+lab,isoLocal(new Date())),t('Εντολές & Αναθέσεις 76ου')+' '+lab);    
 }
@@ -21492,7 +21495,7 @@ async function escForm(key){
   if(key==='CSA015'){
     const w=await uiChoose(t('Ποιες εντολές;'),[{v:'now',t:t('Μόνο όσες ισχύουν σήμερα'),primary:true},{v:'all',t:t('Όλες (ιστορικό)')}]); if(!w)return;
     const today=isoLocal(new Date()), W=await warrants76(); if(!W)return;
-    const rows=W.filter(h=>w==='all'||(h.start_date&&h.start_date<=today&&(!h.end_date||h.end_date>=today)))
+    const rows=W.filter(h=>w==='all'||warLive(h,today))    
       .map((h,i)=>({aa:i+1, ed:+h.appointment_no, am:/^\d+$/.test(h.registry_no||'')?+h.registry_no:(h.registry_no||''),
           name:((h.first_name||'')+' '+cleanLast(h.last_name)).trim(), duty:h.appointment||'', klim:h.klimakio||'',
           req:ESC_U(h.request_date), from:ESC_U(h.start_date), to:ESC_U(h.end_date)}));
@@ -21519,7 +21522,7 @@ const xmLast=s=>cleanLast(s);
 async function xmWarExpiring(){
   const W=await warrants76(); if(!W)return;
   const today=XM_ISO(), lim=isoLocal(new Date(Date.now()+60*864e5));
-  const renewed=h=>W.some(o=>o!==h&&o.registry_no===h.registry_no&&o.start_date&&o.start_date>h.start_date&&(o.end_date||'9999')>(h.end_date||''));
+  const renewed=h=>W.some(o=>o!==h&&o.registry_no===h.registry_no&&(warPending(o)||(o.start_date&&o.start_date>h.start_date&&(o.end_date||'9999')>(h.end_date||''))));
   const rows=W.filter(h=>h.end_date&&h.end_date>=today&&h.end_date<=lim&&!renewed(h))
     .sort((a,b)=>a.end_date.localeCompare(b.end_date));
   exportRows([[t('Λήγει'),t('Μέρες'),t('Αρ.'),t('Είδος'),t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Καθήκοντα'),t('Από')]].concat(
