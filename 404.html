@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-15 16:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-15 17:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2017,13 +2017,14 @@ function progDate(x){
            :'κατά προσέγγιση — μαζική καταχώρηση';
   return `<span class="approx" title="${esc(why)}">~${esc(t)}</span>`;
 }
+const navFA=()=>{ try{ const pid=VIEWAS?VIEWAS.pid:(ME&&ME.person_id); return !!pid&&typeof labelsOf==='function'&&labelsOf(pid).length>0 }catch(e){ return false } };
 function navFor(role, sec){
   const base = role==='parent' ? NAV_PARENT
        : role==='patrol' ? NAV_PATROL
        : role==='member' ? NAV_MEMBER
        : role==='anix'   ? NAV_ANIX
        : role==='dev'    ? NAV_DEV
-       : role==='leader' ? NAV_LEADER
+       : role==='leader' ? (navFA()?[...NAV_LEADER,'missing','medical']:NAV_LEADER)
        : role==='head' || role==='section_head' ? NAV_HEAD
        : null;                                    
   if(!base) return base;
@@ -16786,7 +16787,9 @@ function callsBody(){
 };
 
 V.medical=()=>{
-  const people=D.bh.filter(p=>p.status==='Ενεργός'&&((p.kind||'')==='Μέλος'?inYear(p):true)).sort(sortByName);
+  let people=D.bh.filter(p=>p.status==='Ενεργός'&&((p.kind||'')==='Μέλος'?inYear(p):true)).sort(sortByName);
+  if(lensRole()==='leader'&&typeof labelsOf==='function'){ const fs=labelsOf(VIEWAS?VIEWAS.pid:ME.person_id).map(l=>l.scope_section);
+    if(fs.length&&!fs.some(s=>!s||s===dv('ΟΛΑ')))people=people.filter(p=>fs.includes(secOf(p))); }
   const has=id=>(D.med||[]).find(m=>m.person_id===id);
   const ec=id=>(D.ecs||[]).filter(e=>e.person_id===id);
   const flag=p=>{const m=has(p.id); if(!m)return {t:'Καμία δήλωση',c:'warn'};
