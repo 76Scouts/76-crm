@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-15 12:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-15 12:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21358,6 +21358,8 @@ async function regBookXlsx(){
 const warInYear=(h,y)=>{ const s=String(y||YEAR).slice(0,4), from=s+'-09-01', to=(+s+1)+'-08-31';
   if(h.start_date)return h.start_date<=to&&(!h.end_date||h.end_date>=from);
   return !h.end_date&&!!h.request_date&&h.request_date>=from&&h.request_date<=to; };
+const warKlim=s=>String(s||'').split(' · ')[0];
+const warNote=s=>String(s||'').split(' · ').slice(1).join(' · ');
 const warPending=h=>!!h&&!h.start_date&&!h.end_date&&!!h.request_date&&warInYear(h);
 const warLive=(h,day)=>{ day=day||isoLocal(new Date());
   return warPending(h)?h.request_date<=day:(!!h.start_date&&h.start_date<=day&&(!h.end_date||h.end_date>=day)); };
@@ -21366,9 +21368,9 @@ async function warrantsXlsx(){
   let W=await warrants76(); if(!W)return;
   if(w==='year')W=W.filter(h=>warInYear(h));
   const today=isoLocal(new Date()), live=h=>warLive(h,today);
-  const rows=[[t('Αρ.'),t('Είδος'),t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Καθήκοντα'),t('Κλιμάκιο'),t('Αίτηση'),t('Από'),t('Έως'),t('Σε ισχύ')]].concat(
-    W.map(h=>[h.appointment_no,h.warrant_type||'',h.registry_no,cleanLast(h.last_name),h.first_name,h.section||'',h.appointment||'',h.klimakio||'',
-      h.request_date||'',h.start_date||'',h.end_date||'',warPending(h)?t('Ναι — εκκρεμεί έγκριση'):live(h)?t('Ναι'):t('Όχι')]));
+  const rows=[[t('Αρ.'),t('Είδος'),t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Καθήκοντα'),t('Κλιμάκιο'),t('Αίτηση'),t('Από'),t('Έως'),t('Σε ισχύ'),t('Παρατήρηση')]].concat(
+    W.map(h=>[h.appointment_no,h.warrant_type||'',h.registry_no,cleanLast(h.last_name),h.first_name,h.section||'',h.appointment||'',warKlim(h.klimakio),
+      h.request_date||'',h.start_date||'',h.end_date||'',warPending(h)?t('Ναι — εκκρεμεί έγκριση'):live(h)?t('Ναι'):t('Όχι'),warNote(h.klimakio)]));
   const lab=w==='year'?YEAR:t('ιστορικό');
   exportRows(rows,xmName(t('Εντολές & Αναθέσεις 76ου')+' '+lab,isoLocal(new Date())),t('Εντολές & Αναθέσεις 76ου')+' '+lab);    
 }
@@ -21497,7 +21499,7 @@ async function escForm(key){
     const today=isoLocal(new Date()), W=await warrants76(); if(!W)return;
     const rows=W.filter(h=>w==='all'||warLive(h,today))    
       .map((h,i)=>({aa:i+1, ed:+h.appointment_no, am:/^\d+$/.test(h.registry_no||'')?+h.registry_no:(h.registry_no||''),
-          name:((h.first_name||'')+' '+cleanLast(h.last_name)).trim(), duty:h.appointment||'', klim:h.klimakio||'',
+          name:((h.first_name||'')+' '+cleanLast(h.last_name)).trim(), duty:h.appointment||'', klim:warKlim(h.klimakio),
           req:ESC_U(h.request_date), from:ESC_U(h.start_date), to:ESC_U(h.end_date)}));
     if(!rows.length)return toast(t('Τίποτα για εξαγωγή'));
     return escSave(key,rows,ctx);
