@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-15 17:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-22 14:02'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -11363,6 +11363,27 @@ let SGSEC='Αγέλη';
 let SGTO=null;
 let SGFROM=null;    
 let SGSEC_SET=false;
+const sgSexOf=p=>/Κορίτσι|Γυναίκα/.test(p.sex||'')?'k':/Αγόρι|Ανδρας|Άνδρας/.test(p.sex||'')?'a':'';
+function sgBreakHTML(sgs,kids){
+  const gOf=p=>(myOf(p)||{}).group_name||'';
+  const grOf=p=>(myOf(p)||{}).grade||'';
+  const G=(typeof GRADES!=='undefined'?GRADES:[]).filter(g=>kids.some(p=>grOf(p)===g));
+  const noGr=kids.some(p=>!grOf(p)||!G.includes(grOf(p)));
+  const rowsOf=[...sgs.map(g=>({t:g.name,L:kids.filter(p=>gOf(p)===g.name)}))];
+  const none=kids.filter(p=>!gOf(p)||!sgs.some(g=>g.name===gOf(p)));
+  if(none.length)rowsOf.push({t:t('Χωρίς υποομάδα'),L:none,dim:true});
+  const n=(L,f)=>{const c=L.filter(f).length; return c?String(c):'<span class="dim">·</span>'};
+  const tr=(r,tot)=>`<tr${tot?' style="font-weight:600;border-top:2px solid var(--line)"':''}><td${r.dim?' class="dim"':''}>${esc(r.t)}</td>
+    <td style="text-align:right">${n(r.L,p=>sgSexOf(p)==='a')}</td><td style="text-align:right">${n(r.L,p=>sgSexOf(p)==='k')}</td>
+    ${G.map(g=>`<td style="text-align:right">${n(r.L,p=>grOf(p)===g)}</td>`).join('')}
+    ${noGr?`<td style="text-align:right">${n(r.L,p=>!grOf(p)||!G.includes(grOf(p)))}</td>`:''}
+    <td style="text-align:right"><b>${r.L.length}</b></td></tr>`;
+  const unk=kids.filter(p=>!sgSexOf(p)).length;
+  return `<div style="overflow:auto"><table style="font-size:12.5px"><thead><tr><th></th><th style="text-align:right">${t('Αγόρια')}</th><th style="text-align:right">${t('Κορίτσια')}</th>
+    ${G.map(g=>`<th style="text-align:right">${esc(g)}</th>`).join('')}${noGr?`<th style="text-align:right">${t('χωρίς τάξη')}</th>`:''}<th style="text-align:right">${t('Σύνολο')}</th></tr></thead>
+    <tbody>${rowsOf.map(r=>tr(r)).join('')}${tr({t:t('Σύνολο'),L:kids},true)}</tbody></table></div>
+    ${unk?`<div class="dim" style="font-size:11.5px;margin-top:5px">${pln(unk,t('μέλος χωρίς φύλο στην καρτέλα'),t('μέλη χωρίς φύλο στην καρτέλα'))}</div>`:''}`;
+}
 V.groups=()=>{
   const secs=['Αγέλη','Ομάδα','Κοινότητα'];
   const o1=oneSec(); if(o1&&secs.includes(o1))SGSEC=o1;
@@ -11408,6 +11429,8 @@ V.groups=()=>{
         <button class="btn sm" id="sgExp">${ic('down',14)} Εξαγωγή</button>
         <button class="btn sm" id="sgVb" title="Ποιος αριθμός Viber για κάθε παιδί και τους γονείς του">${ic('phone',14)} Λίστα Viber</button></div></div>
     ${slinkCardHTML(SGSEC)}
+    ${kids.length?`<details class="card pad" style="margin-bottom:14px" open><summary style="cursor:pointer"><b>${t('Κατανομή')}</b> <span class="dim" style="font-size:12.5px">· ${t('αγόρια/κορίτσια και τάξεις ανά')} ${esc(kindOf.toLowerCase())}</span></summary>
+      <div id="sgBreak" style="margin-top:9px">${sgBreakHTML(sgs,kids)}</div></details>`:''}
     ${listBar('',false)}<div class="cgrid">${sgs.map(card).join('')||'<div class="card pad dim">Καμία υποομάδα ακόμη — γράψε όνομα πιο πάνω και πάτα +</div>'}</div>
     ${SGTO?`<div class="card pad" style="margin-bottom:12px;background:var(--accbg);border-color:var(--accln)">
       <b>Μοίρασμα σε «${esc(SGTO)}»</b>
@@ -11432,6 +11455,7 @@ V.groups=()=>{
     document.querySelectorAll('[data-sgn]').forEach(sp=>{const L=document.querySelector(`[data-sglist="${CSS.escape(sp.dataset.sgn)}"]`);
       const n=L?L.querySelectorAll('[data-sgmove]').length:0; sp.textContent=n+' '+(n===1?'μέλος':'μέλη');
       if(L){const e=L.querySelector('.sgempty'); if(n&&e)e.remove(); if(!n&&!e)L.insertAdjacentHTML('beforeend','<span class="dim sgempty" style="font-size:12px">— κενή —</span>')}});
+    const bk=$('sgBreak'); if(bk)bk.innerHTML=sgBreakHTML(sgs,kids);
     const nn=$('sgNone'), nc=$('sgNoneN'); if(nn&&nc){const n=nn.querySelectorAll('[data-sgmove]').length; nc.textContent=n;
       if(!n){nn.remove(); const h=$('sgNoneH'); if(h)h.remove();}}};
   document.querySelectorAll('[data-sgmove]').forEach(el=>el.onclick=async()=>{
@@ -11460,13 +11484,14 @@ V.groups=()=>{
   const ps=$('sgPaste'); if(ps)ps.onclick=()=>sgPastePanel(SGSEC,sgs,kids);
   $('sgExp').onclick=()=>{
     const R=sgRoles(SGSEC);
-    const rows=[['Τμήμα',kindOf,...R.map(([,t])=>t),'Υπεύθυνος βαθμοφόρος','Μέλος','Α.Μ.','Τάξη']];
+    const rows=[['Τμήμα',kindOf,...R.map(([,t])=>t),'Υπεύθυνος βαθμοφόρος','Μέλος','Α.Μ.','Τάξη',t('Φύλο')]];
+    const sx=p=>({a:t('Αγόρι'),k:t('Κορίτσι')})[sgSexOf(p)]||'';
     sgs.forEach(g=>{
       const who=R.map(([slot])=>{const x=D.bh.find(b=>b.id===g[SG_SLOTCOL[slot]]);return x?nm(x):''});
       const st=D.bh.find(b=>b.id===g.staff_id); const stn=st?nm(st):'';
       const list=inG(g.name);
-      if(!list.length)rows.push([SGSEC,g.name,...who,stn,'','','']);
-      list.forEach(p=>rows.push([SGSEC,g.name,...who,stn,nm(p),p.registry_no||'',(myOf(p)||{}).grade||'']))});
+      if(!list.length)rows.push([SGSEC,g.name,...who,stn,'','','','']);
+      list.forEach(p=>rows.push([SGSEC,g.name,...who,stn,nm(p),p.registry_no||'',(myOf(p)||{}).grade||'',sx(p)]))});
     exportRows(rows,`76-ypoomades-${SGSEC}-${YEAR}`,`Υποομάδες ${SGSEC} ${YEAR}`)};
   document.querySelectorAll('[data-sgl]').forEach(b=>b.onclick=()=>sgLeaders(b.dataset.sgl));
 };
