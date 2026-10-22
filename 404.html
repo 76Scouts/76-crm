@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-22 14:02'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-22 14:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -11364,6 +11364,13 @@ let SGTO=null;
 let SGFROM=null;    
 let SGSEC_SET=false;
 const sgSexOf=p=>/Κορίτσι|Γυναίκα/.test(p.sex||'')?'k':/Αγόρι|Ανδρας|Άνδρας/.test(p.sex||'')?'a':'';
+function sgMini(list){
+  if(!list.length)return '';
+  const a=list.filter(p=>sgSexOf(p)==='a').length, k=list.filter(p=>sgSexOf(p)==='k').length;
+  const grOf=p=>(myOf(p)||{}).grade||'';
+  const G=(typeof GRADES!=='undefined'?GRADES:[]).map(g=>[g,list.filter(p=>grOf(p)===g).length]).filter(x=>x[1]);
+  return pln(a,t('αγόρι'),t('αγόρια'))+' · '+pln(k,t('κορίτσι'),t('κορίτσια'))+(G.length?' — '+G.map(([g,n])=>esc(g)+' '+n).join(' · '):'');
+}
 function sgBreakHTML(sgs,kids){
   const gOf=p=>(myOf(p)||{}).group_name||'';
   const grOf=p=>(myOf(p)||{}).grade||'';
@@ -11401,7 +11408,8 @@ V.groups=()=>{
     return `<div class="ccard">
       <div class="chead"><span class="dot" style="background:${g.colour||SC[SGSEC]}"></span>
         <div style="flex:1;min-width:0"><div class="ctitle">${esc(g.name)}</div>
-          <div class="dim" style="font-size:12px">${esc(g.kind||kindOf)} · <span data-sgn="${esc(g.name)}">${list.length} ${list.length===1?'μέλος':'μέλη'}</span></div></div></div>
+          <div class="dim" style="font-size:12px">${esc(g.kind||kindOf)} · <span data-sgn="${esc(g.name)}">${list.length} ${list.length===1?'μέλος':'μέλη'}</span></div>
+          <div class="dim" style="font-size:11.5px;margin-top:2px" data-sgbd="${esc(g.name)}">${sgMini(list)}</div></div></div>
       ${sgRoles(SGSEC).map(([slot,title])=>{const who=D.bh.find(x=>x.id===g[SG_SLOTCOL[slot]]);
         return `<div class="kv" style="font-size:12.5px"><b>${esc(title)}</b><span>${
           who?esc(nm(who)):'<span class="dim">—</span>'}</span></div>`}).join('')}
@@ -11456,6 +11464,7 @@ V.groups=()=>{
       const n=L?L.querySelectorAll('[data-sgmove]').length:0; sp.textContent=n+' '+(n===1?'μέλος':'μέλη');
       if(L){const e=L.querySelector('.sgempty'); if(n&&e)e.remove(); if(!n&&!e)L.insertAdjacentHTML('beforeend','<span class="dim sgempty" style="font-size:12px">— κενή —</span>')}});
     const bk=$('sgBreak'); if(bk)bk.innerHTML=sgBreakHTML(sgs,kids);
+    document.querySelectorAll('[data-sgbd]').forEach(el=>{el.innerHTML=sgMini(inG(el.dataset.sgbd))});
     const nn=$('sgNone'), nc=$('sgNoneN'); if(nn&&nc){const n=nn.querySelectorAll('[data-sgmove]').length; nc.textContent=n;
       if(!n){nn.remove(); const h=$('sgNoneH'); if(h)h.remove();}}};
   document.querySelectorAll('[data-sgmove]').forEach(el=>el.onclick=async()=>{
