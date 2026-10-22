@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-22 14:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-22 14:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -11364,6 +11364,7 @@ let SGTO=null;
 let SGFROM=null;    
 let SGSEC_SET=false;
 const sgSexOf=p=>/Κορίτσι|Γυναίκα/.test(p.sex||'')?'k':/Αγόρι|Ανδρας|Άνδρας/.test(p.sex||'')?'a':'';
+const sgStaffIds=g=>[...new Set([g.staff_id,...(g.staff_more||[])].filter(Boolean))];
 function sgMini(list){
   if(!list.length)return '';
   const a=list.filter(p=>sgSexOf(p)==='a').length, k=list.filter(p=>sgSexOf(p)==='k').length;
@@ -11413,9 +11414,9 @@ V.groups=()=>{
       ${sgRoles(SGSEC).map(([slot,title])=>{const who=D.bh.find(x=>x.id===g[SG_SLOTCOL[slot]]);
         return `<div class="kv" style="font-size:12.5px"><b>${esc(title)}</b><span>${
           who?esc(nm(who)):'<span class="dim">—</span>'}</span></div>`}).join('')}
-      ${(()=>{const st=D.bh.find(x=>x.id===g.staff_id);
-        return `<div class="kv" style="font-size:12.5px"><b>Υπεύθυνος βαθμοφόρος</b><span>${
-          st?esc(nm(st)):'<span class="dim">—</span>'}</span></div>`})()}
+      ${(()=>{const st=sgStaffIds(g).map(id=>D.bh.find(x=>x.id===id)).filter(Boolean);
+        return `<div class="kv" style="font-size:12.5px"><b>${st.length>1?t('Υπεύθυνοι βαθμοφόροι'):t('Υπεύθυνος βαθμοφόρος')}</b><span>${
+          st.length?st.map(x=>esc(nm(x))).join(', '):'<span class="dim">—</span>'}</span></div>`})()}
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px" data-sglist="${esc(g.name)}">
         ${list.map(p=>`<span class="pill${SGTO?' sgpick':''}" style="font-size:11.5px${SGTO?';cursor:pointer':''}"
            ${SGTO?`data-sgmove="${p.id}"`:''}><span class="${SGTO?'':'pn'}" ${SGTO?'':`data-p="${p.id}"`}>${pn(p)}</span></span>`).join('')
@@ -11497,7 +11498,7 @@ V.groups=()=>{
     const sx=p=>({a:t('Αγόρι'),k:t('Κορίτσι')})[sgSexOf(p)]||'';
     sgs.forEach(g=>{
       const who=R.map(([slot])=>{const x=D.bh.find(b=>b.id===g[SG_SLOTCOL[slot]]);return x?nm(x):''});
-      const st=D.bh.find(b=>b.id===g.staff_id); const stn=st?nm(st):'';
+      const stn=sgStaffIds(g).map(id=>D.bh.find(b=>b.id===id)).filter(Boolean).map(nm).join(', ');
       const list=inG(g.name);
       if(!list.length)rows.push([SGSEC,g.name,...who,stn,'','','','']);
       list.forEach(p=>rows.push([SGSEC,g.name,...who,stn,nm(p),p.registry_no||'',(myOf(p)||{}).grade||'',sx(p)]))});
@@ -11592,18 +11593,23 @@ function sgLeaders(id){
       ${sgRoles(g.section).map(([slot,title])=>
         `<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">${esc(title)}
           ${ppHTML('sgS'+slot, g[SG_SLOTCOL[slot]], ppOpt)}</label>`).join('')}
-      <label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">Υπεύθυνος βαθμοφόρος
-        ${ppHTML('sgStaff', g.staff_id, ledOpt)}</label>
-      <div class="muted" style="font-size:11.5px;margin:-3px 0 9px">Δεν είναι αρχηγός της υποομάδας —
-        είναι ο βαθμοφόρος που την έχει χρεωθεί.</div>
-      <label style="font-size:12px;color:var(--ink3);display:block">Χρώμα<input id="sgC" type="color" value="${g.colour||'#888888'}" style="height:36px"></label>
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:5px">${t('Υπεύθυνοι βαθμοφόροι')}</div>
+      <div id="sgStaffs">${(sgStaffIds(g).length?sgStaffIds(g):['']).map((sid,i)=>`<div style="margin-bottom:6px">${ppHTML('sgStaff'+i, sid, ledOpt)}</div>`).join('')}</div>
+      <button type="button" class="btn sm gh" id="sgStaffAdd" style="margin-bottom:8px">+ ${t('Κι άλλος υπεύθυνος')}</button>
+      <div class="muted" style="font-size:11.5px;margin:0 0 9px">${t('Δεν είναι αρχηγός της υποομάδας — είναι ο βαθμοφόρος (ή οι βαθμοφόροι) που την έχουν χρεωθεί.')}</div>
+      <label style="font-size:12px;color:var(--ink3);display:block"">${t('Χρώμα')}<input id="sgC" type="color" value="${g.colour||'#888888'}" style="height:36px"></label>
     </div>
     <div class="dsec" style="border:0"><button class="btn p" id="sgSave" style="width:100%;justify-content:center">Αποθήκευση</button></div>`;
   drw.classList.add('on');
   sgRoles(g.section).forEach(([slot])=>ppWire('sgS'+slot, poolS, ppOpt));
-  ppWire('sgStaff', ledPool, ledOpt);
+  let nSt=Math.max(1,sgStaffIds(g).length);
+  for(let i=0;i<nSt;i++)ppWire('sgStaff'+i, ledPool, ledOpt);
+  $('sgStaffAdd').onclick=()=>{ const i=nSt++;
+    $('sgStaffs').insertAdjacentHTML('beforeend',`<div style="margin-bottom:6px">${ppHTML('sgStaff'+i,'',ledOpt)}</div>`);
+    ppWire('sgStaff'+i, ledPool, ledOpt); };
   $('sgSave').onclick=async()=>{
-    const v={colour:$('sgC').value, staff_id:$('sgStaff').value||null,
+    const st=[...new Set([...Array(nSt).keys()].map(i=>($('sgStaff'+i)||{}).value).filter(Boolean))];
+    const v={colour:$('sgC').value, staff_id:st[0]||null, staff_more:st.slice(1),
              leader_id:null, second_id:null, third_id:null};
     sgRoles(g.section).forEach(([slot])=>{const el=$('sgS'+slot); if(el)v[SG_SLOTCOL[slot]]=el.value||null});
     const {error}=await sb.from('subgroups').update(v).eq('id',id);
