@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-22 14:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-25 12:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19778,7 +19778,8 @@ function markBody(){
     const kids=hq?[]:D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec).sort(sortByName);
     const gs={}; kids.forEach(p=>{const g=(myOf(p)||{}).group_name||'— χωρίς υποομάδα';(gs[g]=gs[g]||[]).push(p)});
     $('mBody').innerHTML=`<div class="noprint" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        ${hq?'':'<button class="btn sm" id="mAllP">Οι υπόλοιποι παρόντες</button><button class="btn sm" id="mAllA">Οι υπόλοιποι απόντες</button>'}
+        ${hq?'':'<button class="btn sm" id="mAllP">Οι υπόλοιποι παρόντες</button><button class="btn sm" id="mAllA">Οι υπόλοιποι απόντες</button>'
+          +'<button class="btn sm gh" id="mClr">'+t('Καθαρισμός σημειώσεων')+'</button>'}
         <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση</button></div>
       <div class="dim noprint" style="font-size:12px;margin:-4px 0 10px">${t('Άγγιξε ένα όνομα: μία φορά = Παρών, δεύτερη = Απών, τρίτη = σβήνει. Αποθηκεύεται αμέσως — κι αν πέσει το ίντερνετ, στέλνεται μόλις επανέλθει. Το κουμπί «Έλεγχος αποθήκευσης» κάτω ρωτά τη βάση ότι τα κράτησε όλα.')}</div>
       ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span>${Object.keys(gs).length>1?`<span class="sp"></span><button class="btn sm gh noprint" data-grpp="${esc(g)}">όλη η ${esc(g==='— χωρίς υποομάδα'?'ομάδα':'υποομάδα')} παρούσα</button>`:''}</div>
@@ -19797,17 +19798,31 @@ function markBody(){
     document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const id=b.dataset.m;
       const nx=STATE[id]==='p'?'a':(STATE[id]==='a'?null:'p');
       put([id],nx); paintOne(b); count();});
+    const repaint=ids=>{ document.querySelectorAll('[data-m]').forEach(b=>{ if(ids.includes(b.dataset.m))paintOne(b) }); count(); };
     const bulk=(ids,st,msg)=>{ if(!ids.length)return toast('Όλοι έχουν ήδη σημείωση');
-      put(ids,st); document.querySelectorAll('[data-m]').forEach(b=>{ if(ids.includes(b.dataset.m))paintOne(b) }); count(); toast(ids.length+' '+msg)};
+      const sid=SES.id; put(ids,st); repaint(ids);
+      undoBar(ids.length+' '+msg, async()=>{
+        if(!SES||SES.id!==sid)throw new Error(t('άλλαξε η συγκέντρωση στην οθόνη'));
+        const back=ids.filter(id=>STATE[id]===st); if(back.length){ put(back,null); repaint(back); }
+      }, 20, true); };
     if($('mAllA'))$('mAllA').onclick=()=>bulk([...document.querySelectorAll('[data-m]')].map(b=>b.dataset.m).filter(id=>!STATE[id]),'a','σημειώθηκαν απόντες');
     document.querySelectorAll('[data-grpp]').forEach(b=>b.onclick=()=>{
       const box=b.closest('.sec').nextElementSibling;
       bulk([...box.querySelectorAll('[data-m]')].map(x=>x.dataset.m).filter(id=>!STATE[id]),'p','σημειώθηκαν παρόντες')});
-    if($('mAllP'))$('mAllP').onclick=()=>{
-      const ids=[...document.querySelectorAll('[data-m]')].map(b=>b.dataset.m).filter(id=>!STATE[id]);
-      if(!ids.length)return toast('Όλοι έχουν ήδη σημείωση');
-      put(ids,'p'); document.querySelectorAll('[data-m]').forEach(b=>{ if(ids.includes(b.dataset.m))paintOne(b) }); count();
-      toast(ids.length+' σημειώθηκαν παρόντες');};
+    if($('mAllP'))$('mAllP').onclick=()=>bulk([...document.querySelectorAll('[data-m]')].map(b=>b.dataset.m).filter(id=>!STATE[id]),'p','σημειώθηκαν παρόντες');
+    if($('mClr'))$('mClr').onclick=async()=>{
+      const ids=[...document.querySelectorAll('[data-m]')].map(b=>b.dataset.m).filter(id=>STATE[id]);
+      if(!ids.length)return toast(t('Δεν υπάρχει καμία σημείωση'));
+      const sid=SES.id; if(!await uiAsk(t('Καθάρισμα όλων των σημειώσεων ({n} παιδιά) σε αυτή τη συγκέντρωση;\n\nΟι βαθμοφόροι, οι νέοι χωρίς καρτέλα και το ταμείο δεν αγγίζονται.',{n:ids.length})))return;
+      if(!SES||SES.id!==sid)return;
+      const was={}; ids.forEach(id=>was[id]=STATE[id]);
+      put(ids,null); repaint(ids);
+      undoBar(t('Καθαρίστηκαν {n} σημειώσεις',{n:ids.length}), async()=>{
+        if(!SES||SES.id!==sid)throw new Error(t('άλλαξε η συγκέντρωση στην οθόνη'));
+        const free=ids.filter(id=>!STATE[id]);
+        const P=free.filter(id=>was[id]==='p'), A=free.filter(id=>was[id]==='a');
+        if(P.length)put(P,'p'); if(A.length)put(A,'a'); repaint(free);
+      }, 20, true); };
   };
   const paintOne=b=>{const s=STATE[b.dataset.m];
     b.className='mk'+(s==='p'?' p':s==='a'?' a':'');
@@ -21207,7 +21222,7 @@ function uiChooseMulti(msg,choices,o){
 
 let UNDO=null;
 function undoClose(){ if(!UNDO)return; clearInterval(UNDO.tick); UNDO.el.remove(); UNDO=null }
-function undoBar(text, fn, secs){
+function undoBar(text, fn, secs, noRoute){
   secs=secs||20;
   undoClose();
   const b=document.createElement('div'); b.id='undob'; b.className='noprint';
@@ -21225,7 +21240,7 @@ function undoBar(text, fn, secs){
   $('undoGo').onclick=async()=>{
     const g=$('undoGo'); if(g){g.disabled=true; g.textContent='…'}
     clearInterval(tick);
-    try{ await fn(); undoClose(); saveCache(); toast('Αναιρέθηκε'); if(ROUTE)route(ROUTE) }
+    try{ await fn(); undoClose(); saveCache(); toast('Αναιρέθηκε'); if(ROUTE&&!noRoute)route(ROUTE) }
     catch(e){ undoClose(); toast('Η αναίρεση δεν έγινε: '+(e&&e.message||e)) }
   };
 }
