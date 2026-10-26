@@ -1082,8 +1082,8 @@ const NAV=[
  {g:'Ο φάκελός μου', d:'Τα δικά μου χαρτιά και οι δικές μου αιτήσεις', items:[
    {id:'me',t:'Η καρτέλα μου',i:'users',s:'live'},
    {id:'myforms',t:'Οι φόρμες μου',i:'book',s:'live'},
-   {id:'mycerts',t:'Τα πιστοποιητικά μου',i:'shield',s:'live'},
    {id:'myschools',t:'Αιτήσεις σχολών',i:'award',s:'live'},
+   {id:'mycerts',t:'Τα πιστοποιητικά μου',i:'shield',s:'live'},
    {id:'myveh',t:'Τα οχήματά μου',i:'car',s:'live'}]},
 
  {g:'Εγώ ως μέλος', d:'Ό,τι με αφορά ως μέλος τμήματος', items:[
@@ -1153,7 +1153,7 @@ const NAV=[
    {id:'account',t:'Ο λογαριασμός μου',i:'cog',s:'live'}]}
 ];
 const NAV_ALWAYS=['account'];
-const NAV_MINE=['me','myforms','mycerts','myschools','myveh'];
+const NAV_MINE=['me','myforms','myschools','mycerts','myveh'];
 const NAV_MINE_ANY=['me','myforms'];
 const LENS_PERSONAL=['member','parent'];
 const lensRole=()=>VIEWAS ? (VIEWAS.role==='section_head'?'head':VIEWAS.role)
@@ -1262,7 +1262,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-25 12:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-26 11:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1999,7 +1999,7 @@ const NAV_PATROL=[...NAV_SELF,'attend','trends'];
 const NAV_LEADER_ALL=['dash','issues','trends','members','leaders','guardians',
   'attend','events','cal','groups','synod','staff','enroll',
   'progAL','progOP','progKA','missing','medical','enroll',
-  'ledfile','me','mycerts','myschools','myveh'];
+  'ledfile','me','myschools','mycerts','myveh'];
 const NAV_LEADER=['dash','attend','members','guardians','leaders','groups','events','cal',
   'progAL','progOP','progKA','synod',
   'me','mycerts','myschools','myveh'];
@@ -2018,6 +2018,8 @@ function progDate(x){
   return `<span class="approx" title="${esc(why)}">~${esc(t)}</span>`;
 }
 const navFA=()=>{ try{ const pid=VIEWAS?VIEWAS.pid:(ME&&ME.person_id); return !!pid&&typeof labelsOf==='function'&&labelsOf(pid).length>0 }catch(e){ return false } };
+const navLedSelf=()=>{ try{ const pid=VIEWAS?VIEWAS.pid:(ME&&ME.person_id); const r=pid&&(D.bh||[]).find(p=>p.id===pid); return !!r&&isLed(r) }catch(e){ return false } };
+const NAV_MEMBER_LED=['me','myforms','myschools','mycerts','myveh'];
 function navFor(role, sec){
   const base = role==='parent' ? NAV_PARENT
        : role==='patrol' ? NAV_PATROL
@@ -2029,6 +2031,7 @@ function navFor(role, sec){
        : null;                                    
   if(!base) return base;
   if(role==='member'){
+    if(navLedSelf()) return NAV_MEMBER_LED;
     const mine = sec && PROG_OF[sec];
     let out = base.filter(x=>!Object.values(PROG_OF).includes(x) || x===mine);
     if(sec && sec!=='Κοινότητα') out = out.filter(x=>x!=='synod');
@@ -2339,7 +2342,7 @@ function mineAllowed(id,K){
     const rec=meRec();
     if(!rec) return false;
     if(NAV_MINE_ANY.includes(id)) return true;
-    if(LENS_PERSONAL.includes(K)) return false;
+    if(K==='parent') return false;
     return isLed(rec);
   }
   return null;
@@ -2644,7 +2647,7 @@ function renderNav(){
         G(t('Εγγραφές & χαρτιά'),t('Τι λείπει από κάθε παιδί, τραπέζι εγγραφών'),['missing','enroll','desk','intake']),
         G(t('Εξαγωγές & «Δες ως»'),t('Excel του τμήματος και η εφαρμογή με τα μάτια άλλου'),['outputs','access']),
         G(t('Νέα χρονιά'),t('Ποιος ανεβαίνει, ποιος φεύγει, παραλαβή φακέλου'),['year','handover'],true),
-        G(t('Ο φάκελός μου'),t('Τα δικά μου χαρτιά και οι δικές μου αιτήσεις'),['me','myforms','mycerts','myschools','myveh'],true),
+        G(t('Ο φάκελός μου'),t('Τα δικά μου χαρτιά και οι δικές μου αιτήσεις'),['me','myforms','myschools','mycerts','myveh'],true),
         ...base.filter(g=>g.items.some(m=>m.id==='account'))];
     }
     ALLG=base;
@@ -2656,7 +2659,7 @@ function renderNav(){
         G(t('Πρόγραμμα'),t('Συγκεντρώσεις, παρουσίες, δράσεις'),['attend','cal','events']),
         G(t('Ο κόσμος μας'),t('Παιδιά, βαθμοφόροι, γονείς, επιτελεία'),['members','leaders','guardians','staff']),
         G(t('Διοίκηση'),t('Ό,τι κρίνεις, ό,τι λείπει, ό,τι βγαίνει προς τα έξω'),['inbox','missing','outputs','access']),
-        G(t('Ο φάκελός μου'),t('Τα δικά μου χαρτιά και οι δικές μου αιτήσεις'),['me','myforms','mycerts','myschools','myveh'],true),
+        G(t('Ο φάκελός μου'),t('Τα δικά μου χαρτιά και οι δικές μου αιτήσεις'),['me','myforms','myschools','mycerts','myveh'],true),
         ...base.filter(g=>g.items.some(m=>m.id==='account'))];
     }
     return base; })();
@@ -13945,7 +13948,7 @@ V.me=()=>{
     })).concat(peer), M.head+`<div class="sec"><h3>Προσκοπική Πρόοδος</h3></div>`);
     return;
   }
-  if(!isLed(p) || LENS_PERSONAL.includes(lensRole())){
+  if(!isLed(p) || lensRole()==='parent'){
     $('view').innerHTML=M.head+meSimpleHTML(p);
     document.querySelectorAll('#view [data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go));
     return;
@@ -13959,6 +13962,8 @@ V.me=()=>{
       fn:box=>{box.innerHTML=meActionsBox(p)}},
     {k:'srv',  t:'Διοικητικές μεταβολές', i:'book', d:'εντολές, αναθέσεις, θητείες',
       fn:box=>{box.innerHTML=meServiceBox(p)}},
+    {k:'prog', t:t('Προσκοπική Πρόοδος'), i:'award', d:t('από τα χρόνια μου ως μέλος'),
+      fn:box=>{box.innerHTML=meProgPast(p)}},
   ], M.head);
 };
 V.mycerts=()=>{const M=mePieces(); if(!M)return meGone();
@@ -14382,14 +14387,14 @@ function stageCard(pid, sec, st){
 function myProgBody(p, sec, opt){
   opt=opt||{};
   const years=(D.my||[]).filter(y=>y.person_id===p.id&&!y.voided_at&&y.section===sec).map(y=>y.scout_year).sort();
-  const nx=nextStep(p.id,sec);
+  const nx=opt.past?null:nextStep(p.id,sec);    
   const stages=cardStages(sec).map(st=>stageCard(p.id,sec,st)).join('');
   return `<div class="dim" style="font-size:12px;margin-bottom:9px">
       ${esc(sec)}${years.length?' · '+esc(years[0])+(years.length>1?' έως '+esc(years[years.length-1]):''):''}</div>
     ${nx?`<div class="card pad" style="margin-bottom:9px;font-size:13px"><b>Επόμενο:</b> ${esc(nx.st.label)}
        ${nx.tot?`<span class="dim">— ${nx.n} από ${nx.tot}${nx.tot>nx.n?' · λείπουν '+(nx.tot-nx.n):''}</span>`:''}</div>`:''}
     ${promiseNote(p.id,sec)}
-    ${sec==='Κοινότητα'
+    ${sec==='Κοινότητα'&&!opt.past
       ? `<div class="card pad" style="margin-bottom:9px"><b style="font-size:13.5px">Η.Κ.Α.Δ.Ε.</b>
           <div class="muted" style="margin-top:5px;font-size:13px">Η Κοινότητα δεν έχει αστέρια ούτε τρίφυλλα:
             η πορεία γράφεται στο Ημερολόγιο και επικυρώνεται από τη Σύνοδο.</div>
@@ -14399,6 +14404,13 @@ function myProgBody(p, sec, opt){
     ${badgeLine(p.id,sec)}`;
 }
 
+function meProgPast(p){
+  const secs=mySections(p);
+  if(!secs.length)return `<div class="card pad dim" style="font-size:13px">${t('Δεν έχει καταχωρηθεί ακόμη η προσκοπική σου πρόοδος από τα χρόνια σου ως μέλος.')}</div>`;
+  return secs.map((s,i)=>`<details class="card pad" style="margin-bottom:10px"${i===secs.length-1?' open':''}>
+      <summary style="cursor:pointer"><b>${esc(s)}</b></summary>
+      <div style="margin-top:10px">${myProgBody(p,s,{past:true})}</div></details>`).join('');
+}
 function kidProgCard(kid){
   const secs=mySections(kid); if(!secs.length)return '';
   const now=secOf(kid);
