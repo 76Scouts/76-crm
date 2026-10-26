@@ -662,6 +662,7 @@ tr.argrow td{background:var(--bg2)}
 .ptdi{width:28px;height:28px;flex:0 0 28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--accbg);color:var(--acc)}
 .ptd.warn{background:var(--warnbg);border-color:transparent}.ptd.warn .ptdi{background:var(--card);color:var(--warn)}
 .ptd.ok .ptdi{background:var(--okbg);color:var(--ok)}
+.ptd.bad{background:var(--badbg);border-color:transparent}.ptd.bad .ptdi{background:var(--card);color:var(--bad)}
 .ptdh{font-size:14px;font-weight:600;line-height:1.35}
 .ptds{font-size:12.5px;color:var(--ink2);margin-top:3px;line-height:1.5}
 .ptd.act [data-evrow]{border-top:0!important;padding:4px 0 0!important}
@@ -1263,7 +1264,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-26 13:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-26 17:08'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1562,7 +1563,7 @@ async function start(){
 
 const IDLE_MS=15*60*1000; let LAST_ACT=Date.now(), SWALLOW_UNTIL=0;
 function homeRoute(){ const k=PA&&PA.k, r=PA&&(PA.role||PA.k);
-  return k==='member'?(navLedSelf()?'me':'myhome'):k==='parent'?'mykids':k==='anix'?'myprog':r==='patrol'?'attend':k==='dev'?'mysys':'dash'; }
+  return k==='member'?'myhome':k==='parent'?'mykids':k==='anix'?'myprog':r==='patrol'?'attend':k==='dev'?'mysys':'dash'; }
 function idleCheck(){
   if(document.visibilityState==='hidden')return;
   if(Date.now()-LAST_ACT>IDLE_MS && typeof LOADED!=='undefined' && LOADED){
@@ -2020,7 +2021,7 @@ function progDate(x){
 }
 const navFA=()=>{ try{ const pid=VIEWAS?VIEWAS.pid:(ME&&ME.person_id); return !!pid&&typeof labelsOf==='function'&&labelsOf(pid).length>0 }catch(e){ return false } };
 const navLedSelf=()=>{ try{ const pid=VIEWAS?VIEWAS.pid:(ME&&ME.person_id); const r=pid&&(D.bh||[]).find(p=>p.id===pid); return !!r&&isLed(r) }catch(e){ return false } };
-const NAV_MEMBER_LED=['me','myforms','myschools','mycerts','myveh'];
+const NAV_MEMBER_LED=['myhome','me','myforms','myschools','mycerts','myveh'];
 function navFor(role, sec){
   const base = role==='parent' ? NAV_PARENT
        : role==='patrol' ? NAV_PATROL
@@ -2636,11 +2637,13 @@ function renderNav(){
         base=base.map(g=>g===mine?fam:g).filter(g=>g!==kids);
       }
     }
-    if(K==='member'&&!navLedSelf()){
+    if(K==='member'){
       const it={}; base.forEach(g=>g.items.forEach(m=>it[m.id]=m));
       const G=(g,d,ids)=>({g,d,items:ids.map(id=>it[id]).filter(Boolean)});
-      base=[G(t('Η καρτέλα μου'),t('Τι έχω μπροστά μου και η πορεία μου'),['myhome','me']),
-            G(t('Πρόγραμμα & φόρμες'),t('Τι χρειάζεται από εμένα και τι έχουμε μπροστά'),['myforms','myprog','myatt','progKA']),
+      const led=navLedSelf();
+      base=[G(t('Αρχική'),'',['myhome']),
+            G(t('Ο φάκελός μου'),t('Τα δικά μου χαρτιά και οι δικές μου αιτήσεις'),led?['me','myforms','myschools','mycerts','myveh']:['me','myforms']),
+            ...(led?[]:[G(t('Πρόγραμμα'),t('Τι έχουμε μπροστά και πού ήμουν'),['myprog','myatt','progKA'])]),
             ...base.filter(g=>g.items.some(m=>m.id==='account'))];
     }
     if(K==='head'){
@@ -14459,6 +14462,7 @@ V.myhome=()=>{
   const row=(icn,cls,h,sub,btn)=>`<div class="ptd${cls?' '+cls:''}"><span class="ptdi">${ic(icn,16)}</span>
       <div style="flex:1;min-width:0"><div class="ptdh">${h}</div>${sub?`<div class="ptds">${sub}</div>`:''}</div>${btn||''}</div>`;
   const go=(r,lab)=>`<button class="btn sm" data-mgo="${r}">${esc(lab)}</button>`;
+  if(isLed(p))return myhomeLed(M,today,row,go);
   const ns=sec?nextSess(sec,today):null, mi=sec?meetInfo(sec):'';
   const meet=row('cal','',t('Επόμενη συγκέντρωση')+(sec?' · '+esc(sec):''),
     ns?`<b>${fdateW(ns.session_date)}</b>${mi?' · '+esc(mi):''}${ns.title&&ns.title!==dv('Συγκέντρωση')?'<br>'+esc(ns.title):''}`
@@ -14486,19 +14490,80 @@ V.myhome=()=>{
         <div class="s">${nx&&nx.tot?nx.n+' '+t('από')+' '+nx.tot:t('η πρόοδός μου')+' ›'}</div></button>
     </div>`;
   document.querySelectorAll('#view [data-mgo]').forEach(b=>b.onclick=()=>route(b.dataset.mgo));
+  mhForms(p,row,go,'');
+};
+function mhForms(p,row,go,pre){
   const need=[dv('δεν έχει υποβληθεί'),dv('έληξε — θέλει ανανέωση'),dv('λήγει σύντομα')];
   const fill=html=>{ const b=$('mhTodo'); if(!b||ROUTE!=='myhome')return; b.innerHTML=html;
     b.querySelectorAll('[data-mgo]').forEach(x=>x.onclick=()=>route(x.dataset.mgo)); };
   const ok=row('check','ok',t('Τίποτα αυτή τη στιγμή'),t('Όλα είναι εντάξει. Θα το δεις εδώ μόλις χρειαστεί κάτι.'));
+  if(pre)fill(pre);
   Promise.resolve(sb.rpc('open_forms',{p_person:p.id})).then(({data,error})=>{
-    if(error)return fill(row('book','',t('Οι φόρμες μου'),t('Δεν φόρτωσαν — άνοιξε τις φόρμες σου.'),go('myforms',t('Οι φόρμες μου'))));
+    if(error)return fill(pre+row('book','',t('Οι φόρμες μου'),t('Δεν φόρτωσαν — άνοιξε τις φόρμες σου.'),go('myforms',t('Οι φόρμες μου'))));
     const f=(data||[]).filter(x=>need.includes(x.katastasi));
     const kidP=formsByParents(p);    
-    fill(f.length?row('book','warn',pln(f.length,t('φόρμα περιμένει'),t('φόρμες περιμένουν')),
+    fill(f.length?pre+row('book','warn',pln(f.length,t('φόρμα περιμένει'),t('φόρμες περιμένουν')),
         f.slice(0,4).map(x=>esc(x.title||'')).filter(Boolean).join('<br>')+(kidP?'<br><span class="dim">'+t('Τις συμπληρώνουν οι γονείς σου — θύμισέ τους.')+'</span>':''),
-        go('myforms',kidP?t('Θύμισέ το στους γονείς μου'):t('Οι φόρμες μου'))):ok);
-  }).catch(()=>fill(ok));
-};
+        go('myforms',kidP?t('Θύμισέ το στους γονείς μου'):t('Οι φόρμες μου'))):(pre||ok));
+  }).catch(()=>fill(pre||ok));
+}
+
+function myhomeLed(M,today,row,go){
+  const p=M.p, sec=secOf(p), wd=TH.certWarnDays||90;
+  const dd=e=>Math.round((new Date(String(e).slice(0,10)+'T12:00:00')-new Date(today+'T12:00:00'))/864e5);
+  const when=e=>dd(e)<0?t('έληξε {d}',{d:fdate(e)}):t('λήγει {d}',{d:fdate(e)});
+  const hot=xs=>xs.some(e=>dd(e)<0)?'bad':'warn';
+  const ns=sec&&YOUTH_SECS.includes(sec)?nextSess(sec,today):null, mi=ns?meetInfo(sec):'';
+  const meet=ns?row('cal','',t('Επόμενη συγκέντρωση')+' · '+esc(sec),
+    `<b>${fdateW(ns.session_date)}</b>${mi?' · '+esc(mi):''}${ns.title&&ns.title!==dv('Συγκέντρωση')?'<br>'+esc(ns.title):''}`):'';
+  const stf=new Set((D.pa||[]).filter(x=>x.person_id===p.id&&x.is_staff).map(x=>x.event_id));
+  const evs=(D.ev||[]).filter(e=>stf.has(e.id)&&!e.hidden&&(e.event_date||'')>=today)
+    .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||'')).slice(0,3);
+  const acts=evs.length?row('flag','',t('Δράσεις όπου είμαι στο επιτελείο'),
+    evs.map(e=>`<b>${esc(e.title||'')}</b> · ${fdate(e.event_date)}${e.place?' · '+esc(e.place):''}`).join('<br>')):'';
+  const todo=[], n9=certState(p.id);
+  if(['expired','none','soon'].includes(n9.k))todo.push(row('shield',n9.k==='soon'?'warn':'bad',t('Πιστοποιητικό Ν.91(Ι)'),
+    n9.k==='none'?t('Δεν το έχουμε καθόλου — χωρίς αυτό δεν εκδίδεται εντολή.')
+      :when(n9.exp)+(n9.k==='expired'?' — '+t('χωρίς αυτό δεν εκδίδεται εντολή.'):''),go('mycerts',t('Τα πιστοποιητικά μου'))));
+  const ct=c=>((D.ct||[]).find(x=>x.code===c)||{}).name||c, last={};
+  (D.pc||[]).filter(x=>x.person_id===p.id&&x.type_code!==dv('Ν91')).forEach(x=>{ const k=x.type_code+'|'+(x.label||'');
+    if(!last[k]||(x.expires_on||'9999')>(last[k].expires_on||'9999'))last[k]=x });
+  const exp=Object.values(last).filter(x=>x.expires_on&&dd(x.expires_on)<=wd);
+  const cs=exp.filter(x=>!VEH_TYPES.includes(x.type_code));
+  if(cs.length)todo.push(row('shield',hot(cs.map(x=>x.expires_on)),pln(cs.length,t('πιστοποιητικό θέλει ανανέωση'),t('πιστοποιητικά θέλουν ανανέωση')),
+    cs.map(x=>esc(ct(x.type_code))+' · '+when(x.expires_on)).join('<br>'),go('mycerts',t('Τα πιστοποιητικά μου'))));
+  const vl=exp.filter(x=>VEH_TYPES.includes(x.type_code)).map(x=>({h:esc(ct(x.type_code))+(x.label?' '+esc(x.label):''),e:x.expires_on}));
+  (D.veh||[]).filter(v=>v.owner_id===p.id).forEach(v=>{ const ins=(D.vi||[]).filter(i=>i.vehicle_id===v.id)
+      .sort((a,b)=>(b.expires_on||'').localeCompare(a.expires_on||''))[0];
+    if(ins&&ins.expires_on&&dd(ins.expires_on)<=wd)vl.push({h:t('Ασφάλεια')+' '+esc(v.plate||''),e:ins.expires_on}) });
+  if(vl.length)todo.push(row('car',hot(vl.map(x=>x.e)),t('Χαρτιά οχήματος'),
+    vl.map(x=>x.h+' · '+when(x.e)).join('<br>'),go('myveh',t('Τα οχήματά μου'))));
+  const sa=schoolsAhead().filter(e=>!saHas(p.id,e)&&!myApp(e.id,p.id)&&(!e.event_date||e.event_date>=today));
+  if(sa.length)todo.push(row('award','',pln(sa.length,t('σχολή της χρονιάς που δεν έχεις'),t('σχολές της χρονιάς που δεν έχεις')),
+    sa.slice(0,3).map(e=>esc(e.title||'')+(e.event_date?' · '+fdate(e.event_date):'')).join('<br>')
+      +'<br><span class="dim">'+t('Δήλωσε ενδιαφέρον αν θέλεις να πας.')+'</span>',go('myschools',t('Αιτήσεις σχολών'))));
+  const ws=(D.sh||[]).filter(s=>s.person_id===p.id&&/Εντολ|Ανάθ/.test(s.warrant_type||'')&&warInYear(s));
+  const live=ws.find(s=>s.start_date&&s.start_date<=today&&(!s.end_date||s.end_date>=today))||ws.find(s=>s.start_date), pend=ws.find(warPending);
+  const dash='<span style="font-size:15px;font-weight:500;color:var(--ink3)">—</span>';
+  const wv=live?esc(live.warrant_type):pend?t('σε εξέταση'):dash;
+  const wsub=live?(live.end_date?t('ως')+' '+fdate(live.end_date):t('χωρίς ημερομηνία λήξης'))
+    :pend?t('αίτηση')+' '+fdate(pend.request_date):t('δεν βλέπω εντολή — ρώτα τον Α.Σ.');
+  const nv=n9.exp?fdate(n9.exp):dash, nsub={ok:t('σε ισχύ'),soon:t('λήγει σύντομα'),expired:t('έληξε'),none:t('δεν το έχουμε'),na:'—'}[n9.k]||'';
+  $('view').innerHTML=M.head+`<div class="card pad pdash" style="margin-bottom:14px">
+      <b style="font-size:16px">${t('Γεια σου')}${p.first_name?', '+esc(p.first_name):''}</b>
+      <div class="dim" style="font-size:12.5px;margin-top:3px">${esc(ledLabel(p,true)||sec||'')}</div>
+      <div class="ptdl">${meet||acts?meet+acts:`<div class="dim" style="font-size:13px;padding:6px 0">${t('Τίποτα προγραμματισμένο για σένα αυτές τις μέρες.')}</div>`}</div>
+      <div class="ptdt">${t('Τι χρειάζεται από εσένα')}</div>
+      <div class="ptdl" id="mhTodo"><div class="dim" style="font-size:13px;padding:6px 0">${t('Φόρτωση…')}</div></div></div>
+    <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+      <button class="tile" data-mgo="me"><div class="k">${t('Η εντολή μου')} ${esc(YEAR)}</div>
+        <div class="v" style="font-size:16px;line-height:1.3">${wv}</div><div class="s">${wsub}</div></button>
+      <button class="tile" data-mgo="mycerts"><div class="k">${t('Ν.91(Ι)')}</div>
+        <div class="v" style="font-size:16px;line-height:1.3">${nv}</div><div class="s">${nsub}</div></button>
+    </div>`;
+  document.querySelectorAll('#view [data-mgo]').forEach(b=>b.onclick=()=>route(b.dataset.mgo));
+  mhForms(p,row,go,todo.join(''));
+}
 
 function meProgKid(p){
   const now=secOf(p), seen=new Set(mySections(p)); if(YOUTH_SECS.includes(now))seen.add(now);
