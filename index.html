@@ -1264,7 +1264,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-26 17:08'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-26 19:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -13999,7 +13999,7 @@ V.me=()=>{
     {k:'srv',  t:'Διοικητικές μεταβολές', i:'book', d:'εντολές, αναθέσεις, θητείες',
       fn:box=>{box.innerHTML=meServiceBox(p)}},
     {k:'prog', t:t('Προσκοπική Πρόοδος'), i:'award', d:t('από τα χρόνια μου ως μέλος'),
-      fn:box=>{box.innerHTML=meProgPast(p)}},
+      fn:box=>{box.innerHTML=meProgPast(p); poreiaFill(box,p)}},
   ], M.head);
 };
 V.mycerts=()=>{const M=mePieces(); if(!M)return meGone();
@@ -14441,9 +14441,9 @@ function myProgBody(p, sec, opt){
 }
 
 function meProgPast(p){
-  const secs=mySections(p);
-  if(!secs.length)return `<div class="card pad dim" style="font-size:13px">${t('Δεν έχει καταχωρηθεί ακόμη η προσκοπική σου πρόοδος από τα χρόνια σου ως μέλος.')}</div>`;
-  return secs.map((s,i)=>`<details class="card pad" style="margin-bottom:10px"${i===secs.length-1?' open':''}>
+  const secs=mySections(p), por='<div id="poreia"></div>';    
+  if(!secs.length)return por+`<div class="card pad dim" style="font-size:13px">${t('Δεν έχει καταχωρηθεί ακόμη η προσκοπική σου πρόοδος από τα χρόνια σου ως μέλος.')}</div>`;
+  return por+secs.map((s,i)=>`<details class="card pad" style="margin-bottom:10px"${i===secs.length-1?' open':''}>
       <summary style="cursor:pointer"><b>${esc(s)}</b></summary>
       <div style="margin-top:10px">${myProgBody(p,s,{past:true})}</div></details>`).join('');
 }
@@ -14572,6 +14572,81 @@ function meProgKid(p){
   return secs.map(s=>`<details class="card pad" style="margin-bottom:10px"${s===now||secs.length===1?' open':''}>
       <summary style="cursor:pointer"><b>${esc(s)}</b></summary>
       <div style="margin-top:10px">${myProgBody(p,s)}</div></details>`).join('');
+}
+const POR={};
+const porYear=y=>y+'-'+String((y+1)%100).padStart(2,'0');
+const porCan=p=>!!p&&(p.id===mePid()||(ME&&ME.role==='admin'))&&isLed(p);
+async function poreiaFill(box,p){
+  const host=box.querySelector('#poreia'); if(!host)return;
+  host.innerHTML=`<div class="dim" style="font-size:13px">${t('Φόρτωση…')}</div>`;
+  const {data,error}=await sb.from('self_history').select('*').eq('person_id',p.id);
+  if(!host.isConnected)return;
+  if(error){ host.innerHTML=`<div class="dim" style="font-size:13px">${t('Η πορεία σου δεν φόρτωσε — δοκίμασε ξανά αργότερα.')}</div>`; return }
+  POR[p.id]=data||[]; poreiaDraw(host,p);
+}
+function poreiaDraw(host,p){
+  const off=(D.my||[]).filter(y=>y.person_id===p.id&&!y.voided_at);
+  const lock=new Set(off.map(y=>y.scout_year)), can=porCan(p);
+  const rows=[...off.map(y=>({y:y.scout_year,s:y.section,g:y.group_name,r:y.role,off:true})),
+    ...(POR[p.id]||[]).map(x=>({y:x.scout_year,s:x.section,g:x.group_name,r:x.position,sys:x.system_name,id:x.id}))]
+    .sort((a,b)=>a.y.localeCompare(b.y)||YOUTH_SECS.indexOf(a.s)-YOUTH_SECS.indexOf(b.s));
+  const line=x=>`<div class="porrow" style="display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);flex-wrap:wrap">
+      <b style="font-size:13.5px;min-width:64px">${esc(x.y)}</b>
+      <span style="flex:1 1 180px;font-size:13.5px">${esc(x.s||'—')}${x.g?' · '+esc(x.g):''}${x.r?' · <span class="dim">'+esc(x.r)+'</span>':''}${x.sys?' · <span class="dim">'+esc(x.sys)+'</span>':''}</span>
+      ${x.off?`<span class="pill" title="${esc(t('Από το μητρώο του Συστήματος — δεν αλλάζει από εδώ.'))}">${ic('lock',11)} ${t('μητρώο')}</span>`
+        :`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${t('δική μου δήλωση')}</span>
+          ${can&&!lock.has(x.y)?`<button class="btn sm gh" data-pored="${x.id}">${t('Αλλαγή')}</button>`:''}
+          ${can?`<button class="btn sm gh" data-pordel="${x.id}" aria-label="${esc(t('Διαγραφή'))}">✕</button>`:''}`}</div>`;
+  host.innerHTML=`<div class="card pad" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;align-items:center"><b style="flex:1;font-size:14.5px">${t('Η πορεία μου')}</b>
+        ${can?`<button class="btn sm" id="porAdd">${t('Πρόσθεσε χρονιά')}</button>`:''}</div>
+      <div class="dim" style="font-size:12.5px;margin:4px 0 6px;line-height:1.5">${t('Οι χρονιές που έχει το μητρώο είναι κλειδωμένες. Τις παλιότερες τις γράφεις εσύ — τμήμα, εξάδα/ενωμοτία/όμιλος, θέση. Είναι για τη μνήμη: δεν μετράνε σε εγγραφές.')}</div>
+      ${rows.length?rows.map(line).join(''):`<div class="dim" style="font-size:13px;padding:6px 0">${t('Δεν έχει γραφτεί ακόμη καμία χρονιά.')}</div>`}
+      <div id="porForm"></div></div>`;
+  const a=$('porAdd'); if(a)a.onclick=()=>poreiaForm(host,p,null);
+  host.querySelectorAll('[data-pored]').forEach(b=>b.onclick=()=>poreiaForm(host,p,(POR[p.id]||[]).find(x=>x.id===b.dataset.pored)));
+  host.querySelectorAll('[data-pordel]').forEach(b=>b.onclick=()=>poreiaDel(host,p,b.dataset.pordel));
+}
+function poreiaForm(host,p,ed){
+  const f=host.querySelector('#porForm'); if(!f)return;
+  const lock=new Set((D.my||[]).filter(y=>y.person_id===p.id&&!y.voided_at).map(y=>y.scout_year));
+  const y0=+String(YEAR).slice(0,4), yrs=[];
+  for(let y=y0-1;y>=1960;y--){ const k=porYear(y); if(!lock.has(k))yrs.push(k) }
+  const pos=[dv('Πρώτος'),dv('Δεύτερος'),dv('Ενωμοτάρχης'),dv('Υπενωμοτάρχης')];
+  f.innerHTML=`<div class="porform" style="border-top:1px solid var(--line);margin-top:8px;padding-top:10px;display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <label style="font-size:12px;color:var(--ink3)">${t('Χρονιά')}<select id="porY">${yrs.map(y=>`<option${ed&&ed.scout_year===y?' selected':''}>${esc(y)}</option>`).join('')}</select></label>
+      <label style="font-size:12px;color:var(--ink3)">${t('Τμήμα')}<select id="porS">${YOUTH_SECS.map(s=>`<option${ed&&ed.section===s?' selected':''}>${esc(s)}</option>`).join('')}</select></label>
+      <label style="font-size:12px;color:var(--ink3)">${t('Εξάδα / ενωμοτία / όμιλος')}<input id="porG" maxlength="60" value="${esc(ed&&ed.group_name||'')}"></label>
+      <label style="font-size:12px;color:var(--ink3)">${t('Θέση (αν είχες)')}<input id="porP" maxlength="40" list="porPl" value="${esc(ed&&ed.position||'')}"></label>
+      <label style="font-size:12px;color:var(--ink3)">${t('Σύστημα')}<input id="porSys" maxlength="60" placeholder="${esc(t('76ο Στροβόλου'))}" value="${esc(ed&&ed.system_name||'')}"></label>
+      <datalist id="porPl">${pos.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist>
+      <div style="display:flex;gap:6px;align-items:end"><button class="btn sm p" id="porSave">${ed?t('Αποθήκευση'):t('Προσθήκη')}</button>
+        <button class="btn sm gh" id="porX">${t('Άκυρο')}</button></div></div>`;
+  $('porX').onclick=()=>{ f.innerHTML='' };
+  $('porSave').onclick=async()=>{
+    const v={scout_year:$('porY').value, section:$('porS').value, group_name:$('porG').value.trim()||null,
+             position:$('porP').value.trim()||null, system_name:$('porSys').value.trim()||null};
+    if(!v.scout_year)return toast(t('Διάλεξε χρονιά.'));
+    const b=$('porSave'); b.disabled=true;
+    const q=ed?sb.from('self_history').update(v).eq('id',ed.id):sb.from('self_history').insert({...v,person_id:p.id});
+    const {data,error}=await q.select('*');
+    if(error||!data||!data.length){ b.disabled=false;
+      return toast(error&&/duplicate|unique/i.test(error.message||'')?t('Αυτή η χρονιά και το τμήμα υπάρχουν ήδη.'):(error&&error.message)||t('Δεν αποθηκεύτηκε.')) }
+    POR[p.id]=(POR[p.id]||[]).filter(x=>x.id!==data[0].id).concat(data);
+    poreiaDraw(host,p); toast(ed?t('Αποθηκεύτηκε'):t('Προστέθηκε'));
+  };
+}
+async function poreiaDel(host,p,id){
+  const x=(POR[p.id]||[]).find(r=>r.id===id); if(!x)return;
+  if(!await uiAsk(t('Διαγραφή της χρονιάς {y} από την πορεία σου;',{y:x.scout_year})))return;
+  const {error}=await sb.from('self_history').delete().eq('id',id);
+  if(error)return toast(error.message||t('Δεν διαγράφηκε.'));
+  POR[p.id]=(POR[p.id]||[]).filter(r=>r.id!==id); poreiaDraw(host,p);
+  const back={person_id:x.person_id,scout_year:x.scout_year,section:x.section,group_name:x.group_name,position:x.position,system_name:x.system_name};
+  undoBar(t('Διαγράφηκε η χρονιά {y}',{y:x.scout_year}),async()=>{
+    const {data,error:e}=await sb.from('self_history').insert(back).select('*'); if(e)throw e;
+    POR[p.id]=(POR[p.id]||[]).concat(data||[]); if(host.isConnected)poreiaDraw(host,p);
+  },20,true);
 }
 const SA_COL={'δηλώθηκε':'', 'στάλθηκε':'warn', 'έγινε δεκτός':'ok',
               'την πέρασε':'ok', 'δεν έγινε δεκτός':'bad', 'ακυρώθηκε':'bad'};
