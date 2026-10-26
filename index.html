@@ -1263,7 +1263,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-26 13:11'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-26 13:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -16914,10 +16914,27 @@ V.dedupe=()=>{
           <button class="btn sm" data-dd="same" data-k="${pr.a.id+pr.b.id}">Ίδιο πρόσωπο</button>
           <button class="btn sm" data-dd="diff" data-k="${pr.a.id+pr.b.id}">Διαφορετικά</button></div></div></div>`).join('')
       :`<div class="uc"><div class="ico">${ic('check',26)}</div><h3>Καμία εκκρεμότητα</h3><p>Δεν εντοπίστηκαν νέες πιθανές διπλοεγγραφές.</p></div>`}`;
-  document.querySelectorAll('[data-dd]').forEach(b=>b.onclick=()=>{
+  const ddGone=b=>{ const c=b.closest('.card'); if(c)c.remove();
+    const o=open.filter(p=>!dec[p.a.id+p.b.id]).length, pl=$('view').querySelectorAll('.pill');
+    if(pl[0])pl[0].textContent=o+' '+t('προς έλεγχο'); if(pl[1])pl[1].textContent=Object.keys(dec).length+' '+t('κριμένα'); };
+  document.querySelectorAll('[data-dd]').forEach(b=>b.onclick=async()=>{
+    const pr=open.find(p=>p.a.id+p.b.id===b.dataset.k); if(!pr)return;
+    if(b.dataset.dd==='same'){
+      const par=(pr.a.kind||'')===dv('Γονέας')?pr.a:(pr.b.kind||'')===dv('Γονέας')?pr.b:null, oth=par===pr.a?pr.b:pr.a;
+      if(par&&(oth.kind||'')!==dv('Γονέας')&&!par.same_as&&!oth.same_as){
+        if(!await uiAsk(t('Επιβεβαιώνεις ότι «{a}» (Γονέας) και «{b}» είναι ο ΙΔΙΟΣ άνθρωπος;\n\nΔεν γίνεται συγχώνευση: η καρτέλα-γονέας και τα παιδιά της μένουν όπως είναι — απλώς δηλώνεται ότι είναι το ίδιο πρόσωπο.',{a:nm(par),b:nm(oth)})))return;
+        b.disabled=true;
+        const {data,error}=await sb.from('badgeholders').update({same_as:oth.id}).eq('id',par.id).is('same_as',null).select('id');
+        if(error||!(data||[]).length){ b.disabled=false; return toast(t('Δεν γράφτηκε')+': '+((error&&error.message)||t('η καρτέλα άλλαξε στο μεταξύ'))) }
+        par.same_as=oth.id; saveCache();
+        dec[b.dataset.k]='same'; localStorage.setItem('e76:dedupe',JSON.stringify(dec)); ddGone(b);
+        undoBar(t('Ίδιο πρόσωπο')+': '+nm(par)+' = '+nm(oth), ()=>undoRow('badgeholders', par.id, {same_as:null}, par));
+        return;
+      }
+    }
     dec[b.dataset.k]=b.dataset.dd; localStorage.setItem('e76:dedupe',JSON.stringify(dec));
     if(b.dataset.dd==='same')toast('Σημειώθηκε — η συγχώνευση γίνεται χειροκίνητα με έλεγχο');
-    V.dedupe();});
+    ddGone(b);});
 };
 
 let CALLSEC='all', CALLONLY='', ENSEC='all', ENONLY='';
