@@ -1263,7 +1263,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-26 12:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-26 13:11'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -16017,6 +16017,74 @@ function certqBody(){
     if(c)docPreview(certSides(c),+a.dataset.ix||0);});
 };
 
+async function n91mCall(body){
+  const {data:{session}}=await sb.auth.getSession();
+  const r=await fetch(SB_URL+'/functions/v1/n91-reminder',{method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
+    body:JSON.stringify(body)});
+  let j={}; try{j=await r.json()}catch(x){}
+  if(!r.ok&&!j.error)j.error=t('Δεν απάντησε η αποστολή')+' ('+r.status+').';
+  return j;
+}
+const N91M_KINDS=[
+  {k:'expired', t:()=>t('Έληξε ή δεν υπάρχει'), d:()=>t('Το Ν91 τους έληξε ή δεν το έχουμε καθόλου — δεν μπορεί να εκδοθεί εντολή.')},
+  {k:'upcoming', t:()=>t('Λήγει πριν τις εντολές 2027-28'), d:()=>t('Λήγει στο τέλος της 2026-27 ή νωρίς στην 2027-28.')}];
+const N91M_CASE={expired:()=>t('έληξε'), none:()=>t('δεν υπάρχει'), upcoming:()=>t('λήγει')};
+function n91mBody(){
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>${t('Υπενθύμιση Ν91 — Πιστοποιητικό Μη Διάπραξης Σεξουαλικών Αδικημάτων')}</b>
+      <div class="muted" style="margin-top:5px;font-size:13px;line-height:1.6">${t('Email στον ίδιο τον βαθμοφόρο, με την ημερομηνία του. Εγκύκλιος ΓΕ 2026/304: φέτος ισχύει 3 χρόνια, από 2027-28 2 χρόνια. Όποιος το πήρε για αυτή τη χρονιά δεν το ξαναπαίρνει. Τίποτα δεν φεύγει χωρίς το δεύτερο πάτημα της «Αποστολής».')}</div></div>
+    ${N91M_KINDS.map(x=>`<div class="card pad" style="margin-bottom:12px">
+      <div class="kv"><b style="flex:1;font-size:14px">${x.t()}</b><button class="btn sm" data-n91chk="${x.k}">${t('Ποιοι θα το πάρουν')}</button></div>
+      <div class="dim" style="font-size:12.5px;margin-top:3px">${x.d()}</div>
+      <div id="n91Out_${x.k}" style="margin-top:9px;font-size:13px"></div></div>`).join('')}`;
+  document.querySelectorAll('[data-n91chk]').forEach(b=>b.onclick=()=>n91mCheck(b.dataset.n91chk,b));
+}
+async function n91mCheck(kind,btn){
+  const out=$('n91Out_'+kind); if(!out)return; if(btn)btn.disabled=true; out.innerHTML=`<span class="dim">${t('Έλεγχος…')}</span>`;
+  const j=await n91mCall({kind}); if(btn)btn.disabled=false;
+  if(j.error||!j.ok)return out.innerHTML=`<span style="color:var(--bad)">${esc(j.error||'—')}</span>`;
+  const c=j.counts||{}, bs=c.by_status||{};
+  out.innerHTML=`<div><b>${c.to_send||0}</b> ${t('θα το πάρουν')} · ${Object.keys(bs).map(s=>esc(s)+' '+bs[s]).join(' · ')}</div>
+    ${c.already?`<div class="dim" style="font-size:12px;margin-top:2px">${c.already} ${t('το πήραν ήδη για')} ${esc(c.cycle||'')}.</div>`:''}
+    ${(j.unreached||[]).length?`<div style="margin-top:6px;font-size:12.5px"><span style="color:var(--warn)">${t('Χωρίς email — πες τους αλλιώς:')}</span>
+      ${j.unreached.map(u=>esc(u.name)+(u.rn?' ('+esc(u.rn)+')':'')).join(' · ')}</div>`:''}
+    ${(j.unmatched||[]).length?`<div style="margin-top:4px;font-size:12.5px;color:var(--bad)">${t('Δεν ταυτίστηκαν (Α.Μ.):')} ${j.unmatched.map(esc).join(' · ')}</div>`:''}
+    ${c.to_send?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center">
+        <button class="btn sm gh" data-n91pv="${kind}">${t('Δες το μήνυμα')}</button><span class="sp"></span>
+        <button class="btn sm p" data-n91go="${kind}">${t('Αποστολή σε')} ${c.to_send}</button></div>
+      <div id="n91Pv_${kind}"></div>`:`<div class="dim" style="margin-top:6px">${t('Δεν έμεινε κανείς να το πάρει.')}</div>`}`;
+  const pv=out.querySelector('[data-n91pv]'); if(pv)pv.onclick=()=>n91mPreview(kind,pv);
+  const go=out.querySelector('[data-n91go]'); if(!go)return;
+  go.onclick=()=>{ if(!go.dataset.sure){ go.dataset.sure='1'; go.textContent=t('Σίγουρα; Φεύγουν {n} email τώρα',{n:c.to_send}); return }
+    n91mSend(kind,go); };
+}
+async function n91mPreview(kind,btn){
+  const box=$('n91Pv_'+kind); if(!box)return; if(btn)btn.disabled=true;
+  const j=await n91mCall({kind,preview:true}); if(btn)btn.disabled=false;
+  if(j.error||!j.ok)return box.innerHTML=`<div style="color:var(--bad);margin-top:6px">${esc(j.error||'—')}</div>`;
+  box.innerHTML=(j.samples||[]).map((s,i)=>`<div style="margin-top:10px;font-size:12.5px"><span class="pill">${esc(N91M_CASE[s.case]?N91M_CASE[s.case]():s.case)}</span>
+      <span class="dim">${t('Θέμα:')}</span> <b>${esc(s.subject||'')}</b></div>
+    ${s.html?`<iframe data-n91f="${i}" sandbox="" title="${esc(t('Προεπισκόπηση email'))}" style="width:100%;max-width:560px;height:470px;border:1px solid var(--line);border-radius:10px;margin-top:6px;background:#fff"></iframe>`
+      :`<div class="dim" style="margin-top:4px">${t('Κανένας τέτοιος παραλήπτης.')}</div>`}`).join('');
+  (j.samples||[]).forEach((s,i)=>{ const f=box.querySelector('[data-n91f="'+i+'"]'); if(f)f.srcdoc=s.html||'' });
+}
+async function n91mSend(kind,go){
+  const out=$('n91Out_'+kind); go.disabled=true; let sent=0, failed=[], quota=null, rem=1, j={};
+  while(rem>0){
+    out.innerHTML=`<span class="dim">${t('Αποστολή…')} ${sent} ${t('μέχρι τώρα')}</span>`;
+    j=await n91mCall({kind,send:true});
+    if(j.error||!j.ok)break;
+    sent+=j.sent||0; quota=typeof j.quota==='number'?j.quota:quota; rem=j.remaining||0;
+    (j.failed||[]).forEach(x=>{ if(!failed.some(y=>y.name===x.name))failed.push(x) });
+    if(!(j.sent>0))break;                         
+  }
+  out.innerHTML=(sent?`<div style="color:var(--ok)">${t('Στάλθηκαν')} <b>${sent}</b>.${quota!=null?` <span class="dim">${t('Μένουν {q} email για σήμερα.',{q:quota})}</span>`:''}</div>`:'')
+    +(j.error?`<div style="color:var(--bad)">${esc(j.error)}</div>`:'')
+    +(failed.length?`<div style="color:var(--bad);margin-top:4px">${t('Δεν στάλθηκαν:')} ${failed.map(f=>esc(f.name)+' ('+esc(f.why)+')').join(' · ')}</div>`:'')
+    +(rem>0&&!j.error?`<div class="dim" style="margin-top:4px">${t('Έμειναν')} ${rem} — ${t('πάτα ξανά «Ποιοι θα το πάρουν».')}</div>`:'')
+    +((j.unreached||[]).length?`<div style="margin-top:6px;font-size:12.5px"><span style="color:var(--warn)">${t('Χωρίς email — πες τους αλλιώς:')}</span> ${j.unreached.map(u=>esc(u.name)).join(' · ')}</div>`:'');
+}
 const DH_COL={'κρίσιμο':'bad','προσοχή':'warn','πληροφορία':''};
 function dhEventRows(){
   const today=new Date().toISOString().slice(0,10), out=[];
@@ -23150,7 +23218,8 @@ V.ledfile=()=>tabView('ledfile',[
   {k:'lvl', t:'Επίπεδο εκπαίδευσης', i:'award', fn:trainLevelBody,     d:'ποιος έχει Βασική, ποιος Προκαταρκτική'},
   {k:'prog',t:'Σχολές της χρονιάς',  i:'book',  fn:trainProgBody,      d:'τι ανακοίνωσε η Γ.Ε. και πότε'},
   {k:'who', t:'Ποιοι πάνε πού',      i:'users', fn:trainWhoBody,       d:'οι δηλώσεις ανά σχολή — αυτό στέλνεις'},
-  ...(ledfileFull()?[{k:'n91', t:'Ν.91(Ι)', i:'lock', fn:n91Body, d:'ποιος θα έχανε τα ιατρικά αν γινόταν προϋπόθεση'}]:[])]);
+  ...(ledfileFull()?[{k:'n91', t:'Ν.91(Ι)', i:'lock', fn:n91Body, d:'ποιος θα έχανε τα ιατρικά αν γινόταν προϋπόθεση'}]:[]),
+  ...(ME.role==='admin'?[{k:'n91m', t:t('Υπενθύμιση Ν91'), i:'mail', fn:n91mBody, d:t('email σε όσους χρειάζονται νέο πιστοποιητικό')}]:[])]);
 
 V.comms=()=>tabView('comms',[
   {k:'due',  t:'Σήμερα',          i:'alert', fn:remDueBody,   d:'τι θα φύγει σήμερα — δοκιμή, δεν στέλνεται από εδώ'},
