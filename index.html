@@ -1087,6 +1087,7 @@ const NAV=[
    {id:'myveh',t:'Τα οχήματά μου',i:'car',s:'live'}]},
 
  {g:'Εγώ ως μέλος', d:'Ό,τι με αφορά ως μέλος τμήματος', items:[
+   {id:'myhome',t:dv('Αρχική'),i:'home',s:'live'},
    {id:'myprog',t:'Το πρόγραμμά μου',i:'cal',s:'live'},
    {id:'myatt',t:'Οι παρουσίες μου',i:'check',s:'live'}]},
 
@@ -1262,7 +1263,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-26 11:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-26 12:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1561,7 +1562,7 @@ async function start(){
 
 const IDLE_MS=15*60*1000; let LAST_ACT=Date.now(), SWALLOW_UNTIL=0;
 function homeRoute(){ const k=PA&&PA.k, r=PA&&(PA.role||PA.k);
-  return k==='member'?'me':k==='parent'?'mykids':k==='anix'?'myprog':r==='patrol'?'attend':k==='dev'?'mysys':'dash'; }
+  return k==='member'?(navLedSelf()?'me':'myhome'):k==='parent'?'mykids':k==='anix'?'myprog':r==='patrol'?'attend':k==='dev'?'mysys':'dash'; }
 function idleCheck(){
   if(document.visibilityState==='hidden')return;
   if(Date.now()-LAST_ACT>IDLE_MS && typeof LOADED!=='undefined' && LOADED){
@@ -1991,7 +1992,7 @@ async function loadAll(){
 }
 
 let PERSONAS=[], PA=null, PICKING=false;    
-const NAV_SELF=['me','myprog','myatt','myforms'];    
+const NAV_SELF=['myhome','me','myprog','myatt','myforms'];    
 const NAV_MEMBER=[...NAV_SELF,'progKA'];
 const NAV_ANIX=['myprog','synod','groups','attend','progress','members'];
 const NAV_PARENT=['mykids','kidhealth','kidfile','kidprog','myfees','myprofile'];
@@ -2634,6 +2635,13 @@ function renderNav(){
                    items:PMENU.map(id=>kids.items.find(m=>m.id===id)).filter(Boolean)};
         base=base.map(g=>g===mine?fam:g).filter(g=>g!==kids);
       }
+    }
+    if(K==='member'&&!navLedSelf()){
+      const it={}; base.forEach(g=>g.items.forEach(m=>it[m.id]=m));
+      const G=(g,d,ids)=>({g,d,items:ids.map(id=>it[id]).filter(Boolean)});
+      base=[G(t('Η καρτέλα μου'),t('Τι έχω μπροστά μου και η πορεία μου'),['myhome','me']),
+            G(t('Πρόγραμμα & φόρμες'),t('Τι χρειάζεται από εμένα και τι έχουμε μπροστά'),['myforms','myprog','myatt','progKA']),
+            ...base.filter(g=>g.items.some(m=>m.id==='account'))];
     }
     if(K==='head'){
       const it={}; base.forEach(g=>g.items.forEach(m=>it[m.id]=m));
@@ -13612,7 +13620,7 @@ function mePieces(){
   const row=(k,v)=>v?`<div class="kv"><b>${esc(k)}</b><span>${v}</span></div>`:'';
   const head=`<div class="card pad" style="margin-bottom:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       ${avatar(p,46)}${sdot(sec)}<div><div style="font-size:19px;font-weight:600;letter-spacing:-.01em">${pn(p)}</div>
-      <div class="dim" style="font-size:13px">${esc(ledLabel(p,true))}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
+      <div class="dim" style="font-size:13px">${esc(ledLabel(p,true))}${p.registry_no?(ledLabel(p,true)?' · ':'')+t('Α.Μ.')+' '+esc(p.registry_no):''}</div></div>
       <span class="sp"></span><button class="btn sm" data-p="${p.id}">Πλήρης καρτέλα</button></div>`;
 
   const overHTML=`<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr))">
@@ -13937,15 +13945,16 @@ function meSimpleHTML(p){
 V.me=()=>{
   const M=mePieces(); if(!M)return meGone();
   const p=M.p;
-  const secs=mySections(p);
-  if(!isLed(p) && secs.length && lensRole()!=='parent'){
+  if(!isLed(p) && lensRole()!=='parent'){
     const now=secOf(p), peer=['Ομάδα','Κοινότητα'].includes(now)
       ?[{k:'peer', t:now==='Κοινότητα'?'Η Κοινότητά μου':'Η ενωμοτία μου', i:'users', d:'τι πέρασαν οι υπόλοιποι', fn:box=>peerBoard(box)}]:[];
-    tabView('me_prog', secs.map(sec=>({
-      k:'s_'+sec, t:sec, i:'award', d:'η πορεία μου στον κλάδο',
-      fn:box=>{ box.innerHTML=myProgBody(p,sec);
-        box.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go)); }
-    })).concat(peer), M.head+`<div class="sec"><h3>Προσκοπική Πρόοδος</h3></div>`);
+    tabView('me_kid', [
+      {k:'over', t:t('Επισκόπηση'), i:'user', d:t('τμήμα, παρουσίες, πορεία'), fn:box=>{box.innerHTML=M.overHTML}},
+      {k:'prog', t:t('Προσκοπική Πρόοδος'), i:'award', d:t('η πορεία μου σε κάθε κλάδο'),
+        fn:box=>{ box.innerHTML=meProgKid(p); box.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go)); }},
+      ...peer,
+      {k:'act', t:t('Ιστορικό δράσεων'), i:'flag', d:t('εκδρομές και κατασκηνώσεις'), fn:box=>{box.innerHTML=meActionsBox(p)}},
+    ], M.head);
     return;
   }
   if(!isLed(p) || lensRole()==='parent'){
@@ -14418,6 +14427,60 @@ function kidProgCard(kid){
     ${secs.map(s=>`<details class="card pad" style="margin-bottom:10px"${s===now||secs.length===1?' open':''}>
       <summary style="cursor:pointer"><b>${esc(s)}</b></summary>
       <div style="margin-top:10px">${myProgBody(kid,s,{parent:true})}</div></details>`).join('')}`;
+}
+V.myhome=()=>{
+  const M=mePieces(); if(!M)return meGone();
+  const p=M.p, sec=secOf(p), y=myOf(p)||{};
+  const today=typeof todayCY==='function'?todayCY():new Date().toISOString().slice(0,10);
+  const row=(icn,cls,h,sub,btn)=>`<div class="ptd${cls?' '+cls:''}"><span class="ptdi">${ic(icn,16)}</span>
+      <div style="flex:1;min-width:0"><div class="ptdh">${h}</div>${sub?`<div class="ptds">${sub}</div>`:''}</div>${btn||''}</div>`;
+  const go=(r,lab)=>`<button class="btn sm" data-mgo="${r}">${esc(lab)}</button>`;
+  const ns=sec?nextSess(sec,today):null, mi=sec?meetInfo(sec):'';
+  const meet=row('cal','',t('Επόμενη συγκέντρωση')+(sec?' · '+esc(sec):''),
+    ns?`<b>${fdateW(ns.session_date)}</b>${mi?' · '+esc(mi):''}${ns.title&&ns.title!==dv('Συγκέντρωση')?'<br>'+esc(ns.title):''}`
+      :`${t('Δεν έχει ανακοινωθεί ακόμη η επόμενη.')}${mi?' '+t('Συνήθως:')+' '+esc(mi):''}`);
+  let evs=[]; try{ evs=kidEvents([{kid:p}],today).ev.slice(0,3) }catch(e){ evs=[] }
+  const acts=evs.length?row('flag','',t('Επόμενες δράσεις'),
+      evs.map(e=>`<b>${esc(e.title||'')}</b> · ${fdate(e.event_date)}${e.place?' · '+esc(e.place):''}`).join('<br>'),
+      go('myprog',t('Το πρόγραμμά μου'))):'';
+  const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR);
+  const att=D.att.filter(a=>a.person_id===p.id&&ses.some(s=>s.id===a.session_id));
+  const pres=att.filter(a=>a.status===dv('Παρών')).length;
+  const nx=sec&&YOUTH_SECS.includes(sec)?nextStep(p.id,sec):null;
+  $('view').innerHTML=M.head+`<div class="card pad pdash" style="margin-bottom:14px">
+      <b style="font-size:16px">${t('Γεια σου')}${p.first_name?', '+esc(p.first_name):''}</b>
+      <div class="dim" style="font-size:12.5px;margin-top:3px">${esc(sec||'')}${y.group_name?' · '+esc(y.group_name):''}</div>
+      <div class="ptdl">${meet}${acts}</div>
+      <div class="ptdt">${t('Τι χρειάζεται από εσένα')}</div>
+      <div class="ptdl" id="mhTodo"><div class="dim" style="font-size:13px;padding:6px 0">${t('Φόρτωση…')}</div></div></div>
+    <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+      <button class="tile" data-mgo="myatt"><div class="k">${t('Οι παρουσίες μου')} ${esc(YEAR)}</div>
+        <div class="v">${att.length?Math.round(100*pres/att.length)+'%':'<span style="font-size:15px;font-weight:500;color:var(--ink3)">—</span>'}</div>
+        <div class="s">${att.length?pres+' '+t('από')+' '+att.length:t('καμία συγκέντρωση ακόμη')}</div></button>
+      <button class="tile" data-mgo="me"><div class="k">${t('Επόμενο βήμα')}</div>
+        <div class="v" style="font-size:16px;line-height:1.3">${nx?esc(nx.st.label):'<span style="font-size:15px;font-weight:500;color:var(--ink3)">—</span>'}</div>
+        <div class="s">${nx&&nx.tot?nx.n+' '+t('από')+' '+nx.tot:t('η πρόοδός μου')+' ›'}</div></button>
+    </div>`;
+  document.querySelectorAll('#view [data-mgo]').forEach(b=>b.onclick=()=>route(b.dataset.mgo));
+  const need=[dv('δεν έχει υποβληθεί'),dv('έληξε — θέλει ανανέωση'),dv('λήγει σύντομα')];
+  const fill=html=>{ const b=$('mhTodo'); if(!b||ROUTE!=='myhome')return; b.innerHTML=html;
+    b.querySelectorAll('[data-mgo]').forEach(x=>x.onclick=()=>route(x.dataset.mgo)); };
+  const ok=row('check','ok',t('Τίποτα αυτή τη στιγμή'),t('Όλα είναι εντάξει. Θα το δεις εδώ μόλις χρειαστεί κάτι.'));
+  Promise.resolve(sb.rpc('open_forms',{p_person:p.id})).then(({data,error})=>{
+    if(error)return fill(row('book','',t('Οι φόρμες μου'),t('Δεν φόρτωσαν — άνοιξε τις φόρμες σου.'),go('myforms',t('Οι φόρμες μου'))));
+    const f=(data||[]).filter(x=>need.includes(x.katastasi));
+    fill(f.length?row('book','warn',pln(f.length,t('φόρμα περιμένει'),t('φόρμες περιμένουν')),
+        f.slice(0,4).map(x=>esc(x.title||'')).filter(Boolean).join('<br>'),go('myforms',t('Οι φόρμες μου'))):ok);
+  }).catch(()=>fill(ok));
+};
+
+function meProgKid(p){
+  const now=secOf(p), seen=new Set(mySections(p)); if(YOUTH_SECS.includes(now))seen.add(now);
+  const secs=YOUTH_SECS.filter(s=>seen.has(s));
+  if(!secs.length)return `<div class="card pad dim" style="font-size:13px">${t('Δεν υπάρχει ακόμη καταχωρημένη πρόοδος.')}</div>`;
+  return secs.map(s=>`<details class="card pad" style="margin-bottom:10px"${s===now||secs.length===1?' open':''}>
+      <summary style="cursor:pointer"><b>${esc(s)}</b></summary>
+      <div style="margin-top:10px">${myProgBody(p,s)}</div></details>`).join('');
 }
 const SA_COL={'δηλώθηκε':'', 'στάλθηκε':'warn', 'έγινε δεκτός':'ok',
               'την πέρασε':'ok', 'δεν έγινε δεκτός':'bad', 'ακυρώθηκε':'bad'};
