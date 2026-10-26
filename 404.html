@@ -1263,7 +1263,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-26 12:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-26 12:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -11127,29 +11127,30 @@ function ovAdminHTML(kids){
       <div class="dim" style="font-size:12px;margin-top:6px">Από το χαρτί (ιστορικό): ${hist} εγγραφές.</div></div>`;
 }
 
-async function peerBoard(box){
+async function peerBoard(box,opt){
   box.innerHTML='<div class="dim pad">Φόρτωση…</div>';
   const {data,error}=await sb.rpc('peer_board');
   if(error||!data||!data.sec){ box.innerHTML='<div class="uc"><h3>Δεν υπάρχει ακόμη</h3><p>Δεν βρέθηκε ενωμοτία ή Κοινότητα για φέτος.</p></div>'; return; }
-  box.innerHTML=peerBoardHTML(data);
+  box.innerHTML=peerBoardHTML(data,opt);
   box.querySelectorAll('[data-psgo]').forEach(b=>b.onclick=()=>{ PSMODE='kolla'; SUBTAB['prog_Ομάδα']='req'; route('progOP') });
 }
 function peerCtHTML(pid){
   const b=(D.bh||[]).find(x=>x.id===pid); if(!b||(!b.phone&&!b.email))return '';
   return `<div style="font-size:12px;margin-top:4px;display:flex;gap:12px;flex-wrap:wrap">${b.phone?`<a href="tel:${esc(String(b.phone).replace(/\s/g,''))}">${esc(fphone(b.phone))}</a>`:''}${b.email?`<a href="mailto:${esc(b.email)}">${esc(b.email)}</a>`:''}</div>`;
 }
-function peerBoardHTML(B){
+function peerBoardHTML(B,opt){
+  const og=opt&&opt.group;    
   const sec=B.sec, koin=sec==='Κοινότητα';
   const has=(pid,rid)=>(B.rows||[]).find(x=>x.p===pid&&x.r===rid);
   const held=(pid,cid)=>(B.awards||[]).some(x=>x.p===pid&&x.c===cid);
   const stages=cardStages(sec);
   const where=pid=>{ for(const st of stages){ if(held(pid,st.id))continue;
       const rs=stageReqs(sec,st); return {st, rs, n:rs.filter(r=>has(pid,r.id)).length} } return null };
-  const people=(B.people||[]);
+  const people=(B.people||[]).filter(x=>!og||x.group===og);
   const me=mePid();
   const mine=koin?[]:(D.prq||[]).filter(x=>x.requested_by===me&&x.status==='υποβλήθηκε');
   return `<div class="card pad" style="margin-bottom:12px">
-      <b style="font-size:14.5px">${koin?'Η Κοινότητά μου':'Η ενωμοτία μου'+(B.group?' — '+esc(B.group):'')}</b>
+      <b style="font-size:14.5px">${og?t('Ο όμιλός μου')+' — '+esc(og):koin?'Η Κοινότητά μου':'Η ενωμοτία μου'+(B.group?' — '+esc(B.group):'')}</b>
       <div class="dim" style="font-size:12px;margin-top:4px">Μόνο τι πέρασε ο καθένας και πότε.${koin?' Χωρίς σύγκριση — κάθε Ανιχνευτής έχει τον δικό του δρόμο.':''}</div>
       ${!koin&&typeof klMyPatrols==='function'&&klMyPatrols().length?`<div style="margin-top:9px"><button class="btn sm p" data-psgo="1">Κόλλα ενωμοτίας</button>
         ${mine.length?`<span class="dim" style="font-size:12px;margin-left:8px">${mine.length} δικές σου εγγραφές περιμένουν τον Α.Ο.Π.</span>`:''}</div>`:''}</div>
@@ -11157,7 +11158,7 @@ function peerBoardHTML(B){
       const done=(B.rows||[]).filter(x=>x.p===p.id).map(x=>(D.rc2||[]).find(r=>r.id===x.r)).filter(r=>r&&r.section===sec);
       return `<div class="card pad" style="margin-bottom:8px">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:13.5px">${esc(p.name)}</b>
-          ${koin&&p.group?`<span class="dim" style="font-size:11.5px">${esc(p.group)}</span>`:''}<span class="sp"></span>
+          ${koin&&p.group&&!og?`<span class="dim" style="font-size:11.5px">${esc(p.group)}</span>`:''}<span class="sp"></span>
           <span class="dim" style="font-size:12px">${w?esc(w.st.label)+(koin?'':' · '+w.n+' από '+w.rs.length):'όλα τα στάδια'}</span></div>
         ${p.id!==me?peerCtHTML(p.id):''}
         ${w&&!koin?`<div style="margin-top:6px;display:flex;gap:3px;flex-wrap:wrap">${w.rs.map(r=>{ const x=has(p.id,r.id);
@@ -11210,6 +11211,7 @@ V.myforms=()=>{
       </div></div>
     <div id="fwList" class="card"><div class="pad dim">Φόρτωση…</div></div>
     <div id="fwKids"></div>`;
+  if(mine&&formsByParents(p)){ const n=$('view').querySelector('.card .muted'); if(n)n.textContent=t('Τις φόρμες τις συμπληρώνουν οι γονείς σου. Με το «Θύμισέ το» τους στέλνεις έτοιμο μήνυμα από το κινητό σου.'); }
   fwKids(mine);
 
   if(led)ppWire('fwPick',led);
@@ -11218,7 +11220,24 @@ V.myforms=()=>{
   fwLoad(who);
 };
 
+const formsByParents=p=>!!p&&(p.kind||'')===dv('Μέλος')&&!self16(p);
+function fwPokeText(title){ const me=meRec()||{};
+  return t('Γεια σας! Στο e76 περιμένει η φόρμα «{f}» για μένα. Μπορείτε να τη συμπληρώσετε από το e.76.life → Έντυπα & φόρμες; Ευχαριστώ!',{f:title})
+    +(me.first_name?' — '+me.first_name:''); }
+async function fwPoke(b){
+  const txt=fwPokeText(b.dataset.fpoke||'');
+  if(navigator.share){ try{ await navigator.share({text:txt}); return }catch(e){ if(e&&e.name==='AbortError')return } }
+  const row=b.closest('.kv'); let box=row&&row.nextElementSibling;
+  if(!box||!box.classList.contains('fwpk')){ box=document.createElement('div'); box.className='fwpk card pad'; box.style.cssText='margin:0 13px 11px;font-size:13px'; row.after(box); }
+  const u=encodeURIComponent(txt);
+  box.innerHTML=`<div style="margin-bottom:8px">${esc(txt)}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn sm" href="viber://forward?text=${u}">Viber</a>
+      <a class="btn sm" href="https://wa.me/?text=${u}" target="_blank" rel="noopener">WhatsApp</a>
+      <button class="btn sm" data-fpcopy="1">${t('Αντιγραφή')}</button></div>`;
+  box.querySelector('[data-fpcopy]').onclick=async()=>{ try{ await navigator.clipboard.writeText(txt); toast(t('Αντιγράφηκε — στείλ’ το στους γονείς σου')) }catch(e){ toast(t('Δεν αντιγράφηκε — κράτα πατημένο το κείμενο')) } };
+}
 function fwLoad(who){
+  const kidSelf=who===mePid()&&formsByParents(meRec());
   sb.rpc('open_forms',{p_person:who}).then(({data,error})=>{
     const box=$('fwList'); if(!box)return;
     if(error)return box.innerHTML='<div class="pad" style="color:var(--bad)">'+esc(error.message)+'</div>';
@@ -11234,8 +11253,11 @@ function fwLoad(who){
               f.valid_until?' · ισχύει ως '+fdate(f.valid_until):''}</span>`:''}
           </div>
           ${ord?'<div class="dim" style="font-size:11.5px;margin-top:4px">Η παραγγελία καταγράφεται πριν την πληρωμή.</div>':''}</span>
-        <button class="btn p sm" data-fopen="${esc(f.url)}" data-fkind="${esc(f.form_kind||'δράση')}">${ord?(f.last_on?'Νέα παραγγελία':'Παραγγελία'):'Άνοιγμα'}</button>
+        ${kidSelf
+          ?(st[0]==='ok'?'':`<button class="btn sm" data-fpoke="${esc(f.title)}">${t('Θύμισέ το στους γονείς μου')}</button>`)
+          :`<button class="btn p sm" data-fopen="${esc(f.url)}" data-fkind="${esc(f.form_kind||'δράση')}">${ord?(f.last_on?'Νέα παραγγελία':'Παραγγελία'):'Άνοιγμα'}</button>`}
       </div>`}).join('');
+    document.querySelectorAll('[data-fpoke]').forEach(b=>b.onclick=()=>fwPoke(b));
     document.querySelectorAll('[data-fopen]').forEach(b=>b.onclick=async()=>{
       const w=window.open('','_blank');
       b.disabled=true;
@@ -13948,6 +13970,8 @@ V.me=()=>{
   if(!isLed(p) && lensRole()!=='parent'){
     const now=secOf(p), peer=['Ομάδα','Κοινότητα'].includes(now)
       ?[{k:'peer', t:now==='Κοινότητα'?'Η Κοινότητά μου':'Η ενωμοτία μου', i:'users', d:'τι πέρασαν οι υπόλοιποι', fn:box=>peerBoard(box)}]:[];
+    const grp=(myOf(p)||{}).group_name;
+    if(now===dv('Κοινότητα')&&grp)peer.unshift({k:'omil', t:t('Ο όμιλός μου'), i:'flag', d:t('ποιοι είναι στον όμιλό μου και τι πέρασαν'), fn:box=>peerBoard(box,{group:grp})});
     tabView('me_kid', [
       {k:'over', t:t('Επισκόπηση'), i:'user', d:t('τμήμα, παρουσίες, πορεία'), fn:box=>{box.innerHTML=M.overHTML}},
       {k:'prog', t:t('Προσκοπική Πρόοδος'), i:'award', d:t('η πορεία μου σε κάθε κλάδο'),
@@ -14469,8 +14493,10 @@ V.myhome=()=>{
   Promise.resolve(sb.rpc('open_forms',{p_person:p.id})).then(({data,error})=>{
     if(error)return fill(row('book','',t('Οι φόρμες μου'),t('Δεν φόρτωσαν — άνοιξε τις φόρμες σου.'),go('myforms',t('Οι φόρμες μου'))));
     const f=(data||[]).filter(x=>need.includes(x.katastasi));
+    const kidP=formsByParents(p);    
     fill(f.length?row('book','warn',pln(f.length,t('φόρμα περιμένει'),t('φόρμες περιμένουν')),
-        f.slice(0,4).map(x=>esc(x.title||'')).filter(Boolean).join('<br>'),go('myforms',t('Οι φόρμες μου'))):ok);
+        f.slice(0,4).map(x=>esc(x.title||'')).filter(Boolean).join('<br>')+(kidP?'<br><span class="dim">'+t('Τις συμπληρώνουν οι γονείς σου — θύμισέ τους.')+'</span>':''),
+        go('myforms',kidP?t('Θύμισέ το στους γονείς μου'):t('Οι φόρμες μου'))):ok);
   }).catch(()=>fill(ok));
 };
 
