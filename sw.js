@@ -6,14 +6,17 @@
      απαντήσει σε 4 δευτερόλεπτα ή δεν υπάρχει σύνδεση, η αποθηκευμένη.
    · Βιβλιοθήκη από CDN: από την αποθήκη, αν υπάρχει.
    · Όλα τα υπόλοιπα: περνούν απευθείας, χωρίς αποθήκευση. */
-const SHELL = 'e76-shell-v1';
+// 28/10: η βιβλιοθήκη ΚΛΕΙΔΩΘΗΚΕ σε έκδοση με έλεγχο ακεραιότητας (index.html) — το LIB πρέπει να
+// είναι ΑΚΡΙΒΩΣ το ίδιο URL, και η αποθήκευση με mode 'cors' (αλλιώς ο browser δεν μπορεί να ελέγξει
+// το hash και η εφαρμογή δεν ανοίγει χωρίς σήμα). Νέα έκδοση βιβλιοθήκης = αλλαγή ΚΑΙ εδώ.
+const SHELL = 'e76-shell-v2';
 const PAGE = new URL('./index.html', self.registration.scope).href;
-const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => Promise.all([
     c.add(new Request(PAGE, { cache: 'reload' })).catch(() => {}),
-    fetch(LIB, { mode: 'no-cors' }).then(r => c.put(LIB, r)).catch(() => {})
+    fetch(LIB, { mode: 'cors' }).then(r => { if (r.ok) return c.put(LIB, r); }).catch(() => {})
   ])).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
@@ -46,7 +49,7 @@ self.addEventListener('fetch', e => {
   if (req.url === LIB) {
     e.respondWith(caches.open(SHELL).then(async c => {
       const hit = await c.match(LIB);
-      const net = fetch(req).then(r => { c.put(LIB, r.clone()); return r; }).catch(() => hit);
+      const net = fetch(req).then(r => { if (r.ok) c.put(LIB, r.clone()); return r; }).catch(() => hit);
       return hit || net;
     }));
   }
