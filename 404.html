@@ -921,7 +921,8 @@ const LIB_SRI={
   'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js':'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F',
   'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js':'sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js':'sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI',
-  'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js':'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG'};
+  'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js':'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG',
+  'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js':'sha384-2p6U+1mmqF10USehFeRiyG2ESG9FwIqN+jxULn5w9jjQIihSn9Pt13dVCn/Hawjn'};    
 const sriTag=s=>{ const h=LIB_SRI[s.src]; if(h){ s.integrity=h; s.crossOrigin='anonymous'; } return s; };
 const SB_URL='https://cofiscmvdagizlchrian.supabase.co';
 const SB_KEY='sb_publishable_OvYhjMAqZ9ty6T2De2by-g_uJ6mnm50';
@@ -1279,7 +1280,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-30 17:51'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-30 18:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -18533,59 +18534,18 @@ async function efdDecls(e){
   (data||[]).forEach(x=>{const o=m.get(x.person_id); if(!o||String(x.submitted_on)<String(o))m.set(x.person_id,x.submitted_on)});
   return m;
 }
-const EFD_IMG={};
-async function efdImg(f){ if(!f)return null; if(EFD_IMG[f])return EFD_IMG[f];
-  try{ const r=await fetch(location.origin+'/'+f); if(!r.ok)return null; const bl=await r.blob();
-    return EFD_IMG[f]=await new Promise(res=>{const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>res(null); fr.readAsDataURL(bl)}); }
-  catch(e){ return null } }
 const efdDmy=d=>{if(!d)return ''; const x=new Date(d); return p2(x.getDate())+'/'+p2(x.getMonth()+1)+'/'+x.getFullYear()};
-async function efdSign(e,parts,mode){
-  const w=efdWin(efdFile(e)); if(!w)return;
-  const decl=await efdDecls(e);
-  if(!decl){ w.close(); return toast(t('Δεν διαβάστηκαν οι δηλώσεις της δράσης — δοκίμασε ξανά')); }
-  const stamp=new Date();
-  const byId=new Map((D.bh||[]).map(p=>[p.id,p]));
-  const people=(mode==='all'?efdPool(e):[...decl.keys()].map(id=>byId.get(id)).filter(Boolean)).slice().sort(efdNameSort);
-  const cols=7, BLANK=3;
-  const L1=await efdImg(EFD_LOGO[efdSec(e)]), L2=await efdImg('logo-systima.png');
-  const logo=u=>u?`<img src="${u}" alt="">`:'<span></span>';
-  const sl=efdSecLine(e);
-  const head=`<tr><th colspan="${cols}" class="top">
-      <div class="hd">${logo(L1)}<div class="t"><b>${esc(efdCaps(efdTitle(e)))}</b>
-        <span>${esc([efdDays(e),e.place].filter(Boolean).join(' · '))}</span>${sl?`<span>${esc(sl)}</span>`:''}
-        <span class="st">${esc(t('Κατάσταση δηλώσεων:'))} ${esc(fdate(stamp))}, ${p2(stamp.getHours())}:${p2(stamp.getMinutes())} · ${esc(mode==='all'?t('Δικαιούχοι'):t('Μόνο δηλωμένοι'))} (${people.length})</span></div>
-        ${logo(L2)}</div>
-      <div class="decl"><b>${t('ΔΗΛΩΣΗ ΓΟΝΕΑ / ΚΗΔΕΜΟΝΑ')}</b>${t('Υπογράφοντας, ως γονέας ή νόμιμος κηδεμόνας του μέλους:')}
-        <ul>${EFD_DECL.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></th></tr>
-    <tr class="ch"><th style="width:4%">${t('Α/Α')}</th><th style="width:15%">${t('Επίθετο')}</th><th style="width:13%">${t('Όνομα')}</th><th style="width:8%">${t('Ημ/νία<br>Δήλωσης')}</th>
-      <th style="width:25%">${t('Ονοματεπώνυμο Γονέα / Κηδεμόνα')}</th><th style="width:9%">${t('Ημερομηνία<br>υπογραφής')}</th><th>${t('Υπογραφή')}</th></tr>`;
-  const rows=people.map((p,i)=>`<tr><td class="c">${i+1}</td><td class="ep">${esc(cleanLast(p.last_name))}</td><td>${esc(p.first_name||'')}</td>
-      <td class="sm">${esc(efdDmy(decl.get(p.id)))}</td><td></td><td></td><td></td></tr>`)
-    .concat(Array.from({length:BLANK},(_,j)=>`<tr><td class="c">${people.length+j+1}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`));
-  const PER=10, pages=[];
-  for(let i=0;i<rows.length;i+=PER)pages.push(rows.slice(i,i+PER).join(''));
-  efdSignPage(w,efdFile(e),pages.map((r,i)=>`<table class="sg${i<pages.length-1?' pb':''}"><thead>${head}</thead><tbody>${r}</tbody></table>`).join(''));
-}
-function efdSignPage(w,title,body){
-  w.document.open();
-  w.document.write(`<!doctype html><html lang="el"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
-    *{box-sizing:border-box}body{font:11.5px/1.35 Calibri,Carlito,system-ui,-apple-system,Segoe UI,sans-serif;color:#000;margin:0;background:#fff}
-    table.sg{width:100%;border-collapse:collapse}table.pb{break-after:page}th,td{border:1px solid #000;padding:4px 6px;vertical-align:middle;text-align:left}
-    th.top{border:0;padding:0 0 8px;font-weight:400;text-align:left}
-    .hd{display:flex;align-items:center;gap:12px}.hd img,.hd>span{width:29mm;height:29mm;object-fit:contain;flex:0 0 29mm}
-    .hd .t{flex:1;text-align:center}.hd b{display:block;font-size:17px;margin-bottom:5px}.hd .t span{display:block;font-size:12.5px}
-    .hd .st{margin-top:4px;font-size:11.5px !important}
-    .decl{margin-top:8px;padding-bottom:6px;border-bottom:1px solid #000;font-size:11.5px}
-    .decl b{display:block;font-size:12.5px;border-bottom:2px solid #000;margin-bottom:4px;padding-bottom:2px}
-    .decl ul{margin:3px 0 0 18px;padding:0}.decl li{margin:1px 0}
-    tr.ch th{font-size:11px;text-align:center;font-weight:700;border-bottom:2px solid #000}
-    tbody tr{height:9.5mm}tbody tr:nth-child(even) td{background:#ebebeb}
-    td.c{text-align:center;font-size:10px}td.ep{font-weight:700;font-size:13px}td.sm{font-size:9.5px;text-align:center}
-    @page{size:A4 landscape;margin:9mm 9mm 20mm;@bottom-center{content:"${t('Σελίδα')} " counter(page) " ${t('από')} " counter(pages);font-size:9pt;font-family:Calibri,Carlito,system-ui,sans-serif}}
-    @media screen{body{background:#f4f4f5}.pg{background:#fff;max-width:297mm;margin:10px auto;padding:9mm}}
-  </style></head><body><div class="pg">${body}</div>
-  <script>window.addEventListener('load',function(){setTimeout(function(){print()},300)})<\/script></body></html>`);
-  w.document.close();
+async function efdSign(e,parts,mode,btn){
+  const lbl=btn?btn.innerHTML:''; if(btn){ btn.disabled=true; btn.textContent=t('Ετοιμάζεται…'); }
+  try{
+    const decl=await efdDecls(e);
+    if(!decl)return toast(t('Δεν διαβάστηκαν οι δηλώσεις της δράσης — δοκίμασε ξανά'));
+    const byId=new Map((D.bh||[]).map(p=>[p.id,p]));
+    const people=(mode==='all'?efdPool(e):[...decl.keys()].map(id=>byId.get(id)).filter(Boolean)).slice().sort(efdNameSort);
+    await efdSignPdf(e,people,decl,mode,new Date());
+    toast(t('Κατέβηκε:')+' '+efdFile(e)+'.pdf');
+  }catch(err){ toast(t('Δεν βγήκε το PDF:')+' '+((err&&err.message)||err)); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=lbl; } }
 }
 function efdSignExport(){
   const v=$('view'); if(!v||!v.insertAdjacentHTML)return;
@@ -18599,13 +18559,13 @@ function efdSignExport(){
       <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdXm" value="all" style="width:auto"> ${t('Δικαιούχοι')}</label>
       <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdXm" value="decl" style="width:auto"> ${t('Μόνο δηλωμένοι')}</label></div>
     <div class="dim" style="font-size:12px">${t('«Δικαιούχοι» όσο οι δηλώσεις είναι ανοιχτές — κενή ημερομηνία για όσους δεν δήλωσαν ακόμη. «Μόνο δηλωμένοι» όταν κλείσουν. Χωρίς πληρωμές, ιατρικά και τηλέφωνα.')}</div>
-    <button class="btn sm p" id="efdXgo" style="margin-top:8px">${t('Λίστα υπογραφών')}</button>`
+    <button class="btn sm p" id="efdXgo" style="margin-top:8px">${ic('down',14)} ${t('Λήψη PDF')}</button>`
     :`<div class="dim">${t('Καμία πρόσφατη ή επόμενη δράση τμήματος.')}</div>`}</div>`);
   if(!evs.length)return;
   const ev=()=>evs.find(e=>e.id===$('efdXe').value);
   const setDef=()=>{const m=efdSigAll(ev())?'all':'decl'; document.querySelectorAll('input[name="efdXm"]').forEach(r=>r.checked=r.value===m)};
   $('efdXe').onchange=setDef; setDef();
-  $('efdXgo').onclick=()=>{const e=ev(); if(e)efdSign(e,efPersons(e.id),((document.querySelector('input[name="efdXm"]:checked')||{}).value)==='all'?'all':'decl')};
+  $('efdXgo').onclick=()=>{const e=ev(); if(e)efdSign(e,efPersons(e.id),((document.querySelector('input[name="efdXm"]:checked')||{}).value)==='all'?'all':'decl',$('efdXgo'))};
 }
 
 async function efdPrep(e,parts,who,purpose,btn){
@@ -18700,7 +18660,7 @@ function efDocs(e,parts){
         <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdMode" value="all"${allDef?' checked':''} style="width:auto"> ${t('Δικαιούχοι')} (${pool})</label>
         <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdMode" value="decl"${allDef?'':' checked'} style="width:auto"> ${t('Μόνο δηλωμένοι')}</label></div>
       <div class="dim" style="font-size:12px">${t('«Δικαιούχοι» όσο οι δηλώσεις είναι ανοιχτές — κενή ημερομηνία για όσους δεν δήλωσαν ακόμη, να τη γράψεις με το χέρι. «Μόνο δηλωμένοι» όταν κλείσουν. Σταθερή αλφαβητική σειρά, ώρα κατάστασης στον υπότιτλο, 3 κενές γραμμές. Χωρίς πληρωμές, ιατρικά και τηλέφωνα.')}</div>
-      <button class="btn sm p" id="efdSign" style="margin-top:7px">${t('Λίστα υπογραφών')}</button></div>
+      <button class="btn sm p" id="efdSign" style="margin-top:7px">${ic('down',14)} ${t('Λήψη PDF')}</button></div>
     ${b('efdLead','Για τους βαθμοφόρους','Ανά ενωμοτία / εξάδα: λίστα κλήσεων της δράσης και τι να προσέξουμε.')}
     ${b('efdKit','Κουζίνα','Μόνο διατροφή — η κουζίνα δεν βλέπει ιατρικά.')}
     ${b('efdFa','Πρώτες βοήθειες','Ομάδα αίματος, αντιτετανικό και ιατρικά — μόνο για τον υπεύθυνο υγείας.')}
@@ -18710,12 +18670,104 @@ function efDocs(e,parts){
 }
 function efDocsWire(e,parts){
   const on=(id,fn)=>{const x=$(id); if(x)x.onclick=()=>fn(x)};
-  on('efdSign',()=>efdSign(e,parts,((document.querySelector('input[name="efdMode"]:checked')||{}).value)==='all'?'all':'decl'));
+  on('efdSign',x=>efdSign(e,parts,((document.querySelector('input[name="efdMode"]:checked')||{}).value)==='all'?'all':'decl',x));
   on('efdLead',x=>efdLeaders(e,parts,x));
   on('efdKit',x=>efdKitchen(e,parts,x));
   on('efdFa',x=>efdFirstAid(e,parts,x));
   on('efdPk',x=>efdProvKids(e,parts,x));
   on('efdPl',()=>efdProvLeds(e,parts));
+}
+const ESP_FK='https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js';
+let _espFk=null;
+function espFontkit(){
+  if(_espFk)return _espFk;
+  _espFk=new Promise((res,rej)=>{ if(window.fontkit)return res(window.fontkit);
+    const s=document.createElement('script'); s.src=ESP_FK; sriTag(s);
+    s.onload=()=>window.fontkit?res(window.fontkit):rej(new Error('fontkit'));
+    s.onerror=()=>{ _espFk=null; rej(new Error(t('Δεν φόρτωσαν οι γραμματοσειρές'))); };
+    document.head.appendChild(s); });
+  return _espFk;
+}
+const espBytes=async f=>{ const r=await fetch(location.origin+'/'+f); if(!r.ok)throw new Error(f); return new Uint8Array(await r.arrayBuffer()); };
+function espSave(bytes,name){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+  a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },5000);
+}
+async function efdSignPdf(e,people,decl,mode,stamp){
+  const [L,fk]=await Promise.all([pdfWriteLib(),espFontkit()]);
+  const {PDFDocument,rgb}=L;
+  const doc=await PDFDocument.create(); doc.registerFontkit(fk);
+  const [fr,fb]=await Promise.all([espBytes('carlito-regular.ttf'),espBytes('carlito-bold.ttf')]);
+  const R=await doc.embedFont(fr,{subset:true}), B=await doc.embedFont(fb,{subset:true});
+  const png=async f=>{ try{ return f?await doc.embedPng(await espBytes(f)):null }catch(_){ return null } };
+  const im1=await png(EFD_LOGO[efdSec(e)]), im2=await png('logo-systima.png');
+  doc.setTitle(efdFile(e)); doc.setCreator('e76'); doc.setProducer('e76');
+  const G={doc,rgb,R,B,im1,im2,e,mode,stamp,n:people.length};
+  const rows=people.map((p,i)=>({n:i+1,ep:cleanLast(p.last_name),on:p.first_name||'',d:efdDmy(decl.get(p.id))}))
+    .concat(Array.from({length:3},(_,j)=>({n:people.length+j+1,ep:'',on:'',d:''})));
+  espPages(G,rows);
+  espSave(await doc.save(),efdFile(e)+'.pdf');
+}
+const ESP={PW:841.89,PH:595.28,ML:29,MR:29,MT:26,MB:58,LOGO:68,RH:24,HH:29};
+function espPages(G,rows){
+  const {doc,rgb,R,B}=G, P=ESP, W=P.PW-P.ML-P.MR, K=rgb(0,0,0), Z=rgb(0.922,0.922,0.922);
+  const CW=[5,25,22,12,40,14,40].map(x=>W*x/158), CX=CW.reduce((a,w,i)=>(a.push(a[i]+w),a),[P.ML]);
+  const tw=(s,f,z)=>f.widthOfTextAtSize(s,z);
+  const fit=(s,f,z,max,min=7)=>{ while(z>min&&tw(s,f,z)>max)z-=0.25; return z; };
+  const line=(p,x1,y1,x2,y2,th)=>p.drawLine({start:{x:x1,y:y1},end:{x:x2,y:y2},thickness:th||0.6,color:K});
+  const grid=(p,top,bot,th)=>{ line(p,P.ML,top,P.PW-P.MR,top); line(p,P.ML,bot,P.PW-P.MR,bot,th); CX.forEach(x=>line(p,x,top,x,bot)); };
+  const H=espHead(G,{W,CW,CX,K,tw,fit,line,grid});
+  let i=0;
+  while(i<rows.length){
+    const pg=doc.addPage([P.PW,P.PH]); let y=H(pg);
+    let cap=Math.max(1,Math.floor((y-P.MB)/P.RH));
+    const rest=rows.slice(i+cap);
+    if(rest.length&&rest.every(r=>!r.ep)&&cap>1&&rows[i+cap-1].ep&&rest.length<cap)cap--;    
+    rows.slice(i,i+cap).forEach((r,k)=>{
+      const top=y, bot=y-P.RH, mid=bot+P.RH/2;
+      if((i+k)%2===1)pg.drawRectangle({x:P.ML,y:bot,width:W,height:P.RH-0.8,color:Z});
+      const ct=(s,c,f,z)=>pg.drawText(s,{x:CX[c]+CW[c]/2-tw(s,f,z)/2,y:mid-z*0.33,size:z,font:f,color:K});
+      ct(String(r.n),0,R,9.5);
+      if(r.ep){ const z=fit(r.ep,B,13,CW[1]-12); pg.drawText(r.ep,{x:CX[1]+6,y:mid-z*0.33,size:z,font:B,color:K}); }
+      if(r.on){ const z=fit(r.on,R,12,CW[2]-12); pg.drawText(r.on,{x:CX[2]+6,y:mid-z*0.33,size:z,font:R,color:K}); }
+      if(r.d)ct(r.d,3,R,9);
+      grid(pg,top,bot); y=bot;
+    });
+    i+=cap;
+  }
+  const pages=doc.getPages();
+  pages.forEach((pg,j)=>{ const s=t('Σελίδα')+' '+(j+1)+' '+t('από')+' '+pages.length; pg.drawText(s,{x:P.PW/2-tw(s,R,9)/2,y:29,size:9,font:R,color:K}); });
+}
+function espHead(G,U){
+  const {R,B,im1,im2,e,mode,stamp,n}=G, P=ESP, {W,CW,CX,K,tw,fit,line,grid}=U;
+  const title=efdCaps(efdTitle(e)), sub=[efdDays(e),e.place].filter(Boolean).join(' · '), sl=efdSecLine(e);
+  const st=t('Κατάσταση δηλώσεων:')+' '+fdate(stamp)+', '+p2(stamp.getHours())+':'+p2(stamp.getMinutes())+' · '+(mode==='all'?t('Δικαιούχοι'):t('Μόνο δηλωμένοι'))+' ('+n+')';
+  const dz=10, wrap=(s,max)=>{ const out=[]; let ln=''; String(s).split(/\s+/).forEach(w=>{ const c=ln?ln+' '+w:w; if(tw(c,R,dz)>max&&ln){ out.push(ln); ln=w; } else ln=c; }); if(ln)out.push(ln); return out; };
+  const dl=[]; EFD_DECL.forEach(x=>wrap(x,W-20).forEach((ln,i)=>dl.push({ln,first:i===0})));
+  const HDR=[[t('Α/Α')],[t('Επίθετο')],[t('Όνομα')],[t('Ημ/νία'),t('Δήλωσης')],[t('Ονοματεπώνυμο Γονέα / Κηδεμόνα')],[t('Ημερομηνία'),t('υπογραφής')],[t('Υπογραφή')]];
+  return p=>{
+    const txt=(s,x,y,f,z)=>p.drawText(s,{x,y,size:z,font:f,color:K});
+    const ctr=(s,y,f,z,max)=>{ const zz=fit(s,f,z,max); txt(s,P.PW/2-tw(s,f,zz)/2,y,f,zz); };
+    let y=P.PH-P.MT;
+    if(im1)p.drawImage(im1,{x:P.ML+2,y:y-P.LOGO,width:P.LOGO,height:P.LOGO});
+    if(im2)p.drawImage(im2,{x:P.PW-P.MR-P.LOGO-2,y:y-P.LOGO,width:P.LOGO,height:P.LOGO});
+    const tmax=W-2*P.LOGO-40;
+    ctr(title,y-20,B,15.5,tmax);
+    let yy=y-38; [sub,sl].filter(Boolean).forEach(s=>{ ctr(s,yy,R,12,tmax); yy-=14.5; });
+    ctr(st,yy-1,R,10.5,tmax);
+    y=y-P.LOGO-14;
+    txt(t('ΔΗΛΩΣΗ ΓΟΝΕΑ / ΚΗΔΕΜΟΝΑ'),P.ML,y,B,12); y-=4.5;
+    line(p,P.ML,y,P.PW-P.MR,y,1.5); y-=13.5;
+    txt(t('Υπογράφοντας, ως γονέας ή νόμιμος κηδεμόνας του μέλους:'),P.ML,y,R,dz); y-=13.5;
+    dl.forEach(d=>{ if(d.first)p.drawCircle({x:P.ML+8,y:y+3.2,size:1.5,color:K}); txt(d.ln,P.ML+15,y,R,dz); y-=12.5; });
+    y+=4; line(p,P.ML,y,P.PW-P.MR,y,0.6); y-=9;
+    const top=y, bot=y-P.HH, mid=(top+bot)/2;
+    HDR.forEach((h,i)=>h.forEach((s,j)=>{ const z=fit(s,B,10.5,CW[i]-6), yy2=h.length===1?mid-z*0.33:(j===0?mid+2.5:mid-z+0.8);
+      txt(s,CX[i]+CW[i]/2-tw(s,B,z)/2,yy2,B,z); }));
+    grid(p,top,bot,1.5);
+    return bot;
+  };
 }
 const ATT_COLS=17;    
 const attKey=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
