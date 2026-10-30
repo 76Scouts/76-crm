@@ -1279,7 +1279,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-30 15:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-30 15:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -17197,6 +17197,78 @@ V.dedupe=()=>{
     ddGone(b);});
 };
 
+const PAN_SECS=()=>[dv('Αγέλη'),dv('Ομάδα'),dv('Κοινότητα'),dv('Δίκτυο')];
+const PAN_WHO=()=>[{k:'par',t:t('Γονείς')},{k:'led',t:t('Βαθμοφόροι')},{k:'mem',t:t('Μέλη με λογαριασμό')}];
+function panPersons(who, secs){
+  const act=(D.bh||[]).filter(p=>p.status===dv('Ενεργός')&&!p._stub);
+  const inSec=p=>secs.includes(p.section);
+  const ids=new Set();
+  if(who.includes('led')) act.filter(p=>isLed(p)&&inSec(p)).forEach(p=>ids.add(p.id));
+  if(who.includes('mem')) act.filter(p=>!isLed(p)&&inSec(p)).forEach(p=>ids.add(p.id));
+  if(who.includes('par')){ const kids=new Set(act.filter(p=>!isLed(p)&&inSec(p)).map(p=>p.id));
+    (D.cl||[]).filter(c=>kids.has(c.member_id)&&!c.valid_to&&c.carer_id).forEach(c=>ids.add(c.carer_id)); }
+  return [...ids];
+}
+function pushAnnBody(){
+  const chk=(g,k,l)=>`<label style="display:inline-flex;gap:6px;align-items:center;margin:0 14px 6px 0;font-size:13.5px;max-width:none">
+      <input type="checkbox" data-pan="${g}" value="${esc(k)}" checked style="width:auto"> ${esc(l)}</label>`;
+  $('view').innerHTML=`<div class="card pad" style="max-width:680px">
+    <h3 style="margin:0 0 4px">${t('Ανακοίνωση στο κινητό')}</h3>
+    <div class="dim" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">${t('Φτάνει σε όσους έχουν ενεργοποιήσει ειδοποιήσεις στο e76 και κράτησαν τις «Ανακοινώσεις». Το κείμενο φαίνεται στην κλειδωμένη οθόνη — χωρίς ονόματα παιδιών ή ιατρικά. Τα στοιχεία τα βλέπουν μέσα στο e76.')}</div>
+    <div style="font-size:12.5px;font-weight:600;margin-bottom:4px">${t('Σε ποιους')}</div>
+    <div>${PAN_WHO().map(x=>chk('who',x.k,x.t)).join('')}</div>
+    <div>${PAN_SECS().map(s=>chk('sec',s,s)).join('')}</div>
+    <div id="panCount" class="dim" style="font-size:12.5px;margin:2px 0 12px"></div>
+    <label style="max-width:none;display:block">${t('Τίτλος')} <span class="dim" id="panTn"></span>
+      <input id="panT" maxlength="80" style="display:block;width:100%;box-sizing:border-box" placeholder="${esc(t('π.χ. Αλλαγή ώρας συγκέντρωσης'))}"></label>
+    <label style="max-width:none;display:block;margin-top:8px">${t('Κείμενο')} <span class="dim" id="panBn"></span>
+      <textarea id="panB" maxlength="200" rows="3" style="display:block;width:100%;box-sizing:border-box" placeholder="${esc(t('π.χ. Το Σάββατο η συγκέντρωση ξεκινά στις 16:00. Λεπτομέρειες στο e76.'))}"></textarea></label>
+    <div style="margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg2,transparent);max-width:420px">
+      <div class="dim" style="font-size:11px">${t('Προεπισκόπηση')}</div>
+      <div style="font-weight:600;font-size:13.5px" id="panPT">—</div><div style="font-size:13px" id="panPB"></div></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn p" id="panGo">${t('Αποστολή')}</button></div>
+    <div id="panRes" style="margin-top:10px"></div></div>
+    <div class="card pad" style="max-width:680px;margin-top:12px"><h4 style="margin:0 0 6px">${t('Τι στάλθηκε')}</h4><div id="panLog" class="dim">${t('Φόρτωση…')}</div></div>`;
+  const sel=g=>[...document.querySelectorAll(`[data-pan="${g}"]:checked`)].map(x=>x.value);
+  const allOn=()=>sel('who').length===PAN_WHO().length&&sel('sec').length===PAN_SECS().length;
+  const upd=()=>{ const n=allOn()?null:panPersons(sel('who'),sel('sec')).length;
+    $('panCount').textContent=n===null?t('Όλοι — χωρίς περιορισμό'):(t('Άτομα που αφορά:')+' '+n);
+    const T=$('panT').value, B=$('panB').value;
+    $('panTn').textContent=T.length+'/80'; $('panBn').textContent=B.length+'/200';
+    $('panPT').textContent=T||'—'; $('panPB').textContent=B; };
+  document.querySelectorAll('[data-pan]').forEach(c=>c.onchange=upd);
+  $('panT').oninput=upd; $('panB').oninput=upd; upd();
+  $('panGo').onclick=()=>panSend(sel, allOn);
+  panLogFill();
+}
+async function panSend(sel, allOn){
+  const title=$('panT').value.trim(), body=$('panB').value.trim();
+  if(!title){ toast(t('Λείπει ο τίτλος.')); return; }
+  const all=allOn(), ids=all?[]:panPersons(sel('who'),sel('sec'));
+  if(!all&&!ids.length){ toast(t('Η επιλογή δεν αφορά κανέναν.')); return; }
+  if(!await uiAsk(t('Αποστολή ειδοποίησης')+' «'+title+'» '+(all?t('σε όλους;'):(t('σε')+' '+ids.length+' '+t('άτομα;')))))return;
+  const b=$('panGo'); b.disabled=true;
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(SB_URL+'/functions/v1/push-send',{method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
+      body:JSON.stringify(all?{kind:'anakoinosi',all:true,title,body,url:'./'}:{kind:'anakoinosi',person_ids:ids,title,body,url:'./'})});
+    const j=await r.json().catch(()=>({}));
+    $('panRes').innerHTML=j.ok
+      ? `<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${t('Στάλθηκε')}</span> <span class="dim" style="font-size:12.5px">${j.sent} ${t('συσκευές')}${j.failed?' · '+j.failed+' '+t('απέτυχαν'):''}${j.devices===0?' — '+t('κανείς από αυτούς δεν έχει ενεργές ειδοποιήσεις ακόμη'):''}</span>`
+      : `<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">${esc(j.error||t('Δεν στάλθηκε.'))}</span>`;
+    if(j.ok){ $('panT').value=''; $('panB').value=''; panLogFill(); }
+  }catch(e){ $('panRes').textContent=t('Δεν στάλθηκε.'); }
+  b.disabled=false;
+}
+async function panLogFill(){
+  const box=$('panLog'); if(!box)return;
+  const {data,error}=await sb.from('push_log').select('kind,title,persons,devices_ok,devices_failed,auto,sent_at').order('sent_at',{ascending:false}).limit(20);
+  if(!$('panLog'))return;
+  if(error||!data||!data.length){ box.textContent=t('Τίποτα ακόμη.'); return; }
+  box.innerHTML=data.map(x=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">
+      <b>${esc(x.title||'')}</b> <span class="dim">· ${esc(fdate(x.sent_at))} · ${x.devices_ok} ${t('συσκευές')}${x.auto?' · '+t('αυτόματο'):''}</span></div>`).join('');
+}
 let CALLSEC='all', CALLONLY='', ENSEC='all', ENONLY='';
 const FLAGPUB=['Ιατρικό','Διατροφή','Ένας κηδεμόνας'];
 const FLAGNODETAIL=['Ένας κηδεμόνας'];
@@ -23523,7 +23595,8 @@ V.comms=()=>tabView('comms',[
   {k:'held', t:'Περιμένουν',      i:'lock',  fn:remHeldBody,  d:'κρατημένες — φεύγουν μόλις μπει λογαριασμός'},
   {k:'sent', t:'Τι έφυγε',        i:'mail',  fn:remSentBody,  d:'το ιστορικό, με παραλήπτη και κατάσταση'},
   {k:'rules',t:'Κανόνες',         i:'cog',   fn:remRulesBody, d:'πότε φεύγει το καθένα και τι λέει'},
-  {k:'forms',t:'Φόρμες',          i:'book',  fn:()=>formcatBody(), d:'οι ζωντανές φόρμες του Smartespot'}]);
+  {k:'forms',t:'Φόρμες',          i:'book',  fn:()=>formcatBody(), d:'οι ζωντανές φόρμες του Smartespot'},
+  {k:'push', t:t('Στο κινητό'),     i:'mail',  fn:pushAnnBody, d:t('ανακοίνωση με ειδοποίηση στο κινητό — μόνο ο Α.Σ.'), nav:'progfix'}]);
 
 V.dataqa=()=>tabView('dataqa',[
   {k:'health', t:'Υγεία δεδομένων', i:'shield', fn:()=>healthBody(), d:'τι λείπει ή δεν ταιριάζει'},
