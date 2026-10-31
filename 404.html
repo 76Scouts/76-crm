@@ -1280,7 +1280,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-10-30 18:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-10-31 07:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -18547,6 +18547,16 @@ async function efdSign(e,parts,mode,btn){
   }catch(err){ toast(t('Δεν βγήκε το PDF:')+' '+((err&&err.message)||err)); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=lbl; } }
 }
+async function efdUnmFill(e,id){
+  const box=$(id); if(!box||!e)return; box.innerHTML='';
+  const {data,error}=await sb.rpc('event_unmatched_submissions',{p_event:e.id});
+  const b=$(id); if(error||!b||!data)return;
+  b.innerHTML=`<div style="margin-top:8px;padding:8px 11px;border-radius:10px;background:var(--warnbg);color:var(--warn);font-size:12.5px;line-height:1.45">⚠ ${
+    data===1?t('1 υποβολή της φόρμας δεν αντιστοιχίστηκε με μέλος του e76 — δεν μπαίνει στη λίστα «Μόνο δηλωμένοι».')
+            :data+' '+t('υποβολές της φόρμας δεν αντιστοιχίστηκαν με μέλος του e76 — δεν μπαίνουν στη λίστα «Μόνο δηλωμένοι».')} ${
+    (ME.role==='admin'||!!ME.platform_admin)?(data===1?t('Αντιστοίχισέ την από τις υποβολές της φόρμας.'):t('Αντιστοίχισέ τες από τις υποβολές της φόρμας.'))
+      :(data===1?t('Ενημέρωσε τον Α.Σ. να την αντιστοιχίσει.'):t('Ενημέρωσε τον Α.Σ. να τις αντιστοιχίσει.'))}</div>`;
+}
 function efdSignExport(){
   const v=$('view'); if(!v||!v.insertAdjacentHTML)return;
   const secs=typeof expSecs==='function'?expSecs():null, from=new Date(Date.now()-45*864e5).toISOString().slice(0,10);
@@ -18559,12 +18569,12 @@ function efdSignExport(){
       <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdXm" value="all" style="width:auto"> ${t('Δικαιούχοι')}</label>
       <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdXm" value="decl" style="width:auto"> ${t('Μόνο δηλωμένοι')}</label></div>
     <div class="dim" style="font-size:12px">${t('«Δικαιούχοι» όσο οι δηλώσεις είναι ανοιχτές — κενή ημερομηνία για όσους δεν δήλωσαν ακόμη. «Μόνο δηλωμένοι» όταν κλείσουν. Χωρίς πληρωμές, ιατρικά και τηλέφωνα.')}</div>
-    <button class="btn sm p" id="efdXgo" style="margin-top:8px">${ic('down',14)} ${t('Λήψη PDF')}</button>`
+    <button class="btn sm p" id="efdXgo" style="margin-top:8px">${ic('down',14)} ${t('Λήψη PDF')}</button><div id="efdXu"></div>`
     :`<div class="dim">${t('Καμία πρόσφατη ή επόμενη δράση τμήματος.')}</div>`}</div>`);
   if(!evs.length)return;
   const ev=()=>evs.find(e=>e.id===$('efdXe').value);
   const setDef=()=>{const m=efdSigAll(ev())?'all':'decl'; document.querySelectorAll('input[name="efdXm"]').forEach(r=>r.checked=r.value===m)};
-  $('efdXe').onchange=setDef; setDef();
+  $('efdXe').onchange=()=>{ setDef(); efdUnmFill(ev(),'efdXu'); }; setDef(); efdUnmFill(ev(),'efdXu');
   $('efdXgo').onclick=()=>{const e=ev(); if(e)efdSign(e,efPersons(e.id),((document.querySelector('input[name="efdXm"]:checked')||{}).value)==='all'?'all':'decl',$('efdXgo'))};
 }
 
@@ -18660,7 +18670,7 @@ function efDocs(e,parts){
         <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdMode" value="all"${allDef?' checked':''} style="width:auto"> ${t('Δικαιούχοι')} (${pool})</label>
         <label style="display:flex;gap:5px;align-items:center"><input type="radio" name="efdMode" value="decl"${allDef?'':' checked'} style="width:auto"> ${t('Μόνο δηλωμένοι')}</label></div>
       <div class="dim" style="font-size:12px">${t('«Δικαιούχοι» όσο οι δηλώσεις είναι ανοιχτές — κενή ημερομηνία για όσους δεν δήλωσαν ακόμη, να τη γράψεις με το χέρι. «Μόνο δηλωμένοι» όταν κλείσουν. Σταθερή αλφαβητική σειρά, ώρα κατάστασης στον υπότιτλο, 3 κενές γραμμές. Χωρίς πληρωμές, ιατρικά και τηλέφωνα.')}</div>
-      <button class="btn sm p" id="efdSign" style="margin-top:7px">${ic('down',14)} ${t('Λήψη PDF')}</button></div>
+      <button class="btn sm p" id="efdSign" style="margin-top:7px">${ic('down',14)} ${t('Λήψη PDF')}</button><div id="efdUnm"></div></div>
     ${b('efdLead','Για τους βαθμοφόρους','Ανά ενωμοτία / εξάδα: λίστα κλήσεων της δράσης και τι να προσέξουμε.')}
     ${b('efdKit','Κουζίνα','Μόνο διατροφή — η κουζίνα δεν βλέπει ιατρικά.')}
     ${b('efdFa','Πρώτες βοήθειες','Ομάδα αίματος, αντιτετανικό και ιατρικά — μόνο για τον υπεύθυνο υγείας.')}
@@ -18671,6 +18681,7 @@ function efDocs(e,parts){
 function efDocsWire(e,parts){
   const on=(id,fn)=>{const x=$(id); if(x)x.onclick=()=>fn(x)};
   on('efdSign',x=>efdSign(e,parts,((document.querySelector('input[name="efdMode"]:checked')||{}).value)==='all'?'all':'decl',x));
+  efdUnmFill(e,'efdUnm');
   on('efdLead',x=>efdLeaders(e,parts,x));
   on('efdKit',x=>efdKitchen(e,parts,x));
   on('efdFa',x=>efdFirstAid(e,parts,x));
