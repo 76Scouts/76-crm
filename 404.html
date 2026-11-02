@@ -1284,7 +1284,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-02 17:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-02 18:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19487,8 +19487,16 @@ function efDocs(e,parts){
     ${b('efdLead','Για τους βαθμοφόρους','Ανά ενωμοτία / εξάδα: λίστα κλήσεων της δράσης και τι να προσέξουμε.')}
     ${b('efdKit','Κουζίνα','Μόνο διατροφή — η κουζίνα δεν βλέπει ιατρικά.')}
     ${b('efdFa','Πρώτες βοήθειες','Ομάδα αίματος, αντιτετανικό και ιατρικά — μόνο για τον υπεύθυνο υγείας.')}
-    ${b('efdPk','Για Επαρχία / ΓΕ · μέλη','Ονοματεπώνυμο και διατροφικά/ιατρικά, με υπογραφές Α.Τ. και Α.Σ.')}
-    ${b('efdPl','Για Επαρχία / ΓΕ · βαθμοφόροι','Εντολή, θέση, τηλέφωνο, email — «Εκκρεμεί» αν δεν ορίστηκε ακόμα.')}
+    <div style="padding:9px 0;border-top:1px solid var(--line)">
+      <b style="font-size:13.5px">${t('Για Επαρχία / ΓΕ')}</b>
+      <div class="dim" style="font-size:12px;margin-top:2px">${t('Ανέβασε το έντυπο που έστειλαν (.docx ή .xlsx): το e76 το γεμίζει στη δική τους μορφή — μέλη, βαθμοφόροι, Α.Μ., τάξη, υπεύθυνη δήλωση, ποσό — και κατεβαίνει έτοιμο για ηλεκτρονική υποβολή. Τίποτα δεν αποθηκεύεται.')}</div>
+      <label class="btn sm p" id="efdTplL" style="cursor:pointer;margin-top:7px;display:inline-flex;align-items:center;gap:6px">${ic('down',14)} <span>${t('Συμπλήρωση του εντύπου τους…')}</span><input type="file" id="efdTpl" accept=".docx,.xlsx" style="display:none"></label>
+      <div class="dim" style="font-size:12px;margin-top:9px">${t('Χωρίς έντυπο:')}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn sm" id="efdPkX">${ic('down',14)} ${t('Μέλη · Excel')}</button>
+        <button class="btn sm" id="efdPlX">${ic('down',14)} ${t('Βαθμοφόροι · Excel')}</button>
+        <button class="btn sm gh" id="efdPk">${t('Μέλη · εκτύπωση')}</button>
+        <button class="btn sm gh" id="efdPl">${t('Βαθμοφόροι · εκτύπωση')}</button></div></div>
   </div>`;
 }
 function efDocsWire(e,parts){
@@ -19500,6 +19508,10 @@ function efDocsWire(e,parts){
   on('efdFa',x=>efdFirstAid(e,parts,x));
   on('efdPk',x=>efdProvKids(e,parts,x));
   on('efdPl',()=>efdProvLeds(e,parts));
+  on('efdPkX',x=>efdProvXlsx(e,parts,'kids',x));
+  on('efdPlX',x=>efdProvXlsx(e,parts,'leds',x));
+  const f=$('efdTpl'); if(f)f.onchange=()=>{ const file=f.files&&f.files[0]; const s=document.querySelector('#efdTplL span'); f.value='';
+    if(file)efdTplFill(e,parts,file,s); };
 }
 const ESP_FK='https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js';
 let _espFk=null;
@@ -20488,6 +20500,240 @@ async function dlFill(buf,d){
   const U=await B.sheet('ΥΠΟΓΡΑΦΕΣ'); if(U)dlFillSign(U,d);
   const K=await B.sheet('ΕΚΚΡΕΜΟΤΗΤΕΣ'); if(K)dlFillPending(K,d);
   return {bytes:await B.save(), rep};
+}
+const efdtNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ς/g,dv('σ')).replace(/\s+/g,' ').trim();
+function efdtCol(h){ const x=efdtNorm(h);
+  if(!x)return null;
+  if(/^α\s*\/\s*α$|^α\/α\.?$|^α\.α\.?$/.test(x))return 'seq';
+  if(/υπογραφ/.test(x))return 'sign';
+  if(/ονοματεπωνυμ/.test(x))return 'name';
+  if(/^επωνυμ/.test(x))return 'last';
+  if(/^ονομα/.test(x))return 'first';
+  if(/μητρωου|^α\.?\s*μ\.?$/.test(x))return 'am';
+  if(/αριθμοσ εγγραφησ|αρ\.? εγγραφησ/.test(x))return 'reg';
+  if(/εντολησ|ε\.\s*δ\./.test(x))return 'war';
+  if(/ταξη/.test(x))return 'grade';
+  if(/ιατρικ|διατροφ/.test(x))return 'med';
+  if(/διαφορετικ|αφιξ|αναχωρ/.test(x))return 'arr';
+  if(/ολο το|απο\s*-\s*μεχρι|απο-μεχρι/.test(x))return 'span';
+  if(/θεση|καθηκοντ/.test(x))return 'role';
+  if(/τηλ/.test(x))return 'tel';
+  if(/e-?mail|ηλεκτρονικ/.test(x))return 'mail';
+  return null;
+}
+function efdtHeader(cells){
+  const map=cells.map(efdtCol);
+  if(!map.includes('name')&&!(map.includes('last')&&map.includes('first')))return null;
+  if(map.filter(k=>k&&k!=='sign').length<2)return null;    
+  const who=cells.some(c=>/βαθμοφορ/.test(efdtNorm(c)))?'leds':'kids';
+  if(map.includes('am')) map.forEach((k,i)=>{ if(k==='reg')map[i]='reg_blank'; });
+  else map.forEach((k,i)=>{ if(k==='reg')map[i]='am'; });
+  return {map, who};
+}
+const efdtGrade=g=>String(g||'').replace(/Λυκ\.?$/,dv('Λυκείου')).replace(/Γυμν\.?$/,dv('Γυμνασίου')).replace(/Δημ\.?$/,dv('Δημοτικού'));
+const efdtSysGen=()=>{ const n=(myKlimakio()||{}).name||''; const m=n.match(/^(\d+)ο\s+(Σύστημα)\s+(.*)$/);
+  return m?m[1]+dv('ου Συστήματος')+' '+m[3]:n; };
+const EFDT_HEAD=()=>({[dv('Μικρή Αγέλη')]:'AMAL',[dv('Αγέλη')]:'AAL',[dv('Ομάδα')]:'AOP',[dv('Κοινότητα')]:'AKA',[dv('Δίκτυο')]:'APD'});
+function efdtPeople(e){
+  const rows=typeof diarthrosiRows==='function'?diarthrosiRows('now'):[];
+  const P=c=>{const r=rows.find(x=>x.code===c); return r?(D.bh||[]).find(b=>b.id===r.pid):null};
+  const HC=EFDT_HEAD(), head=P(HC[efdSec(e)]||HC[e.section]||''), as=P('AS');
+  const card=p=>p?{name:[p.first_name,p.last_name].filter(Boolean).join(' '), tel:ctFmt(ctCallNo(p.id)||p.phone||''),
+    art:p.sex===dv('Κορίτσι/Γυναίκα')?dv('η'):dv('ο')}:{name:'',tel:'',art:dv('ο/η')};
+  return {head:card(head), as:card(as)};
+}
+function efdtVal(k,x,i,med,ctx){
+  const p=x.p, m=med?efdMed(med[p.id]):null;
+  switch(k){
+    case 'seq': return String(i+1);
+    case 'name': return [p.last_name,p.first_name].filter(Boolean).join(' ');
+    case 'last': return p.last_name||'';
+    case 'first': return p.first_name||'';
+    case 'am': return p.registry_no||'';
+    case 'war': return efdWarrant(p.id)||'';
+    case 'grade': return efdtGrade((myOf(p)||{}).grade);
+    case 'med': if(!m)return ''; { const t=[...new Set(m.diet.concat(m.med))]; return t.join(' · ')||'—'; }
+    case 'span': return ctx.span;
+    case 'role': return x.pa.role||(typeof ledLabel==='function'?ledLabel(p):'')||'';
+    case 'tel': return ctFmt(ctCallNo(p.id)||p.phone||'');
+    case 'mail': return p.email||'';
+    default: return '';
+  }
+}
+function efdtDecl(txt,o){
+  let s=String(txt).replace(/\s+/g,' ');
+  s=s.replace(/Εγώ\s+ο\/η\s*[.…]{3,}/,dv('Εγώ')+' '+o.art+' '+o.head)
+     .replace(/(Εγώ .*?\s+του)\s*[.…]{3,}/,'$1 '+o.sys)
+     .replace(/υπογεγραμμένες\s+δηλώσεις|υπογραμμένες\s+δηλώσεις/,dv('δηλώσεις'))
+     .replace(/\s+και\s+επιπρόσθετα\s+έχουμε\s+παραλάβει\s+βεβαίωση\s+από\s+τον\s+οικογενειακό\s+γιατρό\s+που\s+να\s+δηλώνει\s+ότι/,
+              dv(', καθώς και υπογραφές για τις εν λόγω δηλώσεις. Επίσης εντός των δηλώσεων έχουν δηλωθεί στοιχεία σχετικά με την υγεία των μελών και'))
+     .replace(/\s+και\s+επιπρόσθετα\s+έχουμε\s+παραλάβει/,dv(', καθώς και υπογραφές για τις εν λόγω δηλώσεις. Επίσης έχουμε παραλάβει'));
+  if(o.amount!=null)s=s.replace(/€\s*[.…]{3,}/,'€'+o.amount);
+  return s.replace(/\s{2,}/g,' ');
+}
+const efdtMoney=n=>n.toFixed(2).replace('.',',');
+const efdtFee=txt=>{ const m=String(txt||'').match(/(?:Κόστος|Τίμημα)[^€\d]*€\s*(\d+(?:[.,]\d+)?)/i); return m?parseFloat(m[1].replace(',','.')):null; };
+
+const W_NS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const efdtKids=(el,tag)=>Array.from(el.childNodes).filter(n=>n.namespaceURI===W_NS&&n.localName===tag);
+const efdtText=el=>Array.from(el.getElementsByTagNameNS(W_NS,'t')).map(t=>t.textContent).join('');
+function efdtCellSet(tc,val,num){
+  const doc=tc.ownerDocument, ps=efdtKids(tc,'p'); const p=ps[0]||tc.appendChild(doc.createElementNS(W_NS,'w:p'));
+  ps.slice(1).forEach(x=>tc.removeChild(x));
+  const pre=num!=null&&/^\s*\d+\.\s*$/.test(efdtText(p))?num+'. ':'';    
+  const runs=efdtKids(p,'r'); const rPr=runs[0]&&efdtKids(runs[0],'rPr')[0];
+  runs.forEach(r=>p.removeChild(r));
+  const v=pre+(val==null?'':String(val)); if(!v)return;
+  const r=doc.createElementNS(W_NS,'w:r'); if(rPr)r.appendChild(rPr.cloneNode(true));
+  const t=doc.createElementNS(W_NS,'w:t'); t.setAttribute('xml:space','preserve'); t.textContent=v; r.appendChild(t); p.appendChild(r);
+}
+function efdtDotsFill(p,vals){
+  const ts=Array.from(p.getElementsByTagNameNS(W_NS,'t')), tx=ts.map(t=>t.textContent), full=tx.join('');
+  const ms=[]; let m; const re=/[.…]{3,}/g; while((m=re.exec(full))){ if(ms.length>=vals.length)break; ms.push([m.index,m.index+m[0].length,vals[ms.length]]); }
+  if(!ms.length)return;
+  let off=0;
+  ts.forEach((t,ti)=>{ let out=''; const s=tx[ti];
+    for(let i=0;i<s.length;i++){ const g=off+i, hit=ms.find(x=>g>=x[0]&&g<x[1]);
+      if(!hit){ out+=s[i]; continue; }
+      if(g===hit[0]){ const v=String(hit[2]==null?'':hit[2]); out+=(/[:：]$/.test(full.slice(0,g))&&v?' ':'')+v; } }
+    off+=s.length; if(out!==s){ t.setAttribute('xml:space','preserve'); t.textContent=out; } });
+}
+const efdtSigWho=txt=>{const x=efdtNorm(txt); return /συστηματοσ/.test(x)&&!/ομαδασ|αγελησ|κοινοτητασ|τμηματοσ/.test(x)?'as':'head'};
+async function efdtDocx(buf,e,parts,ctx){
+  const zip=await JSZip.loadAsync(buf), f=zip.file('word/document.xml');
+  if(!f)throw new Error(t('Δεν είναι έγγραφο Word (.docx).'));
+  const doc=new DOMParser().parseFromString(await f.async('string'),'application/xml');
+  const body=doc.getElementsByTagNameNS(W_NS,'body')[0], all=body.textContent||'';
+  const fee=efdtFee(all), done={kids:0,leds:0}, lead=efdtPeople(e);
+  for(const tbl of Array.from(body.getElementsByTagNameNS(W_NS,'tbl'))){
+    const trs=efdtKids(tbl,'tr'); if(!trs.length)continue;
+    const hi=trs.findIndex(tr=>efdtHeader(efdtKids(tr,'tc').map(efdtText)));
+    if(hi<0){  
+      const txt=efdtText(tbl); if(!/υπογραφ/i.test(efdtNorm(txt)))continue;
+      const who=efdtSigWho(txt), hdr=efdtKids(trs[0],'tc').map(tc=>efdtSigWho(efdtText(tc)));
+      trs.forEach(tr=>{ const tcs=efdtKids(tr,'tc'), lab=efdtNorm(efdtText(tcs[0]||tr));
+        const key=k=>/^ονοματεπωνυμ/.test(k)?'name':/^τηλ/.test(k)?'tel':null;
+        const val=key(lab); if(!val)return;
+        if(tcs.length===2&&!/[.…]{3,}/.test(efdtText(tcs[0])))efdtCellSet(tcs[1],lead[who][val],null);    
+        else tcs.forEach((tc,j)=>{ const v=key(efdtNorm(efdtText(tc))); if(!v||!/[.…]{3,}/.test(efdtText(tc)))return;    
+          efdtKids(tc,'p').forEach(pp=>{ if(/[.…]{3,}/.test(efdtText(pp)))efdtDotsFill(pp,[lead[hdr[j]||who][v]]); }); });
+      });
+      continue;
+    }
+    const H=efdtHeader(efdtKids(trs[hi],'tc').map(efdtText)), list=(H.who==='leds'?ctx.leds:ctx.kids);
+    const data=trs.slice(hi+1); if(!data.length)continue;
+    const tplRow=data[data.length-1];
+    while(data.length<Math.max(list.length,1)){ const c=tplRow.cloneNode(true); tbl.appendChild(c); data.push(c); }
+    data.forEach((tr,i)=>{ const tcs=efdtKids(tr,'tc');
+      if(i>=Math.max(list.length,1)){ tbl.removeChild(tr); return; }
+      if(!list.length){  
+        tcs.forEach((tc,j)=>efdtCellSet(tc, H.map[j]==='name'||(j===H.map.indexOf('last'))?dv('Εκκρεμεί — θα επικοινωνήσουμε μαζί σας'):H.map[j]==='seq'?'1':'', H.map[j]==='name'?1:null));
+        return; }
+      tcs.forEach((tc,j)=>{ const k=H.map[j]; if(!k||k==='sign'||k==='reg_blank'||k==='arr'){ if(k==='reg_blank'||k==='arr')efdtCellSet(tc,'',null); return; }
+        efdtCellSet(tc, efdtVal(k,list[i],i,ctx.med,ctx), k==='name'?i+1:null); });
+    });
+    done[H.who]+=list.length;
+  }
+  let sigOrder=['head','as'];
+  for(const p of Array.from(body.getElementsByTagNameNS(W_NS,'p'))){
+    if(p.parentNode&&p.parentNode.localName==='tc')continue;
+    const tx=efdtText(p), nx=efdtNorm(tx);
+    if(/^συστημα\s*:\s*$/.test(nx)){ efdtAppend(p,(/\s$/.test(tx)?'':' ')+((myKlimakio()||{}).name||'')); continue; }
+    if(/^εγω ο\/η/.test(nx)||/δηλωνω υπευθυνα/.test(nx)){
+      const s=efdtDecl(tx,{art:lead.head.art,head:lead.head.name||'…………………',sys:efdtSysGen(),
+        amount:fee!=null&&ctx.kids.length?efdtMoney(fee*ctx.kids.length):null});
+      efdtParaSet(p,s); continue; }
+    if(/υπογραφη αρχηγου/.test(nx)&&(nx.match(/υπογραφη/g)||[]).length>=2){
+      const a=nx.search(/συστηματοσ/), b=nx.search(/αγελησ|ομαδασ|κοινοτητασ|τμηματοσ/); sigOrder=a>=0&&b>=0&&a<b?['as','head']:['head','as']; continue; }
+    if(/^ονοματεπωνυμ/.test(nx)&&/[.…]{3,}/.test(tx)){ efdtDotsFill(p,sigOrder.map(w=>lead[w].name)); continue; }
+    if(/^τηλ/.test(nx)&&/[.…]{3,}/.test(tx)){ efdtDotsFill(p,sigOrder.map(w=>lead[w].tel)); continue; }
+  }
+  zip.file('word/document.xml',new XMLSerializer().serializeToString(doc));
+  return {blob:await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),done,fee};
+}
+function efdtAppend(p,txt){ const runs=efdtKids(p,'r'), last=runs[runs.length-1]; const doc=p.ownerDocument;
+  const r=doc.createElementNS(W_NS,'w:r'); const rPr=last&&efdtKids(last,'rPr')[0]; if(rPr)r.appendChild(rPr.cloneNode(true));
+  const t=doc.createElementNS(W_NS,'w:t'); t.setAttribute('xml:space','preserve'); t.textContent=txt; r.appendChild(t); p.appendChild(r); }
+function efdtParaSet(p,txt){ const runs=efdtKids(p,'r'); let first=null;
+  runs.forEach(r=>{ if(r.getElementsByTagNameNS(W_NS,'drawing').length)return;
+    if(!first&&r.getElementsByTagNameNS(W_NS,'t').length){ first=r; Array.from(r.getElementsByTagNameNS(W_NS,'t')).forEach((t,i)=>{ if(i)t.parentNode.removeChild(t); }); return; }
+    p.removeChild(r); });
+  if(first){ const t=first.getElementsByTagNameNS(W_NS,'t')[0]; t.setAttribute('xml:space','preserve'); t.textContent=txt; } else efdtAppend(p,txt); }
+
+async function efdtXlsx(buf,e,parts,ctx){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+  const wb=new ExcelJS.Workbook(); await wb.xlsx.load(buf); const done={kids:0,leds:0};
+  wb.eachSheet(ws=>{
+    let hr=null, H=null;
+    ws.eachRow((row,rn)=>{ if(H)return; const vals=[]; row.eachCell({includeEmpty:true},(c,cn)=>{vals[cn-1]=String(c.text||'')});
+      const h=efdtHeader(Array.from(vals,v=>v||'')); if(h){H=h;hr=rn;} });
+    if(!H)return;
+    const list=H.who==='leds'?ctx.leds:ctx.kids, cols=H.map.map((k,i)=>({k,c:i+1})).filter(x=>x.k&&x.k!=='sign');
+    let sysDone=false;
+    ws.eachRow((row,rn)=>row.eachCell(c=>{ if(rn<hr&&/^συστημα\s*:?\s*$/.test(efdtNorm(c.text))){ c.value=String(c.text).replace(/:?\s*$/,': ')+((myKlimakio()||{}).name||''); sysDone=true; } }));
+    if(!sysDone&&hr>2&&!ws.getRow(hr-2).values.some(v=>v)){ const c=ws.getCell(hr-2,1); c.value=dv('Σύστημα: ')+((myKlimakio()||{}).name||''); c.font={...(ws.getCell(hr,1).font||{})}; }
+    (list.length?list:[null]).forEach((x,i)=>{ const row=ws.getRow(hr+1+i);
+      cols.forEach(({k,c})=>{ const cell=row.getCell(c), hc=ws.getCell(hr,c);
+        let v=x?efdtVal(k,x,i,ctx.med,ctx):(k==='name'?dv('Εκκρεμεί — θα επικοινωνήσουμε μαζί σας'):'');
+        if(k==='am'&&/^\d{1,7}$/.test(v))v=+v;    
+        if(k==='reg_blank'||k==='arr')v=null;
+        cell.value=v===''?null:v;
+        if(!cell.border||!Object.keys(cell.border).length)cell.border=hc.border; if(hc.alignment)cell.alignment={...hc.alignment, wrapText:true}; });
+      row.commit&&row.commit(); });
+    done[H.who]+=list.length;
+  });
+  const out=await wb.xlsx.writeBuffer();
+  return {blob:new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),done};
+}
+
+async function efdtNeedsMed(buf,isX){
+  if(isX){ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+    const wb=new ExcelJS.Workbook(); await wb.xlsx.load(buf.slice(0)); let need=false;
+    wb.eachSheet(ws=>ws.eachRow(row=>{ const v=[]; row.eachCell((c,cn)=>{v[cn-1]=String(c.text||'')}); const h=efdtHeader(Array.from(v,x=>x||'')); if(h&&h.map.includes('med'))need=true; }));
+    return need; }
+  const zip=await JSZip.loadAsync(buf.slice(0)), f=zip.file('word/document.xml'); if(!f)return false;
+  return /ιατρικ|διατροφ/i.test(efdtNorm((await f.async('string')).replace(/<[^>]+>/g,' ')));
+}
+async function efdTplFill(e,parts,file,btn){
+  if(!file)return;
+  const isX=/\.xlsx$/i.test(file.name), isD=/\.docx$/i.test(file.name);
+  if(!isX&&!isD){ await uiNote(t('Το έντυπο πρέπει να είναι Word (.docx) ή Excel (.xlsx). Αν ήρθε .doc ή .xls, άνοιξέ το και αποθήκευσέ το ως .docx / .xlsx.')); return; }
+  const lbl=btn?btn.textContent:''; const back=()=>{ if(btn)btn.textContent=lbl; };
+  try{
+    if(btn)btn.textContent=t('Διαβάζω το έντυπο…');
+    await loadScript(isX?'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js':'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+    const buf=await file.arrayBuffer();
+    const kids=efdKids(parts).slice().sort((a,b)=>sortByName(a.p,b.p)), leds=efdLeds(parts).slice().sort((a,b)=>sortByName(a.p,b.p));
+    let med=null, no=0;
+    if(await efdtNeedsMed(buf,isX)&&kids.concat(leds).length){
+      const r=await efdMedMany(kids.concat(leds).map(x=>x.p.id),dv('φάκελος δράσης · έντυπο Επαρχίας/ΓΕ'),(i,n)=>{if(btn)btn.textContent=t('Ιατρικά')+' '+i+'/'+n+'…'});
+      med=r.med; no=r.no; }
+    const days=e.end_date&&e.end_date!==e.event_date?Math.round((new Date(e.end_date)-new Date(e.event_date))/864e5)+1:1;
+    const ctx={kids,leds,med,span:days===1?dv('Όλο το μονοήμερο'):days===2?dv('Όλο το διήμερο'):dv('Όλη τη δράση')};
+    const r=isX?await efdtXlsx(buf,e,parts,ctx):await efdtDocx(buf,e,parts,ctx);
+    const a=document.createElement('a'); a.href=URL.createObjectURL(r.blob);
+    a.download='76 - '+file.name.replace(/^76\s*-\s*/,''); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000); back();
+    await uiNote(t('Κατέβηκε γεμάτο:')+' '+a.download+'\n\n'
+      +t('Μέλη')+': '+r.done.kids+(r.done.leds||leds.length?' · '+t('Βαθμοφόροι')+': '+r.done.leds:'')
+      +(no?'\n⚠ '+no+' '+t('χωρίς στοιχεία υγείας (δικαίωμα ή Ν.91) — η στήλη τους έμεινε κενή.'):'')
+      +(!r.done.kids&&!r.done.leds?'\n\n'+t('Δεν βρήκα πίνακα με «Ονοματεπώνυμο» στο έντυπο — άνοιξέ το και έλεγξε.'):'')
+      +'\n\n'+t('Άνοιξέ το, έλεγξέ το, πρόσθεσε υπογραφή/σφραγίδα αν το ζητούν, και ανέβασέ το ή στείλ\' το.'));
+  }catch(err){ back(); console.warn('efdTplFill',err); await uiNote(t('Δεν μπόρεσα να γεμίσω το έντυπο:')+' '+(err&&err.message||err)); }
+}
+async function efdProvXlsx(e,parts,who,btn){
+  const list=(who==='leds'?efdLeds(parts):efdKids(parts)).slice().sort((a,b)=>sortByName(a.p,b.p));
+  const title=(e.title||'')+' — '+(who==='leds'?t('βαθμοφόροι'):t('μέλη'));
+  if(who==='leds'){
+    const rows=[[t('Α/Α'),t('Ονοματεπώνυμο'),t('Α.Μ.'),t('Αρ. Εντολής'),t('Θέση'),t('Συμμετοχή'),t('Τηλέφωνο'),'Email']].concat(list.length
+      ?list.map((x,i)=>[i+1,[x.p.last_name,x.p.first_name].join(' '),x.p.registry_no||'',efdWarrant(x.p.id)||'',x.pa.role||'',t('Όλη τη δράση'),ctFmt(ctCallNo(x.p.id)||x.p.phone||''),x.p.email||''])
+      :[[1,t('Εκκρεμεί — θα επικοινωνήσουμε μαζί σας'),'','','','','','']]);
+    return exportRows(rows,'76 - '+title,title); }
+  if(!list.length)return toast(t('Κανένας δηλωμένος ακόμα'));
+  const r=await efdPrep(e,parts,'kids',dv('φάκελος δράσης · αρχείο Επαρχίας'),btn); if(!r)return;
+  const rows=[[t('Α/Α'),t('Ονοματεπώνυμο'),t('Α.Μ.'),t('Τάξη'),t('Διατροφικά / ιατρικά')]].concat(r.list.slice().sort((a,b)=>sortByName(a.p,b.p)).map((x,i)=>{
+    const m=efdMed(r.med[x.p.id]); return [i+1,[x.p.last_name,x.p.first_name].join(' '),x.p.registry_no||'',efdtGrade((myOf(x.p)||{}).grade),[...new Set(m.diet.concat(m.med))].join(' · ')||'—']}));
+  exportRows(rows,'76 - '+title,title);
 }
 const PA_WENT='Συμμετείχε', PA_DECL='Δηλώθηκε', PA_NO='Δεν ήρθε';
 const paWent=x=>!!x&&x.status===PA_WENT;
