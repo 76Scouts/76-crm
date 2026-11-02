@@ -1284,7 +1284,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-02 22:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-02 22:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22157,24 +22157,24 @@ const ptsSlot=(sec,sid,extra)=>PTS_SECS.includes(sec)&&ptsCanW(sec)?`<div id="pt
 function ptsMount(sec,sid,extra){ if(!$('ptsWrap'))return; ptsWire(sec,sid,extra);
   ptsLoad([sid]).then(()=>{const w=$('ptsWrap'); if(w&&(D.ss||[]).some(s=>s.id===sid)&&$('mSes')&&$('mSes').value===sid){w.innerHTML=ptsHTML(sec,sid,extra); ptsWire(sec,sid,extra)}}); }
 
-D.ptsCfg=D.ptsCfg||{};
+const PTS_CFG={};
 let PTS_PER='year';
 async function ptsCfgLoad(sec){
   if(!navigator.onLine)return;
   const {data,error}=await sb.from('subgroup_points_cfg').select('scout_year,section,by_semester,cut_date').eq('scout_year',YEAR).eq('section',sec).maybeSingle();
-  if(!error)D.ptsCfg[sec+'|'+YEAR]=data||null;
+  if(!error)PTS_CFG[sec+'|'+YEAR]=data||null;
 }
 async function ptsCfgSave(sec,v){
-  const cur=D.ptsCfg[sec+'|'+YEAR];
+  const cur=PTS_CFG[sec+'|'+YEAR];
   const r=cur?await sb.from('subgroup_points_cfg').update(v).eq('scout_year',YEAR).eq('section',sec).select().maybeSingle()
              :await sb.from('subgroup_points_cfg').insert({scout_year:YEAR,section:sec,...v}).select().maybeSingle();
   if(r.error){toast(t('Δεν αποθηκεύτηκε: ')+r.error.message);return false}
-  D.ptsCfg[sec+'|'+YEAR]=r.data||{...(cur||{}),...v}; return true;
+  PTS_CFG[sec+'|'+YEAR]=r.data||{...(cur||{}),...v}; return true;
 }
 const ptsSessions=sec=>(D.ss||[]).filter(s=>s.section===sec&&s.scout_year===YEAR&&!/κυρώ|ναβλ/.test(s.status||''))
   .sort((a,b)=>String(a.session_date).localeCompare(String(b.session_date)));
 function ptsStandHTML(sec){
-  const cfg=D.ptsCfg[sec+'|'+YEAR]||null, by=!!(cfg&&cfg.by_semester), cut=by?(cfg.cut_date||ptsCutDefault()):null;
+  const cfg=PTS_CFG[sec+'|'+YEAR]||null, by=!!(cfg&&cfg.by_semester), cut=by?(cfg.cut_date||ptsCutDefault()):null;
   const per=by?PTS_PER:'year', S=ptsSessions(sec).filter(s=>per==='year'||ptsSemOf(s.session_date,cut)===(per==='s1'?1:2));
   const ids=new Set(S.map(s=>s.id)), rows=(D.pts||[]).filter(r=>ids.has(r.session_id));
   const L=ptsRank(ptsTotals(rows,ptsGroups(sec)));
@@ -22196,7 +22196,7 @@ function ptsPerHTML(sec){
 }
 function ptsCfgHTML(sec){
   if(!ptsCanCfg(sec))return '';
-  const cfg=D.ptsCfg[sec+'|'+YEAR]||null, by=!!(cfg&&cfg.by_semester);
+  const cfg=PTS_CFG[sec+'|'+YEAR]||null, by=!!(cfg&&cfg.by_semester);
   return `<div class="card pad noprint" style="margin-bottom:12px">
     <label style="display:flex;gap:7px;align-items:center;font-size:13px;cursor:pointer">
       <input type="checkbox" id="ptsBySem"${by?' checked':''} style="width:auto;flex:0 0 auto;margin:0"> <span>${t('Η βαθμολογία μετρά ανά εξάμηνο')}</span></label>
