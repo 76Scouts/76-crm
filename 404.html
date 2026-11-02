@@ -1284,7 +1284,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-02 19:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-02 19:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -18008,7 +18008,8 @@ function libHomeMount(){
     if(VIEWAS||typeof sb==='undefined'||!ME||!ME.email)return;
     const v=$('view'); if(!v||$('libCard'))return;
     const box=document.createElement('div'); box.id='libCard';
-    const ann=$('annCard'); if(ann&&ann.parentNode===v)v.insertBefore(box,ann.nextSibling); else v.appendChild(box);
+    const slot=$('libSlot'), ann=$('annCard');
+    if(slot)slot.appendChild(box); else if(ann&&ann.parentNode===v)v.insertBefore(box,ann.nextSibling); else v.appendChild(box);
     libFill();
   }catch(e){}
 }
@@ -21856,6 +21857,8 @@ V.dash=()=>{
     ${!needs.nocert?'':`<button class="tile ${nocert?'warn':''}" data-go="leaders" data-chip="cert:none"><div class="k">${ic('alert',14)}Χωρίς πιστοποιητικό</div><div class="v">${nocert}</div><div class="s">βαθμοφόροι χωρίς καταχώρηση</div></button>`}
     ${needs.fam?`<button class="tile act" data-go="guardians"><div class="k">${ic('msg',14)}Επικοινωνία γονέων</div><div class="v">${new Set((D.cl||[]).filter(c=>!c.valid_to).map(c=>c.member_id)).size}</div><div class="s">${t('τηλέφωνα & email γονέων')}</div></button>`:''}
   </div>
+  <div id="libSlot"></div>
+  ${rdyHTML(MYSEC||null)}
   ${bdayHTML()}
 
   ${one?'':`<div class="sec"><h3>Πρόγραμμα</h3></div>
@@ -21870,7 +21873,7 @@ ${MYSEC?'':`    <div class="card pad"><div class="k muted" style="font-size:12px
       <div style="font-size:17px;font-weight:600;margin-top:7px">${avgAtt()}%</div>
       <div class="dim" style="font-size:12.5px">σε ${pln((()=>{const had=new Set(D.att.map(a=>a.session_id)); return D.ss.filter(s=>s.scout_year===YEAR&&had.has(s.id)).length})(),'συγκέντρωση','συγκεντρώσεις')} με παρουσίες</div></div>
   </div>`}`;
-  bindTiles(); bindToday(); bindDashLinks();
+  bindTiles(); bindToday(); bindDashLinks(); rdyWire();
   document.querySelectorAll('[data-mkses]').forEach(b=>b.onclick=()=>{ MKPRE={sec:b.dataset.mksec, ses:b.dataset.mkses};
     SUBTAB.attend='put'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); });
 };
@@ -21881,7 +21884,8 @@ function weekHTML(sec){
   const mi=meetInfo(sec), isT=ns&&ns.session_date===today;
   const dd=ns?Math.round((new Date(ns.session_date+'T12:00:00')-new Date(today+'T12:00:00'))/864e5):null;
   const evs=(D.ev||[]).filter(e=>!e.hidden&&evStage(e)==='published'&&(e.event_date||'')>=today
-    &&evSecs(e).includes(sec)&&typeof signupOpen==='function'&&signupOpen(e));
+    &&evSecs(e).includes(sec)&&typeof signupOpen==='function'&&signupOpen(e)
+    &&!(typeof rdyIn==='function'&&rdyIn(e,sec)));
   const row=(icn,cls,h,sub,btn)=>`<div class="ptd${cls?' '+cls:''}"><span class="ptdi">${ic(icn,16)}</span>
       <div style="flex:1;min-width:0"><div class="ptdh">${h}</div>${sub?`<div class="ptds">${sub}</div>`:''}</div>${btn||''}</div>`;
   const rows=[row('cal',isT?'warn':'',ns?(isT?t('Σήμερα συγκέντρωση'):t('Επόμενη συγκέντρωση'))+' · '+esc(sec):t('Επόμενη συγκέντρωση')+' · '+esc(sec),
@@ -22235,6 +22239,8 @@ function todayItems(){
     if(n.all)items.push({k:'warn', t:n.all+' περιμένουν τον έλεγχό σου',
       d:[n.cert&&n.cert+' πιστοποιητικά', n.veh&&n.veh+' χαρτιά οχημάτων', n.sch&&n.sch+' δηλώσεις σχολών'].filter(Boolean).join(' · '),
       b:'Άνοιγμα', go:'inbox'}); }
+  rdyAwards().forEach(([s,n])=>items.push({k:'warn', t:pln(n,t('απονομή περιμένει'),t('απονομές περιμένουν'))+' '+t('την υπογραφή σου')+' · '+s,
+    d:t('Πρόοδος › Συνοπτικά'), b:t('Άνοιγμα'), go:PROG_OF[s], sub:['prog_'+s,'sum']}));
   return items;
 }
 function todayHTML(){
@@ -22264,7 +22270,8 @@ function bindToday(){
   const it=todayItems();
   document.querySelectorAll('[data-todo]').forEach(b=>b.onclick=()=>{ const x=it[+b.dataset.todo]; if(!x)return;
     if(x.att){ MKPRE=x.att; SUBTAB.attend='put'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); }
-    else if(x.go) route(x.go); });
+    else if(x.go){ if(x.sub){ SUBTAB[x.sub[0]]=x.sub[1]; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} }
+      route(x.go); } });
 }
 function bdayHTML(){
   const m=new Date().getMonth(), today=new Date().getDate();
@@ -22289,6 +22296,7 @@ function avgAtt(){const ids=new Set(D.ss.filter(s=>s.scout_year===YEAR).map(s=>s
 function bindTiles(){document.querySelectorAll('[data-vup]').forEach(b=>b.onclick=()=>vehUpload(b.dataset.vup,b.dataset.vk));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{
   const s=b.dataset.sec, t=b.dataset.tab, ch=b.dataset.chip;
   if(!V[b.dataset.go]){ toast('Η οθόνη «'+b.dataset.go+'» δεν υπάρχει.'); return }
+  if(b.dataset.subk){ SUBTAB[b.dataset.subk]=b.dataset.subv; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} }
   route(b.dataset.go);
   if(s)setTimeout(()=>{const f=$('fsec');if(f){f.value=s;f.dispatchEvent(new Event('change'))}},30);
   if(t==='risk')setTimeout(()=>$('tabRisk')?.click(),30);
@@ -22321,6 +22329,8 @@ function towerHTML(o){
   add(o.expd+o.soon,t('Ν.91(Ι) βαθμοφόρων'),(o.expd?pln(o.expd,t('ληγμένο'),t('ληγμένα')):'')+(o.expd&&o.soon?' · ':'')+(o.soon?o.soon+' '+t('λήγουν σε 90 μέρες'):''),
     'data-go="leaders" data-chip="cert:'+(o.expd?'bad':'warn')+'"',null,o.expd?'bad':'warn');
   add(o.nocert||0,t('Βαθμοφόροι χωρίς Ν.91(Ι) καταχωρημένο'),t('δεν επιτρέπεται να εργάζονται με παιδιά χωρίς αυτό'),'data-go="leaders" data-chip="cert:none"',null,'warn');
+  rdyAwards().forEach(([s,n])=>add(n,t('Απονομές που περιμένουν την υπογραφή σου')+' · '+s,'',
+    `data-go="${PROG_OF[s]}" data-subk="prog_${esc(s)}" data-subv="sum"`,null,'warn'));
   const wait=W.length?`<div class="card" style="margin-bottom:14px">${W.map((w,i)=>`<button class="twr" ${w.attrs} style="display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;${i?'border-top:1px solid var(--line);':''}padding:11px 14px;cursor:pointer;color:inherit;font:inherit">
       <span class="dot" style="background:var(--${w.cls||(w.old!==null&&w.old>=7?'bad':'warn')})" aria-hidden="true"></span>
       <span style="flex:1;min-width:0"><b style="font-size:13.5px">${esc(w.txt)}</b>${w.sub?`<span class="dim" style="display:block;font-size:12px">${esc(w.sub)}</span>`:''}</span>
@@ -22357,22 +22367,81 @@ function towerHTML(o){
       ${row('data-go="cal"','line2',next?t('Επόμενη')+': '+esc(fdateW(next.session_date)):t('Δεν έχει προγραμματιστεί επόμενη'))}
     </div>`;
   };
-  const end=isoLocal(new Date(Date.now()+14*864e5));
-  const soonEv=(D.ev||[]).filter(e=>!e.hidden&&evStage(e)==='published'&&(e.event_date||'')>=today&&(e.event_date||'')<=end
-      &&!/συγκέντρωση/i.test(e.type||'')).sort((a,b)=>String(a.event_date).localeCompare(String(b.event_date))).slice(0,6);
-  return `<div class="sec"><h3>${t('Περιμένουν εσένα')}</h3></div>${wait}
+  return `<div class="sec"><h3>${t('Περιμένουν εσένα')}</h3></div>${wait}<div id="libSlot"></div>
     <div class="sec"><h3>${t('Τα τμήματα')}</h3><span class="n">${t('με μια ματιά')}</span></div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr));margin-bottom:14px">${secs.map(card).join('')}</div>
-    ${soonEv.length?`<div class="sec"><h3>${t('Τις επόμενες 14 μέρες')}</h3></div><div class="card" style="margin-bottom:14px">${soonEv.map((e,i)=>
-      `<button class="twr" data-go="events" style="display:flex;gap:8px;width:100%;text-align:left;background:none;border:0;${i?'border-top:1px solid var(--line);':''}padding:9px 12px;cursor:pointer;color:inherit;font:inherit;font-size:13px">
-        <span style="min-width:0;flex:1"><b>${esc(e.title||'—')}</b><span class="dim" style="display:block;font-size:12px">${esc(evSecs(e).join(' · ')||t('Σύστημα'))}</span></span>
-        <span class="dim" style="font-size:12px;white-space:nowrap">${esc(fdateW(e.event_date))}</span></button>`).join('')}</div>`:''}`;
+    ${rdyHTML(null)}`;
 }
 function bindTower(){
+  rdyWire();
   document.querySelectorAll('[data-twatt]').forEach(b=>b.onclick=()=>{ MKPRE={sec:b.dataset.twatt, ses:b.dataset.twses};
     SUBTAB.attend='put'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); });
   document.querySelectorAll('[data-twenr]').forEach(b=>b.onclick=()=>{ ENSEC=b.dataset.twenr; ENONLY='miss';
     SUBTAB.enroll='reg'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('enroll'); });
+}
+const RDY_DAYS=21, RDY_PLAIN_DAYS=14;
+let RDY_SEC=null;
+const rdyOwn=e=>{ const k=typeof efdtOwnerKind==='function'?efdtOwnerKind(e):''; return !k||k===dv('Σύστημα'); };
+const rdyNeedDl=e=>rdyOwn(e)&&(!!e.eidos_spk||EVCAT_ACT.includes(e.type));
+const rdyDecl=e=>(D.pa||[]).filter(x=>x.event_id===e.id&&!/κυρ/i.test(x.status||'')).length;
+const rdyIsAct=e=>evNeedsDecl(e,(D.pa||[]).some(x=>x.event_id===e.id));
+function rdyEvents(sec){
+  const today=isoLocal(new Date()), endA=isoLocal(new Date(Date.now()+RDY_DAYS*864e5)), endP=isoLocal(new Date(Date.now()+RDY_PLAIN_DAYS*864e5));
+  return (D.ev||[]).filter(e=>!e.hidden&&evStage(e)==='published'&&(e.end_date||e.event_date||'')>=today
+      &&!/συγκέντρωση/i.test(e.type||'')&&(!sec||evSecs(e).includes(sec)))
+    .filter(e=>rdyIsAct(e)?(e.event_date||'')<=endA:(!sec&&(e.event_date||'')<=endP))
+    .sort((a,b)=>String(a.event_date).localeCompare(String(b.event_date))).slice(0,8);
+}
+const rdyIn=(e,sec)=>rdyIsAct(e)&&(e.event_date||'')<=isoLocal(new Date(Date.now()+RDY_DAYS*864e5))&&(!sec||evSecs(e).includes(sec));
+function rdyRow(e,i){
+  const today=isoLocal(new Date());
+  const dd=Math.round((new Date(String(e.event_date).slice(0,10)+'T12:00:00')-new Date(today+'T12:00:00'))/864e5);
+  const when=esc(fdateW(e.event_date))+(dd>0?' · '+(dd===1?t('αύριο'):t('σε')+' '+pln(dd,t('μέρα'),t('μέρες'))):dd===0?' · '+t('σήμερα'):'');
+  const pill=(c,x)=>`<span class="pill" style="font-size:11px;${c?`background:var(--${c}bg);color:var(--${c});border-color:transparent`:''}">${x}</span>`;
+  const top=i?'border-top:1px solid var(--line);':'';
+  if(!rdyIsAct(e))return `<button class="twr" data-go="events" style="display:flex;gap:8px;width:100%;text-align:left;background:none;border:0;${top}padding:9px 12px;cursor:pointer;color:inherit;font:inherit;font-size:13px">
+      <span style="min-width:0;flex:1"><b>${esc(e.title||'—')}</b><span class="dim" style="display:block;font-size:12px">${esc(evSecs(e).join(' · ')||t('Σύστημα'))}</span></span>
+      <span class="dim" style="font-size:12px;white-space:nowrap">${esc(fdateW(e.event_date))}</span></button>`;
+  const n=rdyDecl(e), pills=[pill(n?'':'warn',pln(n,t('δήλωση'),t('δηλώσεις')))];
+  let miss='', tab='docs';
+  if(!rdyOwn(e)){ pills.push(pill('',esc(efdtOwnerKind(e)))); }
+  else if(rdyNeedDl(e)){ tab='venue';
+    const g=GEV[e.id];
+    if(!g)pills.push(pill('',t('Δελτίο ΣΠΚ…')));
+    else { const bad=dlChecks(e,g).filter(c=>c.bad);
+      pills.push(bad.length?pill(dd<=7?'bad':'warn',t('Δελτίο ΣΠΚ: λείπουν {n}',{n:bad.length})):pill('ok',t('Δελτίο ΣΠΚ έτοιμο')));
+      if(bad.length)miss=bad.slice(0,3).map(c=>esc(c.t)).join(' · ')+(bad.length>3?' …':''); }
+  } else tab='forms';
+  return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;${top}padding:9px 12px">
+      <span style="min-width:0;flex:1"><b style="font-size:13.5px">${esc(e.title||'—')}</b>
+        <span class="dim" style="display:block;font-size:12px">${when}</span>
+        <span style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">${pills.join('')}</span>
+        ${miss?`<span class="dim" style="display:block;font-size:12px;margin-top:3px">${miss}</span>`:''}</span>
+      <button class="btn sm" data-rdy="${esc(e.id)}" data-rdytab="${tab}">${rdyOwn(e)?t('Φάκελος'):t('Έγγραφα')}</button></div>`;
+}
+function rdyHTML(sec){
+  RDY_SEC=sec||null;
+  const L=rdyEvents(sec); if(!L.length)return '<div id="rdyCard"></div>';
+  return `<div id="rdyCard"><div class="sec"><h3>${t('Δράσεις που έρχονται')}</h3><span class="n">${t('τι λείπει')}</span></div>
+    <div class="card" style="margin-bottom:14px;overflow:hidden">${L.map(rdyRow).join('')}</div></div>`;
+}
+function rdyWire(){
+  document.querySelectorAll('#rdyCard [data-rdy]').forEach(b=>b.onclick=()=>{ efSet(b.dataset.rdy); SUBTAB.efolder=b.dataset.rdytab||'venue';
+    try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('efolder'); });
+  document.querySelectorAll('#rdyCard [data-go]').forEach(b=>b.onclick=()=>route(b.dataset.go));
+  const need=rdyEvents(RDY_SEC).filter(e=>rdyNeedDl(e)&&!GEV[e.id]);
+  if(!need.length||typeof dlLoad!=='function')return;
+  Promise.all(need.map(e=>dlLoad(e.id))).then(()=>{ const c=$('rdyCard'); if(!c)return;
+    c.outerHTML=rdyHTML(RDY_SEC); rdyWire(); }).catch(()=>{});
+}
+function rdyAwards(){
+  if(typeof awSigs!=='function'||typeof awCanSig!=='function')return [];
+  const ms=scopeSec(), out={};
+  (D.mprog||[]).forEach(m=>{ const p=(D.bh||[]).find(b=>b.id===m.person_id);
+    if(!p||p.status!==dv('Ενεργός'))return; const s=secOf(p);
+    if(!PROG_OF[s]||(ms&&s!==ms))return;
+    if(awSigs(m.id).some(x=>!x.signed_on&&awCanSig(x,m)))out[s]=(out[s]||0)+1; });
+  return Object.entries(out);
 }
 V.members=()=>{
   const list=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&inScope(p)).sort(sortByName);
