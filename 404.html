@@ -1284,7 +1284,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-02 22:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-02 22:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22085,71 +22085,91 @@ async function ptsSend(j){
   return await q().insert({session_id:j.s,group_name:j.g,kind:j.kind,seq:j.seq,points:j.p,title:j.title});
 }
 
+let PTS_VIEW='cat'; try{PTS_VIEW=localStorage.getItem('e76:ptsview')==='grp'?'grp':'cat'}catch(e){}
+const PTS_NEW={};    
+const ptsGameSeqs=sid=>[...new Set([...ptsGames(sid),...Object.keys(PTS_NEW[sid]||{}).map(Number)])].sort((a,b)=>a-b);
+const ptsTitleOf=(sid,seq)=>ptsGameTitle(sid,seq)||((PTS_NEW[sid]||{})[seq])||'';
+const ptsGameLbl=(sid,seq)=>ptsTitleOf(sid,seq)||t('Παιχνίδι')+' '+seq;
 function ptsTotHTML(sid,G){
   const T=ptsTotals(ptsRows(sid),G);
   return G.map(g=>`<span class="pill" style="font-size:11.5px">${esc(g)}: <b>${T[g].total}</b></span>`).join(' ');
 }
-function ptsGameHTML(sid,seq,G){
-  return `<div class="ptsGame" data-seq="${seq}" style="border-top:1px solid var(--line);margin-top:9px;padding-top:8px">
-    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
-      <span class="dim" style="font-size:12px">${t('Παιχνίδι')} ${seq}</span>
-      <input class="pgT" maxlength="80" value="${esc(ptsGameTitle(sid,seq))}" placeholder="${esc(t('όνομα παιχνιδιού (προαιρετικά)'))}" style="flex:1 1 170px;min-width:150px" aria-label="${esc(t('Όνομα παιχνιδιού'))} ${seq}">
-      <button class="btn sm gh pgX" title="${esc(t('Σβήνει όλους τους βαθμούς του παιχνιδιού'))}">✕</button></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;margin-top:7px">
-      ${G.map(g=>ptsInp(sid,g,'game',seq)).join('')}</div></div>`;
-}
-function ptsInp(sid,g,kind,seq){
+function ptsInp(sid,g,kind,seq,lbl){
   const v=ptsVal(sid,g,kind,seq);
   return `<label style="display:flex;gap:7px;align-items:center;font-size:13px">
-    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g)}</span>
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"${kind==='game'&&lbl!==g?` data-glbl="${seq}"`:''}>${esc(lbl==null?g:lbl)}</span>
     ${kind==='minus'?'<span class="dim" aria-hidden="true">−</span>':''}
-    <input class="ptsIn" data-g="${esc(g)}" data-k="${kind}" data-seq="${seq||0}" inputmode="numeric" value="${v===null?'':Math.abs(v)}" placeholder="0" style="width:64px;flex:0 0 64px" aria-label="${esc(ptsKindLbl(kind))} ${esc(g)}"></label>`;
+    <input class="ptsIn" data-g="${esc(g)}" data-k="${kind}" data-seq="${seq||0}" inputmode="numeric" value="${v===null?'':Math.abs(v)}" placeholder="0" style="width:64px;flex:0 0 64px" aria-label="${esc(kind==='game'?ptsGameLbl(sid,seq):ptsKindLbl(kind))} ${esc(g)}"></label>`;
 }
-function ptsHTML(sec,sid,extra){
-  const G=ptsGroups(sec,extra);
+const ptsGameHead=(sid,seq)=>`<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+      <span class="dim" style="font-size:12px">${t('Παιχνίδι')} ${seq}</span>
+      <input class="pgT" data-seq="${seq}" maxlength="80" value="${esc(ptsTitleOf(sid,seq))}" placeholder="${esc(t('όνομα παιχνιδιού (προαιρετικά)'))}" style="flex:1 1 170px;min-width:150px" aria-label="${esc(t('Όνομα παιχνιδιού'))} ${seq}">
+      <button class="btn sm gh pgX" data-seq="${seq}" title="${esc(t('Σβήνει όλους τους βαθμούς του παιχνιδιού'))}" aria-label="${esc(t('Σβήσιμο παιχνιδιού'))} ${seq}">✕</button></div>`;
+const PTS_GRID='display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;margin-top:7px';
+function ptsCatHTML(sec,sid,G,blk){
+  const grid=k=>`<div style="${PTS_GRID}">${G.map(g=>ptsInp(sid,g,k,0)).join('')}</div>`;
+  return `${blk(t('Επιθεώρηση'),t('το σύνολο της επιθεώρησης'),grid('insp'))}
+    ${blk(t('Παιχνίδια'),t('κάθε παιχνίδι χωριστά — γράψε τους βαθμούς που πήρε κάθε')+' '+esc(PTS_ONE[sec]||''),
+      ptsGameSeqs(sid).map(seq=>`<div style="border-top:1px dashed var(--line);margin-top:9px;padding-top:8px">${ptsGameHead(sid,seq)}
+        <div style="${PTS_GRID}">${G.map(g=>ptsInp(sid,g,'game',seq)).join('')}</div></div>`).join('')
+      +`<button class="btn gh sm" id="ptsGameAdd" style="margin-top:8px">+ ${t('Παιχνίδι')}</button>`)}
+    ${blk(t('Bonus'),t('για καλές πράξεις'),grid('bonus'))}
+    ${blk(t('Πλην'),t('γράψε τον αριθμό — μετρά αρνητικά'),grid('minus'))}`;
+}
+function ptsGrpHTML(sec,sid,G,blk){
+  const S=ptsGameSeqs(sid), T=ptsTotals(ptsRows(sid),G);
+  return `${blk(t('Παιχνίδια της συγκέντρωσης'),t('πρόσθεσέ τα πρώτα — εμφανίζονται σε κάθε')+' '+esc(PTS_ONE[sec]||''),
+      S.map(seq=>`<div style="margin-top:7px">${ptsGameHead(sid,seq)}</div>`).join('')
+      +`<button class="btn gh sm" id="ptsGameAdd" style="margin-top:8px">+ ${t('Παιχνίδι')}</button>`)}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:11px">
+      ${G.map(g=>`<div style="border:1px solid var(--line);border-radius:12px;padding:9px 10px">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><b style="flex:1;min-width:0">${esc(g)}</b>
+          <span class="pill" style="font-size:11.5px" data-gtot="${esc(g)}">${T[g].total}</span></div>
+        <div style="display:grid;gap:6px">${ptsInp(sid,g,'insp',0,t('Επιθεώρηση'))}
+          ${S.map(seq=>ptsInp(sid,g,'game',seq,ptsGameLbl(sid,seq))).join('')}
+          ${ptsInp(sid,g,'bonus',0,t('Bonus'))}${ptsInp(sid,g,'minus',0,t('Πλην'))}</div></div>`).join('')}</div>`;
+}
+function ptsHTML(sec,sid,extra,view){
+  const G=ptsGroups(sec,extra), V=view||PTS_VIEW;
   const blk=(h,sub,body)=>`<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:9px">
       <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b style="font-size:13px">${h}</b>${sub?`<span class="dim" style="font-size:12px">${sub}</span>`:''}</div>${body}</div>`;
-  const grid=k=>`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;margin-top:7px">${G.map(g=>ptsInp(sid,g,k,0)).join('')}</div>`;
   if(!G.length)return `<div class="card pad noprint" id="ptsBox" style="margin-top:12px"><b>${t('Βαθμολογία')} ${esc(PTS_UNIT[sec]||'')}</b>
     <div class="dim" style="font-size:12.5px;margin-top:6px">${t('Δεν υπάρχουν ακόμη υποομάδες για φέτος.')}</div></div>`;
   return `<div class="card pad noprint" id="ptsBox" style="margin-top:12px">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <b>${t('Βαθμολογία')} ${esc(PTS_UNIT[sec]||'')}</b><span class="dim" style="font-size:12px">${t('ανά')} ${esc(PTS_ONE[sec]||'')} — ${t('όχι ανά παιδί')}</span>
       <span class="sp"></span><button class="btn sm gh" id="ptsGo">${t('Πίνακας βαθμολογίας')} →</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${[['cat',t('Ανά κατηγορία')],['grp',t('Ανά')+' '+(PTS_ONE[sec]||'')]]
+      .map(([k,l])=>`<button class="btn sm${V===k?' p':''}" data-ptsview="${k}" aria-pressed="${V===k}">${esc(l)}</button>`).join('')}</div>
     <div id="ptsTot" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${ptsTotHTML(sid,G)}</div>
-    ${blk(t('Επιθεώρηση'),t('το σύνολο της επιθεώρησης'),grid('insp'))}
-    ${blk(t('Παιχνίδια'),t('κάθε παιχνίδι χωριστά — γράψε τους βαθμούς που πήρε κάθε')+' '+esc(PTS_ONE[sec]||''),
-        `<div id="ptsGames">${ptsGames(sid).map(s=>ptsGameHTML(sid,s,G)).join('')}</div>
-         <button class="btn gh sm" id="ptsGameAdd" style="margin-top:8px">+ ${t('Παιχνίδι')}</button>`)}
-    ${blk(t('Bonus'),t('για καλές πράξεις'),grid('bonus'))}
-    ${blk(t('Πλην'),t('γράψε τον αριθμό — μετρά αρνητικά'),grid('minus'))}
+    ${V==='grp'?ptsGrpHTML(sec,sid,G,blk):ptsCatHTML(sec,sid,G,blk)}
   </div>`;
 }
 function ptsWire(sec,sid,extra){
   const G=ptsGroups(sec,extra), box=$('ptsBox'); if(!box)return;
-  const tot=()=>{const e=$('ptsTot'); if(e)e.innerHTML=ptsTotHTML(sid,G)};
-  const wireIn=i=>i.onchange=()=>{
+  const redraw=focusSeq=>{ const w=$('ptsWrap'); if(!w)return; w.innerHTML=ptsHTML(sec,sid,extra); ptsWire(sec,sid,extra);
+    if(focusSeq){ try{w.querySelector(`.pgT[data-seq="${focusSeq}"]`).focus()}catch(e){} } };
+  const tot=()=>{ const e=$('ptsTot'); if(e)e.innerHTML=ptsTotHTML(sid,G);
+    const T=ptsTotals(ptsRows(sid),G); box.querySelectorAll('[data-gtot]').forEach(s=>{ const g=s.dataset.gtot; if(T[g])s.textContent=T[g].total; }); };
+  const titleOf=seq=>{ const i=box.querySelector(`.pgT[data-seq="${seq}"]`); return i?(i.value||'').trim().slice(0,80):ptsTitleOf(sid,seq); };
+  box.querySelectorAll('.ptsIn').forEach(i=>i.onchange=()=>{
     const k=i.dataset.k, seq=+i.dataset.seq||0, p=ptsNum(i.value,k);
     if(Number.isNaN(p))return toast(t('Γράψε ακέραιο αριθμό έως 500'));
-    const ge=i.closest('.ptsGame'), tt=ge?(ge.querySelector('.pgT').value||'').trim().slice(0,80):'';
-    ptsPut(sid,i.dataset.g,k,seq,p===0&&(k==='bonus'||k==='minus')?null:p,tt||null); tot(); };
-  const wireGame=el=>{ const seq=+el.dataset.seq;
-    el.querySelectorAll('.ptsIn').forEach(wireIn);
-    const T=el.querySelector('.pgT'); T.onchange=()=>{ const tt=T.value.trim().slice(0,80)||null;
-      ptsRows(sid).filter(r=>r.kind==='game'&&r.seq===seq).forEach(r=>ptsPut(sid,r.group_name,'game',seq,Number(r.points),tt)); };
-    el.querySelector('.pgX').onclick=async()=>{
-      const rows=ptsRows(sid).filter(r=>r.kind==='game'&&r.seq===seq);
-      if(rows.length&&!await uiAsk(t('Θα σβηστούν οι βαθμοί του παιχνιδιού {n} για όλες τις υποομάδες.\n\nΣυνέχεια;',{n:seq})))return;
-      rows.forEach(r=>ptsPut(sid,r.group_name,'game',seq,null)); el.remove(); tot(); }; };
-  box.querySelectorAll('.ptsIn').forEach(i=>{ if(!i.closest('.ptsGame'))wireIn(i) });
-  box.querySelectorAll('.ptsGame').forEach(wireGame);
+    ptsPut(sid,i.dataset.g,k,seq,p===0&&(k==='bonus'||k==='minus')?null:p,k==='game'?(titleOf(seq)||null):null); tot(); });
+  box.querySelectorAll('.pgT').forEach(T=>T.onchange=()=>{ const seq=+T.dataset.seq, tt=T.value.trim().slice(0,80)||null;
+    if(PTS_NEW[sid]&&seq in PTS_NEW[sid])PTS_NEW[sid][seq]=tt||'';
+    ptsRows(sid).filter(r=>r.kind==='game'&&r.seq===seq).forEach(r=>ptsPut(sid,r.group_name,'game',seq,Number(r.points),tt));
+    box.querySelectorAll(`[data-glbl="${seq}"]`).forEach(s=>s.textContent=tt||t('Παιχνίδι')+' '+seq); });
+  box.querySelectorAll('.pgX').forEach(b=>b.onclick=async()=>{ const seq=+b.dataset.seq;
+    const rows=ptsRows(sid).filter(r=>r.kind==='game'&&r.seq===seq);
+    if(rows.length&&!await uiAsk(t('Θα σβηστούν οι βαθμοί του παιχνιδιού {n} για όλες τις υποομάδες.\n\nΣυνέχεια;',{n:seq})))return;
+    rows.forEach(r=>ptsPut(sid,r.group_name,'game',seq,null)); if(PTS_NEW[sid])delete PTS_NEW[sid][seq]; redraw(); });
   const add=$('ptsGameAdd');
-  if(add)add.onclick=()=>{
-    const used=[...box.querySelectorAll('.ptsGame')].map(e=>+e.dataset.seq), n=Math.max(0,...used,...ptsGames(sid))+1;
+  if(add)add.onclick=()=>{ const n=Math.max(0,...ptsGameSeqs(sid))+1;
     if(n>20)return toast(t('Έως 20 παιχνίδια ανά συγκέντρωση'));
-    const tmp=document.createElement('div'); tmp.innerHTML=ptsGameHTML(sid,n,G);
-    const el=tmp.firstElementChild; $('ptsGames').appendChild(el); wireGame(el);
-    try{el.querySelector('.pgT').focus()}catch(e){} };
+    (PTS_NEW[sid]=PTS_NEW[sid]||{})[n]=''; redraw(n); };
+  box.querySelectorAll('[data-ptsview]').forEach(b=>b.onclick=()=>{ PTS_VIEW=b.dataset.ptsview;
+    try{localStorage.setItem('e76:ptsview',PTS_VIEW)}catch(e){} redraw(); });
   const go=$('ptsGo'); if(go)go.onclick=()=>{ SUBTAB.attend='pts'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); };
 }
 
