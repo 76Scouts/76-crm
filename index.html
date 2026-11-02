@@ -1280,7 +1280,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-01 13:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-02 09:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -10407,16 +10407,16 @@ function progressBody(){
           <tr><th style="position:sticky;left:0;background:var(--card);text-align:left;padding:2px 10px;
                 font-size:10.5px;color:var(--ink3)">${reqs.length} ${plu(reqs.length,'απαίτηση','απαιτήσεις')}</th>
             ${reqs.map(r=>`<th${write?` data-col="${r.id}"`:''} style="padding:0 1px 4px;font-size:9.5px;${write?'cursor:pointer;':''}color:${PSEC==='Ομάδα'&&(LEV[r.verifier]||{}).c||'var(--ink3)'}"
-              title="${esc((r.label||'')+(write?' — κλικ: όλη η στήλη':''))}">${esc(reqNo(r))}</th>`).join('')}<th></th></tr>
+              title="${esc((r.label||'')+(write?' — κλικ: όλη η στήλη':''))}">${esc(reqNo(r))}${(r.rule||{}).mandatory?'*':''}</th>`).join('')}<th></th></tr>
         </thead>
         <tbody>${kids.map((k,i)=>{
-          const n=reqs.filter(r=>hasReq(k.id,r.id)).length;
+          const c=st.rule?stageCount(k.id,PSEC,st,reqs):null, n=c?c.n:reqs.filter(r=>hasReq(k.id,r.id)).length, nt=c?c.tot:reqs.length;
           return `<tr><td style="position:sticky;left:0;background:var(--card);padding:3px 10px;white-space:nowrap">
               ${write?`<button class="pgrow" data-row="${k.id}" title="Επίλεξε όλη τη γραμμή" aria-label="Επίλεξε όλη τη γραμμή"
                 style="border:0;background:none;cursor:pointer;color:var(--ink3);padding:0 4px 0 0;font-size:12px">⇢</button>`:''}<span class="pn" data-p="${k.id}">${pn(k)}</span></td>
             ${reqs.map((r,j)=>cell(k,r,i,j)).join('')}
             <td data-tot="${k.id}" style="padding:3px 10px;text-align:right;font-variant-numeric:tabular-nums;
-              color:${n===reqs.length?'var(--ok)':'var(--ink2)'}">${n}/${reqs.length}</td></tr>`;
+              color:${n===nt?'var(--ok)':'var(--ink2)'}">${n}/${nt}</td></tr>`;
         }).join('')||`<tr><td class="dim" style="padding:14px">Κανένα ενεργό μέλος${PGGRP?' σε αυτή την '+esc(subgOf(PSEC).toLowerCase()):''}.</td></tr>`}</tbody>
       </table></div>
     <div class="muted" style="font-size:12px;margin-top:9px">
@@ -10460,8 +10460,10 @@ function pgPaint(pid,rid){
 }
 function pgTot(pid){
   const c=document.querySelector(`[data-tot="${pid}"]`); if(!c)return;
-  const n=PGGRID.r.filter(r=>hasReq(pid,r)).length;
-  c.textContent=n+'/'+PGGRID.r.length; c.style.color=n===PGGRID.r.length?'var(--ok)':'var(--ink2)';
+  const st=(D.pcat||[]).find(x=>x.id===PGST);
+  const k=st&&st.rule?stageCount(pid,PSEC,st,PGGRID.r.map(id=>(D.rc2||[]).find(x=>x.id===id)).filter(Boolean)):null;
+  const n=k?k.n:PGGRID.r.filter(r=>hasReq(pid,r)).length, nt=k?k.tot:PGGRID.r.length;
+  c.textContent=n+'/'+nt; c.style.color=n===nt?'var(--ok)':'var(--ink2)';
 }
 function pgBar(){
   const n=PGSEL.size, el=$('pbN'), go=$('pbGo'), clr=$('pbClr');
@@ -14485,11 +14487,39 @@ const stageReqs=(sec,st)=>(D.rc2||[]).filter(r=>r.section===sec&&r.stage_catalog
     &&!r.retired_at&&r.active!==false).sort((a,b)=>(a.ordinal||0)-(b.ordinal||0));
 const reqDone=(pid,rid)=>(D.mreq||[]).find(x=>x.person_id===pid&&x.requirement_id===rid);
 
+function stageCount(pid, sec, st, reqs){
+  const ru=(st&&st.rule)||{}, done=r=>!!reqDone(pid,r.id), sum=(a,k)=>a.reduce((x,y)=>x+y[k],0);
+  if(ru.per_category){
+    const C=+ru.per_category.choose||0, cats=[...new Set(reqs.map(r=>r.category||''))];
+    const parts=cats.map(c=>{ const rs=reqs.filter(r=>(r.category||'')===c), man=rs.filter(r=>(r.rule||{}).mandatory);
+      const opt=rs.filter(r=>!(r.rule||{}).mandatory), need=man.length+Math.min(C,opt.length);
+      return {c, code:String((rs[0]||{}).code||'').replace(/\d+$/,''), k:man.filter(done).length+Math.min(opt.filter(done).length,C), need}; });
+    return {n:sum(parts,'k'), tot:sum(parts,'need'), parts};
+  }
+  if(ru.groups){
+    const parts=Object.entries(ru.groups).map(([c,g])=>{ const rs=reqs.filter(r=>r.category===c);
+      const need=g==='all'?rs.length:Math.min(+g||0,rs.length); return {c, k:Math.min(rs.filter(done).length,need), need}; });
+    return {n:sum(parts,'k'), tot:sum(parts,'need'), parts};
+  }
+  if(ru.requires_stages||ru.badges){
+    const parts=[];
+    (ru.requires_stages||[]).forEach(lbl=>{ const s2=(D.pcat||[]).find(x=>x.section===sec&&x.item_kind===dv('στάδιο')&&x.label===lbl);
+      if(!s2)return; let ok=!!heldItem(pid,s2);
+      if(!ok&&s2.rule){ const c2=stageCount(pid,sec,s2,stageReqs(sec,s2)); ok=c2.tot>0&&c2.n===c2.tot; }
+      parts.push({c:lbl, k:ok?1:0, need:1}); });
+    if(ru.badges){ const held=(D.pcat||[]).filter(c=>c.section===sec&&(c.item_kind===dv('ειδικότητα')||c.item_kind===dv('πτυχίο'))&&heldItem(pid,c));
+      const need=+ru.badges.min||0, got=ru.badges.one_per_category?new Set(held.map(c=>c.category)).size:held.length;
+      parts.push({c:t('Ειδικότητες'), k:Math.min(need,got), need, note:ru.badges.one_per_category?t('μία από κάθε κατηγορία'):''}); }
+    return {n:sum(parts,'k'), tot:sum(parts,'need'), parts};
+  }
+  return {n:reqs.filter(done).length, tot:reqs.length, parts:null};
+}
+
 function nextStep(pid, sec){
   for(const st of cardStages(sec)){
     if(heldItem(pid,st)||exemptBy(pid,st))continue;
-    const reqs=stageReqs(sec,st);
-    return {st, n:reqs.filter(r=>reqDone(pid,r.id)).length, tot:reqs.length};
+    const c=stageCount(pid,sec,st,stageReqs(sec,st));
+    return {st, n:c.n, tot:c.tot, parts:c.parts};
   }
   return null;
 }
@@ -14521,24 +14551,35 @@ function badgeLine(pid, sec){
 
 function stageCard(pid, sec, st){
   const reqs=stageReqs(sec,st), got=heldItem(pid,st), ex=!got&&exemptBy(pid,st);
-  const n=reqs.filter(r=>reqDone(pid,r.id)).length;
+  const cnt=stageCount(pid,sec,st,reqs), n=cnt.n, ru=st.rule||{};
   const awPend=got&&(D.psig||[]).some(x=>x.target==='ΠΤΥΧΙΟ'&&x.target_id===got.id&&!x.signed_on);
   const head=got?`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">απονεμήθηκε${got.date?' · '+progDate(got):''}</span>${awPend?'<span class="dim" style="font-size:11px">· εκκρεμεί υπογραφή</span>':''}`
     :ex?`<span class="pill">απαλλαγή — ${esc(ex.a.label)}${ex.h.date?' · '+progDate(ex.h):''}</span>`
-    :reqs.length&&n===reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span> <span class="pill" style="background:var(--accbg);color:var(--acc);border-color:transparent">έτοιμο για απονομή</span>`
-    :reqs.length?`<span class="dim" style="font-size:12px">${n} από ${reqs.length}</span>`:'<span class="dim" style="font-size:12px">—</span>';
+    :cnt.tot&&n===cnt.tot?`<span class="dim" style="font-size:12px">${n} από ${cnt.tot}</span> <span class="pill" style="background:var(--accbg);color:var(--acc);border-color:transparent">έτοιμο για απονομή</span>`
+    :cnt.tot?`<span class="dim" style="font-size:12px">${n} από ${cnt.tot}</span>`:'<span class="dim" style="font-size:12px">—</span>';
+  const partsH=cnt.parts?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${cnt.parts.map(x=>
+      `<span class="pill" style="font-size:11.5px;${x.k>=x.need?'background:var(--okbg);color:var(--ok);border-color:transparent':''}">${esc(x.code||x.c)} ${x.k}/${x.need}${x.note?' · '+esc(x.note):''}</span>`).join('')}</div>`:'';
+  const noteH=ru.note?`<div class="dim" style="font-size:11.5px;margin-top:6px;line-height:1.45">${esc(ru.note)}</div>`:'';
+  const subSt=(ru.requires_stages||[]).map(l=>(D.pcat||[]).find(x=>x.section===sec&&x.item_kind===dv('στάδιο')&&x.label===l))
+    .filter(s2=>s2&&!cardStages(sec).some(c=>c.id===s2.id));
   const line=(r,sub)=>{ const d=reqDone(pid,r.id), ok=!!d||!!ex;
     return `<div class="kv" style="padding:3px 0;font-size:${sub?'12px;margin-left:18px':'12.5px'}">
       <span class="dot" style="background:${ok?'var(--ok)':'var(--line2)'}"></span>
-      <span style="flex:1;min-width:0;${ok?'':'color:var(--ink3)'}">${esc(r.code||'')} ${esc(r.label||'')}</span>
+      <span style="flex:1;min-width:0;${ok?'':'color:var(--ink3)'}">${esc(r.code||'')} ${esc(r.label||'')}${(r.rule||{}).mandatory?' <b style="font-size:10.5px;color:var(--acc)">'+t('υποχρεωτική')+'</b>':''}</span>
       <span class="dim" style="font-size:11.5px;text-align:right">${d?reqDate(d)+pigiTag(d)+sigTag(d)
         +(typeof kaNeedsWrite==='function'&&kaNeedsWrite(d)?'<span style="margin-left:5px">· εκκρεμεί περιγραφή</span>':''):ex?'καλύφθηκε':''}</span></div>` };
   const kidsOf=r=>typeof kaKids==='function'?kaKids(r):[];
   return `<details class="card pad" style="margin-bottom:9px"${got||ex?'':(n?' open':'')}>
     <summary style="cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <b style="font-size:13.5px;flex:1;min-width:140px">${esc(st.label||'')}</b>${head}</summary>
+    ${partsH}${noteH}
     ${reqs.length?`<div style="margin-top:9px">${reqs.map(r=>line(r)+kidsOf(r).map(c=>line(c,true)).join('')).join('')}</div>`
-      :'<div class="dim" style="margin-top:8px;font-size:12.5px">Δεν υπάρχουν καταγεγραμμένες απαιτήσεις για αυτό το στάδιο.</div>'}
+      :cnt.parts?'':'<div class="dim" style="margin-top:8px;font-size:12.5px">Δεν υπάρχουν καταγεγραμμένες απαιτήσεις για αυτό το στάδιο.</div>'}
+    ${subSt.map(s2=>{ const r2=stageReqs(sec,s2), c2=stageCount(pid,sec,s2,r2);
+      return `<div style="margin-top:10px;font-size:12.5px"><b>${esc(s2.label)}</b> <span class="dim">${c2.n} ${t('από')} ${c2.tot}</span></div>
+        ${c2.parts?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">${c2.parts.map(x=>`<span class="pill" style="font-size:11.5px">${esc(x.c)} ${x.k}/${x.need}</span>`).join('')}</div>`:''}
+        ${s2.rule&&s2.rule.note?`<div class="dim" style="font-size:11.5px;margin-top:5px;line-height:1.45">${esc(s2.rule.note)}</div>`:''}
+        <div style="margin-top:6px">${r2.map(r=>line(r)).join('')}</div>`; }).join('')}
   </details>`;
 }
 
