@@ -1284,7 +1284,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-02 19:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-02 22:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1758,6 +1758,7 @@ async function qFlush(silent){
         else if(j.k==='cashx')r=await cashSendX(j);  
         else if(j.k==='gst')r=await gstSend(j);      
         else if(j.k==='satt')r=await satSend(j);     
+        else if(j.k==='pts')r=await ptsSend(j);      
         else { refused.push(j.k); continue; }
       }catch(e){ left.push(j); continue; }
       const err=r&&r.error;
@@ -1765,7 +1766,7 @@ async function qFlush(silent){
       if(!err)continue;
       if(netErr(err)){ left.push(j); continue; }
       if(j.k==='att')saveFail('attendance','rpc:mark_attendance',[],err);
-      refused.push(j.k==='att'||j.k==='attdel'?'παρουσίες':(j.k==='cash'||j.k==='cashx')?'ταμείο':j.k==='gst'?'παρουσίες νέων':j.k==='satt'?'παρουσίες βαθμοφόρων':(j.tb||j.k));
+      refused.push(j.k==='att'||j.k==='attdel'?'παρουσίες':(j.k==='cash'||j.k==='cashx')?'ταμείο':j.k==='gst'?'παρουσίες νέων':j.k==='satt'?'παρουσίες βαθμοφόρων':j.k==='pts'?dv('βαθμολογία'):(j.tb||j.k));
     }
   } finally { QBUSY=false; }
   QUEUE=left; localStorage.setItem(QK,JSON.stringify(QUEUE));
@@ -21635,11 +21636,11 @@ function markBody(){
       ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span>${Object.keys(gs).length>1?`<span class="sp"></span><button class="btn sm gh noprint" data-grpp="${esc(g)}">όλη η ${esc(g==='— χωρίς υποομάδα'?'ομάδα':'υποομάδα')} παρούσα</button>`:''}</div>
         <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}" aria-pressed="false"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}${isNewMember(p.id,SES.session_date)?NEWCHIP:''}</span><span class="mkst"></span></button>`).join('')}</div>`).join('')}
       ${ME.role!=='patrol_leader'&&!hq?`<div id="gstWrap" data-sid="${sid}"></div>`:''}
-      ${hq?'':`<div id="cashWrap">${cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader')}</div>`}
+      ${hq?'':`<div id="cashWrap">${cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader')}</div>`+ptsSlot(sec,sid,Object.keys(gs))}
       ${ ''}
       ${canStaffAtt(sec)?`<div id="satWrap" data-sid="${sid}" style="margin-top:6px"></div>`:''}
       <div style="height:14px"></div>`;
-    if(!hq)cashWire(sid);
+    if(!hq)cashWire(sid); ptsMount(sec,sid,Object.keys(gs));    
     if(ME.role!=='patrol_leader'&&!hq)gstMount(sid,count);
     if(canStaffAtt(sec))satMount(sid);
     if(!hq)cashLoad([sid]).then(()=>{const w=$('cashWrap'); if(w&&SES&&SES.id===sid){w.innerHTML=cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader'); cashWire(sid)}});
@@ -22020,6 +22021,218 @@ function cashWire(sid){
     }
     $('cashGrp').style.display=w.checked?'none':'grid'; $('cashOne').style.display=w.checked?'flex':'none'; tot();
   };
+}
+D.pts=D.pts||[];
+const PTS_SECS=[dv('Αγέλη')];                        
+const PTS_HATS={[dv('Αγέλη')]:['AAL','YAL'],[dv('Ομάδα')]:['AOP','YOP'],[dv('Κοινότητα')]:['AKA','YKA']};
+const PTS_UNIT={[dv('Αγέλη')]:dv('εξάδων'),[dv('Ομάδα')]:dv('ενωμοτιών'),[dv('Κοινότητα')]:dv('ομίλων')};
+const PTS_ONE={[dv('Αγέλη')]:dv('εξάδα'),[dv('Ομάδα')]:dv('ενωμοτία'),[dv('Κοινότητα')]:dv('όμιλο')};
+const ptsKindLbl=k=>({insp:t('Επιθεώρηση'),game:t('Παιχνίδια'),bonus:t('Bonus'),minus:t('Πλην')})[k]||k;
+const ptsCanW=sec=>isAdminUI()||myHats().some(h=>(PTS_HATS[sec]||[]).includes(h.role_code));
+const ptsCanCfg=sec=>isAdminUI()||myHats().some(h=>h.role_code===(PTS_HATS[sec]||[])[0]);
+const ptsSees=sec=>PTS_SECS.includes(sec)&&(isAdminUI()||ptsCanW(sec)||scopeSec()===sec);
+const ptsTabOn=()=>PTS_SECS.some(ptsSees);
+const ptsSec=()=>{const s=scopeSec(); return PTS_SECS.includes(s)?s:PTS_SECS.find(ptsSees)||PTS_SECS[0]};
+function ptsNum(raw,kind){
+  const s=String(raw==null?'':raw).trim().replace(',','.'); if(s==='')return null;
+  const n=Number(s); if(!isFinite(n)||Math.round(n)!==n||Math.abs(n)>500)return NaN;
+  return kind==='minus'?-Math.abs(n):Math.abs(n);
+}
+function ptsGroups(sec,extra){
+  const sg=(D.sg||[]).filter(g=>g.section===sec&&g.scout_year===YEAR&&g.active!==false)
+    .sort((a,b)=>(a.seq||0)-(b.seq||0)||String(a.name).localeCompare(String(b.name),'el')).map(g=>g.name);
+  const out=[...sg]; (extra||[]).forEach(g=>{ if(g&&!/^— χωρίς/.test(g)&&!out.includes(g))out.push(g) });
+  return out;
+}
+const ptsRows=sid=>(D.pts||[]).filter(r=>r.session_id===sid);
+const ptsVal=(sid,g,k,seq)=>{const r=(D.pts||[]).find(x=>x.session_id===sid&&x.group_name===g&&x.kind===k&&(x.seq||0)===(seq||0)); return r?Number(r.points):null};
+const ptsGames=sid=>[...new Set(ptsRows(sid).filter(r=>r.kind==='game').map(r=>r.seq))].sort((a,b)=>a-b);
+const ptsGameTitle=(sid,seq)=>((ptsRows(sid).find(r=>r.kind==='game'&&r.seq===seq&&r.title))||{}).title||'';
+function ptsTotals(rows,groups){
+  const T={}; (groups||[]).forEach(g=>T[g]={insp:0,game:0,bonus:0,minus:0,total:0});
+  (rows||[]).forEach(r=>{ const g=r.group_name; if(!T[g])T[g]={insp:0,game:0,bonus:0,minus:0,total:0};
+    const p=Number(r.points)||0; if(T[g][r.kind]!==undefined)T[g][r.kind]+=p; T[g].total+=p; });
+  return T;
+}
+function ptsRank(T){
+  const L=Object.keys(T).map(g=>({g,...T[g]})).sort((a,b)=>b.total-a.total||a.g.localeCompare(b.g,'el'));
+  L.forEach((x,i)=>x.place=i&&L[i-1].total===x.total?L[i-1].place:i+1); return L;
+}
+const ptsSemOf=(date,cut)=>!cut||String(date)<=String(cut)?1:2;
+const ptsCutDefault=()=>String(YEAR).slice(0,4)+'-12-24';
+
+async function ptsLoad(ids){
+  ids=(ids||[]).filter(Boolean); if(!ids.length||!navigator.onLine)return;
+  const {data,error}=await sb.from('subgroup_points').select('session_id,group_name,kind,seq,title,points').in('session_id',ids);
+  if(error){console.warn('points:',error.code);return}
+  D.pts=(D.pts||[]).filter(r=>!ids.includes(r.session_id)).concat(data||[]); saveCache();
+}
+function ptsPut(sid,g,kind,seq,p,title){
+  seq=kind==='game'?seq:0;
+  D.pts=(D.pts||[]).filter(r=>!(r.session_id===sid&&r.group_name===g&&r.kind===kind&&(r.seq||0)===seq));
+  if(p!==null)D.pts.push({session_id:sid,group_name:g,kind,seq,title:title||null,points:p});
+  saveCache();
+  QUEUE=QUEUE.filter(j=>!(j.k==='pts'&&j.s===sid&&j.g===g&&j.kind===kind&&j.seq===seq));
+  qAdd({k:'pts',s:sid,g,kind,seq,p,title:title||null,t:Date.now()});
+  setTimeout(()=>qFlush(true),600);
+}
+async function ptsSend(j){
+  const q=()=>sb.from('subgroup_points');
+  const scope=b=>b.eq('session_id',j.s).eq('group_name',j.g).eq('kind',j.kind).eq('seq',j.seq);
+  if(j.p===null)return await scope(q().delete());
+  const u=await scope(q().update({points:j.p,title:j.title})).select('id');
+  if(u.error||(u.data||[]).length)return u;
+  return await q().insert({session_id:j.s,group_name:j.g,kind:j.kind,seq:j.seq,points:j.p,title:j.title});
+}
+
+function ptsTotHTML(sid,G){
+  const T=ptsTotals(ptsRows(sid),G);
+  return G.map(g=>`<span class="pill" style="font-size:11.5px">${esc(g)}: <b>${T[g].total}</b></span>`).join(' ');
+}
+function ptsGameHTML(sid,seq,G){
+  return `<div class="ptsGame" data-seq="${seq}" style="border-top:1px solid var(--line);margin-top:9px;padding-top:8px">
+    <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+      <span class="dim" style="font-size:12px">${t('Παιχνίδι')} ${seq}</span>
+      <input class="pgT" maxlength="80" value="${esc(ptsGameTitle(sid,seq))}" placeholder="${esc(t('όνομα παιχνιδιού (προαιρετικά)'))}" style="flex:1 1 170px;min-width:150px" aria-label="${esc(t('Όνομα παιχνιδιού'))} ${seq}">
+      <button class="btn sm gh pgX" title="${esc(t('Σβήνει όλους τους βαθμούς του παιχνιδιού'))}">✕</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;margin-top:7px">
+      ${G.map(g=>ptsInp(sid,g,'game',seq)).join('')}</div></div>`;
+}
+function ptsInp(sid,g,kind,seq){
+  const v=ptsVal(sid,g,kind,seq);
+  return `<label style="display:flex;gap:7px;align-items:center;font-size:13px">
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g)}</span>
+    ${kind==='minus'?'<span class="dim" aria-hidden="true">−</span>':''}
+    <input class="ptsIn" data-g="${esc(g)}" data-k="${kind}" data-seq="${seq||0}" inputmode="numeric" value="${v===null?'':Math.abs(v)}" placeholder="0" style="width:64px;flex:0 0 64px" aria-label="${esc(ptsKindLbl(kind))} ${esc(g)}"></label>`;
+}
+function ptsHTML(sec,sid,extra){
+  const G=ptsGroups(sec,extra);
+  const blk=(h,sub,body)=>`<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:9px">
+      <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b style="font-size:13px">${h}</b>${sub?`<span class="dim" style="font-size:12px">${sub}</span>`:''}</div>${body}</div>`;
+  const grid=k=>`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;margin-top:7px">${G.map(g=>ptsInp(sid,g,k,0)).join('')}</div>`;
+  if(!G.length)return `<div class="card pad noprint" id="ptsBox" style="margin-top:12px"><b>${t('Βαθμολογία')} ${esc(PTS_UNIT[sec]||'')}</b>
+    <div class="dim" style="font-size:12.5px;margin-top:6px">${t('Δεν υπάρχουν ακόμη υποομάδες για φέτος.')}</div></div>`;
+  return `<div class="card pad noprint" id="ptsBox" style="margin-top:12px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <b>${t('Βαθμολογία')} ${esc(PTS_UNIT[sec]||'')}</b><span class="dim" style="font-size:12px">${t('ανά')} ${esc(PTS_ONE[sec]||'')} — ${t('όχι ανά παιδί')}</span>
+      <span class="sp"></span><button class="btn sm gh" id="ptsGo">${t('Πίνακας βαθμολογίας')} →</button></div>
+    <div id="ptsTot" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">${ptsTotHTML(sid,G)}</div>
+    ${blk(t('Επιθεώρηση'),t('το σύνολο της επιθεώρησης'),grid('insp'))}
+    ${blk(t('Παιχνίδια'),t('κάθε παιχνίδι χωριστά — γράψε τους βαθμούς που πήρε κάθε')+' '+esc(PTS_ONE[sec]||''),
+        `<div id="ptsGames">${ptsGames(sid).map(s=>ptsGameHTML(sid,s,G)).join('')}</div>
+         <button class="btn gh sm" id="ptsGameAdd" style="margin-top:8px">+ ${t('Παιχνίδι')}</button>`)}
+    ${blk(t('Bonus'),t('για καλές πράξεις'),grid('bonus'))}
+    ${blk(t('Πλην'),t('γράψε τον αριθμό — μετρά αρνητικά'),grid('minus'))}
+  </div>`;
+}
+function ptsWire(sec,sid,extra){
+  const G=ptsGroups(sec,extra), box=$('ptsBox'); if(!box)return;
+  const tot=()=>{const e=$('ptsTot'); if(e)e.innerHTML=ptsTotHTML(sid,G)};
+  const wireIn=i=>i.onchange=()=>{
+    const k=i.dataset.k, seq=+i.dataset.seq||0, p=ptsNum(i.value,k);
+    if(Number.isNaN(p))return toast(t('Γράψε ακέραιο αριθμό έως 500'));
+    const ge=i.closest('.ptsGame'), tt=ge?(ge.querySelector('.pgT').value||'').trim().slice(0,80):'';
+    ptsPut(sid,i.dataset.g,k,seq,p===0&&(k==='bonus'||k==='minus')?null:p,tt||null); tot(); };
+  const wireGame=el=>{ const seq=+el.dataset.seq;
+    el.querySelectorAll('.ptsIn').forEach(wireIn);
+    const T=el.querySelector('.pgT'); T.onchange=()=>{ const tt=T.value.trim().slice(0,80)||null;
+      ptsRows(sid).filter(r=>r.kind==='game'&&r.seq===seq).forEach(r=>ptsPut(sid,r.group_name,'game',seq,Number(r.points),tt)); };
+    el.querySelector('.pgX').onclick=async()=>{
+      const rows=ptsRows(sid).filter(r=>r.kind==='game'&&r.seq===seq);
+      if(rows.length&&!await uiAsk(t('Θα σβηστούν οι βαθμοί του παιχνιδιού {n} για όλες τις υποομάδες.\n\nΣυνέχεια;',{n:seq})))return;
+      rows.forEach(r=>ptsPut(sid,r.group_name,'game',seq,null)); el.remove(); tot(); }; };
+  box.querySelectorAll('.ptsIn').forEach(i=>{ if(!i.closest('.ptsGame'))wireIn(i) });
+  box.querySelectorAll('.ptsGame').forEach(wireGame);
+  const add=$('ptsGameAdd');
+  if(add)add.onclick=()=>{
+    const used=[...box.querySelectorAll('.ptsGame')].map(e=>+e.dataset.seq), n=Math.max(0,...used,...ptsGames(sid))+1;
+    if(n>20)return toast(t('Έως 20 παιχνίδια ανά συγκέντρωση'));
+    const tmp=document.createElement('div'); tmp.innerHTML=ptsGameHTML(sid,n,G);
+    const el=tmp.firstElementChild; $('ptsGames').appendChild(el); wireGame(el);
+    try{el.querySelector('.pgT').focus()}catch(e){} };
+  const go=$('ptsGo'); if(go)go.onclick=()=>{ SUBTAB.attend='pts'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); };
+}
+
+const ptsSlot=(sec,sid,extra)=>PTS_SECS.includes(sec)&&ptsCanW(sec)?`<div id="ptsWrap">${ptsHTML(sec,sid,extra)}</div>`:'';
+function ptsMount(sec,sid,extra){ if(!$('ptsWrap'))return; ptsWire(sec,sid,extra);
+  ptsLoad([sid]).then(()=>{const w=$('ptsWrap'); if(w&&(D.ss||[]).some(s=>s.id===sid)&&$('mSes')&&$('mSes').value===sid){w.innerHTML=ptsHTML(sec,sid,extra); ptsWire(sec,sid,extra)}}); }
+
+D.ptsCfg=D.ptsCfg||{};
+let PTS_PER='year';
+async function ptsCfgLoad(sec){
+  if(!navigator.onLine)return;
+  const {data,error}=await sb.from('subgroup_points_cfg').select('scout_year,section,by_semester,cut_date').eq('scout_year',YEAR).eq('section',sec).maybeSingle();
+  if(!error)D.ptsCfg[sec+'|'+YEAR]=data||null;
+}
+async function ptsCfgSave(sec,v){
+  const cur=D.ptsCfg[sec+'|'+YEAR];
+  const r=cur?await sb.from('subgroup_points_cfg').update(v).eq('scout_year',YEAR).eq('section',sec).select().maybeSingle()
+             :await sb.from('subgroup_points_cfg').insert({scout_year:YEAR,section:sec,...v}).select().maybeSingle();
+  if(r.error){toast(t('Δεν αποθηκεύτηκε: ')+r.error.message);return false}
+  D.ptsCfg[sec+'|'+YEAR]=r.data||{...(cur||{}),...v}; return true;
+}
+const ptsSessions=sec=>(D.ss||[]).filter(s=>s.section===sec&&s.scout_year===YEAR&&!/κυρώ|ναβλ/.test(s.status||''))
+  .sort((a,b)=>String(a.session_date).localeCompare(String(b.session_date)));
+function ptsStandHTML(sec){
+  const cfg=D.ptsCfg[sec+'|'+YEAR]||null, by=!!(cfg&&cfg.by_semester), cut=by?(cfg.cut_date||ptsCutDefault()):null;
+  const per=by?PTS_PER:'year', S=ptsSessions(sec).filter(s=>per==='year'||ptsSemOf(s.session_date,cut)===(per==='s1'?1:2));
+  const ids=new Set(S.map(s=>s.id)), rows=(D.pts||[]).filter(r=>ids.has(r.session_id));
+  const L=ptsRank(ptsTotals(rows,ptsGroups(sec)));
+  const th=x=>`<th style="text-align:right">${x}</th>`, td=x=>`<td style="text-align:right">${x}</td>`;
+  return `${by?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">${[['year',t('Χρονιά')],['s1',t('Α΄ εξάμηνο')],['s2',t('Β΄ εξάμηνο')]]
+      .map(([k,l])=>`<button class="btn sm${per===k?' p':''}" data-ptsper="${k}">${l}</button>`).join('')}</div>`:''}
+    ${rows.length?'':`<div class="dim" style="font-size:12.5px;margin-bottom:8px">${t('Δεν έχουν μπει βαθμοί ακόμη — περνιούνται στην Καταχώρηση των παρουσιών, κάτω από το ταμείο.')}</div>`}
+    <div style="overflow:auto"><table><thead><tr><th>#</th><th>${esc(PTS_ONE[sec]?capFirst(PTS_ONE[sec]):'')}</th>
+      ${th(t('Επιθεώρηση'))}${th(t('Παιχνίδια'))}${th(t('Bonus'))}${th(t('Πλην'))}${th('<b>'+t('Σύνολο')+'</b>')}</tr></thead>
+      <tbody>${L.map(x=>`<tr><td>${rows.length?x.place:'—'}</td><td><b>${esc(x.g)}</b></td>${td(x.insp)}${td(x.game)}${td(x.bonus)}${td(x.minus)}${td('<b>'+x.total+'</b>')}</tr>`).join('')}</tbody></table></div>`;
+}
+function ptsPerHTML(sec){
+  const G=ptsGroups(sec), S=ptsSessions(sec).filter(s=>ptsRows(s.id).length);
+  if(!S.length)return '';
+  return `<div class="sec"><h3>${t('Ανά συγκέντρωση')}</h3><span class="n">${S.length}</span></div>
+    <div class="card" style="overflow:auto;margin-bottom:12px"><table><thead><tr><th>${t('Ημερομηνία')}</th>${G.map(g=>`<th style="text-align:right">${esc(g)}</th>`).join('')}</tr></thead>
+    <tbody>${S.map(s=>{ const T=ptsTotals(ptsRows(s.id),G);
+      return `<tr><td><button class="btn sm gh" data-ptsses="${s.id}">${esc(fdate(s.session_date))}</button></td>${G.map(g=>`<td style="text-align:right">${T[g].total}</td>`).join('')}</tr>`}).join('')}</tbody></table></div>`;
+}
+function ptsCfgHTML(sec){
+  if(!ptsCanCfg(sec))return '';
+  const cfg=D.ptsCfg[sec+'|'+YEAR]||null, by=!!(cfg&&cfg.by_semester);
+  return `<div class="card pad noprint" style="margin-bottom:12px">
+    <label style="display:flex;gap:7px;align-items:center;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="ptsBySem"${by?' checked':''} style="width:auto;flex:0 0 auto;margin:0"> <span>${t('Η βαθμολογία μετρά ανά εξάμηνο')}</span></label>
+    <div id="ptsCutBox" style="display:${by?'flex':'none'};gap:7px;align-items:center;margin-top:8px;font-size:13px;flex-wrap:wrap">
+      ${t('Το Α΄ εξάμηνο κλείνει στις')} <input type="date" id="ptsCut" value="${esc((cfg&&cfg.cut_date)||ptsCutDefault())}" style="max-width:170px">
+      <span class="dim" style="font-size:12px">${t('συνήθως τα Χριστούγεννα')}</span></div>
+    <div class="dim" style="font-size:12px;margin-top:6px">${t('Το ορίζει ο Αρχηγός του τμήματος. Αλλιώς μετρά όλη η χρονιά.')}</div></div>`;
+}
+function ptsDraw(sec){
+  const v=$('view'); if(!v)return;
+  v.innerHTML=`<div class="card pad" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b style="font-size:15px">${t('Βαθμολογία')} ${esc(PTS_UNIT[sec]||'')} · ${esc(sec)} · ${esc(YEAR)}</b>
+        <span class="sp"></span><button class="btn sm noprint" onclick="window.print()">${t('Εκτύπωση')}</button></div>
+      <div class="dim" style="font-size:12.5px;margin-top:4px">${t('Επιθεώρηση, παιχνίδια, bonus και πλην — ανά')} ${esc(PTS_ONE[sec]||'')}.</div>
+      <div id="ptsStand" style="margin-top:10px">${ptsStandHTML(sec)}</div></div>
+    ${ptsCfgHTML(sec)}
+    <div id="ptsPer">${ptsPerHTML(sec)}</div>`;
+  ptsDrawWire(sec);
+}
+function ptsDrawWire(sec){
+  const st=()=>{const e=$('ptsStand'); if(e){e.innerHTML=ptsStandHTML(sec); perWire()}};
+  const perWire=()=>document.querySelectorAll('[data-ptsper]').forEach(b=>b.onclick=()=>{PTS_PER=b.dataset.ptsper; st()});
+  perWire();
+  document.querySelectorAll('[data-ptsses]').forEach(b=>b.onclick=()=>{ MKPRE={sec, ses:b.dataset.ptsses};
+    SUBTAB.attend='put'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); });
+  const bs=$('ptsBySem'), cut=$('ptsCut');
+  if(bs)bs.onchange=async()=>{ const v={by_semester:bs.checked,cut_date:bs.checked?(cut.value||ptsCutDefault()):null};
+    if(!await ptsCfgSave(sec,v)){bs.checked=!bs.checked;return}
+    $('ptsCutBox').style.display=bs.checked?'flex':'none'; PTS_PER='year'; st(); toast(t('Αποθηκεύτηκε')); };
+  if(cut)cut.onchange=async()=>{ if(!cut.value)return; if(await ptsCfgSave(sec,{by_semester:true,cut_date:cut.value})){st(); toast(t('Αποθηκεύτηκε'))} };
+}
+function ptsBody(){
+  const sec=ptsSec();
+  $('view').innerHTML=`<div class="card pad dim" style="font-size:13px">${t('Φόρτωση βαθμολογίας…')}</div>`;
+  return Promise.all([ptsLoad(ptsSessions(sec).map(s=>s.id)), ptsCfgLoad(sec)]).then(()=>ptsDraw(sec)).catch(()=>ptsDraw(sec));
 }
 D.gst=D.gst||[];
 const gstRows=sid=>(D.gst||[]).filter(g=>g.session_id===sid);
@@ -26848,7 +27061,7 @@ V.cal=()=>tabView('cal',[
 
 V.attend=()=>tabView('attend',[
   {k:'put',  t:'Καταχώρηση',        i:'check', fn:markBody,    d:'σήμανση παρόντων'},
-  {k:'see',  t:t('Ποιος λείπει'),      i:'trend', fn:attendBody,  d:'ποιος λείπει'}]);
+  {k:'see',  t:t('Ποιος λείπει'),      i:'trend', fn:attendBody,  d:'ποιος λείπει'},   ...(ptsTabOn()?[{k:'pts', t:t('Βαθμολογία'), i:'award', fn:ptsBody, d:t('κατάταξη εξάδων — επιθεώρηση, παιχνίδια, bonus, πλην')}]:[])]);
 
 function progScreen(sec, extra){
   PSEC=sec;
