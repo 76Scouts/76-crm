@@ -1284,7 +1284,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-03 18:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-04 12:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19476,7 +19476,8 @@ function efDocs(e,parts){
         :t('Η δήλωση συμμετοχής στο Word της Επαρχίας: μέλη, βαθμοφόροι, υπεύθυνη δήλωση, υπογραφές.')} ${t('Κατεβαίνει έτοιμη για ηλεκτρονική υποβολή — τίτλος, αρχηγός, κόστος και ποσό από τη δράση. Τίποτα δεν αποθηκεύεται.')}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
         <button class="btn sm p" id="efdStd">${ic('down',14)} ${t('Δήλωση συμμετοχής')} (${X?'Excel':'Word'})</button>
-        <label class="btn sm gh" id="efdTplL" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span>${t('Ήρθε άλλο έντυπο; Συμπλήρωσέ το…')}</span><input type="file" id="efdTpl" accept=".docx,.xlsx" style="display:none"></label></div></div>`; })()}
+        <label class="btn sm gh" id="efdTplL" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span>${t('Ήρθε άλλο έντυπο; Συμπλήρωσέ το…')}</span><input type="file" id="efdTpl" accept=".docx,.xlsx" style="display:none"></label></div>
+      <label id="efdMySigL" style="display:none;gap:6px;align-items:center;font-size:12.5px;margin-top:7px;max-width:none"><input type="checkbox" id="efdMySig" checked style="width:auto"> <span></span></label></div>`; })()}
   </div>`;
 }
 function efDocsWire(e,parts){
@@ -19490,6 +19491,7 @@ function efDocsWire(e,parts){
   on('efdKitD',x=>efdKitchenPdf(e,parts,x));
   on('efdFaD',x=>efdFirstAidPdf(e,parts,x));
   on('efdStd',x=>efdStdFill(e,parts,x));
+  efdsWire(e);    
   const f=$('efdTpl'); if(f)f.onchange=()=>{ const file=f.files&&f.files[0]; const s=document.querySelector('#efdTplL span'); f.value='';
     if(file)efdTplFill(e,parts,file,s); };
 }
@@ -20731,8 +20733,10 @@ async function efdtDocx(buf,e,parts,ctx){
     if(/^ονοματεπωνυμ/.test(nx)&&/[.…]{3,}/.test(tx)){ efdtDotsFill(p,sigOrder.map(w=>lead[w].name)); efdtSqueeze(p); continue; }
     if(/^τηλ/.test(nx)&&/[.…]{3,}/.test(tx)){ efdtDotsFill(p,sigOrder.map(w=>lead[w].tel)); efdtSqueeze(p); continue; }
   }
-  zip.file('word/document.xml',new XMLSerializer().serializeToString(doc));
-  return {blob:await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),done,fee};
+  const signN=ctx.sign?efdsMark(body,ctx.sign.slot):0;    
+  let xml=new XMLSerializer().serializeToString(doc); if(signN)xml=await efdsApply(zip,xml,ctx.sign);
+  zip.file('word/document.xml',xml);
+  return {blob:await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),done,fee,signN};
 }
 function efdtSqueeze(p){ Array.from(p.getElementsByTagNameNS(W_NS,'t')).forEach(t=>{ const v=t.textContent.replace(/ {2,}/g,' '); if(v!==t.textContent)t.textContent=v; }); }
 function efdtAppend(p,txt){ const runs=efdtKids(p,'r'), last=runs[runs.length-1]; const doc=p.ownerDocument;
@@ -20847,6 +20851,7 @@ async function efdtRun(e,parts,o,btn){
       med=r.med; no=r.no; }
     const days=e.end_date&&e.end_date!==e.event_date?Math.round((new Date(e.end_date)-new Date(e.event_date))/864e5)+1:1;
     const ctx={kids,leds,med,pre:o.pre,xTitle:o.xTitle,span:days===1?dv('Όλο το μονοήμερο'):days===2?dv('Όλο το διήμερο'):dv('Όλη τη δράση')};
+    if(!o.isX)ctx.sign=await efdsKit(e);
     const r=o.isX?await efdtXlsx(o.buf,e,parts,ctx):await efdtDocx(o.buf,e,parts,ctx);
     const a=document.createElement('a'); a.href=URL.createObjectURL(r.blob); a.download=o.name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); back();
@@ -20855,7 +20860,8 @@ async function efdtRun(e,parts,o,btn){
       +(no?'\n⚠ '+no+' '+t('χωρίς στοιχεία υγείας (δικαίωμα ή Ν.91) — η στήλη τους έμεινε κενή.'):'')
       +(!r.done.kids&&!r.done.leds?'\n\n'+t('Δεν βρήκα πίνακα με «Ονοματεπώνυμο» στο έντυπο — άνοιξέ το και έλεγξε.'):'')
       +(o.note?'\n\n'+o.note:'')
-      +'\n\n'+t('Άνοιξέ το, έλεγξέ το, πρόσθεσε υπογραφή/σφραγίδα αν το ζητούν, και ανέβασέ το ή στείλ\' το.'));
+      +(r.signN?'\n\n'+t('Μπήκε η υπογραφή σου')+(ctx.sign.stamp?' '+t('και η σφραγίδα'):'')+'.':'')
+      +'\n\n'+(r.signN?t('Άνοιξέ το, έλεγξέ το, και ανέβασέ το ή στείλ\' το.'):t('Άνοιξέ το, έλεγξέ το, πρόσθεσε υπογραφή/σφραγίδα αν το ζητούν, και ανέβασέ το ή στείλ\' το.')));
   }catch(err){ back(); console.warn('efdtRun',err); await uiNote(t('Δεν μπόρεσα να γεμίσω το έντυπο:')+' '+(err&&err.message||err)); }
 }
 async function efdStdFill(e,parts,btn){
@@ -20875,6 +20881,57 @@ async function efdTplFill(e,parts,file,btn){
   if(!isX&&!isD){ await uiNote(t('Το έντυπο πρέπει να είναι Word (.docx) ή Excel (.xlsx). Αν ήρθε .doc ή .xls, άνοιξέ το και αποθήκευσέ το ως .docx / .xlsx.')); return; }
   return efdtRun(e,parts,{isX,buf:await file.arrayBuffer(),name:'76 - '+file.name.replace(/^76\s*-\s*/,'')},btn);
 }
+const EFDS_EMU=360000;    
+const efdsB64=s=>Uint8Array.from(atob(String(s||'')),c=>c.charCodeAt(0));
+function efdsWH(u8){ if(!u8||u8.length<24||u8[1]!==0x50)return null; const v=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+  return {w:v.getUint32(16),h:v.getUint32(20)}; }
+function efdsFit(wh,maxCm,hCm){ const r=Math.min(maxCm*EFDS_EMU/wh.w,hCm*EFDS_EMU/wh.h); return {cx:Math.round(wh.w*r),cy:Math.round(wh.h*r)}; }
+function efdsSlotOf(txt){ const x=efdtNorm(txt); if((x.match(/υπογραφη/g)||[]).length!==1||!/υπογραφη αρχηγου/.test(x))return null;
+  return /συστηματοσ/.test(x)?'as':/αγελησ|ομαδασ|κοινοτητασ|τμηματοσ/.test(x)?'head':null; }
+function efdsRun(rid,sz,id,name){
+  return `<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">`
+    +`<wp:extent cx="${sz.cx}" cy="${sz.cy}"/><wp:docPr id="${id}" name="${name}"/>`
+    +`<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">`
+    +`<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="${name}.png"/><pic:cNvPicPr/></pic:nvPicPr>`
+    +`<pic:blipFill><a:blip r:embed="${rid}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>`
+    +`<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${sz.cx}" cy="${sz.cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>`
+    +`</a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`; }
+async function efdsWire(e){
+  const L=$('efdMySigL'); if(!L)return;
+  try{ const {data}=await sb.rpc('sign_kit',{p_event:e.id,p_take:false});
+    if(!data||!data.slot||!data.sig)return;
+    L.querySelector('span').textContent=t('Με την υπογραφή μου')+(data.stamp?' '+t('και τη σφραγίδα'):'')
+      +' ('+(data.slot==='as'?t('Αρχηγός Συστήματος'):t('Αρχηγός τμήματος'))+')';
+    L.style.display='inline-flex';
+  }catch(err){ console.warn('sign_kit',err&&err.code); }
+}
+async function efdsKit(e){
+  const c=$('efdMySig'), L=$('efdMySigL'); if(!c||!c.checked||!L||L.style.display==='none')return null;
+  const {data,error}=await sb.rpc('sign_kit',{p_event:e.id,p_take:true});
+  if(error||!data||!data.slot||!data.sig)return null;
+  return {slot:data.slot, sig:efdsB64(data.sig), stamp:data.stamp?efdsB64(data.stamp):null};
+}
+function efdsMark(body,slot){ let want=false, n=0;
+  for(const p of Array.from(body.getElementsByTagNameNS(W_NS,'p'))){
+    const tx=efdtText(p);
+    if(want&&/^[\s.…_]{3,}$/.test(tx)){ efdtParaSet(p,'E76SIGSLOT'); n++; want=false; continue; }
+    const s=efdsSlotOf(tx); if(s)want=(s===slot);
+    else if(tx.trim())want=false;
+  }
+  return n; }
+async function efdsApply(zip,xml,kit){
+  if(!/E76SIGSLOT/.test(xml))return xml;
+  const relP='word/_rels/document.xml.rels', ctP='[Content_Types].xml';
+  let rels=await zip.file(relP).async('string'), ct=await zip.file(ctP).async('string');
+  const add=(name,u8)=>{ const rid='rIdE76'+name; zip.file('word/media/e76-'+name+'.png',u8);
+    if(!rels.includes('Id="'+rid+'"'))rels=rels.replace('</Relationships>',`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/e76-${name}.png"/></Relationships>`);
+    return rid; };
+  if(!/Extension="png"/i.test(ct))ct=ct.replace('</Types>','<Default Extension="png" ContentType="image/png"/></Types>');
+  const sw=efdsWH(kit.sig), stw=kit.stamp&&efdsWH(kit.stamp); if(!sw)return xml.replace(/E76SIGSLOT/g,'');
+  let runs=efdsRun(add('ypografi',kit.sig),efdsFit(sw,4.5,1.4),9701,'ypografi');
+  if(stw)runs+=efdsRun(add('sfragida',kit.stamp),efdsFit(stw,2.3,2.3),9702,'sfragida');
+  zip.file(relP,rels); zip.file(ctP,ct);
+  return xml.replace(/<w:r\b(?:(?!<\/w:r>)[\s\S])*?E76SIGSLOT[\s\S]*?<\/w:r>/,runs).replace(/E76SIGSLOT/g,''); }
 const PA_WENT='Συμμετείχε', PA_DECL='Δηλώθηκε', PA_NO='Δεν ήρθε';
 const paWent=x=>!!x&&x.status===PA_WENT;
 const evPast=e=>!!e&&!!e.event_date&&e.event_date<=isoLocal(new Date());
