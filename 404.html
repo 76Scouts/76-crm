@@ -1304,7 +1304,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-05 12:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-05 17:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -5002,6 +5002,17 @@ async function ocrAssist(file, o){
 const V={};
 
 const TR_UNIT={[dv('Αγέλη')]:dv('εξάδα'),[dv('Ομάδα')]:dv('ενωμοτία'),[dv('Κοινότητα')]:dv('όμιλος')};
+const SG_NAMECOL=[[[dv('κιτριν')],'#e3b100'],[[dv('κοκκιν')],'#d93a3a'],[[dv('πορτοκαλ')],'#f07a1a'],
+  [[dv('πρασιν')],'#2e9d4a'],[[dv('γαλαζ'),dv('γαλαν')],'#3a9fe0'],[[dv('μπλε'),dv('μπλαβ')],'#2a5bd6'],
+  [[dv('γκριζ'),dv('σταχτ')],'#8c8c8c'],[[dv('μαυρ')],'#4a4a4a'],[[dv('ασπρ'),dv('λευκ')],'#bdbdbd'],
+  [[dv('καφε')],'#8b5a2b'],[[dv('μωβ'),dv('βιολετ')],'#7b4fc9'],[[dv('ροζ')],'#e06aa0']];
+function sgCol(g){
+  if(!g)return null;
+  const c=String(g.colour||'').toLowerCase();
+  if(/^#[0-9a-f]{6}$/.test(c)&&c!=='#888888')return c;
+  const n=String(g.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const m=SG_NAMECOL.find(([w])=>w.some(x=>n.includes(x))); return m?m[1]:null;
+}
 function trData(sec){
   const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR&&sesDone(s)&&sesCount(s).marked)
     .sort((a,b)=>a.session_date<b.session_date?-1:1);
@@ -5015,8 +5026,11 @@ function trData(sec){
     if(a===none)return 1; if(b===none)return -1;
     return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'el')});
   const pres=new Set(D.att.filter(a=>a.status===dv('Παρών')).map(a=>a.session_id+'|'+a.person_id));
+  const used=new Set();
   const groups=(names.length>1?names:[]).slice(0,8).map((g,i)=>{const m=kids.filter(p=>gOf(p)===g);
-    return {g, c:'var(--tc'+(i+1)+')', n:m.length, pts:ses.map(s=>{const p=m.filter(k=>pres.has(s.id+'|'+k.id)).length;
+    let c=sgCol((D.sg||[]).find(x=>x.section===sec&&x.scout_year===YEAR&&x.name===g));
+    if(!c||used.has(c))c='var(--tc'+(i+1)+')'; used.add(c);
+    return {g, c, n:m.length, pts:ses.map(s=>{const p=m.filter(k=>pres.has(s.id+'|'+k.id)).length;
       return {p, v:m.length?Math.round(100*p/m.length):0}})}});
   const all=ses.map(s=>{const c=sesCount(s);return {p:c.p, n:c.n, v:c.n?Math.round(100*c.p/c.n):0}});
   return {sec, ses, all, groups};
@@ -11929,7 +11943,7 @@ V.groups=()=>{
   const kindOf=subgOf(SGSEC);
   const card=g=>{const list=inG(g.name);
     return `<div class="ccard">
-      <div class="chead"><span class="dot" style="background:${g.colour||SC[SGSEC]}"></span>
+      <div class="chead"><span class="dot" style="background:${sgCol(g)||SC[SGSEC]}"></span>
         <div style="flex:1;min-width:0"><div class="ctitle">${esc(g.name)}</div>
           <div class="dim" style="font-size:12px">${esc(g.kind||kindOf)} · <span data-sgn="${esc(g.name)}">${list.length} ${list.length===1?'μέλος':'μέλη'}</span></div>
           <div class="dim" style="font-size:11.5px;margin-top:2px" data-sgbd="${esc(g.name)}">${sgMini(list)}</div></div></div>
@@ -12119,19 +12133,20 @@ function sgLeaders(id){
       <div id="sgStaffs">${(sgStaffIds(g).length?sgStaffIds(g):['']).map((sid,i)=>`<div style="margin-bottom:6px">${ppHTML('sgStaff'+i, sid, ledOpt)}</div>`).join('')}</div>
       <button type="button" class="btn sm gh" id="sgStaffAdd" style="margin-bottom:8px">+ ${t('Κι άλλος υπεύθυνος')}</button>
       <div class="muted" style="font-size:11.5px;margin:0 0 9px">${t('Δεν είναι αρχηγός της υποομάδας — είναι ο βαθμοφόρος (ή οι βαθμοφόροι) που την έχουν χρεωθεί.')}</div>
-      <label style="font-size:12px;color:var(--ink3);display:block"">${t('Χρώμα')}<input id="sgC" type="color" value="${g.colour||'#888888'}" style="height:36px"></label>
+      <label style="font-size:12px;color:var(--ink3);display:block"">${t('Χρώμα')}<input id="sgC" type="color" value="${sgCol(g)||'#888888'}" style="height:36px"></label>
     </div>
     <div class="dsec" style="border:0"><button class="btn p" id="sgSave" style="width:100%;justify-content:center">Αποθήκευση</button></div>`;
   drw.classList.add('on');
   sgRoles(g.section).forEach(([slot])=>ppWire('sgS'+slot, poolS, ppOpt));
   let nSt=Math.max(1,sgStaffIds(g).length);
   for(let i=0;i<nSt;i++)ppWire('sgStaff'+i, ledPool, ledOpt);
+  $('sgC').oninput=()=>{$('sgC').dataset.t='1'};
   $('sgStaffAdd').onclick=()=>{ const i=nSt++;
     $('sgStaffs').insertAdjacentHTML('beforeend',`<div style="margin-bottom:6px">${ppHTML('sgStaff'+i,'',ledOpt)}</div>`);
     ppWire('sgStaff'+i, ledPool, ledOpt); };
   $('sgSave').onclick=async()=>{
     const st=[...new Set([...Array(nSt).keys()].map(i=>($('sgStaff'+i)||{}).value).filter(Boolean))];
-    const v={colour:$('sgC').value, staff_id:st[0]||null, staff_more:st.slice(1),
+    const v={colour:$('sgC').dataset.t?$('sgC').value:(g.colour||null), staff_id:st[0]||null, staff_more:st.slice(1),
              leader_id:null, second_id:null, third_id:null};
     sgRoles(g.section).forEach(([slot])=>{const el=$('sgS'+slot); if(el)v[SG_SLOTCOL[slot]]=el.value||null});
     const {error}=await sb.from('subgroups').update(v).eq('id',id);
