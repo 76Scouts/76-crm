@@ -1304,7 +1304,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-05 11:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-05 11:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19598,12 +19598,15 @@ async function efcBundle(e, parts, onDate){
       try{
         const {data,error}=await sb.storage.from('e76').createSignedUrl(p,120); if(error||!data)throw error||new Error('—');
         const b=new Uint8Array(await (await fetch(data.signedUrl)).arrayBuffer());
-        if(/\.pdf$/i.test(p)){ const src=await L.PDFDocument.load(b,{ignoreEncryption:true});
+        const isPdf=b[0]===0x25&&b[1]===0x50&&b[2]===0x44&&b[3]===0x46, isPng=b[0]===0x89&&b[1]===0x50, isJpg=b[0]===0xFF&&b[1]===0xD8;
+        if(isPdf){ const src=await L.PDFDocument.load(b,{ignoreEncryption:true});
           (await out.copyPages(src,src.getPageIndices())).forEach(pg=>out.addPage(pg)); n++; }
-        else if(/\.(jpe?g|png)$/i.test(p)){ const im=/\.png$/i.test(p)?await out.embedPng(b):await out.embedJpg(b);
+        else{ let im;
+          if(isPng) im=await out.embedPng(b); else if(isJpg) im=await out.embedJpg(b);
+          else { const bm=await createImageBitmap(new Blob([b])), cv=document.createElement('canvas');    
+            cv.width=bm.width; cv.height=bm.height; cv.getContext('2d').drawImage(bm,0,0); im=await out.embedJpg(await pdJpeg(cv)); }
           const sc=Math.min(1, 595/im.width, 842/im.height), w=im.width*sc, h=im.height*sc;
           out.addPage([w,h]).drawImage(im,{x:0,y:0,width:w,height:h}); n++; }
-        else bad++;
       }catch(x){ bad++; console.warn('efcBundle',p,x) }
     }
     if(!n) return toast(t('Κανένα αρχείο δεν άνοιξε.'));
