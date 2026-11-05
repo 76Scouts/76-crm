@@ -1284,7 +1284,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-04 12:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-05 08:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1325,6 +1325,7 @@ function showRecovery(){
   $('glogin').style.display='none'; $('grec').style.display='block';
   $('gtag').textContent=t('Όρισε νέο συνθηματικό'); $('np1').focus();
 }
+async function pwKickOthers(){ try{ await sb.auth.signOut({scope:'others'}) }catch(e){} }
 $('npSave').onclick=async()=>{
   const a=$('np1').value,b=$('np2').value,m=$('npmsg');
   if(a.length<8){m.style.color='var(--bad)';m.textContent='Τουλάχιστον 8 χαρακτήρες';return}
@@ -1332,6 +1333,7 @@ $('npSave').onclick=async()=>{
   m.style.color='var(--ink2)'; m.textContent='Αποθήκευση…';
   const {error}=await sb.auth.updateUser({password:a});
   if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
+  await pwKickOthers();
   const {data:{session}}=await sb.auth.getSession();
   ME.email=(session&&session.user.email)||ME.email; start();
 };
@@ -7836,6 +7838,7 @@ V.account=()=>{
     if(bad) return m.textContent=t('Το τωρινό συνθηματικό δεν είναι σωστό.');
     const {error}=await sb.auth.updateUser({password:a});
     if(error) return m.textContent='Σφάλμα: '+error.message;
+    await pwKickOthers();
     const {data:{user}}=await sb.auth.getUser();
     if(user) await sb.from('profiles').update({must_set_password:false,
       password_set_on:new Date().toISOString()}).eq('id',user.id);
@@ -9904,6 +9907,7 @@ function setPasswordScreen(){
     m.textContent='…';
     const {error}=await sb.auth.updateUser({password:a});
     if(error)return m.textContent='Σφάλμα: '+error.message;
+    await pwKickOthers();
     const {data:{user}}=await sb.auth.getUser();
     await sb.from('profiles').update({must_set_password:false,password_set_on:new Date().toISOString(),
       last_seen_on:new Date().toISOString()}).eq('id',user.id);
@@ -14412,8 +14416,7 @@ function settingsBody(){
         <div><button class="btn p" id="pwSave">Αλλαγή συνθηματικού</button></div>
         <div class="dim" style="font-size:12px;line-height:1.55">
           Δεν ζητάμε το παλιό — είσαι ήδη συνδεδεμένος, οπότε το έχεις ήδη αποδείξει.
-          <br>Η αλλαγή ισχύει αμέσως. Οι <b>άλλες συσκευές σου παραμένουν συνδεδεμένες</b>·
-          αν θέλεις να τις βγάλεις, πες μου και το προσθέτω.
+          <br>${t('Η αλλαγή ισχύει αμέσως και αποσυνδέει όλες τις άλλες συσκευές σου.')}
         </div></div>
       <div id="mfaPanel" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
         <span class="dim" style="font-size:12.5px">Φόρτωση…</span></div></div>
@@ -14428,7 +14431,8 @@ function settingsBody(){
     if(a!==b)return toast('Οι δύο κωδικοί δεν ταιριάζουν');
     const {error}=await sb.auth.updateUser({password:a});
     if(error)return toast('Σφάλμα: '+error.message);
-    $('pw1').value='';$('pw2').value=''; toast('Το συνθηματικό άλλαξε');};
+    await pwKickOthers();
+    $('pw1').value='';$('pw2').value=''; toast(t('Το συνθηματικό άλλαξε — οι άλλες συσκευές αποσυνδέθηκαν'));};
   mfaPanel();
   $('thSave').onclick=async()=>{
     const v={}; Object.keys(DEF_TH).forEach(k=>{const n=parseInt($('th_'+k).value); v[k]=isNaN(n)?DEF_TH[k]:n});
@@ -15558,6 +15562,27 @@ function roadTaxWindow(d, rows){
   return {open:true, sev: days<=21?'bad':'warn',
     msg:'Ανοιχτή μέχρι 11 Μαρτίου — '+days+(days===1?' μέρα':' μέρες')+'. Μετά: €10 συν 10% των τελών.'};
 }
+function schoolGaps(){
+  const SECC={AL:dv('Αγέλη'),OP:dv('Ομάδα'),KA:dv('Κοινότητα')};
+  const run=new Map();           
+  (D.ph||[]).filter(h=>!h.valid_to&&LEADCODES.includes(h.role_code)).forEach(h=>{
+    const sec=SECC[String(h.role_code).replace(/_PT$/,'').slice(1,3)]; if(!sec)return;
+    const p=D.bh.find(b=>b.id===h.person_id);
+    if(!p||p.status!==dv('Ενεργός')||p.is_commissioner)return;
+    const head=/^A(AL|OP|KA)$/.test(h.role_code), was=run.get(p.id);
+    if(!was||(head&&!was.head)) run.set(p.id,{p,sec,head});
+  });
+  const R=[...run.values()];
+  const noBasic=r=>trainLevel(r.p.id,r.sec)<2;
+  const noPre=r=>!(D.tr||[]).some(x=>x.person_id===r.p.id&&trLevel(x)===1);
+  return [
+    {t:t('Αρχηγοί τμήματος χωρίς Βασική του τμήματος'),w:t('Η Βασική Εκπαίδευση του κλάδου που αρχηγεύουν δεν είναι καταγραμμένη.'),s:'bad',
+     l:R.filter(r=>r.head&&noBasic(r)).map(r=>r.p)},
+    {t:t('Βαθμοφόροι τμήματος χωρίς Βασική του τμήματος'),w:t('Υπηρετούν σε τμήμα χωρίς τη Βασική Εκπαίδευση αυτού του κλάδου.'),s:'warn',
+     l:R.filter(r=>!r.head&&noBasic(r)).map(r=>r.p)},
+    {t:t('Βαθμοφόροι τμήματος χωρίς Προκαταρκτική'),w:t('Δεν φαίνεται η Προκαταρκτική — αν έχουν Βασική, συνήθως είναι κενό στο e-Scouts.'),s:'warn',
+     l:R.filter(noPre).map(r=>r.p)}];
+}
 function issuesBody(){
   const act=D.bh.filter(p=>p.status==='Ενεργός');
   const led=act.filter(p=>isLed(p));
@@ -15610,7 +15635,7 @@ function issuesBody(){
     {t:'Εντολές με λήξη πριν την έναρξη',w:'Λάθος ημερομηνίες — δεν μετρούν σωστά στην υπηρεσία.',s:'bad',
      l:[...new Set((D.sh||[]).filter(h=>h.start_date&&h.end_date&&h.start_date>h.end_date).map(h=>h.person_id))]
         .map(id=>D.bh.find(p=>p.id===id)).filter(Boolean)},
-    {t:'Βαθμοφόροι χωρίς εκπαίδευση',w:'Ούτε Προκαταρκτική. Δεν μπορεί να εκδοθεί εντολή.',s:'warn',l:led.filter(p=>trainLevel(p.id)===0)},
+    {t:'Βαθμοφόροι χωρίς εκπαίδευση',w:'Ούτε Προκαταρκτική. Δεν μπορεί να εκδοθεί εντολή.',s:'warn',l:led.filter(p=>trainLevel(p.id)===0)}, ...schoolGaps(),
    ]},
    {g:'Στοιχεία επικοινωνίας',items:[
     {t:'Μέλη χωρίς στοιχεία γονέα',w:'Δεν μπορούμε να ειδοποιήσουμε την οικογένεια.',s:'bad',
