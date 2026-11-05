@@ -1304,7 +1304,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-05 11:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-05 12:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3683,8 +3683,9 @@ function warrantOf(id, yr){
 }
 const RING={entoli:'#22c55e',anathesi:'#eab308',expired:'#ef4444',none:null};
 const RINGTXT={entoli:'ενεργή Εντολή Διοίκησης',anathesi:'ενεργή Ανάθεση Καθηκόντων',expired:'έληξε',none:'δεν έχει αιτηθεί'};
-const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6',na:'#c7ced6'};
+const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6',na:'#c7ced6',hidden:'#e6e9ee'};
 const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντομα',expired:'Ν.91(Ι) έληξε',none:'χωρίς Ν.91(Ι)',na:'Ν.91(Ι) — δεν απαιτείται ακόμη (ανήλικος)'};
+CERTTXT.hidden=t('Ν.91(Ι) — το βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματος και ο Α.Σ.');
 const TRC=['#e74c3c','#f4c20d','#27ae60'];
 const TRTXT=['χωρίς εκπαίδευση','Προκαταρκτική','Βασική'];
 function leaderDot(p, sec, yr){
@@ -4102,7 +4103,15 @@ function expTag(e){ if(!e)return '';
   const [bg,fg,t]=d<0?['badbg','bad','έληξε']:['warnbg','warn',d===0?'λήγει σήμερα':'σε '+d+' '+plDay(d)];
   return ` <span style="font-size:10.5px;padding:1px 6px;border-radius:9px;background:var(--${bg});color:var(--${fg})">${t}</span>`; }
 const paperDates=r=>[r&&r.issued_on?'έκδοση '+fdate(r.issued_on):'',r&&r.expires_on?'λήξη '+fdate(r.expires_on):''].filter(Boolean).join(' · ');
+function n91Visible(pid){
+  if(pid===ME.person_id)return true;
+  const hs=(D.ph||[]).filter(h=>h.person_id===ME.person_id&&!h.valid_to);
+  if(hs.some(h=>h.role_code==='AS'))return true;
+  const p=(D.bh||[]).find(b=>b.id===pid);
+  return !!p&&hs.some(h=>/^(AAL|AOP|AKA|APD)$/.test(h.role_code)&&h.scope_value&&h.scope_value===secOf(p));
+}
 function certState(id){
+  if(!n91Visible(id))return {k:'hidden',d:null};
   const c=(D.pc||[]).filter(x=>x.person_id===id&&x.type_code==='Ν91'&&x.confirmed_on)
     .sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
   const exp=c?c.expires_on:((D.cert||[]).find(x=>x.person_id===id)||{}).sexoxarto_expiry;
@@ -18845,6 +18854,7 @@ const efPersons=eid=>efParts(eid).map(x=>({pa:x, p:(D.bh||[]).find(b=>b.id===x.p
   .filter(x=>x.p).sort((a,b)=>sortByName(a.p,b.p));
 
 function certOn(pid, code, onDate){
+  if(code===dv('Ν91')&&!n91Visible(pid)) return {k:'hidden'};    
   const all=(D.pc||[]).filter(x=>x.person_id===pid&&x.type_code===code)
     .sort((a,b)=>String(b.expires_on||'9999').localeCompare(String(a.expires_on||'9999')));
   const c=all.find(x=>x.confirmed_on);
@@ -19212,11 +19222,13 @@ function efCerts(e,parts,onDate){
   const nameOf=c=>(types.find(t=>t.code===c)||{}).name||c;
   const holders=code=>led.filter(x=>certOn(x.p.id,code,onDate).k==='ok');
   const expired=code=>led.filter(x=>certOn(x.p.id,code,onDate).k==='expired');
-  const missingN91=led.filter(x=>certOn(x.p.id,'Ν91',onDate).k!=='ok');
+  const missingN91=led.filter(x=>!['ok','hidden'].includes(certOn(x.p.id,'Ν91',onDate).k));
+  const hidN91=led.filter(x=>certOn(x.p.id,dv('Ν91'),onDate).k==='hidden').length;
 
   const box=(code,level,why)=>{
     const h=holders(code), x=expired(code), need=level==='απαραίτητο';
-    const bad=need&&!h.length;
+    const hid=led.filter(y=>certOn(y.p.id,code,onDate).k==='hidden').length;
+    const bad=need&&!h.length&&hid<led.length;
     return `<div class="card pad" style="margin-bottom:9px;${bad?'border-color:var(--bad)':''}">
       <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
         <b style="flex:1">${esc(nameOf(code))}</b>
@@ -19231,6 +19243,7 @@ function efCerts(e,parts,onDate){
            ${need?'⚠ Κανείς στη δράση δεν το έχει σε ισχύ.':'Κανείς — αν δεν χρειάζεται, αγνόησέ το.'}</div>`}
       ${x.length?`<div class="dim" style="font-size:11.5px;margin-top:5px">
         Έληξε πριν τη δράση: ${x.map(y=>esc(nm(y.p))).join(', ')}</div>`:''}
+      ${hid?`<div class="dim" style="font-size:11.5px;margin-top:5px">${hid} ${t('βαθμοφόροι — την ισχύ τη βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματός του και ο Α.Σ.')}</div>`:''}
     </div>`};
 
   return `<div class="card pad" style="margin-bottom:13px">
@@ -19241,7 +19254,8 @@ function efCerts(e,parts,onDate){
       ${missingN91.length?`<div class="bgap" style="margin-top:9px;border-radius:8px">
         ⚠ ${missingN91.length} ${missingN91.length===1?'βαθμοφόρος':'βαθμοφόροι'} χωρίς Ν.91(Ι) σε ισχύ:
         ${esc(missingN91.map(x=>nm(x.p)).join(', '))}</div>`
-       :(led.length?`<div style="margin-top:9px;color:var(--ok);font-size:13px">✓ Όλοι οι βαθμοφόροι έχουν Ν.91(Ι) σε ισχύ.</div>`:'')}
+       :(led.length&&!hidN91?`<div style="margin-top:9px;color:var(--ok);font-size:13px">✓ Όλοι οι βαθμοφόροι έχουν Ν.91(Ι) σε ισχύ.</div>`:'')}
+      ${hidN91?`<div class="dim" style="margin-top:6px;font-size:12px">${t('Ν.91(Ι) για')} ${hidN91} ${t('βαθμοφόρους: την ισχύ τη βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματός του και ο Α.Σ.')}</div>`:''}
     </div>
     ${EF_NEED.map(([c,l,w])=>box(c,l,w)).join('')}${efcVehHTML(e,parts,onDate)}`;
 }
@@ -20394,7 +20408,7 @@ function dlChecks(e,g){
   const need=camp?2:(en>=3?1:0);
   if(g.h.length<need)add(2,need===2?'Δύο αυτοκίνητα ασφαλείας (κατασκήνωση / ΜΔΥ)':'Αυτοκίνητο ασφαλείας');
   g.h.filter(h=>!h.driver_id).forEach(h=>add(2,h.plate+': οδηγός'));
-  const n91=staff.filter(x=>certOn(x.p.id,'Ν91',end).k!=='ok');
+  const n91=staff.filter(x=>!['ok','hidden'].includes(certOn(x.p.id,'Ν91',end).k));    
   if(n91.length)add(2,pln(n91.length,'βαθμοφόρος','βαθμοφόροι')+' χωρίς Ν.91(Ι) σε ισχύ: '+n91.map(x=>nm(x.p)).join(', '));
   [['arrive_time','Ώρα προσέλευσης'],['depart_time','Ώρα αναχώρησης'],['return_time','Ώρα επιστροφής'],['release_time','Ώρα αποδέσμευσης']]
     .forEach(([k,t])=>{ if(!e[k])add(3,t) });
