@@ -1304,7 +1304,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-05 11:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-05 11:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -8481,7 +8481,7 @@ function pdfAssign(file, reqs, preCode, kids, preKid){
     ov.onclick=e=>{ if(e.target===ov)done(null) };
 
     const grid=$('pdGrid'); let first=true;
-    const cuts={}, thumbs={}, seen={};   
+    const cuts={}, thumbs={}, seen={}, rd={};   
     const opt=sel=>`<option value="">—</option>`+reqs.map(r=>
       `<option value="${esc(r.code)}"${sel===r.code?' selected':''}>${esc(r.label)}</option>`).join('');
     const kopt=sel=>`<option value="">— ποιανού; —</option>`+KIDS.map(k=>
@@ -8495,7 +8495,7 @@ function pdfAssign(file, reqs, preCode, kids, preKid){
       d.innerHTML=`<img src="${url}" alt="σελίδα ${i}">
         <div class="pdnum">σελίδα ${i}</div>
         ${many?`<select data-kid="${i}">${kopt(i===1?preKid:'')}</select>`:''}
-        <select data-pg="${i}">${opt(i===1?preCode:'')}</select>${many?pdCutBtn(i)+`<div class="pdocr" data-ocr="${i}">${t('διαβάζω ονόματα…')}</div>`:''}`;
+        <select data-pg="${i}">${opt(i===1?preCode:'')}</select>${many?pdCutBtn(i):''}<div class="pdocr" data-ocr="${i}">${t('διαβάζω ονόματα…')}</div>`;
       grid.appendChild(d);
       wireCell(d,i);
       sync();
@@ -8507,7 +8507,7 @@ function pdfAssign(file, reqs, preCode, kids, preKid){
         grid.appendChild(w);
       }
       sync();
-      if(many) pdScanNames(file, info.shown, KIDS, (i,ids)=>{ seen[i]=ids||[]; sync() }, ()=>document.body.contains(ov))
+      if(KIDS.length) pdScanNames(file, info.shown, KIDS, (i,ids,r)=>{ seen[i]=ids||[]; rd[i]=!!r; sync() }, ()=>document.body.contains(ov))
         .then(()=>ov.querySelectorAll('[data-ocr]').forEach(b=>{ const i=+b.dataset.ocr; if(!(i in seen)){ seen[i]=[]; } }))
         .then(sync);
     }).catch(e=>{ done({error:e.message||String(e)}); });
@@ -8550,7 +8550,7 @@ function pdfAssign(file, reqs, preCode, kids, preKid){
       ov.querySelectorAll('[data-ocr]').forEach(b=>{ const i=+b.dataset.ocr;
         if(!(i in seen))return;                                           
         const ks=ov.querySelector(`[data-kid="${i}"]:not([data-rg])`);
-        const n=pdOcrNote(seen[i], KIDS, ks&&!ks.disabled?ks.value:'', !!cuts[i]);
+        const n=pdOcrNote(seen[i], KIDS, many?(ks&&!ks.disabled?ks.value:''):(KIDS[0]||{}).id, !!cuts[i], rd[i]);
         b.className='pdocr'+(n&&n.warn?' warn':''); b.innerHTML=n?n.html:'';
         const cb=b.closest('.pdcell').querySelector('[data-cut]'); if(cb)cb.classList.toggle('pdcutwarn',!!(n&&n.cut)); });
       const kidsHit=new Set(out.map(x=>x.pid)).size;
@@ -8559,7 +8559,7 @@ function pdfAssign(file, reqs, preCode, kids, preKid){
         : kidsHit>1 ? ('Ανέβασμα — '+pln(out.length,'χαρτί','χαρτιά')+' σε '+pln(kidsHit,'παιδί','παιδιά')+'')
         : out.length>1 ? ('Ανέβασμα — '+pln(out.length,'χαρτί','χαρτιά')+'') : 'Ανέβασμα';
       ok.onclick=async()=>{
-        const R=pdRisky(out, seen, KIDS);
+        const R=pdRisky(out, seen, KIDS, rd);
         if(R.length&&!await uiAsk(R.join('\n')+'\n\n'+t('Να ανέβει όπως είναι;'),{ok:t('Ναι, όπως είναι'),cancel:t('Όχι, να το δω')}))return;
         done(out) };
     }
@@ -8605,6 +8605,12 @@ function parentUpload(pid, only){
         if(res.error)return toast('Σφάλμα: '+res.error);
         plan=res;
       }
+    }
+    if(plan.length===1&&plan[0].page==null&&(pdIsPdf(f)||/^image\//.test(f.type))){
+      const kid=D.bh.find(b=>b.id===plan[0].pid);
+      if(kid){ toast(t('Ελέγχω το χαρτί…'));
+        if(['no','part'].includes(await pdNameOnFile(f,kid))&&!await uiAsk(t('Δεν βρίσκω το όνομα')+' «'+pn(kid)+'» '+t('σε αυτό το χαρτί.')+'\n\n'+t('Είναι σίγουρα δικό του/της;'),
+             {ok:t('Ναι, ανέβασέ το'),cancel:t('Όχι, στάσου')})) return; }
     }
 
     const byKid={};
@@ -8826,24 +8832,41 @@ async function pdScanNames(file, pages, kids, onPage, alive){
   const getW=()=>wp||(wp=(async()=>{ try{ await ocrScript(OCR_TJS,'Tesseract');
     W=await window.Tesseract.createWorker(['ell','eng']); return W }catch(e){ return null } })());
   try{ for(let i=1;i<=pages;i++){ if(!alive())break;
-      let ids=null; try{ ids=pdKidsIn(await pdPageText(file,i,getW), kids) }catch(e){ ids=null }
-      if(alive()) onPage(i, ids); } }
+      let ids=null, rd=false;
+      try{ const txt=await pdPageText(file,i,getW); ids=pdKidsIn(txt, kids); rd=ocrNameCheck(txt, kids[0])!==null }catch(e){ ids=null }
+      if(alive()) onPage(i, ids, rd); } }
   finally{ if(W){ try{ await W.terminate() }catch(e){} } }
 }
-function pdOcrNote(ids, kids, chosen, isCut){
-  if(!ids||!ids.length) return null;
+function pdOcrNote(ids, kids, chosen, isCut, readable){
   const nm=id=>pn(kids.find(k=>k.id===id)||{});
+  if((!ids||!ids.length)&&readable&&!isCut){
+    const who=kids.length===1?kids[0].id:chosen;
+    return who?{warn:true, cut:false, html:'⚠ '+t('Δεν βρίσκω το όνομα')+' «'+esc(nm(who))+'» '+t('σε αυτή τη σελίδα — σίγουρα είναι δικό του/της;')}
+              :{warn:false, cut:false, html:t('Δεν βρίσκω όνομα κανενός από τα παιδιά σας σε αυτή τη σελίδα.')};
+  }
+  if(!ids||!ids.length) return null;
   if(ids.length>1) return {warn:true, cut:!isCut, html:'⚠ '+t('Γράφει για')+' '+ids.map(id=>esc(nm(id))).join(' '+t('και')+' ')
       +(isCut?'':' — '+t('αν είναι χαρτιά διαφορετικών παιδιών, κόψ\' τη με το ✂'))};
   if(chosen&&chosen!==ids[0]&&!isCut) return {warn:true, cut:false, html:'⚠ '+t('Γράφει')+' «'+esc(nm(ids[0]))+'» — '+t('διάλεξες άλλο παιδί')};
   return {warn:false, cut:false, html:t('Γράφει:')+' '+esc(nm(ids[0]))};
 }
-function pdRisky(out, seen, kids){
+function pdRisky(out, seen, kids, rd){
   const nm=id=>pn(kids.find(k=>k.id===id)||{}), R=[];
-  out.filter(a=>!a.rect).forEach(a=>{ const ids=seen[a.page]; if(!ids||!ids.length)return;
+  out.filter(a=>!a.rect).forEach(a=>{ const ids=seen[a.page];
+    if((!ids||!ids.length)&&rd&&rd[a.page]){ R.push(t('Σελίδα')+' '+a.page+': '+t('δεν βρήκα το όνομα')+' «'+nm(a.pid)+'»'); return }
+    if(!ids||!ids.length)return;
     if(ids.length>1) R.push(t('Σελίδα')+' '+a.page+': '+t('γράφει για')+' '+ids.map(nm).join(' '+t('και')+' ')+' '+t('αλλά πάει ολόκληρη στον/στην')+' '+nm(a.pid));
     else if(ids[0]!==a.pid) R.push(t('Σελίδα')+' '+a.page+': '+t('γράφει')+' «'+nm(ids[0])+'» '+t('αλλά πάει στον/στην')+' '+nm(a.pid)); });
   return [...new Set(R)];
+}
+
+async function pdNameOnFile(file, kid){
+  let W=null;
+  const run=(async()=>{ const getW=async()=>{ try{ await ocrScript(OCR_TJS,'Tesseract'); W=await window.Tesseract.createWorker(['ell','eng']); return W }catch(e){ return null } };
+    try{ return ocrNameCheck(await pdPageText(file,1,getW), kid) }catch(e){ return null } })();
+  const r=await Promise.race([run, new Promise(ok=>setTimeout(()=>ok(null),25000))]);
+  if(W){ try{ await W.terminate() }catch(e){} }
+  return r;
 }
 const RELS=['Μητέρα','Πατέρας','Θετή μητέρα','Θετός πατέρας','Γιαγιά','Παππούς','Αδελφή','Αδελφός','Θεία','Θείος','Ανάδοχος','Κηδεμόνας','Άλλο'];
 const linksOf=id=>(D.cl||[]).filter(x=>x.member_id===id);
@@ -19203,7 +19226,7 @@ function efCerts(e,parts,onDate){
       <div class="dim" style="font-size:12px;margin-top:3px">${esc(why)}</div>
       ${h.length?`<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:4px">
         ${h.map(y=>{const c=certOn(y.p.id,code,onDate).c;
-          return `<span class="pill" style="font-size:11px">${pn(y.p)}${c&&c.expires_on?`<i class="dim"> έως ${fshort(c.expires_on)}</i>`:''}</span>`}).join('')}</div>`
+          return `<span class="pill" style="font-size:11px">${pn(y.p)}${c&&c.expires_on?`<i class="dim"> έως ${fshort(c.expires_on)}</i>`:''}</span>${efcBtn(y.p.id,code,c,e)}`}).join('')}</div>`
         :`<div style="margin-top:7px;color:${need?'var(--bad)':'var(--ink3)'};font-size:12.5px">
            ${need?'⚠ Κανείς στη δράση δεν το έχει σε ισχύ.':'Κανείς — αν δεν χρειάζεται, αγνόησέ το.'}</div>`}
       ${x.length?`<div class="dim" style="font-size:11.5px;margin-top:5px">
@@ -19214,15 +19237,16 @@ function efCerts(e,parts,onDate){
       <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
         <b>Πιστοποιητικά</b>
         <span class="dim" style="font-size:12.5px">ισχύς την ${fdate(onDate)} — όχι σήμερα</span>
-        <span class="sp"></span><button class="btn sm" id="efCertCsv">${ic('down',14)} CSV</button></div>
+        <span class="sp"></span><button class="btn sm" id="efCertAll" title="${t('Όλα τα έγκυρα πιστοποιητικά και χαρτιά οχημάτων που μπορείς να ανοίξεις, σε ένα PDF — χωρίς Ν91')}">${ic('down',14)} ${t('Όλα σε PDF')}</button><button class="btn sm" id="efCertCsv">${ic('down',14)} CSV</button></div>
       ${missingN91.length?`<div class="bgap" style="margin-top:9px;border-radius:8px">
         ⚠ ${missingN91.length} ${missingN91.length===1?'βαθμοφόρος':'βαθμοφόροι'} χωρίς Ν.91(Ι) σε ισχύ:
         ${esc(missingN91.map(x=>nm(x.p)).join(', '))}</div>`
        :(led.length?`<div style="margin-top:9px;color:var(--ok);font-size:13px">✓ Όλοι οι βαθμοφόροι έχουν Ν.91(Ι) σε ισχύ.</div>`:'')}
     </div>
-    ${EF_NEED.map(([c,l,w])=>box(c,l,w)).join('')}`;
+    ${EF_NEED.map(([c,l,w])=>box(c,l,w)).join('')}${efcVehHTML(e,parts,onDate)}`;
 }
 function efCertsWire(e,parts,onDate){
+  efcWire(e,parts,onDate);    
   $('efCertCsv').onclick=()=>{
     const led=parts.filter(x=>isLed(x.p));
     const codes=EF_NEED.map(x=>x[0]);
@@ -19492,6 +19516,113 @@ function deskSheet(kids){
   w.document.close(); setTimeout(()=>w.print(),400);
 }
 const senRef={fn:p=>(D.sen||[]).find(s=>s.person_id===p.id)||{}}; const senOf=p=>senRef.fn(p);
+const efcAdmin=()=>ME.role==='admin'||!!ME.platform_admin;
+const efcHats=()=>(D.ph||[]).filter(h=>h.person_id===ME.person_id&&!h.valid_to);
+const efcIsAS=()=>efcHats().some(h=>h.role_code==='AS');
+const efcHeadSecs=()=>[...new Set(efcHats().filter(h=>/^(AAL|AOP|AKA|APD)$/.test(h.role_code)&&h.scope_value).map(h=>h.scope_value))];
+function efcCanOpen(pid, code, e){
+  if(pid===ME.person_id) return true;
+  if(code===dv('Ν91')) return efcIsAS();
+  if(efcAdmin()) return true;
+  const hs=efcHeadSecs(); if(!hs.length) return false;
+  const p=D.bh.find(b=>b.id===pid);
+  return hs.includes(secOf(p)) || (!!e && hs.includes(e.owner_section||e.section));
+}
+const efcDoc=id=>id?(D.doc||[]).find(d=>d.id===id)||null:null;
+const efcToday=()=>new Date().toISOString().slice(0,10);
+
+function efcVehicles(parts){
+  const ids=new Set(parts.filter(x=>isLed(x.p)).map(x=>x.p.id)), td=efcToday();
+  return (D.veh||[]).filter(v=>ids.has(v.owner_id)||(D.vl||[]).some(l=>l.vehicle_id===v.id&&ids.has(l.person_id)&&(!l.valid_to||l.valid_to>=td)))
+    .sort((a,b)=>String(a.plate||'').localeCompare(String(b.plate||'')));
+}
+const efcVehPeople=(v,parts)=>{ const ids=new Set(parts.map(x=>x.p.id));
+  return [v.owner_id,...(D.vl||[]).filter(l=>l.vehicle_id===v.id&&!l.valid_to).map(l=>l.person_id)].filter(id=>id&&ids.has(id)) };
+const efcVehOpen=(v,parts,e)=>v.owner_id===ME.person_id||efcAdmin()||efcVehPeople(v,parts).some(id=>efcCanOpen(id,'',e));
+function efcPaperOn(rows, onDate){
+  const r=rows.slice().sort((a,b)=>String(b.expires_on||'9999').localeCompare(String(a.expires_on||'9999')))[0];
+  if(!r) return {k:'none'};
+  return {k:!r.expires_on?'nodate':(r.expires_on>=onDate?'ok':'expired'), r};
+}
+function efcVehPapers(v, onDate){
+  return [
+    [t('Ασφάλεια'),dv('ΑΣΦΑΛΕΙΑ'), efcPaperOn((D.vi||[]).filter(x=>x.vehicle_id===v.id), onDate)],
+    [t('ΜΟΤ'),dv('ΧΑΡΤΙ'), efcPaperOn((D.vp||[]).filter(x=>x.vehicle_id===v.id&&x.kind===dv('ΜΟΤ')), onDate)],
+    [t('Άδεια κυκλοφορίας'),dv('ΧΑΡΤΙ'), efcPaperOn((D.vp||[]).filter(x=>x.vehicle_id===v.id&&x.kind===dv('ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ')), onDate)]];
+}
+function efcVehSides(target,row){
+  const ds=(D.vds||[]).filter(s=>s.target===target&&s.target_id===row.id).sort((a,b)=>(a.seq||0)-(b.seq||0))
+    .map((s,ix)=>({f:efcDoc(s.document_id),label:s.label||(t('όψη')+' '+(ix+1))})).filter(x=>x.f);
+  if(ds.length) return ds.map(x=>({path:x.f.path,label:x.label}));
+  const d=efcDoc(row.document_id); return d?[{path:d.path,label:d.title||''}]:[];
+}
+const efcChip=(s,lbl)=>{
+  const col=s.k==='ok'?'ok':s.k==='expired'?'bad':s.k==='nodate'?'warn':'';
+  const txt=s.k==='ok'?(s.r&&s.r.expires_on?t('έως')+' '+fshort(s.r.expires_on):t('σε ισχύ')):s.k==='expired'?t('έληξε'):s.k==='nodate'?t('χωρίς λήξη'):t('λείπει');
+  return `<span class="pill" style="font-size:11px${col?`;background:var(--${col}bg);color:var(--${col});border-color:transparent`:''}">${esc(lbl)} · ${txt}</span>`;
+};
+function efcVehHTML(e, parts, onDate){
+  const vs=efcVehicles(parts);
+  return `<div class="card pad" style="margin-bottom:9px">
+    <div style="display:flex;gap:8px;align-items:baseline"><b style="flex:1">${t('Οχήματα του επιτελείου')}</b>
+      <span class="pill">${vs.length}</span></div>
+    <div class="dim" style="font-size:12px;margin-top:3px">${t('Ασφάλεια, ΜΟΤ και άδεια κυκλοφορίας — ισχύς την ημέρα της δράσης. Ανοίγουν ο κάτοχος, ο Αρχηγός Τμήματος και ο Α.Σ.')}</div>
+    ${vs.length?vs.map(v=>{ const open=efcVehOpen(v,parts,e), own=D.bh.find(b=>b.id===v.owner_id);
+      return `<div style="margin-top:8px;padding-top:7px;border-top:1px dashed var(--line)">
+        <b style="font-size:13px">${esc(v.plate||'—')}</b> <span class="dim" style="font-size:12px">${esc([v.make,v.model].filter(Boolean).join(' '))}${own?' · '+esc(nm(own)):''}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${efcVehPapers(v,onDate).map(([lbl,tg,s],i)=>
+          efcChip(s,lbl)+(open&&s.r&&efcVehSides(tg,s.r).length?`<button class="btn sm gh" data-efv="${v.id}:${i}" title="${t('Άνοιγμα / λήψη')}" style="padding:1px 6px">📄</button>`:'')).join('')}</div></div>`}).join('')
+      :`<div class="dim" style="font-size:12.5px;margin-top:7px">${t('Κανένα όχημα δηλωμένο από βαθμοφόρο της δράσης.')}</div>`}
+  </div>`;
+}
+function efcBtn(pid, code, c, e){
+  if(!c||!efcCanOpen(pid,code,e)||!certSides(c).length) return '';
+  return `<button class="btn sm gh" data-efc="${c.id}" title="${t('Άνοιγμα / λήψη')}" style="padding:0 5px;margin-left:3px">📄</button>`;
+}
+function efcBundleList(e, parts, onDate){
+  const L=[], led=parts.filter(x=>isLed(x.p)).sort((a,b)=>nm(a.p).localeCompare(nm(b.p),'el'));
+  led.forEach(x=>EF_NEED.map(n=>n[0]).filter(c=>c!==dv('Ν91')).forEach(code=>{
+    const s=certOn(x.p.id,code,onDate); if(s.k!=='ok'||!efcCanOpen(x.p.id,code,e))return;
+    certSides(s.c).forEach(f=>L.push(f.path)); }));
+  efcVehicles(parts).filter(v=>efcVehOpen(v,parts,e)).forEach(v=>efcVehPapers(v,onDate).forEach(([l,tg,s])=>{
+    if(s.k==='ok'||s.k==='nodate') efcVehSides(tg,s.r).forEach(f=>L.push(f.path)); }));
+  return [...new Set(L)];
+}
+async function efcBundle(e, parts, onDate){
+  const paths=efcBundleList(e,parts,onDate), local=paths.filter(p=>!/^drive:/.test(p));
+  if(!local.length) return toast(t('Δεν υπάρχει αρχείο που μπορείς να κατεβάσεις.'));
+  toast(t('Ετοιμάζω το PDF…'));
+  try{
+    const L=await pdfWriteLib(), out=await L.PDFDocument.create(); let n=0, bad=0;
+    for(const p of local){
+      try{
+        const {data,error}=await sb.storage.from('e76').createSignedUrl(p,120); if(error||!data)throw error||new Error('—');
+        const b=new Uint8Array(await (await fetch(data.signedUrl)).arrayBuffer());
+        if(/\.pdf$/i.test(p)){ const src=await L.PDFDocument.load(b,{ignoreEncryption:true});
+          (await out.copyPages(src,src.getPageIndices())).forEach(pg=>out.addPage(pg)); n++; }
+        else if(/\.(jpe?g|png)$/i.test(p)){ const im=/\.png$/i.test(p)?await out.embedPng(b):await out.embedJpg(b);
+          const sc=Math.min(1, 595/im.width, 842/im.height), w=im.width*sc, h=im.height*sc;
+          out.addPage([w,h]).drawImage(im,{x:0,y:0,width:w,height:h}); n++; }
+        else bad++;
+      }catch(x){ bad++; console.warn('efcBundle',p,x) }
+    }
+    if(!n) return toast(t('Κανένα αρχείο δεν άνοιξε.'));
+    const name=('76 - '+t('Πιστοποιητικά')+' - '+(e.title||'')).replace(/[\\/:*?"<>|]+/g,' ').trim()+'.pdf';
+    const blob=new Blob([await out.save()],{type:'application/pdf'}), a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),30000);
+    const drv=paths.length-local.length;
+    toast(t('Κατέβηκε')+' — '+n+' '+t('αρχεία')+(bad?' · '+bad+' '+t('δεν άνοιξαν'):'')+(drv?' · '+drv+' '+t('στο Google Drive, δεν μπήκαν'):''));
+  }catch(x){ toast(t('Σφάλμα:')+' '+(x.message||x)) }
+}
+function efcWire(e, parts, onDate){
+  document.querySelectorAll('[data-efc]').forEach(b=>b.onclick=()=>{
+    const c=(D.pc||[]).find(x=>x.id===b.dataset.efc); if(c) docPreview(certSides(c)); });
+  document.querySelectorAll('[data-efv]').forEach(b=>b.onclick=()=>{
+    const [vid,i]=b.dataset.efv.split(':'), v=(D.veh||[]).find(x=>x.id===vid); if(!v)return;
+    const [,tg,s]=efcVehPapers(v,onDate)[+i]; if(s.r) docPreview(efcVehSides(tg,s.r)); });
+  const all=$('efCertAll'); if(all) all.onclick=()=>efcBundle(e,parts,onDate);
+}
 const EFD_DECL=['επιβεβαιώνω την ηλεκτρονική δήλωση συμμετοχής που υποβλήθηκε στο smartespot.com/76life και συναινώ στη συμμετοχή του/της στη δράση, όπως περιγράφεται στην ανακοίνωση·',
   'βεβαιώνω ότι τα στοιχεία της δήλωσης, μαζί με τα στοιχεία υγείας και διατροφής, είναι αληθή και πλήρη, ώστε οι Βαθμοφόροι να εξασφαλίσουν ασφαλή και όσο το δυνατόν πληρέστερη συμμετοχή του/της·',
   'θα ενημερώσω τους Βαθμοφόρους για κάθε αλλαγή μέχρι την ημέρα της δράσης.'];
