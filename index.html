@@ -1307,7 +1307,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-05 18:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-06 10:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3067,6 +3067,13 @@ function carersOfPerson(pid){
     .filter(x=>x.p)
     .sort((a,b)=>(a.l.call_order||9)-(b.l.call_order||9));
 }
+const carerRestricted=x=>!!(x&&x.l&&x.l.restricted===true);
+const carerNoComms=x=>!!(x&&x.l&&(x.l.restricted===true||x.l.receives_comms===false));
+function primaryCarer(kid){
+  const id=kid&&typeof kid==='object'?kid.id:kid; if(!id)return null;
+  const x=carersOfPerson(id).find(c=>!carerNoComms(c)); if(!x)return null;
+  return {id:x.p.id, name:nm(x.p), phone:x.p.phone||'', email:x.p.email||'', relation:x.l.relation||'', link:x.l};
+}
 const gOfRef={fn:r=>{
   const kid=D.bh.find(b=>b.registry_no===r&&(b.kind||'')==='Μέλος')
           ||D.bh.find(b=>b.registry_no===r);
@@ -3077,10 +3084,13 @@ const gOfRef={fn:r=>{
   const M0=cs.find(isM)||null;
   const F=cs.find(isF)||cs.find(x=>x!==M0&&!isM(x))||null;
   const M=M0||cs.find(x=>x!==F)||null;
+  const rF=carerRestricted(F), rM=carerRestricted(M);
   const g={registry_no:r,
-    father_name:F?nm(F.p):'', father_mobile:F?F.p.phone:'', father_email:F?F.p.email:'',
-    mother_name:M?nm(M.p):'', mother_mobile:M?M.p.phone:'', mother_email:M?M.p.email:'',
-    address:(F&&F.p.home_address)||(M&&M.p.home_address)||'',
+    father_name:F?nm(F.p):'', father_mobile:F&&!rF?F.p.phone:'', father_email:F&&!rF?F.p.email:'',
+    mother_name:M?nm(M.p):'', mother_mobile:M&&!rM?M.p.phone:'', mother_email:M&&!rM?M.p.email:'',
+    father_restricted:rF, mother_restricted:rM, father_nocomms:carerNoComms(F), mother_nocomms:carerNoComms(M),
+    address:(F&&!rF&&F.p.home_address)||(M&&!rM&&M.p.home_address)||'',
+    primary:primaryCarer(kid),
     _carers:cs};
   return g}};
 const gOf=r=>gOfRef.fn(r);
@@ -18596,7 +18606,7 @@ async function form(kind){
     body=head('ΚΑΤΑΛΟΓΟΣ ΕΓΓΡΑΦΩΝ ΚΛΙΜΑΚΙΟΥ')+`<table style="font-size:12px"><thead><tr><th>Α/Α</th><th>Αρ. Μητρώου</th><th>Ονοματεπώνυμο</th><th>Τμήμα</th><th>Τάξη</th><th>Όν. Πατέρα</th><th>Όν. Μητέρας</th><th>Τηλέφωνο</th></tr></thead><tbody>${
       rows.map((p,i)=>{const g=gOf(p.registry_no)||{},y=myOf(p)||{};
       return `<tr><td>${i+1}</td><td>${esc(p.registry_no||'')}</td><td>${pn(p)}</td><td>${esc(secOf(p)||'')}</td><td>${esc(gradeOf(p))}</td>
-        <td>${esc(g.father_name||p.father_name||'')}</td><td>${esc(g.mother_name||p.mother_name||'')}</td><td>${esc(fphone(g.father_mobile||g.mother_mobile||p.phone||''))}</td></tr>`}).join('')}</tbody></table>
+        <td>${esc(g.father_name||p.father_name||'')}${g.father_restricted?' <i>('+esc(t('χωρίς επικοινωνία'))+')</i>':''}</td><td>${esc(g.mother_name||p.mother_name||'')}${g.mother_restricted?' <i>('+esc(t('χωρίς επικοινωνία'))+')</i>':''}</td><td>${esc(fphone((primaryCarer(p)||{}).phone||p.phone||''))}</td></tr>`}).join('')}</tbody></table>
       <div style="margin-top:12px;font-size:13px">Σύνολο εγγεγραμμένων: <b>${rows.length}</b></div>`+sign;
   }
   if(kind==='inv'){
@@ -19329,9 +19339,9 @@ V.mails=()=>{
   const seen={}, gaps=[];
   kids.forEach(p=>{
     const g=gOf(p.registry_no)||{};
-    [['Πατέρας',g.father_name,g.father_mobile,g.father_email],
-     ['Μητέρα',g.mother_name,g.mother_mobile,g.mother_email]].forEach(([rel,nmv,tel,mail])=>{
-      if(!nmv)return; if(mail&&/@/.test(mail))return;
+    [['Πατέρας',g.father_name,g.father_mobile,g.father_email,g.father_nocomms],
+     ['Μητέρα',g.mother_name,g.mother_mobile,g.mother_email,g.mother_nocomms]].forEach(([rel,nmv,tel,mail,nc])=>{
+      if(!nmv||nc)return; if(mail&&/@/.test(mail))return;
       const k=nameKey(nmv)+'|'+(tel||'');
       if(seen[k]){seen[k].kids.push(nm(p));return}
       const rec={rel,name:nmv,tel:badTel(tel)?null:tel,kids:[nm(p)],sec:secOf(p)};
@@ -19356,7 +19366,7 @@ V.mails=()=>{
     ${teens.length?`<div class="sec"><h3>Κοινότητα — υποχρεωτικό δικό τους email</h3><span class="n">${teens.length}</span></div>
       <div class="card" style="overflow:auto"><table><thead><tr><th>Ονοματεπώνυμο</th><th class="hide-s">Τάξη</th><th>Δικό του κινητό</th><th class="hide-s">Τηλ. γονέα</th></tr></thead><tbody>
       ${teens.map(p=>{const y=myOf(p)||{},g=gOf(p.registry_no)||{};
-        const gt=[g.mother_mobile,g.father_mobile].find(x=>!badTel(x));
+        const pc=primaryCarer(p), gt=pc&&!badTel(pc.phone)?pc.phone:null;
         return `<tr><td>${pnm(p)}</td><td class="hide-s dim">${esc(gradeOf(p))}</td>
           <td>${p.phone&&!badTel(p.phone)?`<a href="tel:${esc(p.phone)}">${fphone(p.phone)}</a>`:'<span class="dim">—</span>'}</td>
           <td class="hide-s dim">${gt?fphone(gt):'—'}</td></tr>`}).join('')}</tbody></table></div>`:''}
@@ -21672,10 +21682,10 @@ function consentForms(kids){
       <div class="fsec">Υπογραφές γονέων / κηδεμόνων</div>
       ${oneCarer(list[0])
         ?`<div class="fnote" style="margin:0 0 5px"><b>${esc(ONEC_KIND)}</b> — για όλες τις επιλογές αρκεί η υπογραφή του.</div>
-      <div class="frow">${LN('Ονοματεπώνυμο',g.father_name||g.mother_name,2)}${LN('Ιδιότητα',' ',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>`
+      <div class="frow">${LN('Ονοματεπώνυμο',(primaryCarer(list[0])||{}).name,2)}${LN('Ιδιότητα',' ',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>`
         :`<div class="fnote" style="margin:0 0 5px">Για τις επιλογές <b>1</b> και <b>2</b> αρκεί η υπογραφή ενός προσώπου που ασκεί τη γονική μέριμνα. Για την επιλογή <b>4</b> (οπτικοακουστικό υλικό) υπογράφουν όλοι όσοι την ασκούν.</div>
-      <div class="frow">${LN('Ονοματεπώνυμο',g.father_name,2)}${LN('Ιδιότητα','π.χ. πατέρας',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
-      <div class="frow">${LN('Ονοματεπώνυμο',g.mother_name,2)}${LN('Ιδιότητα','π.χ. μητέρα',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>`}
+      <div class="frow">${LN('Ονοματεπώνυμο',g.father_restricted?'':g.father_name,2)}${LN('Ιδιότητα','π.χ. πατέρας',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
+      <div class="frow">${LN('Ονοματεπώνυμο',g.mother_restricted?'':g.mother_name,2)}${LN('Ιδιότητα','π.χ. μητέρα',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>`}
       <div class="frow">${LN('Ονοματεπώνυμο',' ',2)}${LN('Ιδιότητα',' ',1)}${LN('Υπογραφή',' ',1.3)}${LN('Ημερομηνία',' ',1)}</div>
       <div class="fnote" style="margin-top:4px">Μία γραμμή ανά πρόσωπο. Κηδεμόνας που προστίθεται αργότερα υπογράφει σε κενή γραμμή με τη δική του ημερομηνία — <b>το έντυπο δεν επανεκδίδεται</b>.</div>
       <div class="ffoot"><span>Ερωτήματα: as@76.life &nbsp;·&nbsp; Αρχή Προστασίας Δεδομένων: commissioner@dataprotection.gov.cy</span>
@@ -23236,8 +23246,8 @@ V.members=()=>{
       &&(!gr||gradeOf(p)===gr)
       &&(!q||nameKey(nm(p)+' '+(p.nickname||'')+' '+(p.scout_name||'')).includes(q)||(p.registry_no||'').includes(q)));
     $('cnt').textContent=r.length+' μέλη';
-    $('tb').innerHTML=r.map(p=>{const y=myOf(p)||{},gu=gOf(p.registry_no)||{};
-      const pn=gu.father_name||gu.mother_name||'', ph=gu.father_mobile||gu.mother_mobile||'';
+    $('tb').innerHTML=r.map(p=>{const y=myOf(p)||{},pc=primaryCarer(p);
+      const pn=pc?pc.name:'', ph=pc?pc.phone:'';
       return `<tr data-sec="${esc(secOf(p)||'')}" data-grp="${esc(y.group_name||'')}"><td>${statusBar(p)}</td><td>${pnm(p)}</td><td class="hide-s">${esc(y.group_name||'—')}</td><td class="hide-s dim">${esc(gradeOf(p)||'—')}</td>
         <td>${pn?esc(pn)+(ph?` <a href="tel:${esc(ph)}" class="dim">${fphone(ph)}</a>`:''):'<span class="dim">—</span>'}</td></tr>`}).join('')||'<tr><td colspan="5" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα — δοκίμασε λιγότερα γράμματα ή σβήσε το φίλτρο</td></tr>';
   };
@@ -23331,10 +23341,10 @@ function contactRows(scope){
     const kid=L?(p.latin_name||latin(nm(p))):nm(p);
     const grpn=y.group_name?(L?latin(y.group_name):y.group_name):'';
     const secn=L?latin(secOf(p)||''):(secOf(p)||'');
-    [[g.father_name,g.father_mobile,g.father_work_phone,g.father_email,'Πατέρας','Father',g.father_latin],
-     [g.mother_name,g.mother_mobile,g.mother_work_phone,g.mother_email,'Μητέρα','Mother',g.mother_latin]]
-    .forEach(([n,mob,wrk,mail,relG,relL,lat])=>{
-      const tel=telIntl(mob)||telIntl(wrk); if(!n||!tel)return;
+    [[g.father_name,g.father_mobile,g.father_work_phone,g.father_email,'Πατέρας','Father',g.father_latin,g.father_nocomms],
+     [g.mother_name,g.mother_mobile,g.mother_work_phone,g.mother_email,'Μητέρα','Mother',g.mother_latin,g.mother_nocomms]]
+    .forEach(([n,mob,wrk,mail,relG,relL,lat,nc])=>{
+      const tel=telIntl(mob)||telIntl(wrk); if(!n||!tel||nc)return;    
       const key=tel+'|'+n; if(seen[key]){seen[key].kids.push(kid);return}
       const rec={name:L?(lat||latin(n)):n, own:!!lat, tel, tel2:(telIntl(mob)&&telIntl(wrk))?telIntl(wrk):null,
         mail:mail&&/@/.test(mail)?mail:'', rel:L?relL:relG, kids:[kid], sec:secn, grp:grpn, prefix};
@@ -23449,11 +23459,11 @@ function guardiansBody(){
     if($('ggrp').options.length-1!==grps.length)$('ggrp').innerHTML='<option value="">Όλες οι υποομάδες</option>'+grps.map(x=>`<option${x===g?' selected':''}>${esc(x)}</option>`).join('');
     const mails=[],tels=[];
     $('gtb').innerHTML=kids.map(p=>{const gu=gOf(p.registry_no)||{};
-      [gu.father_email,gu.mother_email].forEach(m=>{if(m&&/@/.test(m)&&!mails.includes(m))mails.push(m)});
-      [gu.father_mobile,gu.mother_mobile].forEach(t=>{if(t&&!tels.includes(t))tels.push(t)});
-      const cell=(n,m,t)=>n?`<div>${esc(n)}</div><div class="dim" style="font-size:12px">${t?`<a href="tel:${esc(t)}">${fphone(t)}</a>`:''}${m?' · '+esc(m):''}</div>`:'<span class="dim">—</span>';
+      [[gu.father_email,gu.father_nocomms],[gu.mother_email,gu.mother_nocomms]].forEach(([m,nc])=>{if(!nc&&m&&/@/.test(m)&&!mails.includes(m))mails.push(m)});
+      [[gu.father_mobile,gu.father_nocomms],[gu.mother_mobile,gu.mother_nocomms]].forEach(([tl,nc])=>{if(!nc&&tl&&!tels.includes(tl))tels.push(tl)});
+      const cell=(n,m,tl,nc)=>n?`<div>${esc(n)}</div><div class="dim" style="font-size:12px">${nc?esc(t('χωρίς επικοινωνία')):`${tl?`<a href="tel:${esc(tl)}">${fphone(tl)}</a>`:''}${m?' · '+esc(m):''}`}</div>`:'<span class="dim">—</span>';
       return `<tr><td>${pnm(p)}</td><td class="hide-s dim">${esc((myOf(p)||{}).group_name||'—')}</td>
-        <td>${cell(gu.father_name,gu.father_email,gu.father_mobile)}</td><td>${cell(gu.mother_name,gu.mother_email,gu.mother_mobile)}</td>
+        <td>${cell(gu.father_name,gu.father_email,gu.father_mobile,gu.father_nocomms)}</td><td>${cell(gu.mother_name,gu.mother_email,gu.mother_mobile,gu.mother_nocomms)}</td>
         <td><button class="btn gh sm" data-care="${p.id}" title="Δεσμοί φροντίδας">⋯</button></td></tr>`}).join('')||'<tr><td colspan="5" class="dim" style="padding:22px;text-align:center">Κανένα αποτέλεσμα — δοκίμασε λιγότερα γράμματα ή σβήσε το φίλτρο</td></tr>';
     $('ginfo').textContent=`${kids.length} ${plu(kids.length,'παιδί','παιδιά')} · ${mails.length} email · ${tels.length} ${plu(tels.length,'κινητό','κινητά')}`;
     document.querySelectorAll('[data-care]').forEach(b=>b.onclick=()=>careDrawer(b.dataset.care));
@@ -24000,7 +24010,7 @@ function attendBody(){
       <div class="card pad" style="margin-bottom:14px;background:var(--accbg);border-color:var(--accln)">
         <b>Ένα τηλεφώνημα σε αυτές τις οικογένειες.</b> <span class="muted">Όταν ένα παιδί λείπει μερικές συγκεντρώσεις στη σειρά, συνήθως κάτι άλλαξε — ένα «σας περιμένουμε» τώρα βοηθά περισσότερο από δέκα αργότερα.</span></div>
       <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Παιδί</th><th class="hide-s">Υποομάδα</th><th>Απουσίες</th><th class="hide-s">Τελευταία φορά</th><th>Γονέας</th><th></th></tr></thead><tbody>${
-        risk.map(r=>{const gu=gOf(r.p.registry_no)||{};const pn=gu.mother_name||gu.father_name||'',ph=gu.mother_mobile||gu.father_mobile||'';
+        risk.map(r=>{const pc=primaryCarer(r.p);const pn=pc?pc.name:'',ph=pc?pc.phone:'';
         const done=CONTACTED[r.p.id];
         return `<tr${done?' style="opacity:.5"':''}><td>${sdot(r.sec)}</td><td>${pnm(r.p)}</td><td class="hide-s dim">${esc(r.grp||'—')}</td>
           <td><span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">${r.miss3} στη σειρά</span>${r.pct!==null?` <span class="dim" style="font-size:11.5px">${r.pct}%</span>`:''}</td>
