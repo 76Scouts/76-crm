@@ -1307,7 +1307,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-06 10:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-06 12:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4162,8 +4162,8 @@ function certsHTML(p){
             ?`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)" title="Ελέγχθηκε από τον Α.Σ. στις ${esc(fdate(c.confirmed_on))} — μετράει για καταλληλότητα.">✓ Επιβεβαιώθηκε</span>`
             :`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)" title="Ανέβηκε και περιμένει έλεγχο από τον Α.Σ. Μέχρι τότε δεν μετράει για καταλληλότητα.">⏳ Εκκρεμεί επιβεβαίωση</span>`}
           <span class="sp"></span>${certChip(c)}
-          ${(D.cd||[]).some(x=>x.cert_id===c.id)||c.document_id?''
-            :`<label class="btn gh sm" style="cursor:pointer" title="Επισύναψε το χαρτί">📎<input type="file"
+          ${certHasLocalDoc(c)?''
+            :`<label class="btn gh sm" style="cursor:pointer" title="${esc(certDriveOnly(c)?t('Το χαρτί είναι μόνο στο Google Drive και οι αρχηγοί δεν το ανοίγουν. Ανέβασέ το στο e76.'):t('Επισύναψε το χαρτί'))}">📎<input type="file"
                 class="pcattach" data-id="${c.id}" style="display:none"
                 accept=".pdf,.png,.jpg,.jpeg,.heic"></label>`}
           ${(!c.confirmed_on&&ME.role==='admin')?`<button class="btn p sm pcok" data-id="${c.id}" title="Είδα το χαρτί — ισχύει">Επιβεβαίωση</button>`:''}
@@ -4210,6 +4210,11 @@ function certsHTML(p){
       </div></details>
 </div>`;
 }
+function certDocIds(c){
+  return [...new Set([...(D.cd||[]).filter(x=>x.cert_id===c.id).map(x=>x.document_id), c.document_id].filter(Boolean))];
+}
+const certHasLocalDoc=c=>certDocIds(c).some(id=>{const d=(D.doc||[]).find(x=>x.id===id); return !d||!String(d.path||'').startsWith('drive:')});
+const certDriveOnly=c=>certDocIds(c).length>0&&!certHasLocalDoc(c);
 function wireCerts(p,after){
   document.querySelectorAll('.pcok').forEach(b=>b.onclick=async()=>{
     if(!await uiAsk('Επιβεβαιώνεις ότι είδες το πιστοποιητικό; Από εδώ και πέρα μετράει για τις δράσεις.'))return;
