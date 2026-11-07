@@ -1308,7 +1308,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-07 16:08'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-07 16:15'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22872,8 +22872,12 @@ function ptsTotHTML(sid,G){
   const T=ptsTotals(ptsRows(sid),G);
   return G.map(g=>`<span class="pill" style="font-size:11.5px">${esc(g)}: <b>${T[g].total}</b></span>`).join(' ');
 }
-function ptsInp(sid,g,kind,seq,lbl){
+function ptsInp(sid,g,kind,seq,lbl,stack){
   const v=ptsVal(sid,g,kind,seq);
+  if(stack)return `<label style="display:flex;flex-direction:column;gap:4px;align-items:stretch;border:1px solid var(--line);border-radius:10px;padding:6px 7px;font-size:12.5px;min-width:0">
+    <span style="text-align:center;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lbl==null?g:lbl)}</span>
+    <span style="display:flex;gap:4px;align-items:center">${kind==='minus'?'<span class="dim" aria-hidden="true">−</span>':''}
+    <input class="ptsIn" data-g="${esc(g)}" data-k="${kind}" data-seq="${seq||0}" inputmode="numeric" value="${v===null?'':Math.abs(v)}" placeholder="0" style="width:100%;min-width:0;text-align:center" aria-label="${esc(kind==='game'?ptsGameLbl(sid,seq):ptsKindLbl(kind))} ${esc(g)}"></span></label>`;
   return `<label style="display:flex;gap:7px;align-items:center;font-size:13px">
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"${kind==='game'&&lbl!==g?` data-glbl="${seq}"`:''}>${esc(lbl==null?g:lbl)}</span>
     ${kind==='minus'?'<span class="dim" aria-hidden="true">−</span>':''}
@@ -22883,13 +22887,13 @@ const ptsGameHead=(sid,seq)=>`<div style="display:flex;gap:7px;align-items:cente
       <span class="dim" style="font-size:12px">${t('Παιχνίδι')} ${seq}</span>
       <input class="pgT" data-seq="${seq}" maxlength="80" value="${esc(ptsTitleOf(sid,seq))}" placeholder="${esc(t('όνομα παιχνιδιού (προαιρετικά)'))}" style="flex:1 1 170px;min-width:150px" aria-label="${esc(t('Όνομα παιχνιδιού'))} ${seq}">
       <button class="btn sm gh pgX" data-seq="${seq}" title="${esc(t('Σβήνει όλους τους βαθμούς του παιχνιδιού'))}" aria-label="${esc(t('Σβήσιμο παιχνιδιού'))} ${seq}">✕</button></div>`;
-const PTS_GRID='display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;margin-top:7px';
+const PTS_GRID='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:7px';
 function ptsCatHTML(sec,sid,G,blk){
-  const grid=k=>`<div style="${PTS_GRID}">${G.map(g=>ptsInp(sid,g,k,0)).join('')}</div>`;
+  const grid=k=>`<div style="${PTS_GRID}">${G.map(g=>ptsInp(sid,g,k,0,null,true)).join('')}</div>`;
   return `${blk(t('Επιθεώρηση'),t('το σύνολο της επιθεώρησης'),grid('insp'))}
     ${blk(t('Παιχνίδια'),t('κάθε παιχνίδι χωριστά — γράψε τους βαθμούς που πήρε κάθε')+' '+esc(PTS_ONE[sec]||''),
       ptsGameSeqs(sid).map(seq=>`<div style="border-top:1px dashed var(--line);margin-top:9px;padding-top:8px">${ptsGameHead(sid,seq)}
-        <div style="${PTS_GRID}">${G.map(g=>ptsInp(sid,g,'game',seq)).join('')}</div></div>`).join('')
+        <div style="${PTS_GRID}">${G.map(g=>ptsInp(sid,g,'game',seq,null,true)).join('')}</div></div>`).join('')
       +`<button class="btn gh sm" id="ptsGameAdd" style="margin-top:8px">+ ${t('Παιχνίδι')}</button>`)}
     ${blk(t('Bonus'),t('για καλές πράξεις'),grid('bonus'))}
     ${blk(t('Πλην'),t('γράψε τον αριθμό — μετρά αρνητικά'),grid('minus'))}`;
