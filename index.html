@@ -1308,7 +1308,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-07 15:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-07 16:08'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -11959,7 +11959,7 @@ V.groups=()=>{
   const prevSg=(D.sg||[]).filter(s=>s.scout_year===prevYear(YEAR)&&s.section===SGSEC&&s.active!==false)
     .sort((a,b)=>(a.seq||0)-(b.seq||0)||a.name.localeCompare(b.name,'el'));
   const kids=D.bh.filter(p=>isMem(p)&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===SGSEC);
-  const inG=n=>kids.filter(p=>(myOf(p)||{}).group_name===n).sort(sortByName);
+  const inG=n=>kids.filter(p=>(myOf(p)||{}).group_name===n).sort(sgKidSort(SGSEC));
   const none=kids.filter(p=>!(myOf(p)||{}).group_name).sort(sortByName);
   const chip=s=>`<button class="btn sm${SGSEC===s?' p':' gh'}" data-sg="${s}">${s}</button>`;
   const kindOf=subgOf(SGSEC);
@@ -12123,6 +12123,16 @@ const SGR_FALLBACK={
   'Ομάδα':    [[1,'Ενωμοτάρχης'],[2,'Υπενωμοτάρχης'],[3,'Υπενωμοτάρχης Β']],
   'Κοινότητα':[[1,'Ομιλάρχης'],[2,'Υπομιλάρχης']]};
 const SG_SLOTCOL={1:'leader_id',2:'second_id',3:'third_id'};
+const sgOfName=(sec,name)=>(D.sg||[]).find(g=>g.section===sec&&g.scout_year===YEAR&&g.name===name&&g.active!==false);
+function sgSortGroups(sec,names){
+  const k=n=>{const g=sgOfName(sec,n); return /^— χωρίς/.test(n)?1e6:(g?(g.seq??500):9e5)};
+  return names.slice().sort((a,b)=>k(a)-k(b)||String(a).localeCompare(String(b),'el'));
+}
+function sgKidRank(p,sec){
+  const g=sgOfName(sec,(myOf(p)||{}).group_name||''); if(!g)return 9;
+  const i=[1,2,3].findIndex(sl=>g[SG_SLOTCOL[sl]]===p.id); return i<0?9:i;
+}
+const sgKidSort=sec=>(a,b)=>sgKidRank(a,sec)-sgKidRank(b,sec)||sortByName(a,b);
 function sgRoles(sec){
   const db=(D.sgr||[]).filter(r=>r.section===sec).sort((a,b)=>a.slot-b.slot);
   return db.length?db.map(r=>[r.slot,r.title]):(SGR_FALLBACK[sec]||[[1,'Αρχηγός'],[2,'Υπαρχηγός']]);
@@ -22236,7 +22246,7 @@ function evParts(eid){
           ${on?`<select data-erole="${p.id}" style="max-width:104px">${EROLES.map(r=>`<option${r===st[p.id].role?' selected':''}>${esc(r)}</option>`).join('')}</select>`:''}
         </button>`}).join('')}</div>
 
-      ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span></div>
+      ${(typeof sgSortGroups==='function'?sgSortGroups(e.section||'',Object.keys(gs)):Object.keys(gs).sort()).map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span></div>
         <div class="mkgrid">${gs[g].map(p=>`<button class="mk${st[p.id]?' p':''}" data-e="${p.id}">
           ${statusBar(p,true)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pn(p)}</span>${tag(p.id)}</button>`).join('')}</div>`).join('')}
       <div style="height:16px"></div>`;
@@ -22364,23 +22374,25 @@ function markBody(){
     const hq=sec===HQ;
     const kids=hq?[]:D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)&&secOf(p)===sec).sort(sortByName);
     const gs={}; kids.forEach(p=>{const g=(myOf(p)||{}).group_name||'— χωρίς υποομάδα';(gs[g]=gs[g]||[]).push(p)});
+    Object.values(gs).forEach(l=>l.sort(sgKidSort(sec)));    
+    const gk=sgSortGroups(sec,Object.keys(gs));              
     $('mBody').innerHTML=`${mThHTML(sec,SES,canNew(sec))}<div class="noprint" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         ${
 ''}
         ${hq?'':'<button class="btn sm gh" id="mClr">'+t('Καθαρισμός σημειώσεων')+'</button>'}
         <span class="sp"></span><button class="btn sm" onclick="window.print()">Εκτύπωση</button></div>
       <div class="dim noprint" style="font-size:12px;margin:-4px 0 10px">${t('Άγγιξε ένα όνομα: μία φορά = Παρών, δεύτερη = Απών, τρίτη = σβήνει. Αποθηκεύεται αμέσως — κι αν πέσει το ίντερνετ, στέλνεται μόλις επανέλθει. Το κουμπί «Έλεγχος αποθήκευσης» κάτω ρωτά τη βάση ότι τα κράτησε όλα.')}</div>
-      ${Object.keys(gs).sort().map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span>${Object.keys(gs).length>1?`<span class="sp"></span><span class="noprint" style="display:flex;gap:5px"><button class="btn sm gh" data-grpp="${esc(g)}" title="${esc(t('όσοι δεν έχουν σημείωση σε αυτή την υποομάδα'))}">✓ ${t('παρόντες')}</button><button class="btn sm gh" data-grpa="${esc(g)}" title="${esc(t('όσοι δεν έχουν σημείωση σε αυτή την υποομάδα'))}">✗ ${t('απόντες')}</button></span>`:''}</div>
+      ${gk.map(g=>`<div class="sec"><h3>${esc(g)}</h3><span class="n">${gs[g].length}</span>${Object.keys(gs).length>1?`<span class="sp"></span><span class="noprint" style="display:flex;gap:5px"><button class="btn sm gh" data-grpp="${esc(g)}" title="${esc(t('όσοι δεν έχουν σημείωση σε αυτή την υποομάδα'))}">✓ ${t('παρόντες')}</button><button class="btn sm gh" data-grpa="${esc(g)}" title="${esc(t('όσοι δεν έχουν σημείωση σε αυτή την υποομάδα'))}">✗ ${t('απόντες')}</button></span>`:''}</div>
         <div class="mkgrid">${gs[g].map(p=>`<button class="mk" data-m="${p.id}" aria-pressed="false"><span class="s"></span><span style="flex:1;min-width:0">${pn(p)}${isNewMember(p.id,SES.session_date)?NEWCHIP:''}</span><span class="mkst"></span></button>`).join('')}</div>`).join('')}
       ${ME.role!=='patrol_leader'&&!hq?`<div id="gstWrap" data-sid="${sid}"></div>`:''}
-      ${hq?'':`<div id="cashWrap">${cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader')}</div>`+ptsSlot(sec,sid,Object.keys(gs))}
+      ${hq?'':`<div id="cashWrap">${cashHTML(sec,sid,gk,ME.role!=='patrol_leader')}</div>`+ptsSlot(sec,sid,Object.keys(gs))}
       ${ ''}
       ${canStaffAtt(sec)?`<div id="satWrap" data-sid="${sid}" style="margin-top:6px"></div>`:''}
       <div style="height:14px"></div>`;
     if(!hq)cashWire(sid); ptsMount(sec,sid,Object.keys(gs));    
     if(ME.role!=='patrol_leader'&&!hq)gstMount(sid,count);
     if(canStaffAtt(sec))satMount(sid);
-    if(!hq)cashLoad([sid]).then(()=>{const w=$('cashWrap'); if(w&&SES&&SES.id===sid){w.innerHTML=cashHTML(sec,sid,Object.keys(gs).sort(),ME.role!=='patrol_leader'); cashWire(sid)}});
+    if(!hq)cashLoad([sid]).then(()=>{const w=$('cashWrap'); if(w&&SES&&SES.id===sid){w.innerHTML=cashHTML(sec,sid,gk,ME.role!=='patrol_leader'); cashWire(sid)}});
     document.querySelectorAll('[data-m]').forEach(b=>paintOne(b));
     count(); status(); mThWire(sec,SES,canNew(sec));
     document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const id=b.dataset.m;
