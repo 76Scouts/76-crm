@@ -1308,7 +1308,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-07 15:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-07 15:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22788,7 +22788,7 @@ function cashWire(sid){
   };
 }
 D.pts=D.pts||[];
-const PTS_SECS=[dv('Αγέλη')];                        
+const PTS_SECS=[dv('Αγέλη'),dv('Ομάδα')];            
 const PTS_HATS={[dv('Αγέλη')]:['AAL','YAL'],[dv('Ομάδα')]:['AOP','YOP'],[dv('Κοινότητα')]:['AKA','YKA']};
 const PTS_UNIT={[dv('Αγέλη')]:dv('εξάδων'),[dv('Ομάδα')]:dv('ενωμοτιών'),[dv('Κοινότητα')]:dv('ομίλων')};
 const PTS_ONE={[dv('Αγέλη')]:dv('εξάδα'),[dv('Ομάδα')]:dv('ενωμοτία'),[dv('Κοινότητα')]:dv('όμιλο')};
@@ -22797,7 +22797,8 @@ const ptsCanW=sec=>isAdminUI()||myHats().some(h=>(PTS_HATS[sec]||[]).includes(h.
 const ptsCanCfg=sec=>isAdminUI()||myHats().some(h=>h.role_code===(PTS_HATS[sec]||[])[0]);
 const ptsSees=sec=>PTS_SECS.includes(sec)&&(isAdminUI()||ptsCanW(sec)||scopeSec()===sec);
 const ptsTabOn=()=>PTS_SECS.some(ptsSees);
-const ptsSec=()=>{const s=scopeSec(); return PTS_SECS.includes(s)?s:PTS_SECS.find(ptsSees)||PTS_SECS[0]};
+let PTS_SEL=null;    
+const ptsSec=()=>{ if(PTS_SEL&&ptsSees(PTS_SEL))return PTS_SEL; const s=scopeSec(); return PTS_SECS.includes(s)?s:PTS_SECS.find(ptsSees)||PTS_SECS[0]};
 function ptsNum(raw,kind){
   const s=String(raw==null?'':raw).trim().replace(',','.'); if(s==='')return null;
   const n=Number(s); if(!isFinite(n)||Math.round(n)!==n||Math.abs(n)>500)return NaN;
@@ -22995,6 +22996,7 @@ function ptsDraw(sec){
   v.innerHTML=`<div class="card pad" style="margin-bottom:12px">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <b style="font-size:15px">${t('Βαθμολογία')} ${esc(PTS_UNIT[sec]||'')} · ${esc(sec)} · ${esc(YEAR)}</b>
+        ${PTS_SECS.filter(ptsSees).length>1?`<span class="noprint" style="display:flex;gap:5px">${PTS_SECS.filter(ptsSees).map(x=>`<button class="btn sm${x===sec?' p':''}" data-ptssec="${esc(x)}">${esc(x)}</button>`).join('')}</span>`:''}
         <span class="sp"></span><button class="btn sm noprint" onclick="window.print()">${t('Εκτύπωση')}</button></div>
       <div class="dim" style="font-size:12.5px;margin-top:4px">${t('Επιθεώρηση, παιχνίδια, bonus και πλην — ανά')} ${esc(PTS_ONE[sec]||'')}.</div>
       <div id="ptsStand" style="margin-top:10px">${ptsStandHTML(sec)}</div></div>
@@ -23008,6 +23010,7 @@ function ptsDrawWire(sec){
   perWire();
   document.querySelectorAll('[data-ptsses]').forEach(b=>b.onclick=()=>{ MKPRE={sec, ses:b.dataset.ptsses};
     SUBTAB.attend='put'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); });
+  document.querySelectorAll('[data-ptssec]').forEach(b=>b.onclick=()=>{ PTS_SEL=b.dataset.ptssec; PTS_PER='year'; ptsBody(); });
   const bs=$('ptsBySem'), cut=$('ptsCut');
   if(bs)bs.onchange=async()=>{ const v={by_semester:bs.checked,cut_date:bs.checked?(cut.value||ptsCutDefault()):null};
     if(!await ptsCfgSave(sec,v)){bs.checked=!bs.checked;return}
