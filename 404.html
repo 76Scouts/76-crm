@@ -1308,7 +1308,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-07 16:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-07 16:38'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2050,7 +2050,7 @@ const NAV_LEADER_ALL=['dash','issues','trends','members','leaders','guardians',
   'attend','events','cal','groups','synod','staff','enroll',
   'progAL','progOP','progKA','missing','medical','enroll',
   'ledfile','me','myschools','mycerts','myveh'];
-const NAV_LEADER=['dash','attend','members','guardians','leaders','groups','events','cal',
+const NAV_LEADER=['dash','attend','trends','members','guardians','leaders','groups','events','cal',
   'progAL','progOP','progKA','synod',
   'me','mycerts','myschools','myveh'];
 const NAV_HEAD=[...NAV_LEADER_ALL,'efolder','access','viewas','inbox','intake','desk',
@@ -22991,6 +22991,60 @@ function ptsStandHTML(sec){
       ${th(t('Επιθεώρηση'))}${th(t('Παιχνίδια'))}${th(t('Bonus'))}${th(t('Πλην'))}${th('<b>'+t('Σύνολο')+'</b>')}</tr></thead>
       <tbody>${L.map(x=>`<tr><td>${rows.length?x.place:'—'}</td><td><b>${esc(x.g)}</b></td>${td(x.insp)}${td(x.game)}${td(x.bonus)}${td(x.minus)}${td('<b>'+x.total+'</b>')}</tr>`).join('')}</tbody></table></div>`;
 }
+function ptsChartData(sec){
+  const cfg=PTS_CFG[sec+'|'+YEAR]||null, by=!!(cfg&&cfg.by_semester), cut=by?(cfg.cut_date||ptsCutDefault()):null, per=by?PTS_PER:'year';
+  const S=ptsSessions(sec).filter(s=>(per==='year'||ptsSemOf(s.session_date,cut)===(per==='s1'?1:2))&&ptsRows(s.id).length);
+  if(!S.length)return null;
+  const G=ptsGroups(sec); let tc=1;
+  const groups=G.map(g=>{ const c=(typeof sgCol==='function'&&sgCol((D.sg||[]).find(x=>x.section===sec&&x.scout_year===YEAR&&x.name===g)||{name:g}))||('var(--tc'+(tc++)+')');
+    let run=0; const day=[], cum=[];
+    S.forEach(se=>{ const v=(ptsTotals(ptsRows(se.id),[g])[g]||{total:0}).total; day.push(v); run+=v; cum.push(run); });
+    return {g,c,day,cum}; });
+  return {sec,S,groups};
+}
+function ptsChartSvg(d,W){
+  const n=d.S.length, H=W<520?200:230, L=36, R=12, T=12, B=26;
+  const all=d.groups.flatMap(g=>g.cum), lo=Math.min(0,...all), hi0=Math.max(1,...all);
+  const stepY=Math.pow(10,Math.floor(Math.log10(hi0)))/(hi0/Math.pow(10,Math.floor(Math.log10(hi0)))<2.5?2:1), hi=Math.ceil(hi0/stepY)*stepY;
+  const x=i=>n>1?L+i*(W-L-R)/(n-1):L+(W-L-R)/2, y=v=>T+(1-(v-lo)/((hi-lo)||1))*(H-T-B);
+  const grid=[lo,Math.round((lo+hi)/2),hi].filter((v,i,A)=>A.indexOf(v)===i).map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="trg"/><text x="${L-6}" y="${y(v)+3.5}" class="trt" text-anchor="end">${v}</text>`).join('');
+  const maxT=Math.max(2,Math.floor((W-L-R)/62)), step=Math.max(1,Math.ceil((n-1)/(maxT-1)||1));
+  const tk=[]; for(let i=0;i<n;i+=step)tk.push(i); if(tk[tk.length-1]!==n-1){ if(n-1-tk[tk.length-1]<step*0.6)tk.pop(); tk.push(n-1); }
+  const mon=dd=>{const z=new Date(dd); return z.getDate()+' '+MON[z.getMonth()].slice(0,3)};
+  const ticks=tk.map(i=>`<text x="${x(i)}" y="${H-8}" class="trt" text-anchor="${n>1&&i===0?'start':n>1&&i===n-1?'end':'middle'}">${esc(mon(d.S[i].session_date))}</text>`).join('');
+  const gl=d.groups.map((g,k)=>`<g class="trs" data-k="${k}"><path d="${g.cum.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${g.c}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${n<=20?g.cum.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${g.c}" stroke="var(--card)" stroke-width="2"/>`).join(''):''}</g>`).join('');
+  return {H,L,R,svg:`<svg class="trv-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(t('Βαθμολογία ανά συγκέντρωση')+' — '+d.sec)}">${grid}${ticks}${gl}
+    <line class="trx" x1="0" x2="0" y1="${T}" y2="${H-B}" style="display:none"/><rect class="trh" x="${L-10}" y="0" width="${W-L-R+20}" height="${H}" fill="transparent"/></svg>`};
+}
+function ptsChartPanel(d,i,live){
+  const rows=d.groups.map(g=>({g,v:g.cum[i],dv:g.day[i]})).sort((a,b)=>b.v-a.v);
+  return `<div class="trph"><b>${esc(fdate(d.S[i].session_date))}</b><span class="dim">${live?'':t('τελευταία')}</span></div>`
+    +rows.map(r=>`<div class="trr"><i style="background:${r.g.c};height:3px"></i><span class="trn">${esc(r.g.g)}</span><span><b>${r.v}</b> <span class="dim">(${r.dv>=0?'+':''}${r.dv})</span></span></div>`).join('');
+}
+function ptsChartHTML(sec){
+  const d=ptsChartData(sec); if(!d)return '';
+  return `<div class="card pad trv" id="ptsChartCard" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>${t('Πορεία της βαθμολογίας')}</b>
+      <span class="dim" style="font-size:12px">${t('άθροισμα μετά από κάθε συγκέντρωση · σε παρένθεση οι βαθμοί της μέρας')}</span></div>
+    <div class="trbody" style="margin-top:8px"><div class="trw"></div><div class="trpan" aria-live="polite"></div></div>
+    <div class="trleg">${d.groups.map((g,k)=>`<button class="trc" data-k="${k}"><i style="background:${g.c}"></i>${esc(g.g)} <span class="dim">${g.cum[g.cum.length-1]}</span></button>`).join('')}</div></div>`;
+}
+function ptsChartWire(sec){
+  const card=$('ptsChartCard'), d=ptsChartData(sec); if(!card||!d)return;
+  const box=card.querySelector('.trw'), pan=card.querySelector('.trpan'), W=Math.max(280,Math.floor(box.clientWidth||640));
+  const G0=ptsChartSvg(d,W); box.innerHTML=G0.svg;
+  const svg=box.querySelector('svg'), cx=box.querySelector('.trx'), hit=box.querySelector('.trh'), n=d.S.length, {L,R}=G0;
+  const x=i=>n>1?L+i*(W-L-R)/(n-1):L+(W-L-R)/2;
+  const rest=()=>{ pan.innerHTML=ptsChartPanel(d,n-1,false); cx.style.display='none'; };
+  const show=e=>{ const r=svg.getBoundingClientRect(), vx=(e.clientX-r.left)*W/r.width;
+    let i=n>1?Math.round((vx-L)/((W-L-R)/(n-1))):0; i=Math.max(0,Math.min(n-1,i));
+    cx.setAttribute('x1',x(i)); cx.setAttribute('x2',x(i)); cx.style.display=''; pan.innerHTML=ptsChartPanel(d,i,true); };
+  rest(); hit.addEventListener('pointermove',show); hit.addEventListener('pointerdown',show); hit.addEventListener('pointerleave',rest);
+  card.querySelectorAll('.trc').forEach(b=>b.onclick=()=>{ const k=b.dataset.k, on=!b.classList.contains('sel');
+    card.querySelectorAll('.trc').forEach(z=>z.classList.toggle('sel',on&&z===b));
+    card.querySelectorAll('.trs').forEach(z=>z.classList.toggle('fade',on&&z.dataset.k!==k)); });
+}
 function ptsPerHTML(sec){
   const G=ptsGroups(sec), S=ptsSessions(sec).filter(s=>ptsRows(s.id).length);
   if(!S.length)return '';
@@ -23019,12 +23073,14 @@ function ptsDraw(sec){
         <span class="sp"></span><button class="btn sm noprint" onclick="window.print()">${t('Εκτύπωση')}</button></div>
       <div class="dim" style="font-size:12.5px;margin-top:4px">${t('Επιθεώρηση, παιχνίδια, bonus και πλην — ανά')} ${esc(PTS_ONE[sec]||'')}.</div>
       <div id="ptsStand" style="margin-top:10px">${ptsStandHTML(sec)}</div></div>
+    <div id="ptsChart">${ptsChartHTML(sec)}</div>
     ${ptsCfgHTML(sec)}
     <div id="ptsPer">${ptsPerHTML(sec)}</div>`;
-  ptsDrawWire(sec);
+  ptsDrawWire(sec); ptsChartWire(sec);
 }
 function ptsDrawWire(sec){
-  const st=()=>{const e=$('ptsStand'); if(e){e.innerHTML=ptsStandHTML(sec); perWire()}};
+  const st=()=>{const e=$('ptsStand'); if(e){e.innerHTML=ptsStandHTML(sec); perWire()}
+    const c=$('ptsChart'); if(c){c.innerHTML=ptsChartHTML(sec); ptsChartWire(sec)}};
   const perWire=()=>document.querySelectorAll('[data-ptsper]').forEach(b=>b.onclick=()=>{PTS_PER=b.dataset.ptsper; st()});
   perWire();
   document.querySelectorAll('[data-ptsses]').forEach(b=>b.onclick=()=>{ MKPRE={sec, ses:b.dataset.ptsses};
