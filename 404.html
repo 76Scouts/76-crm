@@ -1307,7 +1307,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-07 13:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-07 13:06'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19118,7 +19118,7 @@ function venueEdit(vid, backEvent){
 function efPower(e,parts){
   const live=parts.filter(x=>!/ακυρ/i.test(x.pa.status||'')&&x.pa.status!==PA_NO);
   const went=parts.filter(x=>paWent(x.pa)), past=evPast(e), est=e.est_count;
-  const split=l=>{const k=l.filter(x=>(x.p.kind||'')==='Μέλος').length; return `${pln(k,'μέλος','μέλη')} · ${l.length-k} βαθμ.`};
+  const split=l=>{const h=l.filter(efHelper).length, k=l.filter(x=>(x.p.kind||'')==='Μέλος').length-h; return `${pln(k,'μέλος','μέλη')} · ${l.length-k-h} βαθμ.${h?' · '+h+' '+plu(h,t('βοηθός'),t('βοηθοί')):''}`};
   const vs=n=>est||est===0?` <span class="dim" style="font-size:13px;font-weight:500">${n-est>=0?'+':''}${n-est}</span>`:'';
   return `<div class="card pad" style="margin-bottom:13px" id="efPow">
     <div style="display:flex;gap:8px;align-items:baseline;margin-bottom:9px"><b>Δύναμη</b>
@@ -19158,12 +19158,14 @@ function efRolesText(e,parts){
   led.sort((x,y)=>rk(x)-rk(y)||sortByName(x.p,y.p));
   const g=GEV[e.id]||{v:[]}, ven=(g.v||[]).map(v=>dlVen(v).name).filter(n=>n&&n!=='—');
   const when=e.end_date&&e.end_date!==e.event_date?fdateW(e.event_date)+' – '+fdateW(e.end_date):fdateW(e.event_date);
-  const kids=parts.filter(x=>x.p&&(x.p.kind||'')==='Μέλος'&&!/ακυρ/i.test(x.pa.status||'')&&x.pa.status!==PA_NO).length;
+  const kids=parts.filter(x=>x.p&&(x.p.kind||'')==='Μέλος'&&!efHelper(x)&&!/ακυρ/i.test(x.pa.status||'')&&x.pa.status!==PA_NO).length;
   const L=['«'+(e.title||'')+'»', when+(ven.length?' · '+ven.join(', '):''),
     t('Αρχηγός δράσης')+': '+(a?nm(a):'—'), t('Δύναμη')+': '+pln(led.length,'βαθμοφόρος','βαθμοφόροι')+' · '+pln(kids,'μέλος','μέλη'), '', t('Καθήκοντα βαθμοφόρων')+':'];
   led.forEach(x=>{ const r=[x.p.id===e.arxigos_id?t('Αρχηγός δράσης'):'', x.pa.role&&x.pa.role!==dv('Συμμετέχων')?x.pa.role:DL.KDEF, x.pa.role2||'']
       .filter((v,i,A)=>v&&A.indexOf(v)===i);
     L.push('• '+nm(x.p)+' — '+r.join(' · ')); });
+  const hl=parts.filter(x=>efHelper(x)&&!/ακυρ/i.test(x.pa.status||'')&&x.pa.status!==PA_NO).sort((x,y)=>sortByName(x.p,y.p));
+  if(hl.length){ L.push('',t('Ανιχνευτές βοηθοί')+':'); hl.forEach(x=>L.push('• '+nm(x.p)+' — '+DL.KHELP)); }
   return L.join('\n');
 }
 function efRolesPanel(e){
@@ -19185,7 +19187,7 @@ function efRolesPanel(e){
       <h2 style="margin:0 0 6px">${esc(v[0]||'')}</h2>${v.slice(1).map(l=>l?`<div>${esc(l)}</div>`:'<div style="height:10px"></div>').join('')}</div>`); };
 }
 function efPeople(e,parts){
-  const led=parts.filter(x=>isLed(x.p)), kids=parts.filter(x=>(x.p.kind||'')==='Μέλος');
+  const led=parts.filter(x=>isLed(x.p)), hlp=parts.filter(efHelper), kids=parts.filter(x=>(x.p.kind||'')==='Μέλος'&&!efHelper(x));
   const ratio=led.length?(kids.length/led.length).toFixed(1):'—';
   const health=parts.some(x=>isLed(x.p)&&dlIsFA(x));
   const lead=!!e.arxigos_id;
@@ -19196,7 +19198,9 @@ function efPeople(e,parts){
   const row=x=>`<tr>
       <td>${statusBar(x.p)}</td>
       <td>${pnm(x.p)}<div class="dim" style="font-size:11.5px">${esc(secOf(x.p)||'')}${regMissing(x.p)?` · <span style="color:var(--warn)">χωρίς εγγραφή ${esc(YEAR)}</span>`:''}${x.pa.channel==='πύλη γονέα'&&!x.pa.paid?' · <span style="color:var(--warn)">άνοιξε τη φόρμα, δεν στάλθηκε</span>':''}</div></td>
-      <td>${isLed(x.p)?`<div style="display:flex;gap:4px;flex-wrap:wrap">${ksel(x,1)}${ksel(x,2)}</div>`:'<span class="dim" style="font-size:12px">Συμμετέχων</span>'}</td>
+      <td>${isLed(x.p)?`<div style="display:flex;gap:4px;flex-wrap:wrap">${ksel(x,1)}${ksel(x,2)}</div>`
+        :efHelper(x)?`<span style="font-size:12px">${esc(DL.KHELP)}</span> <span class="dim" style="font-size:11.5px">· ${esc(t('ανιχνευτής βοηθός'))}</span>`
+        :'<span class="dim" style="font-size:12px">Συμμετέχων</span>'}</td>
       ${multi?`<td>${efDaysCell(x,e)}</td>`:''}
       <td style="text-align:center"><input type="checkbox" data-papaid="${x.pa.id}" ${x.pa.paid?'checked':''} style="width:auto"></td>
       <td style="text-align:right"><button class="btn sm gh" data-parm="${x.pa.id}" style="color:var(--bad)">✕</button></td>
@@ -19208,7 +19212,8 @@ function efPeople(e,parts){
         ${led.length?`<button class="btn sm gh" id="efRoles">${esc(t('Καθήκοντα βαθμοφόρων'))}</button>`:''}
         <span class="sp"></span>
         <span class="pill">${led.length} ${plu(led.length,'βαθμοφόρος','βαθμοφόροι')}</span>
-        <span class="pill">${pln(kids.length,'μέλος','μέλη')}</span>
+        <span class="pill">${pln(kids.length,'μέλος','μέλη')}</span>${hlp.length?`
+        <span class="pill">${hlp.length} ${esc(plu(hlp.length,t('βοηθός'),t('βοηθοί')))}</span>`:''}
         <span class="pill" title="μέλη ανά βαθμοφόρο">αναλογία ${ratio}</span>
       </div>
       ${(!lead||!health)&&parts.length?`<div class="bgap" style="margin-top:9px;border-radius:8px">
@@ -19217,7 +19222,7 @@ function efPeople(e,parts){
     ${parts.length?`<div class="card" style="overflow:auto"><table>
       <thead><tr><th style="width:26px"></th><th>Όνομα</th><th>Καθήκον <span class="dim">κύριο · δεύτερο</span></th>${multi?'<th>Μέρες</th>':''}
         <th style="text-align:center">πλήρωσε</th><th></th></tr></thead>
-      <tbody>${led.map(row).join('')}${kids.map(row).join('')}</tbody></table></div>`
+      <tbody>${led.map(row).join('')}${hlp.map(row).join('')}${kids.map(row).join('')}</tbody></table></div>`
     :`<div class="uc"><div class="ico">${ic('users',26)}</div><h3>Κανείς ακόμη</h3>
        <p>Πρόσθεσε από το μητρώο ή επικόλλησε λίστα ονομάτων.</p></div>`}`;
 }
@@ -19245,6 +19250,12 @@ function efPeopleWire(e){
 }
 
 const efLedHere=(e,p)=>!e.section||ledInSec(p,e.section)||p.category==='ΑΣ'||!!p.is_commissioner||hasOpenHat(p.id,'AS');
+const EF_HELP_SECS=()=>[dv('Αγέλη'),dv('Μικρή Αγέλη'),dv('Ομάδα')];
+function efHelperPool(e){
+  if(!EF_HELP_SECS().includes(e.section||e.owner_section||''))return [];
+  const inn=new Set(efParts(e.id).map(x=>x.person_id));
+  return (D.bh||[]).filter(p=>p.status==='Ενεργός'&&!inn.has(p.id)&&(p.kind||'')==='Μέλος'&&inYear(p)&&secOf(p)===dv('Κοινότητα')).sort(sortByName);
+}
 function efPool(e){
   const inn=new Set(efParts(e.id).map(x=>x.person_id));
   return (D.bh||[]).filter(p=>p.status==='Ενεργός'&&!inn.has(p.id)&&(
@@ -19254,7 +19265,7 @@ function efPool(e){
 }
 async function efAdd(e, ids, role){
   const rows=ids.map(id=>{const led=isLed((D.bh||[]).find(b=>b.id===id)||{}); return {event_id:e.id, person_id:id, status:'δηλώθηκε',
-    role:role||(led?DL.KDEF:'Συμμετέχων'), is_staff:led,
+    role:role||(led?DL.KDEF:'Συμμετέχων'), is_staff:led||role===DL.KHELP,
     channel:'e76', declared_at:new Date().toISOString()}});
   if(!rows.length)return 0;
   const {data,error}=await sb.from('participations').insert(rows).select();
@@ -19268,6 +19279,7 @@ function efAddPanel(e){
     const list=pool.filter(p=>!qq||nameKey(nm(p)+' '+(p.scout_name||'')).includes(qq));
     const ledAll=list.filter(isLed), led=ledAll.filter(p=>efLedHere(e,p)), ledO=ledAll.filter(p=>!efLedHere(e,p)),
           kids=list.filter(p=>(p.kind||'')==='Μέλος').slice(0,120);
+    const hlp=efHelperPool(e).filter(p=>!qq||nameKey(nm(p)+' '+(p.scout_name||'')).includes(qq));
     const grp=(t,l)=>l.length?`<div class="sec"><h3>${t}</h3><span class="n">${l.length}</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">${l.map(p=>`
         <button class="btn sm gh" data-efp="${p.id}">${esc(nm(p))}</button>`).join('')}</div>`:'';
@@ -19280,13 +19292,19 @@ function efAddPanel(e){
         <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
           <button class="btn sm" id="efAllK">Όλα τα μέλη (${pool.filter(p=>(p.kind||'')==='Μέλος').length})</button>
           <button class="btn sm gh" id="efAllL">Όλοι οι βαθμοφόροι${e.section?' '+esc(e.section):''} (${pool.filter(p=>isLed(p)&&efLedHere(e,p)).length})</button></div>
-        ${grp(e.section?t('Βαθμοφόροι')+' '+e.section:t('Βαθμοφόροι'),led)}${grp('Μέλη',kids)}${grp(t('Άλλοι βαθμοφόροι'),ledO)}
-        ${!list.length?'<div class="dim">— κανείς —</div>':''}
+        ${grp(e.section?t('Βαθμοφόροι')+' '+e.section:t('Βαθμοφόροι'),led)}${grp('Μέλη',kids)}
+        ${hlp.length?`<div class="sec"><h3>${esc(t('Ανιχνευτές ως βοηθοί'))}</h3><span class="n">${hlp.length}</span></div>
+          <div class="dim" style="font-size:12px;margin:-4px 0 6px">${esc(t('μπαίνουν με καθήκον «Βοηθός Προγράμματος» — χωρίς Ν91 και εντολή'))}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">${hlp.map(p=>`<button class="btn sm gh" data-efh="${p.id}">${esc(nm(p))}</button>`).join('')}</div>`:''}
+        ${grp(t('Άλλοι βαθμοφόροι'),ledO)}
+        ${!list.length&&!hlp.length?'<div class="dim">— κανείς —</div>':''}
       </div>`;
     const qi=$('efq'); qi.oninput=()=>{q=qi.value;
       const p=qi.selectionStart; draw(); const n=$('efq'); if(n){n.focus();n.setSelectionRange(p,p)}};
     document.querySelectorAll('[data-efp]').forEach(b=>b.onclick=async()=>{
       await efAdd(e,[b.dataset.efp]); draw(); V_efolder();});
+    document.querySelectorAll('[data-efh]').forEach(b=>b.onclick=async()=>{
+      await efAdd(e,[b.dataset.efh],DL.KHELP); draw(); V_efolder();});
     $('efAllK').onclick=async()=>{const ids=efPool(e).filter(p=>(p.kind||'')==='Μέλος').map(p=>p.id);
       if(!ids.length)return; if(!await uiAsk(ids.length===1?'Θα δηλωθεί 1 μέλος.':'Θα δηλωθούν '+pln(ids.length,'μέλος','μέλη')+'.'))return;
       const n=await efAdd(e,ids); toast(n+' μέλη'); draw(); V_efolder();};
@@ -20487,6 +20505,7 @@ const DL={
     'Οδηγός Αυτοκινήτου Ασφαλείας','Μάγειρας','Υπεύθυνος Υλικού','Βαθμοφόρος Προγράμματος','Συνοδός Βαθμοφόρος','Βοηθός Προγράμματος'],
   KATHX:[dv('Φωτογράφος'),dv('Υπεύθυνος SfH'),dv('Υπεύθυνος Τροφοδοσίας')],
   KDEF:dv('Βαθμοφόρος Προγράμματος'),
+  KHELP:dv('Βοηθός Προγράμματος'),
   METAFORA:['Δημόσιο Λεωφορείο','Ιδιωτικό Λεωφορείο','Πορεία','Αυτοκίνητα Γονέων','ΙΧ Βαθμοφόρων','ΙΧ Άλλα','Αεροπλάνο','Τραίνο','Βάρκα'],
   EGKRISI:['Τηλεφωνική Επικοινωνία','Επιστολή','Ηλεκτρονικό Ταχυδρομείο'],
   XOROI:['Πλατάνια','Λούματα των Αετών','Βαβατσινιά','Κάππαρης','Κόρνος'],
@@ -20529,8 +20548,10 @@ function dlEidosAuto(e){ const n=dlNights(e), ka=dlTmima(e)==='Κοινότητ�
 const dlEidos=e=>e.eidos_spk||dlEidosAuto(e);
 const dlEn=e=>DL.EIDOS.indexOf(dlEidos(e))+1;
 const dlCamp=e=>dlEn(e)>=5;
-const dlStaff=e=>efPersons(e.id).filter(x=>isLed(x.p)&&efdLive(x.pa));
-const dlKids=e=>efPersons(e.id).filter(x=>!isLed(x.p)&&efdLive(x.pa));
+const efHelper=x=>!!x.p&&!isLed(x.p)&&x.pa.role===DL.KHELP;
+const dlStaff=e=>efPersons(e.id).filter(x=>x.p&&isLed(x.p)&&efdLive(x.pa));
+const dlHelpers=e=>efPersons(e.id).filter(x=>efHelper(x)&&efdLive(x.pa));
+const dlKids=e=>efPersons(e.id).filter(x=>x.p&&!isLed(x.p)&&!efHelper(x)&&efdLive(x.pa));
 const dlP=id=>id?(D.bh||[]).find(b=>b.id===id)||null:null;
 const dlIsFA=x=>x.pa.role==='Πρώτος Βοηθός'||x.pa.role2==='Πρώτος Βοηθός';
 function dlAppt(p,day){ day=day||new Date().toISOString().slice(0,10);
@@ -20585,7 +20606,7 @@ function dlChecks(e,g){
     .forEach(([k,t])=>{ if(!e[k])add(3,t) });
   if(!(e.transport||[]).length)add(3,'Μέσο μεταφοράς');
   if(e.sea_other==null)add(3,'Θαλάσσιες δραστηριότητες: Ναι ή Όχι',false);
-  const kids=dlKids(e), noAm=kids.filter(x=>!x.p.registry_no), noDob=[...kids,...staff].filter(x=>!dobOf(x.p));
+  const kids=[...dlKids(e),...dlHelpers(e)], noAm=kids.filter(x=>!x.p.registry_no), noDob=[...kids,...staff].filter(x=>!dobOf(x.p));
   if(noAm.length)add(3,pln(noAm.length,'μέλος','μέλη')+' χωρίς Α.Μ.',false);
   if(noDob.length)add(3,pln(noDob.length,'άτομο','άτομα')+' χωρίς ημερομηνία γέννησης',false);
   return out;
@@ -20870,7 +20891,7 @@ function dlData(e,g,med){
     march:e.march_days||null, sail:e.sail_days||null, sea:e.sea_other==null?null:(e.sea_other?'Ναι':'Όχι'),
     times:{arrive:e.arrive_time,depart:e.depart_time,ret:e.return_time,release:e.release_time}, transport:e.transport||[],
     spk:spk?spk.spk_site:'ο χώρος δεν ανήκει στο ΣΠΚ', venues:ven, ndays:days.length,
-    staff:staff.map(x=>row(x,true)), kids:kids.map(x=>row(x,false)),
+    staff:[...staff.map(x=>row(x,true)),...dlHelpers(e).sort((x,y)=>sortByName(x.p,y.p)).map(x=>row(x,false))], kids:kids.map(x=>row(x,false)),
     sign:{as:(dlP(asHat&&asHat.person_id)&&nm(dlP(asHat.person_id)))||'', eps:eps?cmName(eps):''},
     pending:dlChecks(e,g).map(c=>c.t)};
 }
@@ -20878,7 +20899,7 @@ function dlExport(e){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xlsm,.xltm,.xltx';
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f)return;
     const g=await dlLoad(e.id);
-    const all=[...dlStaff(e),...dlKids(e)];
+    const all=[...dlStaff(e),...dlHelpers(e),...dlKids(e)];
     const withMed=all.length&&await uiAsk('Να μπουν και τα διατροφικά στη στήλη «Διατροφικές ιδιαιτερότητες»;\n\nΘα καταγραφεί ανάγνωση ιατρικών για '+pln(all.length,'άτομο','άτομα')+' (σκοπός: Δελτίο Δράσης ΣΠΚ).',{ok:'Ναι, με διατροφικά',cancel:'Χωρίς'});
     let med=null;
     if(withMed){ toast('Διαβάζω τα διατροφικά…'); const r=await efdMedMany(all.map(x=>x.p.id),'Δελτίο Δράσης ΣΠΚ · '+(e.title||'')); med=r.med;
