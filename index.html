@@ -1309,7 +1309,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-08 11:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-09 10:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -15616,6 +15616,9 @@ function trainWhoBody(){
           σε ενδιαφέρει, κάποιος πρέπει να τη δηλώσει.</div></div>`:''}`;
 }
 
+const schWhen=e=>{ if(!e||!e.event_date)return t('χωρίς ημερομηνία');
+  const d=typeof fdateW==='function'?fdateW(e.event_date):fdate(e.event_date);
+  return d+(e.end_date&&e.end_date!==e.event_date?' – '+fdate(e.end_date):'')+(e.place?' · '+e.place:''); };
 function trainAppsBody(){
   const rows=(D.sapp||[]).filter(a=>a.status!=='ακυρώθηκε')
     .map(a=>({a, p:D.bh.find(b=>b.id===a.person_id), e:(D.ev||[]).find(x=>x.id===a.event_id)}))
@@ -15674,10 +15677,9 @@ function saAdminBlock(){
     <div class="muted" style="margin-top:4px;font-size:13px">Το «<b>την πέρασε</b>» γράφει στο μητρώο —
       γι' αυτό ζητά κωδικό σχολής και Α/Α. Χωρίς αυτά η εγγραφή δεν ταιριάζει ποτέ με το e-Scouts.</div>
     <div style="overflow:auto;margin-top:10px"><table><thead><tr>
-      <th>Ποιος</th><th>Σχολή</th><th class="hide-s">Πότε</th><th>Κατάσταση</th><th></th></tr></thead><tbody>
+      <th>Ποιος</th><th>Σχολή · πότε</th><th>Κατάσταση</th><th></th></tr></thead><tbody>
       ${rows.map(({a,p,e})=>`<tr>
-        <td>${pnm(p)}</td><td style="font-size:13px">${esc(e.title)}</td>
-        <td class="hide-s dim" style="font-size:12px">${fdate(e.event_date)}</td>
+        <td>${pnm(p)}</td><td style="font-size:13px">${esc(e.title)}<div class="dim" style="font-size:12px;white-space:nowrap">${esc(schWhen(e))}</div></td>
         <td><span class="pill"${SA_COL[a.status]?` style="background:var(--${SA_COL[a.status]}bg);color:var(--${SA_COL[a.status]});border-color:transparent"`:''}>${esc(a.status)}</span></td>
         <td style="white-space:nowrap">${a.status==='την πέρασε'?'<span class="dim" style="font-size:12px">στο μητρώο</span>'
           :`<select class="sast" data-id="${a.id}" style="max-width:150px">
@@ -26662,7 +26664,7 @@ function inboxAllBody(){
   (D.sapp||[]).filter(a=>a.status==='δηλώθηκε').forEach(a=>{
     const e=(D.ev||[]).find(v=>v.id===a.event_id)||{};
     rows.push({tab:'sch', k:'Σχολή', ic:'award', pid:a.person_id,
-      what:esc(e.title||'σχολή'), at:a.declared_at});
+      what:esc(e.title||'σχολή')+(e.event_date?`<div class="dim" style="font-size:12px">${esc(schWhen(e))}</div>`:''), at:a.declared_at});
   });
   rows.sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));
   const n=inboxCounts();
