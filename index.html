@@ -1309,7 +1309,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-09 10:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-09 11:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -18063,6 +18063,21 @@ function annSheet(html, onClose){
   return {ov, box:ov.firstElementChild, close};
 }
 const annText=s=>esc(s||'').replace(/(https:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>').replace(/\n/g,'<br>');
+function annKids(ev){
+  if(!ev||typeof myKids!=='function')return [];
+  const ks=myKids().slice(), me=typeof meRec==='function'?meRec():null;
+  if(me&&typeof self16==='function'&&self16(me)&&!ks.some(x=>x.kid.id===me.id))ks.push({kid:me});
+  return ks.filter(({kid:k})=>k&&kidForEv(ev,k)&&(typeof evInvOk!=='function'||evInvOk(ev,k.id,secOf(k))));
+}
+function annSignHTML(ev){
+  if(!ev||!ev.form_url)return '';
+  const ks=annKids(ev); if(!ks.length)return '';
+  const today=new Date().toISOString().slice(0,10), h=kidActBtns(ev,ks,today); if(!h.trim())return '';
+  return `<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px">
+    <div style="font-size:13px;font-weight:600">${esc(t('Δήλωση συμμετοχής'))}${ev.signup_closes?` <span class="dim" style="font-weight:400">· ${esc(t('μέχρι'))} ${esc(fdate(ev.signup_closes))}</span>`:''}</div>
+    <div class="dim" style="font-size:12px;margin:2px 0 7px">${esc(t('Η φόρμα ανοίγει ήδη συμπληρωμένη με τα στοιχεία που έχουμε.'))}</div>
+    <div data-evbtns="${ev.id}" style="display:flex;gap:6px;flex-wrap:wrap">${h}</div></div>`;
+}
 async function annOpen(a){
   const img=annImg(a);
   const ev=a.event_id&&(D.ev||[]).find(e=>e.id===a.event_id);
@@ -18071,6 +18086,7 @@ async function annOpen(a){
     <div class="dim" style="font-size:12.5px;margin:4px 0 12px">${esc(annMeta(a))}</div>
     ${a.body?`<div style="font-size:14px;line-height:1.6">${annText(a.body)}</div>`:''}
     ${ev?`<div style="margin-top:12px;font-size:13.5px">📅 <b>${esc(ev.title)}</b> <span class="dim">· ${esc(fdate(ev.event_date))}</span></div>`:''}
+    ${annSignHTML(ev)}
     ${(a.files||[]).length?`<div style="margin-top:12px;display:grid;gap:6px">${a.files.map((f,i)=>`<button class="btn sm" data-annf="${i}" style="justify-self:start">📄 ${esc(f.name||'PDF')}</button>`).join('')}</div>`:''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
       ${a.link_url?`<a class="btn sm p" href="${esc(a.link_url)}" target="_blank" rel="noopener">${a.source==='feed'?t('Όλο το άρθρο στο 76.life'):t('Περισσότερα')} ↗</a>`:''}
@@ -18078,6 +18094,7 @@ async function annOpen(a){
       <span style="flex:1"></span>
       <button class="btn sm gh" id="annUnread">${t('Σήμανση ως νέα')}</button>
       <button class="btn sm" data-close>${t('Κλείσιμο')}</button></div>`, ()=>annFill());
+  if(ev&&S.box.querySelector('[data-evbtns]'))kidActWire(annKids(ev),S.box);
   S.box.querySelectorAll('[data-annf]').forEach(b=>b.onclick=async()=>{
     const f=a.files[+b.dataset.annf]; const {data}=await sb.storage.from('e76').createSignedUrl(f.path,300);
     if(data&&data.signedUrl)window.open(data.signedUrl,'_blank','noopener'); else toast(t('Το αρχείο δεν άνοιξε.')); });
