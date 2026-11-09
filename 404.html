@@ -447,6 +447,8 @@ table.wl2 tr:last-child td{border-bottom:0}
 .wl2dot.c-ok{background:var(--ok)} .wl2dot.c-warn{background:var(--warn)}
 .wl2dot.c-acc{background:var(--acc)} .wl2dot.c-bad{background:var(--bad)}
 .wl2dot.c-num{background:var(--warn);border-radius:50%}
+.wl2dot.c-dim{background:var(--ink3)}
+.wl2st.c-ok{color:var(--ok)} .wl2st.c-warn{color:var(--warn)} .wl2st.c-acc{color:var(--acc)} .wl2st.c-bad{color:var(--bad)} .wl2st.c-dim{color:var(--ink3)}
 @media(max-width:820px){ .wl2acts .btn{margin:2px 0 0 3px} .wl2num{width:34px} }
 .wlprio{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.04em;
   background:var(--ok);color:#fff;border-radius:3px;padding:0 4px;margin-left:5px;vertical-align:middle}
@@ -1309,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-09 11:52'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-09 12:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3772,24 +3774,26 @@ function statusBar(p,mini){
 
 
 const LEGENDS=()=>({
-  sbarMember:{t:'Η μπάρα δίπλα στο όνομα — μέλη', items:[
+  sbarMember:{t:'Η μπάρα δίπλα στο όνομα — μέλη', on:V=>lgdBars(V,4), items:[
     ['var(--ageli)',t('1η λωρίδα: ο κλάδος — χρώμα και αρχικό (Α Αγέλη · Ο Ομάδα · Κ Κοινότητα · Δ Δίκτυο)')],
     ['#27ae60','2η: εγγεγραμμένο φέτος'],['#f39c12','2η: η εγγραφή εκκρεμεί'],
     ['#27ae60','3η: υπάρχει ιατρικό δελτίο'],
     ['#27ae60','4η: υπάρχει επαφή έκτακτης ανάγκης'],
     ['var(--line)','γκρι σε οποιαδήποτε θέση: λείπει']]},
 
-  sbarLeader:{t:'Η μπάρα δίπλα στο όνομα — βαθμοφόροι', items:[
+  sbarLeader:{t:'Η μπάρα δίπλα στο όνομα — βαθμοφόροι', on:V=>lgdBars(V,5), items:[
     ['var(--ageli)',t('1η λωρίδα: ο κλάδος — χρώμα και αρχικό (Α Αγέλη · Ο Ομάδα · Κ Κοινότητα · Δ Δίκτυο)')],
     ...['ok','soon','expired'].map(k=>[CERTC[k],'2η: '+CERTTXT[k]]),
-    ...TRC.map((c,i)=>[c,'3η: '+TRTXT[i]]),
+    [CERTC.hidden,t('2η, πολύ ανοιχτό γκρι: το Ν.91(Ι) δεν σου φαίνεται — το βλέπουν ο ίδιος, ο Αρχηγός Τμήματός του και ο Α.Σ.')],
+    [TRC[1],'3η: '+TRTXT[1]],[TRC[2],'3η: '+TRTXT[2]],[SB_EMPTY,t('3η, γκρι: χωρίς εκπαίδευση')],
     ...Object.keys(RING).filter(k=>RING[k]).map(k=>[RING[k],'4η: '+RINGTXT[k]]),
     ['#27ae60','5η: εγγεγραμμένος φέτος'],
     ['var(--line)','γκρι σε οποιαδήποτε θέση: λείπει']]},
 
-  dot:{t:'Η τελεία δίπλα στο όνομα', items:[
+  dot:{t:'Η τελεία δίπλα στο όνομα', on:V=>!!V.querySelector('.ldot'), items:[
     ['#27ae60','αριστερό μισό: κατάσταση Ν.91(Ι)'],
     ['#f4c20d','δεξί μισό: εκπαιδευτικό επίπεδο'],
+    [TRC[0],t('δεξί μισό κόκκινο: καμία εκπαίδευση')],
     ['#22c55e','ο δακτύλιος γύρω: εντολή ή ανάθεση σε ισχύ'],
     ['var(--ink3)','χωρίς δακτύλιο: δεν έχει αιτηθεί']]},
 
@@ -3799,11 +3803,19 @@ const LEGENDS=()=>({
     [CERTC.expired,CERTTXT.expired],
     [CERTC.none,CERTTXT.none]]},
 
-  sections:{t:'Χρώματα κλάδων — κλειδωμένα πανελλαδικά',
+  sections:{t:'Χρώματα κλάδων — κλειδωμένα πανελλαδικά', on:lgdSecs,
     n:'Το χρώμα κάθε κλάδου είναι κοινό σε όλα τα Συστήματα. Αλλάζεις ονομασία, τοτέμ και λογότυπο — όχι χρώμα.',
     items:(D.sc||[]).filter(x=>x.active!==false)
       .map(x=>[x.color||SECCOLOR[x.section],
                (x.label||x.section)+(x.color_locked===false?' · ξεκλείδωτο':'')])},
+
+  marks:{t:t('Παρουσίες'), on:V=>!!V.querySelector('.mk[data-m]'), items:[
+    ['var(--ok)',t('Παρών')],['var(--bad)',t('Απών — μετρά στις απουσίες')],
+    ['var(--acc)',t('Σε δράση — δεν είναι απουσία, μετρά με τους παρόντες')],
+    ['var(--line)',t('χωρίς σημείωση — δεν μετρά πουθενά')]]},
+  trend:{t:t('Διαγράμματα'), on:V=>!!V.querySelector('.trv'), items:[
+    ['var(--ink)',t('χοντρή γραμμή: όλο το τμήμα')],
+    ['#3a9fe0',t('λεπτές χρωματιστές: μία ανά υποομάδα, με το χρώμα της')]]},
 
   fees:{t:'Χρέωση', items:[
     ['var(--warn)','πλήρωσε διαφορετικά από το οφειλόμενο'],
@@ -3836,28 +3848,44 @@ const LEGEND_OF={
   medical:['sbarMember'], missing:['sbarMember','accounts'], certs:['certs','sections'], warrants:['sbarLeader'],
   training:['sbarLeader'], enroll:['sbarMember'], dash:['sections'],
   year:['sections'], staff:['certs','sections'], org:['sections'],
-  fees:['fees'], grants:['grants'], access:['grants'], attend:['sections'], groups:['sections'],
+  fees:['fees'], grants:['grants'], access:['grants'], attend:['marks','trend'], groups:['sections'],
   accounts:['accounts'], expiry:['expiry','certs'], synod:['sections'], desk:['sbarMember','sections'],
   transfers:['sections'], intake:['sbarMember'], handover:['sbarMember','sections'],
   calls:['sections'], issues:['certs','sections'], rollover:['sections'],
   mykids:['sbarMember'], kidfile:['sections'], kidprog:['sections'],
   dedupe:['sections'], mails:['accounts'],
   me:['dot','certs'], myatt:['sections'], badges:['sections'],
-  sessions:['sections'], mark:['sections'], events:['sections'], cal:['sections'],
-  reg:['fees'], myfees:['owing'], guardians:['accounts'], trends:['sections']
+  sessions:['sections'], mark:['marks'], events:['sections'], cal:['sections'],
+  reg:['fees'], myfees:['owing'], guardians:['accounts'], trends:['trend']
 };
+function lgdBars(V,n){return [...V.querySelectorAll('.sbar')].some(b=>b.children.length===n)}
+function lgdSecs(V){
+  if(V.querySelector('.sbar,.sbsec'))return true;
+  const h=V.innerHTML.toLowerCase();
+  if(/var\(--(ageli|omada|koin|diktyo)\)/.test(h))return true;
+  const cs=new Set([...Object.values(SECFALLBACK),...(D.sc||[]).map(x=>x.color)].filter(Boolean).map(c=>String(c).toLowerCase()));
+  return [...cs].some(c=>h.includes(c));
+}
 function legendHTML(route){
   const keys=LEGEND_OF[route]||[];
   if(!keys.length)return '';
+  return `<details class="lgd" data-lgk="${keys.join(',')}" ontoggle="lgdFill(this)"><summary>${ic('info',15)}<span>Τι σημαίνουν τα χρώματα και τα σήματα σε αυτή τη σελίδα</span></summary>
+    <div class="lgdbody"></div></details>`;
+}
+function lgdBlocks(keys,V){
   const L=LEGENDS();                        
-  const blocks=keys.map(k=>L[k]).filter(x=>x&&x.items&&x.items.length);
-  if(!blocks.length)return '';
-  return `<details class="lgd"><summary>${ic('info',15)}<span>Τι σημαίνουν τα χρώματα και τα σήματα σε αυτή τη σελίδα</span></summary>
-    <div class="lgdbody">${blocks.map(b=>`<div class="lgdb">
+  return keys.map(k=>L[k]).filter(x=>x&&x.items&&x.items.length&&(!x.on||x.on(V)));
+}
+function lgdFill(el){
+  if(!el.open)return;
+  const V=$('view')||document.body, body=el.querySelector('.lgdbody');
+  const blocks=lgdBlocks((el.dataset.lgk||'').split(',').filter(Boolean),V);
+  body.innerHTML=blocks.length?blocks.map(b=>`<div class="lgdb">
       <div class="lgdt">${esc(b.t)}</div>
       ${b.n?`<div class="dim" style="font-size:11.5px;margin:-2px 0 5px">${esc(b.n)}</div>`:''}
       ${b.items.map(([c,t])=>`<div class="lgdi"><i style="background:${c}"></i><span>${esc(t)}</span></div>`).join('')}
-    </div>`).join('')}</div></details>`;
+    </div>`).join('')
+    :`<div class="dim">${esc(t('Αυτή τη στιγμή δεν φαίνεται στην οθόνη κανένα χρώμα ή σήμα που χρειάζεται εξήγηση.'))}</div>`;
 }
 
 const PHOTO=new Map();
@@ -4783,15 +4811,41 @@ function wireVQ(){
   makeSortable(); wireChips();    
 }
 
-function legendScope(){
-  if(ROUTE==='staff') return (SUBTAB['staff']||'board')==='tree'?'tree':'staff';
-  if(['members','leaders','medical','enroll','desk','intake','handover','mykids','viewas'].includes(ROUTE))return 'bar';
-  if(ROUTE==='missing'&&(SUBTAB.missing||'med')==='med')return 'bar';
-  if(ROUTE==='access'&&SUBTAB.access==='viewas')return 'bar';
-  return 'all';
+function legPageHTML(F,row){
+  const sw=(bg,bd)=>`<span style="display:inline-block;width:56px;height:22px;border-radius:7px;background:${bg};border:1px solid ${bd||'var(--line2)'}"></span>`;
+  const ln=(c,h)=>`<span style="display:inline-block;width:56px;height:${h||3}px;border-radius:2px;background:${c}"></span>`;
+  const pill=(c,b,txt)=>`<span class="pill" style="font-size:11px;background:var(--${c}bg);color:var(--${c});border-color:transparent">${txt}</span>`;
+  let h='';
+  if(F.mk)h+=`<div class="dsec"><h4>${esc(t('Παρουσίες — κάθε όνομα είναι κουμπί'))}</h4>
+    <div class="dim" style="font-size:12px;margin-bottom:8px">${esc(t('Άγγιγμα: Παρών → Απών → Σε δράση → σβήνει.'))}</div>
+    ${row(sw('var(--okbg)','#9ed3bd'),t('Παρών'),'')}
+    ${row(sw('var(--badbg)','#eab8b0'),t('Απών'),t('μετρά στις απουσίες και στο «Χρειάζονται ένα τηλέφωνο»'))}
+    ${row(sw('var(--accbg)','var(--accln)'),t('Σε δράση'),t('μόνο του αν είναι γραμμένο σε δράση εκείνη τη μέρα, αλλιώς με το χέρι — δεν είναι απουσία, μετρά μαζί με τους παρόντες'))}
+    ${row(sw('var(--card)'),t('Χωρίς σημείωση'),t('δεν μετρά πουθενά — ούτε παρών ούτε απών'))}
+    ${row(`<span class="pill" style="font-size:10.5px;background:var(--accbg);border-color:var(--accln)">${esc(NEW_LABEL)}</span>`,t('Νέο μέλος'),t('οι πρώτες εβδομάδες — πρόσεξέ το'))}
+    ${row(sw('var(--badbg)','var(--bad)'),t('Κόκκινο περίγραμμα'),t('η σημείωση δεν αποθηκεύτηκε — «Έλεγχος αποθήκευσης» κάτω'))}</div>`;
+  if(F.tr)h+=`<div class="dsec"><h4>${esc(t('Διαγράμματα'))}</h4>
+    ${row(ln('var(--ink)',4),t('Χοντρή μαύρη γραμμή'),t('όλο το τμήμα (μόνο στις Τάσεις παρουσιών)'))}
+    ${row(ln('#3a9fe0'),t('Λεπτές χρωματιστές γραμμές'),t('μία ανά υποομάδα, με το χρώμα της — αν δεν ορίστηκε, από το όνομα (Κιτρινωποί → κίτρινο)'))}
+    ${row(`<span class="trc sel" style="pointer-events:none"><i style="background:#3a9fe0"></i>${esc(t('όνομα'))}</span>`,t('Υπόμνημα κάτω από το διάγραμμα'),t('πάτα μία υποομάδα για να ξεχωρίσει'))}
+    ${row(`<span class="dim" style="font-size:12px">${esc(t('πλαίσιο δίπλα'))}</span>`,t('Οι τιμές'),t('η τελευταία συγκέντρωση· όσο περνάς ή αγγίζεις το διάγραμμα, εκείνη η μέρα'))}
+    <div class="dim" style="font-size:11.5px;margin-top:6px">${esc(t('Παρουσίες: % των γραμμένων — το «Σε δράση» μετρά μαζί με τους παρόντες. Βαθμολογία: το άθροισμα μετά από κάθε συγκέντρωση, σε παρένθεση οι βαθμοί της μέρας.'))}</div></div>`;
+  if(F.pts&&!F.tr)h+=`<div class="dsec"><h4>${esc(t('Βαθμολογία'))}</h4><div class="dim" style="font-size:12px">${esc(t('Ανά υποομάδα, ποτέ ανά παιδί. Πλην: γράφεις τον αριθμό, μετρά αρνητικά. Κενό κουτάκι = δεν μπήκε βαθμός.'))}</div></div>`;
+  if(F.certs)h+=`<div class="dsec"><h4>${esc(t('Πιστοποιητικά δράσης'))}</h4>
+    <div class="dim" style="font-size:12px;margin-bottom:8px">${esc(t('Ισχύς την ημέρα της δράσης — όχι σήμερα.'))}</div>
+    ${row(pill('bad','',t('απαραίτητο')),t('Το ζητά η δράση'),t('από τα Γενικά: μεταφορά, θάλασσα, ιστιοπλοΐα, κατασκήνωση'))}
+    ${row(pill('ok','',t('σε ισχύ')),t('Χαρτί σε ισχύ'),t('ή «δεν χρειάζεται ως το …» για νέο όχημα'))}
+    ${row(pill('bad','',t('έληξε')),t('Έληξε πριν τη δράση'),'')}
+    ${row(pill('warn','',t('χωρίς λήξη')),t('Χωρίς ημερομηνία λήξης'),t('έλεγξέ το'))}
+    ${row(`<span class="pill" style="font-size:11px">${esc(t('λείπει'))}</span>`,t('Δεν υπάρχει'),'')}
+    ${row('📄',t('Άνοιγμα / λήψη'),t('μόνο όπου επιτρέπεται να το ανοίξεις'))}</div>`;
+  return h;
 }
 function showLegend(){
-  const SCOPE=legendScope();
+  const VW=$('view')||document.body, bars=[...VW.querySelectorAll('.sbar')];
+  const F={mem:bars.some(b=>b.children.length===4), led:bars.some(b=>b.children.length===5), dot:!!VW.querySelector('.ldot'),
+    mk:!!VW.querySelector('.mk[data-m]'), tr:!!VW.querySelector('.trv'), certs:!!VW.querySelector('#efCertAll'), pts:!!VW.querySelector('#ptsBox,#ptsChartCard')};
+  const anyBar=F.mem||F.led, any=anyBar||F.dot||F.mk||F.tr||F.certs||F.pts;
   const row=(sym,t,sub)=>`<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
      <span style="flex:0 0 78px">${sym}</span>
      <div><div style="font-size:13.5px">${t}</div>${sub?`<div class="dim" style="font-size:12px">${sub}</div>`:''}</div></div>`;
@@ -4801,16 +4855,18 @@ function showLegend(){
 
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
       <div style="font-size:17px;font-weight:600">Υπόμνημα</div>
-      <div class="dim" style="font-size:12.5px">Τι δείχνει η ράβδος δίπλα σε κάθε όνομα</div></div>
+      <div class="dim" style="font-size:12.5px">${esc(t('Τι σημαίνουν τα χρώματα και τα σήματα σε αυτή τη σελίδα'))}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
 
-    <div class="dsec">
+    ${any?'':`<div class="dsec"><div class="muted" style="font-size:13px;line-height:1.6">${esc(t('Αυτή η σελίδα δεν έχει χρώματα ή σήματα που χρειάζονται εξήγηση.'))}</div></div>`}
+    ${legPageHTML(F,row)}
+    ${!anyBar?'':`<div class="dsec">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
         Η ράβδος έχει <b>σταθερές θέσεις</b>. Το <b>πρώτο</b> τμήμα είναι πάντα ο κλάδος·
         τα υπόλοιπα αλλάζουν νόημα ανάλογα με το αν κοιτάς <b>μέλος</b> ή <b>βαθμοφόρο</b>.
-        Γκρίζο σημαίνει πάντα <b>δεν υπάρχει ακόμη</b> — όχι λάθος.</div></div>
+        Γκρίζο σημαίνει πάντα <b>δεν υπάρχει ακόμη</b> — όχι λάθος.</div></div>`}
 
-    ${SCOPE==='staff'||SCOPE==='tree'?(()=>{
+    ${F.dot?(()=>{
       const half=(a,b,r)=>`<span class="dot ldot" style="${r?`box-shadow:0 0 0 2px ${r};`:''}background:linear-gradient(90deg,${a} 0 50%,${b} 50% 100%)"></span>`;
       return `
     <div class="dsec"><h4>Ο κύκλος της Διάρθρωσης</h4>
@@ -4834,7 +4890,7 @@ function showLegend(){
         Στο <b>Στήσιμο</b> της επόμενης χρονιάς <b>κανείς</b> δεν έχει δακτύλιο —
         δεν έχουν εκδοθεί ακόμη εντολές. Αυτό είναι η πληροφορία, όχι σφάλμα.</div>
     </div>`})():''}
-    ${SCOPE==='staff'||SCOPE==='tree'?'':`
+    ${!anyBar?'':`${!F.mem?'':`
     <div class="dsec"><h4>Μέλος — τέσσερα τμήματα</h4>
       <div class="dim" style="font-size:12px;margin-bottom:8px">κλάδος · εγγραφή · ιατρικό · επαφή έκτακτης ανάγκης</div>
       ${row(bar('Αγέλη',[G,G,G]),'Όλα εντάξει','εγγεγραμμένο, με ιατρικό και επαφή')}
@@ -4844,7 +4900,7 @@ function showLegend(){
       ${row(bar('Ομάδα',[E,E,E]),'Χωρίς εγγραφή φέτος','μόνο ο κλάδος χρωματιστός')}
     </div>
 
-    <div class="dsec"><h4>Βαθμοφόρος — πέντε τμήματα</h4>
+    `}${!F.led?'':`<div class="dsec"><h4>Βαθμοφόρος — πέντε τμήματα</h4>
       <div class="dim" style="font-size:12px;margin-bottom:8px">κλάδος · Ν.91(Ι) · εκπαίδευση · εντολή · εγγραφή</div>
       ${row(bar('Αγέλη',[CERTC.ok,TRC[2],RING.entoli,G]),'Όλα εντάξει',
             'Ν.91(Ι) σε ισχύ · Βασική εκπαίδευση · ενεργή Εντολή Διοίκησης')}
@@ -4854,6 +4910,7 @@ function showLegend(){
       ${row(bar('Κοινότητα',[E,TRC[2],RING.entoli,G]),'Χωρίς Ν.91(Ι)','δεν έχει καταχωρηθεί')}
       ${row(bar('Αγέλη',[CERTC.ok,TRC[1],RING.entoli,G]),'Μόνο Προκαταρκτική','κίτρινο στην 3η θέση')}
       ${row(bar('Αγέλη',[CERTC.ok,E,RING.entoli,G]),'Χωρίς εκπαίδευση','γκρίζο στην 3η θέση')}
+      ${row(bar('Ομάδα',[CERTC.hidden,TRC[2],RING.entoli,G]),t('Το Ν.91(Ι) δεν σου φαίνεται'),t('πολύ ανοιχτό γκρι στη 2η θέση — το βλέπουν μόνο ο ίδιος, ο Αρχηγός Τμήματός του και ο Α.Σ.'))}
     </div>
 
     <div class="dsec"><h4>Η 4η θέση — κατάσταση εντολής</h4>
@@ -4861,11 +4918,11 @@ function showLegend(){
       ${row(bar('Ομάδα',[CERTC.ok,TRC[2],RING.anathesi,G]),'Ενεργή Ανάθεση Καθηκόντων','κίτρινο')}
       ${row(bar('Ομάδα',[CERTC.ok,TRC[2],RING.expired,G]),'Έληξε','κόκκινο')}
       ${row(bar('Ομάδα',[CERTC.ok,TRC[2],E,G]),'Δεν έχει αιτηθεί','γκρίζο')}
-    </div>`}
+    </div>`}`}
 
-    <div class="dsec"><h4>Το πρώτο τμήμα — ο κλάδος</h4>
+    ${!anyBar?'':`<div class="dsec"><h4>Το πρώτο τμήμα — ο κλάδος</h4>
       <div class="dim" style="font-size:12px;margin-bottom:8px">Καταλαμβάνει το αριστερό
-        τέταρτο της ράβδου. Εδώ μεγεθυσμένο, για να ξεχωρίζει το χρώμα.</div>
+        τέταρτο της ράβδου, με το αρχικό του κλάδου (Α · Ο · Κ · Δ). Εδώ μεγεθυσμένο, για να ξεχωρίζει το χρώμα.</div>
       ${['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'].map(x=>
         row(`<i style="display:inline-block;width:56px;height:16px;border-radius:5px;
               background:${SEC(x)};border:1px solid var(--line2)"></i>`,x,'')).join('')}
@@ -4873,7 +4930,7 @@ function showLegend(){
 
     <div class="dsec" style="border:0"><div class="dim" style="font-size:11.5px">
       Πέρνα το ποντίκι πάνω από οποιαδήποτε ράβδο στην οθόνη — γράφει το όνομα και
-      κάθε τμήμα με λέξεις.</div></div>`;
+      κάθε τμήμα με λέξεις.</div></div>`}`;
   drw.classList.add('on');
 }
 
@@ -14727,7 +14784,7 @@ V.myatt=()=>{
   const map={}; D.att.filter(a=>a.person_id===p.id).forEach(a=>map[a.session_id]=a.status);
   $('view').innerHTML=`<div class="card" style="overflow:auto"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Κατάσταση</th></tr></thead><tbody>${
     ses.map(s=>`<tr><td>${fdate(s.session_date)}</td><td>${sdot(s.section)} ${esc(s.section||'')}</td>
-      <td>${map[s.id]==='Παρών'?'<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Παρών</span>':map[s.id]==='Απών'?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Απών</span>':'<span class="dim">—</span>'}</td></tr>`).join('')
+      <td>${map[s.id]==='Παρών'?'<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Παρών</span>':map[s.id]==='Απών'?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Απών</span>':map[s.id]===ATT_EV?`<span class="pill" style="background:var(--accbg);border-color:transparent;color:var(--acc)">${esc(ATT_EV)}</span>`:'<span class="dim">—</span>'}</td></tr>`).join('')
     ||'<tr><td colspan="3" class="dim" style="padding:22px;text-align:center">Καμία συγκέντρωση</td></tr>'}</tbody></table></div>`;
 };
 
@@ -25590,6 +25647,7 @@ const WL2LEG=[
   {c:'warn', t:'περιμένω επιβεβαίωση'},
   {c:'acc',  t:'όχι φέτος — μένει στη λίστα'},
   {c:'bad',  t:'δεν ενδιαφέρεται · πήγε αλλού'},
+  {c:'dim',  t:dv('έκλεισε για άλλο λόγο — το όνομα διαγραμμένο')},
 ];
 const WL2WORD={ok:'ναι', warn:'περιμένω', acc:'του χρόνου', bad:'όχι', dim:'έκλεισε'};
 function wl2Word(r){
@@ -27589,6 +27647,13 @@ function molaLegend(){
         <div><span class="mflag">☆</span> <b>κενή αργία</b> — μέρα ελεύθερη, χωρίς τίποτα πάνω της. Ευκαιρία.</div>
         <div><span class="mflag">✔</span> <b>αξιοποιημένη αργία</b> — έχουμε ήδη κάτι (παρέλαση, εκδήλωση, τριήμερο).</div>
         <div><i class="mwin">Παρ · τριήμερο</i> — τι παράθυρο ανοίγει: Παρασκευή ή Δευτέρα κολλάει στο ΣΚ.</div>
+        ${ ''}
+        <div><span style="display:inline-block;width:34px;height:14px;vertical-align:middle;box-shadow:inset 0 3px 0 var(--acc);border:1px solid var(--line)"></span> ${esc(t('γραμμή πάνω στο κελί — εκείνη την εβδομάδα υπάρχει κενή αργία.'))}</div>
+        <div><span style="display:inline-block;width:34px;height:14px;vertical-align:middle;background:repeating-linear-gradient(45deg,var(--bg2),var(--bg2) 6px,transparent 6px,transparent 12px);border:1px solid var(--line)"></span> ${esc(t('ριγέ κελί — ο μήνας δεν έχει τόσα Σάββατα.'))}</div>
+        <div><span class="mev" style="display:inline-block;border-left-color:var(--ink3)">${esc(t('Δράση'))}<i class="mrng">${esc(t('7–9 Νοε'))}</i></span> — ${esc(t('πολυήμερη: από πότε ως πότε.'))}</div>
+        <div><span class="mev st-draft" style="display:inline-block;border-left-color:var(--ink3)">${esc(t('Δράση'))} <i class="mst">${esc(STG.draft.s)}</i></span> ${esc(t('διακεκομμένη γραμμή — προσχέδιο, το βλέπουν μόνο'))} ${esc(STG.draft.who)}.</div>
+        <div><span class="mev st-annual" style="display:inline-block;border-left-color:var(--ink3)">${esc(t('Δράση'))} <i class="mst">${esc(STG.annual.s)}</i></span> ${esc(t('διάστικτη γραμμή — στο ετήσιο, το βλέπουν'))} ${esc(STG.annual.who)}.</div>
+        <div><span class="mev alien" style="display:inline-block;border-left-color:var(--ink3)">${esc(t('Δράση'))}</span> ${esc(t('ξεθωριασμένο, πλάγιο — άλλου τμήματος, φαίνεται για να μη συγκρουστείς.'))}</div>
       </div>
       <div class="sec"><h3>Ποιος γράφει τι</h3></div>
       <div style="display:grid;gap:6px;font-size:13px">
