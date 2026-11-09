@@ -1309,7 +1309,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-09 11:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-09 11:52'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -18069,9 +18069,16 @@ function annKids(ev){
   if(me&&typeof self16==='function'&&self16(me)&&!ks.some(x=>x.kid.id===me.id))ks.push({kid:me});
   return ks.filter(({kid:k})=>k&&kidForEv(ev,k)&&(typeof evInvOk!=='function'||evInvOk(ev,k.id,secOf(k))));
 }
-function annSignHTML(ev){
-  if(!ev||!ev.form_url)return '';
-  const ks=annKids(ev); if(!ks.length)return '';
+function annSignHTML(ev,a){
+  if(!ev){ if(!(a&&a.source==='feed'&&a.link_url&&(ME.role==='admin'||ME.platform_admin)))return '';
+    const td=new Date().toISOString().slice(0,10);
+    const evs=(D.ev||[]).filter(e=>!e.hidden&&e.form_url&&String(e.end_date||e.event_date||'')>=td).sort((x,y)=>String(x.event_date).localeCompare(String(y.event_date)));
+    if(!evs.length)return '';
+    return `<div style="margin-top:12px;font-size:12.5px" class="dim">${esc(t('Δεν είναι δεμένη με δράση — οι γονείς δεν βλέπουν κουμπί δήλωσης.'))}
+      <select id="annLink" style="margin-top:5px;max-width:100%"><option value="">${esc(t('Δέσε με δράση…'))}</option>${evs.map(e=>`<option value="${e.id}">${esc(e.title||'')} · ${esc(fdate(e.event_date))}</option>`).join('')}</select></div>`; }
+  if(!ev.form_url)return '';
+  const ks=annKids(ev);
+  if(!ks.length)return annWriter(ME.role)?`<div class="dim" style="margin-top:10px;font-size:12.5px">✓ ${esc(t('Δεμένη με τη δράση: οι γονείς (και οι ανιχνευτές 16+) βλέπουν εδώ κουμπί δήλωσης, με τη φόρμα ήδη συμπληρωμένη.'))}</div>`:'';
   const today=new Date().toISOString().slice(0,10), h=kidActBtns(ev,ks,today); if(!h.trim())return '';
   return `<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px">
     <div style="font-size:13px;font-weight:600">${esc(t('Δήλωση συμμετοχής'))}${ev.signup_closes?` <span class="dim" style="font-weight:400">· ${esc(t('μέχρι'))} ${esc(fdate(ev.signup_closes))}</span>`:''}</div>
@@ -18086,7 +18093,7 @@ async function annOpen(a){
     <div class="dim" style="font-size:12.5px;margin:4px 0 12px">${esc(annMeta(a))}</div>
     ${a.body?`<div style="font-size:14px;line-height:1.6">${annText(a.body)}</div>`:''}
     ${ev?`<div style="margin-top:12px;font-size:13.5px">📅 <b>${esc(ev.title)}</b> <span class="dim">· ${esc(fdate(ev.event_date))}</span></div>`:''}
-    ${annSignHTML(ev)}
+    ${annSignHTML(ev,a)}
     ${(a.files||[]).length?`<div style="margin-top:12px;display:grid;gap:6px">${a.files.map((f,i)=>`<button class="btn sm" data-annf="${i}" style="justify-self:start">📄 ${esc(f.name||'PDF')}</button>`).join('')}</div>`:''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
       ${a.link_url?`<a class="btn sm p" href="${esc(a.link_url)}" target="_blank" rel="noopener">${a.source==='feed'?t('Όλο το άρθρο στο 76.life'):t('Περισσότερα')} ↗</a>`:''}
@@ -18095,6 +18102,11 @@ async function annOpen(a){
       <button class="btn sm gh" id="annUnread">${t('Σήμανση ως νέα')}</button>
       <button class="btn sm" data-close>${t('Κλείσιμο')}</button></div>`, ()=>annFill());
   if(ev&&S.box.querySelector('[data-evbtns]'))kidActWire(annKids(ev),S.box);
+  const lk=S.box.querySelector('#annLink'); if(lk)lk.onchange=async()=>{ const e=(D.ev||[]).find(x=>x.id===lk.value); if(!e)return;
+    const r1=await sb.from('announcements').update({event_id:e.id}).eq('id',a.id).select('id');
+    if(r1.error||!(r1.data||[]).length)return toast(t('Δεν δέθηκε')+(r1.error?': '+r1.error.message:''));
+    if(!e.info_url){ const r2=await sb.from('events').update({info_url:a.link_url}).eq('id',e.id); if(!r2.error)e.info_url=a.link_url; }
+    a.event_id=e.id; ANN.at=0; S.close(); toast(t('Δέθηκε με τη δράση')); annOpen(a); };
   S.box.querySelectorAll('[data-annf]').forEach(b=>b.onclick=async()=>{
     const f=a.files[+b.dataset.annf]; const {data}=await sb.storage.from('e76').createSignedUrl(f.path,300);
     if(data&&data.signedUrl)window.open(data.signedUrl,'_blank','noopener'); else toast(t('Το αρχείο δεν άνοιξε.')); });
