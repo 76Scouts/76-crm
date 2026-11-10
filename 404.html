@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-10 11:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-10 11:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -17608,7 +17608,8 @@ function irvRow(s){
   const who=[pl.ait_onoma,pl.ait_epitheto].filter(Boolean).join(' ');
   const nf=Object.keys(pl).filter(x=>!['form','form_kind','scout_year','am'].includes(x)).length;
   return `<tr><td>${p?pnm(p):'<span class="dim">άγνωστο πρόσωπο</span>'}
-      <div class="dim" style="font-size:11.5px">Α.Μ. ${esc(pl.am||'—')}</div></td>
+      <div class="dim" style="font-size:11.5px">Α.Μ. ${esc(pl.am||'—')}</div>
+      ${ ''}${/ταύτιση από τον αιτητή/.test(s.applied_note||'')?`<div style="font-size:11.5px;color:var(--warn)">${esc(t('ταύτιση από τον αιτητή'))} — ${esc((String(s.applied_note).match(/\(([^)]*)\)/)||[])[1]||'')}<br>${esc(t('στη φόρμα'))}: «${esc([pl.onoma,pl.epitheto].filter(Boolean).join(' '))}»</div>`:''}</td>
     <td>${esc(s.form_name||'—')}<div class="dim" style="font-size:11.5px">${fdate(s.submitted_on)} · ${nf} πεδία</div></td>
     <td style="font-size:12.5px">${esc(who||'—')}
       <div class="dim">${esc(am||'χωρίς email')} · ${esc(pl.ait_tilefono||'χωρίς κινητό')}</div></td>
@@ -19116,7 +19117,7 @@ function efApplicant(s,p){
 async function efFormsLoad(e){
   const {data,error}=await sb.from('form_submission')
     .select('id,person_id,form_name,submitted_on,ait_onoma:payload->>ait_onoma,ait_epitheto:payload->>ait_epitheto')
-    .eq('event_id',e.id).order('submitted_on',{ascending:false}).limit(500);
+    .eq('event_id',e.id).eq('is_test',false).order('submitted_on',{ascending:false}).limit(500);    
   const box=$('efForms'); if(!box)return;           
   if(error)return box.innerHTML='<div class="pad" style="color:var(--bad)">Δεν φορτώθηκαν οι δηλώσεις ('+esc(error.code||'')+').</div>';
   const rows=(data||[]).map(s=>({s,p:(D.bh||[]).find(b=>b.id===s.person_id)}));
