@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-09 12:04'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-10 09:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4203,8 +4203,8 @@ function mailsHTML(p){
   return `<div class="dsec"><h4>Απεσταλμένα του e76 <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:400">· ${rows.length}</span></h4>
     ${rows.map(m=>{const by=D.bh.find(x=>x.id===m.sent_by);
       return `<div style="padding:6px 0;border-bottom:1px solid var(--line)">
-        <div style="font-size:13.5px">${esc(m.subject||'')}</div>
-        <div class="dim" style="font-size:11.5px">${esc(when(m.sent_at))} · προς ${esc(m.to_address||'')}${by?' · από '+esc(nm(by)):''}</div>
+        <div style="font-size:13.5px">${esc(m.subject||'')}${m.status==='failed'?` <span class="pill" style="font-size:11px;background:var(--badbg);color:var(--bad);border-color:transparent">${esc(t('απέτυχε'))}</span>`:''}</div>
+        <div class="dim" style="font-size:11.5px">${esc(when(m.sent_at))} · προς ${esc(m.to_address||'')}${by?' · από '+esc(nm(by)):''}${m.status==='failed'&&m.error?' · '+esc(m.error):''}</div>
       </div>`}).join('')}
     <div class="dim" style="font-size:11.5px;margin-top:7px">Μόνο όσα έστειλε το e76. Ό,τι γράφτηκε με το χέρι δεν καταγράφεται εδώ.</div></div>`;
 }
@@ -26360,6 +26360,7 @@ V.dataqa=()=>tabView('dataqa',[
   {k:'audit',  t:'Ιστορικό αλλαγών',i:'book',   fn:()=>auditBody(),  d:'ποιος άλλαξε τι και πότε — χωρίς τιμές', nav:'audit'},
   {k:'dedupe', t:'Διπλά πρόσωπα',   i:'users',  fn:()=>dedupeBody(), d:'πρόσωπα που μοιάζουν διπλά — κρίνονται μία φορά', nav:'dedupe'},
   {k:'amb',    t:'Ασαφείς απονομές',i:'award',  fn:ambBody,          d:'«Υπόσχεση» χωρίς τμήμα — ποια είναι Αγέλης, ποια Ομάδας', nav:'progfix'},
+  {k:'sent',   t:t('Απεσταλμένα'), i:'mail', fn:sentBody, d:t('κάθε email που έστειλε το e76 — και όσα απέτυχαν'), nav:'progfix'},
   {k:'fail',   t:'Αποτυχίες & σφάλματα', i:'alert', fn:failBody,   d:'ό,τι αρνήθηκε η βάση και ό,τι «έσκασε» στη συσκευή κάποιου — χωρίς τιμές', nav:'progfix'},
   {k:'del',    t:'Διαγραφές',       i:'lock',   fn:deletionBody,     d:'αιτήματα διαγραφής, παγώματα και τι έγινε κάθε νύχτα', nav:'deletion'},
   {k:'sys',    t:'Φύλαξη & έλεγχοι', i:'shield', fn:sysBody,          d:'πόσο κρατιέται κάθε καταγραφή, ποιος βλέπει τι, πόσο γρήγορα ανοίγει', nav:'progfix'}]);
@@ -26871,6 +26872,54 @@ V.issues=()=>tabView('issues',[
   {k:'when', t:'Πότε λήγει',        i:'cal',   fn:expiryBody,  d:'τα ίδια, σε ημερολόγιο'}]);
 
 
+let SENT_Q='', SENT_F='';
+function sentKind(tp){
+  const s=String(tp||'');
+  return /^send-invite/.test(s)?t('Πρόσκληση'):/^n91-reminder/.test(s)?t('Υπενθύμιση Ν91')
+    :/^notify-signup/.test(s)?t('Δηλώσεις δράσης'):/^weekly-digest/.test(s)?t('Εβδομαδιαία σύνοψη'):s;
+}
+const sentTime=x=>{const d=new Date(x); return isNaN(d)?'':fdate(x)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+function sentRow(r,nmOf){
+  const bad=r.status==='failed', who=nmOf(r.person_id), by=nmOf(r.sent_by);
+  return `<tr${bad?' style="background:var(--badbg)"':''}>
+    <td class="dim" style="font-size:12px;white-space:nowrap">${esc(sentTime(r.sent_at))}</td>
+    <td style="font-size:13px">${esc(r.to_address||'')}${who?`<div class="dim" style="font-size:11.5px">${esc(who)}</div>`:''}</td>
+    <td style="font-size:13px">${esc(r.subject||'')}<div class="dim" style="font-size:11.5px">${esc(sentKind(r.template))} · ${by?esc(t('από')+' '+by):esc(t('αυτόματο'))}${r.transport==='smtp'?' · relay':''}</div></td>
+    <td>${bad?`<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">${esc(t('απέτυχε'))}</span>
+      ${r.error?`<div class="dim" style="font-size:11.5px;max-width:220px">${esc(r.error)}</div>`:''}`
+      :`<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${esc(t('στάλθηκε'))}</span>`}</td></tr>`;
+}
+async function sentBody(){
+  $('view').innerHTML=`<div class="card pad dim">${esc(t('Φόρτωση…'))}</div>`;
+  const {data,error}=await sb.from('email_log').select('id,person_id,sent_at,to_address,subject,template,sent_by,status,error,transport')
+    .order('sent_at',{ascending:false}).limit(1000);
+  if(ROUTE!=='dataqa')return;
+  const rows=data||[];
+  const nmOf=id=>{if(!id)return ''; const b=D.bh.find(x=>x.id===id); return b?nm(b):''};
+  const d30=Date.now()-30*864e5, last=rows.filter(r=>new Date(r.sent_at).getTime()>=d30);
+  const nBad=last.filter(r=>r.status==='failed').length;
+  $('view').innerHTML=`<p class="lede">${esc(t('Κάθε email που έστειλε το e76 — και όσα απέτυχαν. «Στάλθηκε» σημαίνει ότι το δέχτηκε ο αποστολέας, όχι ότι το διάβασε ο παραλήπτης. Οι επιστροφές (λάθος διεύθυνση) φτάνουν στο catch-all του 76.life. Το κείμενο δεν κρατιέται — μόνο θέμα και είδος. Φύλαξη: 2 χρόνια (καρτέλα «Φύλαξη & έλεγχοι»).'))}</p>
+    ${error?`<div class="card pad" style="color:var(--bad)">${esc(error.message)}</div>`:''}
+    <div class="card pad" style="margin-bottom:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+      <div><b style="font-size:18px">${last.length-nBad}</b> <span class="dim">${esc(t('στάλθηκαν τις τελευταίες 30 μέρες'))}</span></div>
+      <div${nBad?' style="color:var(--bad)"':''}><b style="font-size:18px">${nBad}</b> <span class="${nBad?'':'dim'}">${esc(t('απέτυχαν'))}</span></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <input id="sentQ" placeholder="${esc(t('Αναζήτηση: διεύθυνση, όνομα, θέμα…'))}" value="${esc(SENT_Q)}" style="flex:1;min-width:200px" aria-label="${esc(t('Αναζήτηση στα απεσταλμένα'))}">
+      ${[['',t('Όλα')],['sent',t('Στάλθηκαν')],['failed',t('Απέτυχαν')]].map(([k,l])=>`<button class="btn sm${SENT_F===k?'':' gh'}" data-sentf="${k}">${esc(l)}</button>`).join('')}
+      <span class="dim" id="sentN" style="font-size:12px"></span></div>
+    <div class="card" style="overflow:auto"><table><thead><tr><th>${esc(t('Πότε'))}</th><th>${esc(t('Προς'))}</th><th>${esc(t('Θέμα'))}</th><th>${esc(t('Κατάσταση'))}</th></tr></thead><tbody id="sentB"></tbody></table></div>`;
+  const draw=()=>{
+    const q=SENT_Q.trim().toLowerCase();
+    const f=rows.filter(r=>(!SENT_F||(SENT_F==='failed')===(r.status==='failed'))
+      &&(!q||[r.to_address,r.subject,nmOf(r.person_id),sentKind(r.template)].join(' ').toLowerCase().includes(q)));
+    $('sentB').innerHTML=f.slice(0,300).map(r=>sentRow(r,nmOf)).join('')
+      ||`<tr><td colspan="4" class="dim" style="padding:20px;text-align:center">${esc(t('Τίποτα εδώ.'))}</td></tr>`;
+    $('sentN').textContent=f.length>300?t('δείχνει 300 από')+' '+f.length:String(f.length);
+  };
+  $('sentQ').oninput=e=>{SENT_Q=e.target.value; draw()};
+  document.querySelectorAll('[data-sentf]').forEach(b=>b.onclick=()=>{SENT_F=b.dataset.sentf; sentBody()});
+  draw();
+}
 
 const MOLA_MN=[9,10,11,12,1,2,3,4,5,6,7,8];
 const MOLA_MONTH=['ΣΕΠΤΕΜΒΡΙΟΣ','ΟΚΤΩΒΡΙΟΣ','ΝΟΕΜΒΡΙΟΣ','ΔΕΚΕΜΒΡΙΟΣ','ΙΑΝΟΥΑΡΙΟΣ','ΦΕΒΡΟΥΑΡΙΟΣ',
