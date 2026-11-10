@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-10 11:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-10 16:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -20902,13 +20902,14 @@ function dlChecks(e,g){
 }
 
 function efGenika(e){
-  return `<div id="dlCk"></div><div id="dlS1"></div><div id="dlV"></div><div id="dlS2"></div><div id="dlS3"></div>`;
+  return `<div id="dlCk"></div><div id="gsLive"></div><div id="dlS1"></div><div id="dlV"></div><div id="dlS2"></div><div id="dlS3"></div>`;
 }
 async function efGenikaWire(e){
   ['dlCk','dlS1','dlV','dlS2','dlS3'].forEach(id=>{const b=$(id); if(b)b.innerHTML=id==='dlCk'?'<div class="card pad dim" style="margin-bottom:13px">Φόρτωση…</div>':''});
   const g=await dlLoad(e.id); if(EFID!==e.id||!$('dlCk'))return;
   if(g.err){ $('dlCk').innerHTML=`<div class="card pad bgap">Δεν φόρτωσαν οι χώροι της δράσης: ${esc(g.err)}</div>` }
   ['dlCk','dlS1','dlV','dlS2','dlS3'].forEach(id=>dlDraw(id,e));
+  gsWire(e);
 }
 const DL_DRAW={dlCk:dlCkHTML, dlS1:dlS1HTML, dlV:dlVHTML, dlS2:dlS2HTML, dlS3:dlS3HTML};
 const DL_WIRE={dlCk:dlCkWire, dlS1:dlS1Wire, dlV:dlVWire, dlS2:dlS2Wire, dlS3:dlS3Wire};
@@ -20933,14 +20934,15 @@ function dlCkHTML(e,g){
       <b>Δελτίο Δράσης ΣΠΚ</b>
       <span class="pill" style="${bad.length?'background:var(--badbg);color:var(--bad);border-color:transparent':'background:var(--okbg);color:var(--ok);border-color:transparent'}">${bad.length?'λείπουν '+bad.length:'έτοιμο'}</span>
       <span class="sp"></span>
-      <button class="btn sm p" id="dlXls">${ic('down',14)} Γέμισμα του Excel</button></div>
-    <div class="dim" style="font-size:12px;margin-top:4px">Διαλέγεις το αρχείο του ΣΠΚ (κενό ή περσινό) και κατεβαίνει γεμάτο: ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΥΠΟΓΡΑΦΕΣ, ΕΚΚΡΕΜΟΤΗΤΕΣ.</div>
+      <button class="btn sm p" id="dlXls">${ic('down',14)} ${t('Γέμισμα του Excel')}</button>
+      <button class="btn sm" id="dlXlsF">${t('με άλλο αρχείο…')}</button></div>
+    <div class="dim" style="font-size:12px;margin-top:4px">${t('Κατεβαίνει γεμάτο το Κοινό Έντυπο Δράσεων ΣΠΚ v1.3 (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΥΠΟΓΡΑΦΕΣ). «Με άλλο αρχείο»: διαλέγεις εσύ το αρχείο του ΣΠΚ (νεότερη έκδοση ή περσινό).')}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px">
-      <div><b style="font-size:12.5px">1 · Νέα δράση</b>${lst(1)}</div>
-      <div><b style="font-size:12.5px">2 · Επιτελείο</b>${lst(2)}</div>
-      <div><b style="font-size:12.5px">3 · Πριν την υποβολή</b>${lst(3)}</div></div></div>`;
+      <div><b style="font-size:12.5px">${t('1 · Νέα δράση')}</b>${lst(1)}</div>
+      <div><b style="font-size:12.5px">${t('2 · Επιτελείο')}</b>${lst(2)}</div>
+      <div><b style="font-size:12.5px">${t('3 · Πριν την υποβολή')}</b>${lst(3)}</div></div></div>`;
 }
-function dlCkWire(e,g){ $('dlXls').onclick=()=>dlExport(e); }
+function dlCkWire(e,g){ $('dlXls').onclick=()=>dlExport(e); $('dlXlsF').onclick=()=>dlExport(e,true); }
 
 function dlS1HTML(e,g){
   const ro=dlRO(e), n=dlNights(e);
@@ -21184,25 +21186,31 @@ function dlData(e,g,med){
     sign:{as:(dlP(asHat&&asHat.person_id)&&nm(dlP(asHat.person_id)))||'', eps:eps?cmName(eps):''},
     pending:dlChecks(e,g).map(c=>c.t)};
 }
-function dlExport(e){
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xlsm,.xltm,.xltx';
-  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f)return;
-    const g=await dlLoad(e.id);
-    const all=[...dlStaff(e),...dlHelpers(e),...dlKids(e)];
-    const withMed=all.length&&await uiAsk('Να μπουν και τα διατροφικά στη στήλη «Διατροφικές ιδιαιτερότητες»;\n\nΘα καταγραφεί ανάγνωση ιατρικών για '+pln(all.length,'άτομο','άτομα')+' (σκοπός: Δελτίο Δράσης ΣΠΚ).',{ok:'Ναι, με διατροφικά',cancel:'Χωρίς'});
-    let med=null;
-    if(withMed){ toast('Διαβάζω τα διατροφικά…'); const r=await efdMedMany(all.map(x=>x.p.id),'Δελτίο Δράσης ΣΠΚ · '+(e.title||'')); med=r.med;
-      if(r.no)toast(pln(r.no,'άτομο','άτομα')+' χωρίς πρόσβαση στα ιατρικά — η στήλη μένει κενή γι’ αυτά'); }
-    try{ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js') }
-    catch(x){ return toast('Δεν φόρτωσε η βιβλιοθήκη — έλεγξε τη σύνδεση') }
+const DL_TPL='spk-deltio-v13-76.xlsx';
+async function dlBuild(e,buf,o){
+  const g=await dlLoad(e.id);
+  const all=[...dlStaff(e),...dlHelpers(e),...dlKids(e)];
+  const withMed=all.length&&await uiAsk('Να μπουν και τα διατροφικά στη στήλη «Διατροφικές ιδιαιτερότητες»;\n\nΘα καταγραφεί ανάγνωση ιατρικών για '+pln(all.length,'άτομο','άτομα')+' (σκοπός: Δελτίο Δράσης ΣΠΚ).',{ok:'Ναι, με διατροφικά',cancel:'Χωρίς'});
+  let med=null;
+  if(withMed){ toast('Διαβάζω τα διατροφικά…'); const r=await efdMedMany(all.map(x=>x.p.id),'Δελτίο Δράσης ΣΠΚ · '+(e.title||'')); med=r.med;
+    if(r.no)toast(pln(r.no,'άτομο','άτομα')+' χωρίς πρόσβαση στα ιατρικά — η στήλη μένει κενή γι’ αυτά'); }
+  try{ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js') }
+  catch(x){ throw new Error('Δεν φόρτωσε η βιβλιοθήκη — έλεγξε τη σύνδεση') }
+  return dlFill(buf,dlData(e,g,med),o);
+}
+function dlExport(e,pick){
+  const go=async(buf,fname)=>{
     try{
-      const {bytes,rep}=await dlFill(await f.arrayBuffer(), dlData(e,g,med));
-      const ext=(/\.(xlsx|xlsm|xltm|xltx)$/i.exec(f.name)||[,'xlsm'])[1].toLowerCase().replace('xltm','xlsm').replace('xltx','xlsx');
+      const {bytes,rep}=await dlBuild(e,buf);
+      const ext=(/\.(xlsx|xlsm|xltm|xltx)$/i.exec(fname)||[,'xlsm'])[1].toLowerCase().replace('xltm','xlsm').replace('xltx','xlsx');
       const mime=ext==='xlsm'?'application/vnd.ms-excel.sheet.macroEnabled.12':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       saveBlob(bytes,mime,'Δελτίο Δράσης - '+(e.title||'δράση').replace(/[\\/:*?"<>|]+/g,'-')+'.'+ext);
       if(rep.length)await uiNote('Κατέβηκε. Να προσέξεις:\n\n• '+rep.join('\n• ')); else toast('Κατέβηκε γεμάτο');
     }catch(x){ toast('Δεν γέμισε: '+(x.message||x)) }
   };
+  if(!pick){ espBytes(DL_TPL).then(b=>go(b.buffer,DL_TPL),()=>toast(t('Δεν κατέβηκε το πρότυπο του ΣΠΚ — έλεγξε τη σύνδεση'))); return; }
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xlsm,.xltm,.xltx';
+  inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(f)go(await f.arrayBuffer(),f.name); };
   inp.click();
 }
 const XL={};
@@ -21359,7 +21367,7 @@ function dlFillGenika(S,d,rep){
   const at=(t,o)=>S.find(t,o), put=(r,c,v,k)=>S.set(r,c,v,k);
   let a;
   if((a=at('Είδος Δράσης',{col:'B'})))put(a.r+1,2,d.eidos);
-  if((a=at('Σύστημα / Κλιμάκιο που υποβάλει',{starts:true})))put(a.r+1,a.c,d.systima);
+  if((a=at(dv('Σύστημα / Κλιμάκιο που υποβάλλει'),{starts:true})||at('Σύστημα / Κλιμάκιο που υποβάλει',{starts:true})))put(a.r+1,a.c,d.systima);
   if((a=at('Συστήματα / Κλιμάκια που Συνεργάζονται',{starts:true}))){
     const rows=[]; for(let r=a.r+1;r<a.r+40;r++){ if(typeof S.v(r,1)==='number')rows.push(r); else if(rows.length)break; }
     rows.forEach((r,i)=>put(r,a.c,d.partners[i]||null));
@@ -21468,15 +21476,137 @@ function dlFillPending(S,d){
   for(let r=h.r+1;r<=h.r+80;r++)if(S.v(r,h.c)!=null)S.set(r,h.c,null);
   d.pending.forEach((t,i)=>S.set(h.r+1+i,h.c,t));
 }
-async function dlFill(buf,d){
+const DL_SH={G:[dv('ΓΕΝΙΚΑ'),'GENIKA'],Y:[dv('ΣΥΜΜΕΤΟΧΕΣ'),'SYMMETOXES'],U:[dv('ΥΠΟΓΡΑΦΕΣ'),'YPOGRAFES'],K:[dv('ΕΚΚΡΕΜΟΤΗΤΕΣ')]};
+async function dlSh(B,k){ for(const n of DL_SH[k]){ const S=await B.sheet(n); if(S)return S; } return null; }
+const DL_LIVE=dv('⚠ Μην κάνετε αντίγραφο ή κατέβασμα/ξανανέβασμα — δουλεύετε ΜΟΝΟ σε αυτό το αρχείο (τα αντίγραφα χάνουν τη σύνδεση με το e76).');
+async function dlFill(buf,d,o){
   const B=await xlOpen(buf), rep=[];
-  const G=await B.sheet('ΓΕΝΙΚΑ'); if(!G)throw new Error('Το αρχείο δεν έχει φύλλο «ΓΕΝΙΚΑ» — δεν είναι Δελτίο Δράσης ΣΠΚ.');
+  const G=await dlSh(B,'G'); if(!G)throw new Error('Το αρχείο δεν έχει φύλλο «ΓΕΝΙΚΑ» — δεν είναι Δελτίο Δράσης ΣΠΚ.');
   dlFillGenika(G,d,rep);
-  const Y=await B.sheet('ΣΥΜΜΕΤΟΧΕΣ'); if(Y)dlFillSym(Y,d,rep); else rep.push('Λείπει το φύλλο ΣΥΜΜΕΤΟΧΕΣ');
-  const U=await B.sheet('ΥΠΟΓΡΑΦΕΣ'); if(U)dlFillSign(U,d);
-  const K=await B.sheet('ΕΚΚΡΕΜΟΤΗΤΕΣ'); if(K)dlFillPending(K,d);
+  if(o&&o.live&&G.v(2,2)==null)G.set(2,2,DL_LIVE);
+  const Y=await dlSh(B,'Y'); if(Y)dlFillSym(Y,d,rep); else rep.push('Λείπει το φύλλο ΣΥΜΜΕΤΟΧΕΣ');
+  const U=await dlSh(B,'U'); if(U)dlFillSign(U,d);
+  const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
   return {bytes:await B.save(), rep};
 }
+const GS={};                                            
+const GS_ST={egkrisi:t('Για έγκριση'),teliko:t('Τελικό'),apologismos:t('Απολογισμός')};
+const gsBoss=e=>isAdminUI()||(!!ME.person_id&&ME.person_id===e.arxigos_id);
+const gsCan=e=>dlCanEdit(e)||gsBoss(e);
+const gsUrl=id=>'https://docs.google.com/spreadsheets/d/'+encodeURIComponent(id)+'/edit';
+const gsDir=id=>'https://drive.google.com/drive/folders/'+encodeURIComponent(id);
+const gsFile=id=>'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view';
+const GS_WHY=[[/accessNotConfigured|SERVICE_DISABLED/,t('το Google Drive/Sheets API είναι κλειστό στο Google Cloud project e76-calendar')],
+  [/not_configured/,t('δεν έχει μπει το κλειδί του λογαριασμού υπηρεσίας')],
+  [/unknown_eidos/,t('το «Είδος Δράσης» στο GENIKA δεν είναι από τη λίστα του ΣΠΚ')],
+  [/no_table/,t('το αρχείο δεν έχει τον πίνακα φύλλων του ΣΠΚ (Lists)')],
+  [/google 404/,t('το αρχείο δεν βρέθηκε στο Drive — ίσως σβήστηκε οριστικά')],
+  [/google 403/,t('ο λογαριασμός υπηρεσίας δεν έχει δικαίωμα στο Κοινόχρηστο Drive')]];
+async function gsCall(body){
+  const {data,error}=await sb.functions.invoke('action-sheet',{body});
+  if(!error&&data&&data.ok)return data;
+  let why=data&&data.error;
+  if(!why&&error&&error.context&&typeof error.context.json==='function'){ try{ why=(await error.context.json()).error }catch(x){} }
+  why=String(why||(error&&error.message)||''); const m=GS_WHY.find(([re])=>re.test(why));
+  return {ok:false, why:m?m[1]:(why||t('σφάλμα'))};
+}
+async function gsLoad(eid){
+  const [a,b]=await Promise.all([sb.from('event_sheet').select('*').eq('event_id',eid).maybeSingle(),
+    sb.from('event_sheet_log').select('stage,at,by_person,seq,file_id,xlsx_id').eq('event_id',eid).order('at',{ascending:false}).limit(40)]);
+  const old=GS[eid]||{};
+  return GS[eid]={row:a.data||null, log:b.data||[], loc:old.loc||null, err:a.error||b.error||null};
+}
+
+function gsHTML(e){
+  const s=GS[e.id], card=b=>`<div class="card pad" style="margin-bottom:13px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <b>${t('Ζωντανό φύλλο (Google Sheets)')}</b>${b}</div></div>`;
+  if(!s)return card(`<span class="dim" style="font-size:12.5px">${t('Φόρτωση…')}</span>`);
+  if(s.err)return card(`<span class="dim" style="font-size:12.5px">${t('Δεν φόρτωσε')}: ${esc(s.err.message||'')}</span>`);
+  if(!s.row){
+    return card(`<span class="sp"></span>${gsCan(e)?`<button class="btn sm p" id="gsNew">${t('Δημιουργία ζωντανού φύλλου')}</button>`:''}
+      <div class="dim" style="font-size:12px;flex-basis:100%">${t('Ένα αρχείο για όλη την ομάδα της δράσης, στο Κοινόχρηστο Drive «Φάκελοι Δράσεων (e76)»: γεμάτο από το e76, με ανοιχτά μόνο τα φύλλα που ζητά ο ΣΠΚ για αυτό το είδος δράσης. Φτιάχνεται μία φορά· μετά το e76 δεν το ξαναγράφει.')}</div>`);
+  }
+  const r=s.row, L=s.loc, boss=gsBoss(e), ed=gsCan(e);
+  const warn=L&&L.state==='moved'?`<div class="card pad bgap" style="margin-top:9px;flex-basis:100%">${t('Το αρχείο μετακινήθηκε έξω από τον φάκελο της δράσης.')}
+        ${ed?`<button class="btn sm" id="gsBack" style="margin-left:6px">${t('Επιστροφή στη θέση του')}</button>`:''}</div>`
+    :L&&L.state==='trashed'?`<div class="card pad bgap" style="margin-top:9px;flex-basis:100%">${t('Το αρχείο είναι στον κάδο του Drive.')}
+        ${ed?`<button class="btn sm" id="gsBack" style="margin-left:6px">${t('Επαναφορά')}</button>`:''}</div>`
+    :L&&L.state==='gone'?`<div class="card pad bgap" style="margin-top:9px;flex-basis:100%">${esc(L.why)}</div>`:'';
+  const snaps=s.log.filter(x=>x.seq);
+  const who=id=>{const p=dlP(id); return p?nm(p):''};
+  const row=x=>`<li>${esc(x.seq+' — '+x.stage)} · ${fdate(x.at)}${who(x.by_person)?' · '+esc(who(x.by_person)):''}
+      ${x.file_id?` · <a href="${gsUrl(x.file_id)}" target="_blank" rel="noopener">${t('αντίγραφο')}</a>`:''}${x.xlsx_id?` · <a href="${gsFile(x.xlsx_id)}" target="_blank" rel="noopener">.xlsx</a>`:''}</li>`;
+  return `<div class="card pad" style="margin-bottom:13px;border-color:var(--ok)">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <b>${t('Ζωντανό φύλλο (Google Sheets)')}</b><span class="sp"></span>
+      <a class="btn sm p" href="${gsUrl(r.file_id)}" target="_blank" rel="noopener">${t('Άνοιγμα')}</a>
+      <a class="btn sm" href="${gsDir(r.folder_id)}" target="_blank" rel="noopener">${t('Φάκελος')}</a>
+      ${ed?`<button class="btn sm" id="gsVis" title="${t('Όταν αλλάξει είδος, τμήμα, πορεία ή μέσα μεταφοράς — ξαναϋπολογίζει ΜΟΝΟ ποια φύλλα φαίνονται')}">${t('Ενημέρωση φύλλων')}</button>`:''}</div>
+    <div class="dim" style="font-size:12px;margin-top:4px">${t('Φτιάχτηκε')} ${fdate(r.created_at)}${who(r.created_by)?' · '+esc(who(r.created_by)):''}. ${t('Δουλεύετε όλοι σε αυτό το αρχείο — όχι αντίγραφα, όχι κατέβασμα και ξανανέβασμα.')}</div>
+    ${warn}
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+      <b style="font-size:12.5px">${t('Στιγμιότυπα')}</b>
+      ${ed?`<button class="btn sm" data-gsst="egkrisi">${GS_ST.egkrisi}</button>`:''}
+      ${boss?`<button class="btn sm" data-gsst="teliko">${GS_ST.teliko}</button><button class="btn sm" data-gsst="apologismos">${GS_ST.apologismos}</button>`
+        :`<span class="dim" style="font-size:12px">${t('«Τελικό» και «Απολογισμός»: ο αρχηγός της δράσης ή ο Α.Σ.')}</span>`}</div>
+    ${snaps.length?`<ul style="margin:6px 0 0 18px;padding:0;font-size:13px">${snaps.map(row).join('')}</ul>`
+      :`<div class="dim" style="font-size:12px;margin-top:4px">${t('Κάθε στιγμιότυπο: αντίγραφο στον φάκελο της δράσης (το βλέπουν μόνο τα μέλη του Drive) και .xlsx για την Επαρχία.')}</div>`}</div>`;
+}
+
+function gsDraw(e){ const b=$('gsLive'); if(!b||EFID!==e.id)return; b.innerHTML=gsHTML(e);
+  const on=(id,f)=>{const x=$(id); if(x)x.onclick=()=>f(x)};
+  on('gsNew',x=>gsCreate(e,x)); on('gsVis',x=>gsRefresh(e,x)); on('gsBack',x=>gsRestore(e,x));
+  b.querySelectorAll('[data-gsst]').forEach(x=>x.onclick=()=>gsSnap(e,x.dataset.gsst,x));
+}
+async function gsWire(e){
+  gsDraw(e); await gsLoad(e.id); gsDraw(e);
+  const s=GS[e.id]; if(!s||!s.row)return;
+  const r=await gsCall({op:'locate',event_id:e.id});
+  s.loc=r.ok?{state:r.state}:{state:'gone',why:t('Δεν βρέθηκε το αρχείο')+': '+r.why}; gsDraw(e);
+}
+const gsBusy=(x,txt)=>{ const o=x.textContent; x.disabled=true; x.textContent=txt; return ()=>{ x.disabled=false; x.textContent=o } };
+
+async function gsCreate(e,x){
+  if(!await uiAsk(t('Να φτιαχτεί το ζωντανό Google Sheet της δράσης;')+'\n\n'+t('Γίνεται ΜΙΑ φορά: το e76 γεμίζει το έντυπο του ΣΠΚ (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΥΠΟΓΡΑΦΕΣ) και το ανεβάζει στο Κοινόχρηστο Drive. Μετά δουλεύετε εκεί — το e76 δεν το ξαναγράφει.'),{ok:t('Φτιάξ’ το'),cancel:t('Άκυρο')}))return;
+  const done=gsBusy(x,t('Ετοιμάζω…'));
+  try{
+    const tpl=await espBytes(DL_TPL);
+    const {bytes,rep}=await dlBuild(e,tpl.buffer,{live:true});
+    x.textContent=t('Ανεβαίνει στο Drive…');
+    const r=await gsCall({op:'create',event_id:e.id,xlsx_b64:gsB64(bytes)});
+    if(!r.ok){ done(); return toast(t('Δεν φτιάχτηκε')+': '+r.why) }
+    await gsLoad(e.id); GS[e.id].loc={state:'ok'}; gsDraw(e);
+    const v=r.visibility||{};
+    const msg=[t('Έτοιμο — ανοίγει στο Google Sheets.'), v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση φύλλων».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
+    window.open(gsUrl(r.file_id),'_blank','noopener');
+    if(msg.length>1)await uiNote(msg.join('\n\n')); else toast(msg[0]);
+  }catch(err){ done(); toast(t('Δεν φτιάχτηκε')+': '+(err.message||err)) }
+}
+const gsWhy=s=>{ const m=GS_WHY.find(([re])=>re.test(String(s||''))); return m?m[1]:String(s||'') };
+async function gsRefresh(e,x){
+  const done=gsBusy(x,t('Ενημερώνω…'));
+  const r=await gsCall({op:'refresh',event_id:e.id}); done();
+  if(!r.ok)return toast(t('Δεν έγινε')+': '+r.why);
+  const v=r.visibility||{};
+  toast(t('Φύλλα')+': '+v.shown+' '+t('ορατά')+' · '+v.hidden+' '+t('κρυφά')+(v.eidos?' · '+v.eidos:''));
+  await gsLoad(e.id); gsDraw(e);
+}
+async function gsRestore(e,x){
+  const done=gsBusy(x,t('Επαναφέρω…'));
+  const r=await gsCall({op:'restore',event_id:e.id}); done();
+  if(!r.ok)return toast(t('Δεν έγινε')+': '+r.why);
+  await gsLoad(e.id); GS[e.id].loc={state:'ok'}; gsDraw(e); toast(t('Το αρχείο είναι ξανά στον φάκελο της δράσης'));
+}
+async function gsSnap(e,st,x){
+  if(!await uiAsk(t('Στιγμιότυπο')+' «'+GS_ST[st]+'»;\n\n'+t('Αντίγραφο του ζωντανού αρχείου όπως είναι ΤΩΡΑ, στον φάκελο της δράσης, και .xlsx για αποστολή. Το ζωντανό αρχείο δεν αλλάζει.'),{ok:t('Ναι'),cancel:t('Άκυρο')}))return;
+  const done=gsBusy(x,t('Αντιγράφω…'));
+  const r=await gsCall({op:'snapshot',event_id:e.id,stage:st}); done();
+  if(!r.ok)return toast(t('Δεν έγινε')+': '+r.why);
+  await gsLoad(e.id); gsDraw(e);
+  if(r.xlsx_error)await uiNote(t('Το αντίγραφο Google φτιάχτηκε')+' ('+r.name+').\n\n'+t('Το .xlsx ΔΕΝ βγήκε — το Google εξάγει ως 10 MB· αν έχει εικόνες πιστοποιητικών, κατέβασέ το από το αντίγραφο (Αρχείο → Λήψη) ή αφαίρεσε εικόνες.'));
+  else toast(t('Έτοιμο')+': '+r.name);
+}
+function gsB64(u){ let s=''; for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); }
 const efdtNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ς/g,dv('σ')).replace(/\s+/g,' ').trim();
 function efdtCol(h){ const x=efdtNorm(h);
   if(!x)return null;
