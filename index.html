@@ -1217,7 +1217,7 @@ const SUBS={
  me:'Η καρτέλα μου: στοιχεία, πορεία, εκπαιδεύσεις',
  myprog:'Συγκεντρώσεις, δράσεις και σχολές που με αφορούν',
  myatt:'Πού ήμουν παρών και πού έλειψα',
- myforms:'Φόρμες που με αφορούν — ανοίγουν προσυμπληρωμένες',
+ myforms:'Φόρμες που με αφορούν',
 
  mykids:dv('Τι χρειάζεται τώρα και τα παιδιά σας με μια ματιά'),
  kidhealth:dv('Φόρμες προς συμπλήρωση και τα χαρτιά κάθε παιδιού'),
@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-10 09:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-10 10:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3278,6 +3278,7 @@ async function evSetKind(id,v,row,after){
   saveCache(); if(row)row.style.opacity=.4;
   toast(v==='prog'?'Πρόγραμμα συγκέντρωσης':'Δράση'); if(after)after(e);
 }
+function prefillOn(){ const r=(D.st||[]).find(x=>x.k==='prefill_on'); return !!(r&&r.v===true) }
 function evInvOk(e,pid,sec){
   if(!Array.isArray(e.invitees))return true;
   if(e.owner_section&&sec&&sec===e.owner_section)return true;
@@ -7448,7 +7449,7 @@ V.kidhealth=()=>{
   const fam=lensRole()==='parent'&&!VIEWAS;
   const recorded=cs.length>0;
   $('view').innerHTML=`${fam?`<div class="sec" style="margin-top:0"><h3>${t('Φόρμες προς συμπλήρωση')}</h3></div>
-      <div class="dim" style="font-size:12.5px;margin:-4px 0 8px">${t('Ανοίγουν ήδη συμπληρωμένες με όσα ξέρουμε — ελέγχετε, διορθώνετε ό,τι άλλαξε και στέλνετε.')}</div>
+      <div class="dim" style="font-size:12.5px;margin:-4px 0 8px">${prefillOn()?t('Ανοίγουν ήδη συμπληρωμένες με όσα ξέρουμε — ελέγχετε, διορθώνετε ό,τι άλλαξε και στέλνετε.'):t('Ανοίγουν οι φόρμες του Συστήματος — συμπληρώνετε και στέλνετε.')}</div>
       <div id="fwList" class="card" style="margin-bottom:12px"><div class="pad dim">…</div></div>
       <div id="fwKids"></div>
       <div class="sec"><h3>${t('Τα χαρτιά κάθε παιδιού')}</h3></div>`:''}
@@ -7589,12 +7590,13 @@ function esWait(w,title){
       .s{width:34px;height:34px;border:3px solid #ddd;border-top-color:#2a6;border-radius:50%;margin:0 auto 18px;animation:r 1s linear infinite}@keyframes r{to{transform:rotate(360deg)}}
       b{display:block;font-size:18px;margin-bottom:6px}.d{color:#666;font-size:14px;max-width:420px}</style></head>
       <body><div><div class="s"></div><b>${esc(t('Φορτώνει η φόρμα του Smartespot'))}</b>${title?`<div>${esc(title)}</div>`:''}
-      <p class="d">${esc(t('Μπορεί να πάρει λίγο — μερικές φορές ως ένα λεπτό. Μην κλείσετε την καρτέλα· η φόρμα θα εμφανιστεί εδώ, ήδη συμπληρωμένη με τα στοιχεία σας.'))}</p></div></body></html>`);
+      <p class="d">${esc(prefillOn()?t('Μπορεί να πάρει λίγο — μερικές φορές ως ένα λεπτό. Μην κλείσετε την καρτέλα· η φόρμα θα εμφανιστεί εδώ, ήδη συμπληρωμένη με τα στοιχεία σας.'):t('Μπορεί να πάρει λίγο — μερικές φορές ως ένα λεπτό. Μην κλείσετε την καρτέλα· η φόρμα θα εμφανιστεί εδώ.'))}</p></div></body></html>`);
     w.document.close();
   }catch(e){}
 }
 async function esUrl(ev, kid, parent){
   if(!ev||!ev.form_url)return null;
+  if(!prefillOn())return ev.form_url;           
   const {data:tok, error} = await sb.rpc('prefill_issue',
     {p_person:kid.id, p_kind:'δράση', p_event:ev.id});
   if(error||!tok){ toast('Δεν βγήκε σύνδεσμος: '+((error&&error.message)||'—')); return null }
@@ -7734,7 +7736,8 @@ V.kidprog=()=>{
 
     ${ev.some(e=>signupOpen(e))?`<div class="card pad" style="margin-top:14px">
       <div class="muted" style="font-size:12.5px;line-height:1.6">
-        ${t('<b>Η δήλωση είναι δεσμευτική.</b> Με το κουμπί ανοίγει η φόρμα του Συστήματος <b>ήδη συμπληρωμένη</b> με τα στοιχεία σας — εκεί γίνεται και η πληρωμή. Η θέση κρατιέται όταν ολοκληρωθεί η πληρωμή. Αν αλλάξουν τα σχέδιά σας, πείτε το στον Αρχηγό — μην αφήσετε τη δήλωση να μείνει.')}
+        ${prefillOn()?t('<b>Η δήλωση είναι δεσμευτική.</b> Με το κουμπί ανοίγει η φόρμα του Συστήματος <b>ήδη συμπληρωμένη</b> με τα στοιχεία σας — εκεί γίνεται και η πληρωμή. Η θέση κρατιέται όταν ολοκληρωθεί η πληρωμή. Αν αλλάξουν τα σχέδιά σας, πείτε το στον Αρχηγό — μην αφήσετε τη δήλωση να μείνει.')
+          :t('<b>Η δήλωση είναι δεσμευτική.</b> Με το κουμπί ανοίγει η φόρμα του Συστήματος — εκεί γίνεται και η πληρωμή. Θα σας ζητήσει τον Αριθμό Μητρώου του παιδιού. Η θέση κρατιέται όταν ολοκληρωθεί η πληρωμή. Αν αλλάξουν τα σχέδιά σας, πείτε το στον Αρχηγό — μην αφήσετε τη δήλωση να μείνει.')}
       </div></div>`:''}`;
 
   kidActWire(ks);
@@ -11794,6 +11797,7 @@ const ddmmyyyy = d => { if(!d) return '';
   const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
 
 async function formUrl(base, p, kind, eventId){
+  if(!prefillOn())return base;                  
   const {data:tok, error} = await sb.rpc('prefill_issue',
     {p_person:p, p_kind:kind||'δράση', p_event:eventId||null});
   if(error||!tok){ toast('Δεν βγήκε σύνδεσμος: '+((error&&error.message)||'—')); return null }
@@ -17482,7 +17486,7 @@ V.formcat=async()=>{
       <b>Κατάλογος φορμών</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Οι <b>ζωντανές</b> φόρμες του Smartespot.
         Ό,τι βάλεις εδώ εμφανίζεται αυτόματα στην ενότητα «Οι φόρμες μου» σε όσους το ακροατήριο τούς πιάνει,
-        <b>προσυμπληρωμένο</b> με ό,τι ήδη ξέρουμε.</div>
+        ${prefillOn()?'<b>προσυμπληρωμένο</b> με ό,τι ήδη ξέρουμε.':esc(t('— κενό: η προσυμπλήρωση είναι κλειστή από τις 9/11 (σβήστηκαν τα snippets).'))}</div>
       <div class="dim" style="font-size:12.5px;margin-top:6px">Δεν είναι τα «Έντυπα &amp; εξαγωγές Σ.Π.Κ.» —
         εκείνα είναι χαρτιά προς εκτύπωση.</div>
       <div style="margin-top:10px"><button class="btn p sm" id="fcNew">＋ Νέα φόρμα</button></div></div>
@@ -18135,11 +18139,11 @@ function annSignHTML(ev,a){
       <select id="annLink" style="margin-top:5px;max-width:100%"><option value="">${esc(t('Δέσε με δράση…'))}</option>${evs.map(e=>`<option value="${e.id}">${esc(e.title||'')} · ${esc(fdate(e.event_date))}</option>`).join('')}</select></div>`; }
   if(!ev.form_url)return '';
   const ks=annKids(ev);
-  if(!ks.length)return annWriter(ME.role)?`<div class="dim" style="margin-top:10px;font-size:12.5px">✓ ${esc(t('Δεμένη με τη δράση: οι γονείς (και οι ανιχνευτές 16+) βλέπουν εδώ κουμπί δήλωσης, με τη φόρμα ήδη συμπληρωμένη.'))}</div>`:'';
+  if(!ks.length)return annWriter(ME.role)?`<div class="dim" style="margin-top:10px;font-size:12.5px">✓ ${esc(prefillOn()?t('Δεμένη με τη δράση: οι γονείς (και οι ανιχνευτές 16+) βλέπουν εδώ κουμπί δήλωσης, με τη φόρμα ήδη συμπληρωμένη.'):t('Δεμένη με τη δράση: οι γονείς (και οι ανιχνευτές 16+) βλέπουν εδώ κουμπί δήλωσης.'))}</div>`:'';
   const today=new Date().toISOString().slice(0,10), h=kidActBtns(ev,ks,today); if(!h.trim())return '';
   return `<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px">
     <div style="font-size:13px;font-weight:600">${esc(t('Δήλωση συμμετοχής'))}${ev.signup_closes?` <span class="dim" style="font-weight:400">· ${esc(t('μέχρι'))} ${esc(fdate(ev.signup_closes))}</span>`:''}</div>
-    <div class="dim" style="font-size:12px;margin:2px 0 7px">${esc(t('Η φόρμα ανοίγει ήδη συμπληρωμένη με τα στοιχεία που έχουμε.'))}</div>
+    <div class="dim" style="font-size:12px;margin:2px 0 7px">${esc(prefillOn()?t('Η φόρμα ανοίγει ήδη συμπληρωμένη με τα στοιχεία που έχουμε.'):t('Ανοίγει η φόρμα του Συστήματος — θα σας ζητήσει τον Αριθμό Μητρώου του παιδιού.'))}</div>
     <div data-evbtns="${ev.id}" style="display:flex;gap:6px;flex-wrap:wrap">${h}</div></div>`;
 }
 async function annOpen(a){
@@ -20612,7 +20616,7 @@ function ntHTML(e){
   return `<div class="card pad" id="efNt" style="margin-bottom:13px">
     <b style="font-size:14px">Ενημέρωση γονέων</b>
     <div class="dim" style="font-size:12.5px;line-height:1.5;margin-top:3px">Email σε κάθε γονέα με τα παιδιά του που δεν δηλώθηκαν ακόμη.
-      Με λογαριασμό e76 το κουμπί τον πάει στη φόρμα ήδη συμπληρωμένη· χωρίς, στην κενή φόρμα με τον Α.Μ. του παιδιού.
+      ${prefillOn()?'Με λογαριασμό e76 το κουμπί τον πάει στη φόρμα ήδη συμπληρωμένη· χωρίς, στην κενή φόρμα με τον Α.Μ. του παιδιού.':esc(t('Το κουμπί πάει στην κενή φόρμα, με τον Α.Μ. κάθε παιδιού γραμμένο στο μήνυμα (χωρίς προσυμπλήρωση από τις 9/11).'))}
       Όποιος πήρε ένα μήνυμα για ένα παιδί δεν το ξαναπαίρνει.</div>
     ${why?`<div class="dim" style="font-size:12.5px;margin-top:8px">${esc(why)}</div>`:''}
     ${e.form_url?box('άνοιγμα','«Άνοιξαν οι δηλώσεις»','Ποιοι θα το πάρουν',
