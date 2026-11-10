@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-10 10:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-10 11:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4039,6 +4039,7 @@ function ageMeets(id,code){
 function certTypesFor(p){
   const sec=secOf(p)||p.section;
   return (D.ct||[]).slice().sort((a,b)=>(a.seq||99)-(b.seq||99)).filter(t=>{
+    if(VEH_TYPES.includes(t.code))return false;
     const kinds=t.holder_kinds||['Βαθμοφόρος'];
     if(!kinds.includes(p.kind||''))return false;
     if(t.holder_sections&&(p.kind||'')!=='Βαθμοφόρος'
@@ -4248,7 +4249,8 @@ function certsHTML(p){
       <div style="display:grid;gap:7px;margin-top:9px">
         <select id="pcType">${certTypesFor(p).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')
           ||'<option value="">— κανένα διαθέσιμο —</option>'}</select>
-        <input id="pcLabel" placeholder="Πινακίδα / κατηγορία / περιγραφή">
+        <div class="dim" style="font-size:12px">${esc(t('Ασφάλεια, άδεια κυκλοφορίας ή ΜΟΤ; Αυτά είναι χαρτιά του οχήματος — ανεβαίνουν στο όχημα, όχι εδώ.'))}${ME.person_id===p.id?` <a href="#" onclick="route('myveh');return false">${esc(t('Τα οχήματά μου'))}</a>`:''}</div>
+        <input id="pcLabel" placeholder="${esc(t('Κατηγορία / περιγραφή'))}">
         <div style="display:flex;gap:7px">
           <label style="flex:1;display:flex;flex-direction:column;gap:2px">
             <span class="dim" id="pcIssL" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. έκδοσης</span>
@@ -4478,13 +4480,14 @@ async function docPreview(list,ix){
         body.innerHTML=''; body.appendChild(wrap);
         let tok=0, first=true;
         draw=async()=>{ const my=++tok; fitLbl();
-          const W=body.clientWidth-24, H=body.clientHeight-24, dpr=Math.min(window.devicePixelRatio||1,2);
+          const W=body.clientWidth-24, H=body.clientHeight-24, dpr=Math.min((window.devicePixelRatio||1)*1.5,4.5);
           const frag=document.createDocumentFragment();
           for(const pg of pages){
             const v1=pg.getViewport({scale:1}), fit=Math.min(W/v1.width, H/v1.height);
-            const vp=pg.getViewport({scale:fit*(z||1)*dpr});
+            const want=fit*(z||1)*dpr, cap=Math.sqrt(16e6/(v1.width*v1.height));
+            const vp=pg.getViewport({scale:Math.min(want,cap)}), q=vp.scale/(fit*(z||1));
             const c=document.createElement('canvas'); c.width=Math.floor(vp.width); c.height=Math.floor(vp.height);
-            c.style.cssText=`display:block;margin:0 auto 12px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.4);width:${Math.floor(vp.width/dpr)}px;height:${Math.floor(vp.height/dpr)}px`;
+            c.style.cssText=`display:block;margin:0 auto 12px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.4);width:${Math.floor(vp.width/q)}px;height:${Math.floor(vp.height/q)}px`;
             await pg.render({canvasContext:c.getContext('2d'), viewport:vp}).promise;
             if(my!==tok||!ov.isConnected)return;
             frag.appendChild(c);
