@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 15:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 16:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21229,8 +21229,10 @@ async function dlBuild(e,buf,o){
   try{ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js') }
   catch(x){ throw new Error('Δεν φόρτωσε η βιβλιοθήκη — έλεγξε τη σύνδεση') }
   const d=dlData(e,g,med);
+  if(o&&o.rec&&!withMed)d.noDiet=true;    
   d.certs=await dlCertImgs(e);
   const r=await dlFill(buf,d,o);
+  if(o&&o.rec){ if(d.certs.err)r.rep.unshift(t('Πιστοποιητικά')+': '+d.certs.err); return r; }
   if(d.certs.err)r.rep.unshift(t('Πιστοποιητικά')+': '+d.certs.err);
   else r.rep.push(d.certs.length?t('Στο φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ μπήκαν')+' '+d.certs.length+' '+t('εικόνες πιστοποιητικών'):t('Δεν βρέθηκαν πιστοποιητικά σε ισχύ για το φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ'));
   return r;
@@ -21243,32 +21245,43 @@ async function dlCertImgs(e){
   if(error||!data||!data.ok){ out.err=(data&&data.error)||t('δεν δόθηκαν'); return out; }
   if(!(data.items||[]).length)return out;
   toast(t('Ετοιμάζω τα πιστοποιητικά…'));
-  const jpg=c=>new Promise(r=>c.toBlob(b=>b?b.arrayBuffer().then(a=>r(new Uint8Array(a))):r(null),'image/jpeg',0.75));
-  const fit=(w,h,M)=>{ const s=Math.min(1,M/Math.max(w,h*0.78)); return [Math.round(w*s),Math.round(h*s)]; };
+  const canvas=(w,h)=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); return [c,x]; };
+  const M=1400, fit=(w,h)=>Math.min(1,M/Math.max(w,h));
   for(const it of data.items){
-    try{
-      const buf=new Uint8Array(await (await fetch(it.url)).arrayBuffer());
-      const isPdf=/pdf/i.test(it.mime||'')||String.fromCharCode(...buf.slice(0,4))==='%PDF';
-      if(isPdf){
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
-        const L=window.pdfjsLib; L.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const doc=await L.getDocument({data:buf}).promise;
-        for(let n=1;n<=Math.min(2,doc.numPages);n++){
-          const pg=await doc.getPage(n), v0=pg.getViewport({scale:1}), [w]=fit(v0.width,v0.height,1100), vp=pg.getViewport({scale:w/v0.width});
-          const c=document.createElement('canvas'); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
-          const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height);
-          await pg.render({canvasContext:x,viewport:vp}).promise;
-          const b=await jpg(c); if(b)out.push({cat:it.cat,label:it.label+(doc.numPages>1?' ('+n+'/'+Math.min(2,doc.numPages)+')':''),bytes:b,w:c.width,h:c.height});
+    const parts=[];
+    for(const pt of it.parts||[]){
+      try{
+        const buf=new Uint8Array(await (await fetch(pt.url)).arrayBuffer());
+        const isPdf=/pdf/i.test(pt.mime||'')||String.fromCharCode(...buf.slice(0,4))==='%PDF';
+        if(isPdf){
+          await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+          const L=window.pdfjsLib; L.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          const doc=await L.getDocument({data:buf}).promise;
+          for(let n=1;n<=Math.min(2,doc.numPages);n++){
+            const pg=await doc.getPage(n), v0=pg.getViewport({scale:1}), vp=pg.getViewport({scale:fit(v0.width,v0.height)});
+            const [c,x]=canvas(Math.round(vp.width),Math.round(vp.height)); await pg.render({canvasContext:x,viewport:vp}).promise; parts.push(c);
+          }
+        }else{
+          const bm=await createImageBitmap(new Blob([buf])), f=fit(bm.width,bm.height);
+          const [c,x]=canvas(Math.round(bm.width*f),Math.round(bm.height*f)); x.drawImage(bm,0,0,c.width,c.height); parts.push(c);
         }
-      }else{
-        const bm=await createImageBitmap(new Blob([buf])), [w,h]=fit(bm.width,bm.height,1100);
-        const c=document.createElement('canvas'); c.width=w; c.height=h;
-        const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(bm,0,0,w,h);
-        const b=await jpg(c); if(b)out.push({cat:it.cat,label:it.label,bytes:b,w,h});
-      }
-    }catch(x){ console.warn('cert img',x&&x.message); }
+      }catch(x){ console.warn('cert img',x&&x.message); }
+    }
+    if(parts.length)out.push({cat:it.cat,k:it.k,label:it.label,parts:parts.slice(0,4)});
   }
   return out;
+}
+async function dlCertCompose(parts,bw,bh){
+  const G=8, V={W:Math.max(...parts.map(c=>c.width)),H:parts.reduce((a,c)=>a+c.height,0)+G*(parts.length-1)},
+    O={W:parts.reduce((a,c)=>a+c.width,0)+G*(parts.length-1),H:Math.max(...parts.map(c=>c.height))};
+  const fitOf=Q=>Math.min(bw/Q.W,bh/Q.H);
+  const L=fitOf(O)>fitOf(V)?O:V, hor=L===O, s=Math.min(fitOf(L),1);
+  const q=Math.min(1,Math.sqrt(990000/(L.W*L.H)));
+  const c=document.createElement('canvas'); c.width=Math.max(1,Math.floor(L.W*q)); c.height=Math.max(1,Math.floor(L.H*q));
+  const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height);
+  let at=0; for(const p of parts){ const w=p.width*q,h=p.height*q; hor?x.drawImage(p,at,0,w,h):x.drawImage(p,0,at,w,h); at+=(hor?p.width:p.height)*q+G*q; }
+  const bytes=await new Promise(r=>c.toBlob(b=>b?b.arrayBuffer().then(a=>r(new Uint8Array(a))):r(null),'image/jpeg',0.8));
+  return {bytes,w:Math.max(10,Math.round(L.W*s)),h:Math.max(10,Math.round(L.H*s))};
 }
 function dlExport(e,pick){
   const go=async(buf,fname)=>{
@@ -21396,6 +21409,16 @@ function xlSheet(xml,ss,isDate){
   return S;
 }
 
+const xlSame=(a,b)=>(typeof a==='number'&&typeof b==='number')?Math.abs(a-b)<1e-7:XL.norm(a)===XL.norm(b);
+function xlRec(B,n,S){
+  if(!S||!B.rec)return S;
+  const raw=S.set;
+  const seen=new Map();      
+  S.set=(r,c,val,kind)=>{ const k=r+':'+c; if(!seen.has(k)){ const x={sh:n,r,c,old:S.v(r,c)}; seen.set(k,x); B.rec.push(x); }
+    const ok=raw(r,c,val,kind); if(ok)seen.get(k).v=S.v(r,c); return ok };
+  B.recDone=()=>{ B.rec=B.rec.filter(x=>'v' in x&&!xlSame(x.old,x.v)); return B.rec };
+  return S;
+}
 async function xlOpen(buf){
   const zip=await JSZip.loadAsync(buf);
   const rd=async p=>{const f=zip.file(p);return f?f.async('string'):null};
@@ -21415,7 +21438,7 @@ async function xlOpen(buf){
   const B={zip,ss,sheets,isDate,
     has:n=>!!sheets[n],
     sheet:async n=>{ if(open[n])return open[n]; const p=sheets[n]; if(!p)return null;
-      return open[n]=xlSheet(await rd(p),ss,isDate) },
+      return open[n]=xlRec(B,n,xlSheet(await rd(p),ss,isDate)) },
     save:async(hook)=>{
       for(const [n,S] of Object.entries(open))if(S.touched)zip.file(sheets[n],S.xml());
       zip.file('[Content_Types].xml',(await rd('[Content_Types].xml'))
@@ -21485,7 +21508,8 @@ function dlBlocks(S){
     const ds=S.find('Δασική Υπηρεσία',{col:'B',from:x.r,to:x.r+40}); return ds?{st:x.r,end:ds.r+1}:null}).filter(Boolean);
 }
 function dlFillVenues(S,d,rep){
-  if(S.find(dv('Λεπτομέρειες Χώρου Δράσης 1'),{col:'B'}))return dlFillVenues3(S,d,rep);
+  { const H=S.findAll(dv('Λεπτομέρειες Χώρου Δράσης'),{col:'B',starts:true}), ph=S.find(dv('Χρήσιμα Τηλέφωνα'),{col:'B',starts:true});
+    if(ph&&H.length>=2&&H.every(h=>h.r<ph.r))return dlFillVenues3(S,d,rep); }
   let B=dlBlocks(S); if(!B.length){ if(d.venues.length)rep.push('Δεν βρέθηκε «Λεπτομέρειες Χώρου Δράσης»'); return; }
   while(B.length<d.venues.length){
     const L=B[B.length-1], gap=B.length>1?B[1].st-B[0].end:3;
@@ -21521,7 +21545,7 @@ function dlFillSym(S,d,rep){
     const {m,days}=cols(h); const C=k=>m[k]||null;
     const keys=['Αριθμός Τριπλοτύπου','Αριθμός Μητρώου','Ονοματεπώνυμο','Ημ. Γέννησης','Κλιμάκιο','Τμήμα','Τηλέφωνο',
       'Όνομα Πατέρα','Όνομα Μητέρας','Πληρωμή','Διατροφικές ή άλλες ιδιαιτερότητες','Κύρια Καθήκοντα στη Δράση',
-      'Δευτερεύοντα Καθήκοντα στη Δράση','Αρ. Εντολής Διοίκησης'];
+      'Δευτερεύοντα Καθήκοντα στη Δράση','Αρ. Εντολής Διοίκησης'].filter(k=>!(d.noDiet&&k===dv('Διατροφικές ή άλλες ιδιαιτερότητες')));
     const all=[...keys.map(C).filter(Boolean),...days];
     const cap=lastRow?lastRow-h.r:list.length;
     let end=lastRow||h.r+list.length; if(!lastRow){ const mx=Math.max(...S.rows.keys()); for(let r=h.r+1;r<=mx;r++)if(all.some(c=>S.v(r,c)!=null&&!S.isF(r,c)))end=Math.max(end,r) }
@@ -21530,7 +21554,7 @@ function dlFillSym(S,d,rep){
       put('Αριθμός Τριπλοτύπου',dlNum(p.trip)); put('Αριθμός Μητρώου',dlNum(p.am)); put('Ονοματεπώνυμο',p.name);
       put('Ημ. Γέννησης',p.dob,'date'); put('Κλιμάκιο',p.klim); put('Τμήμα',p.tmima); put('Τηλέφωνο',dlPh(p.phone));
       put('Όνομα Πατέρα',p.father); put('Όνομα Μητέρας',p.mother); put('Πληρωμή',p.paid);
-      put('Διατροφικές ή άλλες ιδιαιτερότητες',p.diet);
+      if(!d.noDiet)put(dv('Διατροφικές ή άλλες ιδιαιτερότητες'),p.diet);    
       days.forEach((c,j)=>S.set(r,c,j<d.ndays?(p.days[j]?'Ναι':'Όχι'):null));
       if(staff){ put('Κύρια Καθήκοντα στη Δράση',p.k1); put('Δευτερεύοντα Καθήκοντα στη Δράση',p.k2); put('Αρ. Εντολής Διοίκησης',dlNum(p.appt)); } });
     if(list.length>cap)rep.push((staff?'Επιτελείο':'Συμμετέχοντες')+': το αρχείο χωρά '+cap+', είναι '+list.length);
@@ -21554,13 +21578,14 @@ const DL_SH={G:[dv('ΓΕΝΙΚΑ'),'GENIKA'],Y:[dv('ΣΥΜΜΕΤΟΧΕΣ'),'SYMM
 async function dlSh(B,k){ for(const n of DL_SH[k]){ const S=await B.sheet(n); if(S)return S; } return null; }
 const DL_LIVE=dv('⚠ Μην κάνετε αντίγραφο ή κατέβασμα/ξανανέβασμα — δουλεύετε ΜΟΝΟ σε αυτό το αρχείο (τα αντίγραφα χάνουν τη σύνδεση με το e76).');
 async function dlFill(buf,d,o){
-  const B=await xlOpen(buf), rep=[];
+  const B=await xlOpen(buf), rep=[]; if(o&&o.rec)B.rec=[];
   const G=await dlSh(B,'G'); if(!G)throw new Error('Το αρχείο δεν έχει φύλλο «ΓΕΝΙΚΑ» — δεν είναι Δελτίο Δράσης ΣΠΚ.');
   dlFillGenika(G,d,rep);
   if(o&&o.live&&G.v(2,2)==null)G.set(2,2,DL_LIVE);
   const Y=await dlSh(B,'Y'); if(Y)dlFillSym(Y,d,rep); else rep.push('Λείπει το φύλλο ΣΥΜΜΕΤΟΧΕΣ');
   const U=await dlSh(B,'U'); if(U)dlFillSign(U,d);
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
+  if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs}; }
   const hook=d.certs&&d.certs.length?await dlCertsPlan(B,d.certs,rep):null;
   return {bytes:await B.save(hook), rep};
 }
@@ -21584,31 +21609,53 @@ function dlFillVenues3(S,d,rep){
     .forEach(([l,col,k])=>{ const a=at(l,col); if(a)S.set(a.r,a.c+1,dlPh(first(k))); });
 }
 
+const DL_CERT_TAG='e76 · ';
 const DL_CERT_T={1:dv('Πρώτες Βοήθειες'),2:dv('Ναυαγοσωστική'),3:dv('Υγειονομικό'),4:dv('Ασφάλεια αυτοκινήτου'),5:dv('ΜΟΤ'),6:dv('Άδεια οδήγησης')};
-async function dlCertsPlan(B,certs,rep){
+function dlCertGeo(x){
+  const hts={}; x.replace(/<row\b([^>]*)>/g,(m,a)=>{ const r=+XL.attr(a,'r'), v=+XL.attr(a,'ht'); if(r&&v)hts[r]=v; return m; });
+  const cw={}; x.replace(/<col\b([^>]*?)\/?>/g,(m,a)=>{ const w=+XL.attr(a,'width'); for(let c=+XL.attr(a,'min');c<=+XL.attr(a,'max');c++)cw[c]=w; return m; });
+  const px=c=>cw[c]!=null?Math.floor(cw[c]*7+5):64, BOX=556;
+  const col=k=>{ if(k<4)return 1+2*k; let c=9; for(let i=4;i<k;i++){ let w=0; while(w<BOX+10){ w+=px(c); c++; } } return c; };
+  const row=hr=>{ for(let r=hr+1;r<hr+8;r++)if((hts[r]||0)>=100)return r; return hr+2; };
+  const at=(hr,k)=>{ const r=row(hr), c=col(k); return {r,c,bw:(k<4?px(c):BOX)-8,bh:(hts[r]||315)*96/72-8}; };
+  return {at};
+}
+async function dlCertSlots(B,certs,rep){
   const name=[dv('ΠΙΣΤΟΠΟΙΗΤΙΚΑ'),'PISTOPOIHTIKA'].find(n=>B.has(n)); if(!name){ rep.push(t('Δεν βρέθηκε φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ — τα πιστοποιητικά δεν μπήκαν')); return null; }
   const S=await B.sheet(name), plan=[];
   for(const cat of [...new Set(certs.map(c=>c.cat))]){
     const h=S.find(cat+'.',{col:'A',starts:true,from:15}); if(!h){ rep.push(t('ΠΙΣΤΟΠΟΙΗΤΙΚΑ: δεν βρέθηκε η θέση')+' «'+DL_CERT_T[cat]+'»'); continue; }
-    certs.filter(c=>c.cat===cat).forEach((c,k)=>{ plan.push({...c,hr:h.r,k}); if(k<4)S.set(h.r,1+2*k,cat+'. '+DL_CERT_T[cat]+' — '+c.label); });
+    certs.filter(c=>c.cat===cat).forEach(c=>{ plan.push({...c,hr:h.r}); if(c.k<4)S.set(h.r,1+2*c.k,cat+'. '+DL_CERT_T[cat]+' — '+c.label); });
   }
+  return {name,plan};
+}
+async function dlSheetPics(B,name){
+  const zip=B.zip, rd=async p=>{const f=zip.file(p);return f?f.async('string'):null};
+  const sp=B.sheets[name], sr=await rd(sp.replace(/worksheets\/([^/]+)$/,'worksheets/_rels/$1.rels'))||'', out=[];
+  const re=/<Relationship\b([^>]*)\/?>/g; let m;
+  while((m=re.exec(sr))){ if(!/\/drawing"?$/.test(XL.attr(m[1],'Type')||''))continue;
+    const dp=('xl/drawings/'+(XL.attr(m[1],'Target')||'').replace(/^.*\//,'')), dx=await rd(dp)||'';
+    const an=/<(?:\w+:)?(?:oneCellAnchor|twoCellAnchor)\b[\s\S]*?<\/(?:\w+:)?(?:oneCellAnchor|twoCellAnchor)>/g; let q;
+    while((q=an.exec(dx))){ const f=/<(?:\w+:)?from>\s*<(?:\w+:)?col>(\d+)<\/(?:\w+:)?col>[\s\S]*?<(?:\w+:)?row>(\d+)</.exec(q[0]); if(!f)continue;
+      const nv=/<(?:\w+:)?cNvPr\b([^>]*)/.exec(q[0])||[];
+      out.push({c:+f[1]+1,r:+f[2]+1,name:XL.unesc(XL.attr(nv[1],'name')||''),descr:XL.unesc(XL.attr(nv[1],'descr')||'')}); } }
+  return out;
+}
+async function dlCertsPlan(B,certs,rep){
+  const P=await dlCertSlots(B,certs,rep); if(!P)return null; const {name,plan}=P;
   return async(zip,rd)=>{
     const sp=B.sheets[name]; let x=await rd(sp);
     if(/<drawing\b/.test(x)){ rep.push(t('Το φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ έχει ήδη εικόνες — δεν μπήκαν νέες')); return; }
-    const hts={}; x.replace(/<row\b([^>]*)>/g,(m,a)=>{ const r=+XL.attr(a,'r'), v=+XL.attr(a,'ht'); if(r&&v)hts[r]=v; return m; });
-    const cw={}; x.replace(/<col\b([^>]*?)\/?>/g,(m,a)=>{ const w=+XL.attr(a,'width'); for(let c=+XL.attr(a,'min');c<=+XL.attr(a,'max');c++)cw[c]=w; return m; });
-    const px=c=>cw[c]!=null?Math.floor(cw[c]*7+5):64, BOX=556;
-    const slotCol=k=>{ if(k<4)return 1+2*k; let c=9; for(let i=4;i<k;i++){ let w=0; while(w<BOX+10){ w+=px(c); c++; } } return c; };
-    const imgRow=hr=>{ for(let r=hr+1;r<hr+8;r++)if((hts[r]||0)>=100)return r; return hr+2; };
+    const geo=dlCertGeo(x);
     const E=v=>Math.round(v*9525), anchors=[], rels=[];
-    plan.forEach((p,i)=>{ const r=imgRow(p.hr), c=slotCol(p.k), bw=(p.k<4?px(c):BOX)-8, bh=(hts[r]||315)*96/72-8;
-      const sc=Math.min(bw/p.w,bh/p.h,1), w=Math.round(p.w*sc), hh=Math.round(p.h*sc), rid='rId'+(i+1), f='e76cert'+(i+1)+'.jpeg';
-      zip.file('xl/media/'+f,p.bytes);
+    for(const [i,p] of plan.entries()){ const {r,c,bw,bh}=geo.at(p.hr,p.k), im=await dlCertCompose(p.parts,bw,bh); if(!im.bytes)continue;
+      const w=im.w, hh=im.h, rid='rId'+(i+1), f='e76cert'+(i+1)+'.jpeg';
+      zip.file('xl/media/'+f,im.bytes);
       rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${f}"/>`);
       anchors.push(`<xdr:oneCellAnchor><xdr:from><xdr:col>${c-1}</xdr:col><xdr:colOff>${E(4)}</xdr:colOff><xdr:row>${r-1}</xdr:row><xdr:rowOff>${E(4)}</xdr:rowOff></xdr:from><xdr:ext cx="${E(w)}" cy="${E(hh)}"/>`
-        +`<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i+2}" name="${XL.esc(DL_CERT_T[p.cat]+' '+(p.k+1))}" descr="${XL.esc(p.label)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>`
+        +`<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i+2}" name="${XL.esc(DL_CERT_TAG+DL_CERT_T[p.cat]+' '+(p.k+1))}" descr="${XL.esc(DL_CERT_TAG+p.label)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>`
         +`<xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>`
-        +`<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${E(w)}" cy="${E(hh)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`); });
+        +`<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${E(w)}" cy="${E(hh)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`); }
     if(!anchors.length)return;
     const dn='drawingE76cert.xml';
     zip.file('xl/drawings/'+dn,'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+anchors.join('')+'</xdr:wsDr>');
@@ -21680,7 +21727,7 @@ function gsHTML(e){
       <a class="btn sm p" href="${gsUrl(r.file_id)}" target="_blank" rel="noopener">${t('Άνοιγμα')}</a>
       <a class="btn sm" href="${gsDir(r.folder_id)}" target="_blank" rel="noopener">${t('Φάκελος')}</a>
       ${isAdminUI()?`<button class="btn sm gh" id="gsRep" title="${t('Νέο αρχείο από το τρέχον πρότυπο του e76 — το σημερινό πάει στον κάδο του Drive')}">${t('Νέο από πρότυπο')}</button>`:''}
-      ${ed?`<button class="btn sm" id="gsVis" title="${t('Όταν αλλάξει είδος, τμήμα, πορεία ή μέσα μεταφοράς — ξαναϋπολογίζει ΜΟΝΟ ποια φύλλα φαίνονται')}">${t('Ενημέρωση φύλλων')}</button>`:''}</div>
+      ${ed?`<button class="btn sm" id="gsVis" title="${t('Ξαναγράφει στο ΙΔΙΟ αρχείο μόνο τα κελιά του e76 που άλλαξαν (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΠΙΣΤΟΠΟΙΗΤΙΚΑ…) — πρώτα σου δείχνει τι. Ό,τι γράψατε αλλού μένει.')}">${t('Ενημέρωση από το e76')}</button>`:''}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${t('Φτιάχτηκε')} ${fdate(r.created_at)}${who(r.created_by)?' · '+esc(who(r.created_by)):''}. ${t('Δουλεύετε όλοι σε αυτό το αρχείο — όχι αντίγραφα, όχι κατέβασμα και ξανανέβασμα.')}</div>
     ${warn}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
@@ -21694,7 +21741,7 @@ function gsHTML(e){
 
 function gsDraw(e){ const b=$('gsLive'); if(!b||EFID!==e.id)return; b.innerHTML=gsHTML(e);
   const on=(id,f)=>{const x=$(id); if(x)x.onclick=()=>f(x)};
-  on('gsNew',x=>gsCreate(e,x)); on('gsRep',x=>gsReplace(e,x)); on('gsVis',x=>gsRefresh(e,x)); on('gsBack',x=>gsRestore(e,x));
+  on('gsNew',x=>gsCreate(e,x)); on('gsRep',x=>gsReplace(e,x)); on('gsVis',x=>gsSync(e,x)); on('gsBack',x=>gsRestore(e,x));
   b.querySelectorAll('[data-gsst]').forEach(x=>x.onclick=()=>gsSnap(e,x.dataset.gsst,x));
 }
 async function gsWire(e){
@@ -21716,7 +21763,7 @@ async function gsCreate(e,x){
     if(!r.ok){ done(); return toast(t('Δεν φτιάχτηκε')+': '+r.why) }
     await gsLoad(e.id); GS[e.id].loc={state:'ok'}; gsDraw(e);
     const v=r.visibility||{};
-    const msg=[t('Έτοιμο — ανοίγει στο Google Sheets.'), v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση φύλλων».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
+    const msg=[t('Έτοιμο — ανοίγει στο Google Sheets.'), v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση από το e76».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
     window.open(gsUrl(r.file_id),'_blank','noopener');
     if(msg.length>1)await uiNote(msg.join('\n\n')); else toast(msg[0]);
   }catch(err){ done(); toast(t('Δεν φτιάχτηκε')+': '+(err.message||err)) }
@@ -21734,18 +21781,77 @@ async function gsReplace(e,x){
     const v=r.visibility||{};
     window.open(gsUrl(r.file_id),'_blank','noopener');
     const msg=[t('Έτοιμο το νέο αρχείο.')+(r.old_trashed?' '+t('Το παλιό πήγε στον κάδο του Drive.'):' '+t('Το παλιό ΔΕΝ μπήκε στον κάδο — σβήσ’ το από το Drive.')),
-      v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση φύλλων».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
+      v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση από το e76».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
     if(msg.length>1)await uiNote(msg.join('\n\n')); else toast(msg[0]);
   }catch(err){ done(); toast(t('Δεν έγινε')+': '+(err.message||err)) }
 }
 const gsWhy=s=>{ const m=GS_WHY.find(([re])=>re.test(String(s||''))); return m?m[1]:String(s||'') };
-async function gsRefresh(e,x){
-  const done=gsBusy(x,t('Ενημερώνω…'));
-  const r=await gsCall({op:'refresh',event_id:e.id}); done();
-  if(!r.ok)return toast(t('Δεν έγινε')+': '+r.why);
-  const v=r.visibility||{};
-  toast(t('Φύλλα')+': '+v.shown+' '+t('ορατά')+' · '+v.hidden+' '+t('κρυφά')+(v.eidos?' · '+v.eidos:''));
-  await gsLoad(e.id); gsDraw(e);
+const gsShow=v=>{ if(v==null||v==='')return '—';
+  if(typeof v==='number'){ if(v>20000&&v<80000&&Number.isInteger(v))return fdate(new Date(Date.UTC(1899,11,30)+v*864e5).toISOString().slice(0,10));
+    if(v>0&&v<1){ const m=Math.round(v*1440); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); } }
+  const s=String(v); return s.length>60?s.slice(0,57)+'…':s };
+async function gsImgPlan(B,P){
+  const zip=B.zip, x=await zip.file(B.sheets[P.name]).async('string'), geo=dlCertGeo(x), pics=await dlSheetPics(B,P.name);
+  const add=[], key=(r,c)=>r+':'+c, slots=new Set();
+  for(const p of P.plan){ const g=geo.at(p.hr,p.k); slots.add(key(g.r,g.c));
+    const old=pics.find(q=>q.r===g.r&&q.c===g.c), descr=DL_CERT_TAG+p.label;
+    if(old&&old.descr===descr)continue;                        
+    add.push({p,g,descr,old}); }
+  const stale=pics.filter(q=>!slots.has(key(q.r,q.c))&&(q.name+q.descr).indexOf(DL_CERT_TAG)>=0);
+  return {sheet:P.name,add,stale};
+}
+async function gsSyncChoices(R,I){
+  const ch=[], by={};
+  R.rec.forEach(c=>(by[c.sh]=by[c.sh]||[]).push(c));
+  for(const [sh,list] of Object.entries(by)){
+    const S=await R.B.sheet(sh);
+    if(DL_SH.G.includes(sh)||/ΠΙΣΤΟΠ|PISTOP/.test(sh)){
+      list.forEach(c=>{ let lab=''; for(let k=c.c-1;k>=1&&!lab;k--){ const v=S.v(c.r,k); if(typeof v==='string'&&v.trim())lab=v.trim().slice(0,40); }
+        ch.push({v:[c],on:true,t:sh+' '+XL.ref(c.r,c.c)+(lab?' · '+lab:'')+': '+gsShow(c.old)+' → '+gsShow(c.v)}); });
+    }else if(DL_SH.Y.includes(sh)){
+      const nc=(S.findAll(dv('Ονοματεπώνυμο'))[0]||{}).c, rows={};
+      list.forEach(c=>(rows[c.r]=rows[c.r]||[]).push(c));
+      Object.entries(rows).forEach(([r,cs])=>{ const n=cs.find(c=>c.c===nc);
+        ch.push({v:cs,on:true,t:sh+' '+t('γραμμή')+' '+r+': '+(n?gsShow(n.old)+' → '+gsShow(n.v):gsShow(nc?S.v(+r,nc):''))+' · '+cs.length+' '+t('κελιά')}); });
+    }else ch.push({v:list,on:true,t:sh+': '+list.length+' '+t('κελιά')});
+  }
+  if(I){ I.add.forEach(a=>ch.push({v:[{img:a}],on:true,t:I.sheet+' · '+t('εικόνα')+' '+DL_CERT_T[a.p.cat]+' — '+a.p.label+(a.old?' ('+t('αντικατάσταση')+')':'')}));
+    I.stale.forEach(q=>ch.push({v:[{rm:q}],on:true,t:I.sheet+' · '+t('αφαίρεση εικόνας')+' '+XL.ref(q.r,q.c)+(q.descr?' — '+q.descr.replace(DL_CERT_TAG,''):'')})); }
+  return ch;
+}
+async function gsSync(e,x){
+  const done=gsBusy(x,t('Διαβάζω το αρχείο…'));
+  let R,I;
+  try{
+    const p=await gsCall({op:'pull',event_id:e.id}); if(!p.ok){ done(); return toast(t('Δεν διαβάστηκε το αρχείο')+': '+p.why) }
+    x.textContent=t('Συγκρίνω…');
+    R=await dlBuild(e,Uint8Array.from(atob(p.xlsx_b64),c=>c.charCodeAt(0)).buffer,{live:true,rec:true});
+    I=R.certs?await gsImgPlan(R.B,R.certs):null;
+  }catch(err){ done(); return toast(t('Δεν έγινε')+': '+(err.message||err)) }
+  const ch=await gsSyncChoices(R,I);
+  if(!ch.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[]}); done();
+    return toast(t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'')); }
+  const pick=await uiChooseMulti(t('Τι θα ξαναγραφτεί από το e76;')+'\n\n'+t('Μόνο κελιά που γράφει το e76 και ΑΛΛΑΞΑΝ. Ξετσέκαρε ό,τι θέλεις να μείνει όπως το έγραψε κάποιος στο αρχείο.')
+    +(R.rep.length?'\n\n'+R.rep.map(s=>'• '+s).join('\n'):''),ch,{ok:t('Ενημέρωση'),cancel:t('Άκυρο')});
+  if(!pick||!pick.length){ done(); return; }
+  const all=pick.flat(), cells=all.filter(c=>c.sh).map(c=>({sh:c.sh,a1:XL.ref(c.r,c.c),v:c.v})), adds=all.filter(c=>c.img).map(c=>c.img);
+  const rm=[...all.filter(c=>c.rm).map(c=>c.rm),...adds.filter(a=>a.old).map(a=>a.old)].map(q=>({r:q.r,c:q.c})), bad=[];
+  try{
+    x.textContent=t('Γράφω…');
+    const r=await gsCall({op:'sync',event_id:e.id,cells}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
+    if(rm.length){ const q=await gsCall({op:'img',event_id:e.id,sheet:I.sheet,remove:rm}); if(!q.ok)bad.push(q.why); }
+    for(const [i,a] of adds.entries()){ if(bad.length)break;
+      x.textContent=t('Εικόνα')+' '+(i+1)+'/'+adds.length+'…';
+      const im=await dlCertCompose(a.p.parts,a.g.bw,a.g.bh); if(!im.bytes)continue;
+      const q=await gsCall({op:'img',event_id:e.id,sheet:I.sheet,add:{r:a.g.r,c:a.g.c,ox:4,oy:4,w:im.w,h:im.h,b64:gsB64(im.bytes),
+        title:DL_CERT_TAG+DL_CERT_T[a.p.cat]+' '+(a.p.k+1),descr:a.descr}});
+      if(!q.ok)bad.push(q.why); }
+    done(); await gsLoad(e.id); gsDraw(e);
+    const v=r.visibility||{};
+    await uiNote([t('Ενημερώθηκε το ζωντανό αρχείο.'),cells.length+' '+t('κελιά')+(adds.length?' · '+adds.length+' '+t('εικόνες'):''),
+      v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+')':t('Φύλλα')+': '+v.shown+' '+t('ορατά')+' · '+v.hidden+' '+t('κρυφά'),
+      bad.length?t('Εικόνες')+': '+bad[0]:''].filter(Boolean).join('\n\n'));
+  }catch(err){ done(); toast(t('Δεν έγινε')+': '+(err.message||err)) }
 }
 async function gsRestore(e,x){
   const done=gsBusy(x,t('Επαναφέρω…'));
