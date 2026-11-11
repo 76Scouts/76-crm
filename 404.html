@@ -1312,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 22:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 22:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -20911,7 +20911,13 @@ async function dlLoad(eid,force){
     sb.from('event_vehicles').select('*').eq('event_id',eid).order('seq'),
     D.bus?null:sb.from('bus_partners').select('*').order('company')]);    
   if(c&&!c.error)D.bus=c.data||[];
-  return GEV[eid]=(a.error||b.error)?{v:[],h:[],err:(a.error||b.error).message}:{v:a.data||[],h:b.data||[]};
+  const G=GEV[eid]=(a.error||b.error)?{v:[],h:[],err:(a.error||b.error).message}:{v:a.data||[],h:b.data||[]};
+  await dlParLoad(eid,G); return G;
+}
+async function dlParLoad(eid,G){
+  const ids=[...new Set((D.pa||[]).filter(x=>x.event_id===eid).map(x=>x.person_id))]; G.par=G.par||{};
+  for(let i=0;i<ids.length;i+=150){ const {data}=await sb.from('badgeholders').select('id,father_name,mother_name').in('id',ids.slice(i,i+150));
+    (data||[]).forEach(x=>G.par[x.id]=x); }
 }
 const dlCanEdit=e=>!!ME.platform_admin||ME.role==='admin'||(ME.role==='section_head'&&!!ME.scope&&ME.scope===(e.owner_section||e.section));
 function dlDays(e){const a=[]; if(!e||!e.event_date)return a; let t=Date.parse(e.event_date+'T12:00:00Z');
@@ -21009,6 +21015,8 @@ function dlChecks(e,g){
   const need=camp?2:(en>=3?1:0);
   if(g.h.length<need)add(2,need===2?'Δύο αυτοκίνητα ασφαλείας (κατασκήνωση / ΜΔΥ)':'Αυτοκίνητο ασφαλείας');
   g.h.filter(h=>!h.driver_id).forEach(h=>add(2,h.plate+': οδηγός'));
+  const noPar=staff.filter(x=>g.par&&g.par[x.p.id]&&!(g.par[x.p.id].father_name&&g.par[x.p.id].mother_name));
+  if(noPar.length)add(2,noPar.map(x=>nm(x.p)).join(', ')+': '+t('όνομα πατέρα / μητέρας'),true,noPar.map(x=>nm(x.p)).join(', '));
   const n91=staff.filter(x=>!['ok','hidden'].includes(certOn(x.p.id,'Ν91',end).k));    
   if(n91.length)add(2,pln(n91.length,'βαθμοφόρος','βαθμοφόροι')+' χωρίς Ν.91(Ι) σε ισχύ: '+n91.map(x=>nm(x.p)).join(', '),true,n91.map(x=>nm(x.p)).join(', '));
   [['arrive_time','Ώρα προσέλευσης'],['depart_time','Ώρα αναχώρησης'],['return_time','Ώρα επιστροφής'],['release_time','Ώρα αποδέσμευσης']]
@@ -21207,7 +21215,8 @@ function dlS2HTML(e,g){
       <button class="btn sm gh" data-dlfarm="${x.p.id}" style="color:var(--bad)" aria-label="${esc(t('Αφαίρεση'))}">✕</button>`}</span></li>`).join('')}</ol>`:`<div class="dim" style="font-size:12.5px;margin-bottom:6px">${t('Κανένας ακόμη.')}</div>`}
     ${ro||!faNo.length?'':`<div class="grow" style="margin:0 0 6px"><label style="flex:2"><select id="dlFaAdd"><option value="">+ ${t('Πρώτος Βοηθός')}</option>${faNo.map(x=>`<option value="${x.p.id}">${esc(nm(x.p))}${certOn(x.p.id,dv('ΠΡΩΤΕΣ_ΒΟΗΘΕΙΕΣ'),end).k==='ok'?' ✓':''}</option>`).join('')}</select></label></div>`}
     ${faSug.length&&!ro?`<div style="margin:2px 0 8px"><button class="btn sm gh" id="dlFaSug">Όρισε Πρώτους Βοηθούς όσους έχουν πιστοποιητικό: ${esc(faSug.map(x=>nm(x.p)).join(', '))}</button></div>`:''}
-    <div class="dim" style="font-size:12px;margin-bottom:8px">Τα καθήκοντα (κύριο / δεύτερο) ορίζονται στους Συμμετέχοντες.</div>
+    <div class="dim" style="font-size:12px;margin-bottom:8px">${t('Τα καθήκοντα (κύριο / δεύτερο) ορίζονται στους Συμμετέχοντες.')}</div>
+    ${dlParHTML(e,g)}
     <div class="grow">
       ${camp?`<label>Κάτοχος ΔΔ<select id="dlDD"${ro}><option value="">—</option>${opt(staff,e.dd_holder_id,dlDD)}</select></label>`:''}
       <label>Υπεύθυνος Safe from Harm<select id="dlSfh"${ro}><option value="">—</option>${opt(staff,e.sfh_id,dlSFH)}</select></label></div>
@@ -21241,7 +21250,29 @@ function dlFaWire(e){
   const ad=$('dlFaAdd'); if(ad)ad.onchange=async()=>{ const x=dlStaff(e).find(y=>y.p.id===ad.value); if(!x)return;
     const before=ids(); if(await dlFaRole(x,true)){ saveCache(); sv([...before,x.p.id]); } else ad.value=''; };
 }
+const dlParCan=p=>ME.role==='admin'||!!ME.platform_admin||(!!ME.person_id&&p.id===ME.person_id);
+function dlParHTML(e,g){
+  const miss=dlStaff(e).filter(x=>g.par&&g.par[x.p.id]&&!(g.par[x.p.id].father_name&&g.par[x.p.id].mother_name));
+  if(!miss.length)return '';
+  return `<div style="margin:2px 0 10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px">
+    <b style="font-size:12.5px">${t('Όνομα πατέρα / μητέρας (το ζητά το Δελτίο)')}</b>
+    ${miss.map(x=>{ const r=g.par[x.p.id], ok=dlParCan(x.p)&&!dlRO(e);
+      return `<div class="grow" style="margin:5px 0 0;align-items:flex-end"><span style="min-width:150px;font-size:13px;padding-bottom:7px">${esc(nm(x.p))}</span>
+        ${ok?`<label>${t('Πατέρας')}<input data-dlpf="${x.p.id}" value="${esc(r.father_name||'')}"></label>
+        <label>${t('Μητέρα')}<input data-dlpm="${x.p.id}" value="${esc(r.mother_name||'')}"></label>
+        <label style="max-width:110px">&nbsp;<button class="btn sm" data-dlpsv="${x.p.id}">${t('Αποθήκευση')}</button></label>`
+        :`<span class="dim" style="font-size:12px;padding-bottom:7px">${t('το συμπληρώνει ο ίδιος (εδώ, στον φάκελο της δράσης) ή ο Α.Σ.')}</span>`}</div>` }).join('')}</div>`;
+}
+function dlParWire(e,g){
+  document.querySelectorAll('[data-dlpsv]').forEach(b=>b.onclick=async()=>{ const id=b.dataset.dlpsv;
+    const f=(document.querySelector(`[data-dlpf="${id}"]`)||{}).value, m=(document.querySelector(`[data-dlpm="${id}"]`)||{}).value;
+    const v={father_name:(f||'').trim()||null, mother_name:(m||'').trim()||null};
+    const {data,error}=await sb.from('badgeholders').update(v).eq('id',id).select('id');
+    if(error||!(data||[]).length)return toast(t('Δεν αποθηκεύτηκε')+(error?': '+error.message:''));
+    Object.assign(g.par[id],v); toast(t('Αποθηκεύτηκε')); dlRe(e,'dlS2'); });
+}
 function dlS2Wire(e,g){
+  dlParWire(e,g);
   const fs=$('dlFaSug'); if(fs)fs.onclick=async()=>{ const end=e.end_date||e.event_date;
     const xs=dlStaff(e).filter(x=>!dlIsFA(x)&&certOn(x.p.id,'ΠΡΩΤΕΣ_ΒΟΗΘΕΙΕΣ',end).k==='ok');
     for(const x of xs){ const k=dlRoleIsDefault(x.pa.role)?'role':'role2';
@@ -21358,9 +21389,7 @@ const DL_TPL='spk-deltio-v13-76e.xlsx';
 async function dlBuild(e,buf,o){
   const g=await dlLoad(e.id);
   const all=[...dlStaff(e),...dlHelpers(e),...dlKids(e)];
-  { const ids=[...new Set(all.map(x=>x.p.id))]; g.par={};
-    for(let i=0;i<ids.length;i+=150){ const {data}=await sb.from('badgeholders').select('id,father_name,mother_name').in('id',ids.slice(i,i+150));
-      (data||[]).forEach(x=>g.par[x.id]=x); } }
+  await dlParLoad(e.id,g);
   const withMed=all.length&&await uiAsk('Να μπουν και τα διατροφικά στη στήλη «Διατροφικές ιδιαιτερότητες»;\n\nΘα καταγραφεί ανάγνωση ιατρικών για '+pln(all.length,'άτομο','άτομα')+' (σκοπός: Δελτίο Δράσης ΣΠΚ).',{ok:'Ναι, με διατροφικά',cancel:'Χωρίς'});
   let med=null;
   if(withMed){ toast('Διαβάζω τα διατροφικά…'); const r=await efdMedMany(all.map(x=>x.p.id),'Δελτίο Δράσης ΣΠΚ · '+(e.title||'')); med=r.med;
