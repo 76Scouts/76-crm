@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 18:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 18:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19293,7 +19293,7 @@ function venueEdit(vid, backEvent){
       <div class="dim" id="vnLL" style="font-size:12.5px;margin:-4px 0 8px">${venMapNote(v&&v.map_url)}</div>
       ${venCapHTML(v)}
       <div style="font-size:12.5px;color:var(--ink2);margin:8px 0 2px"><b>Χρήσιμα τηλέφωνα</b> · όπου δεν εφαρμόζει γράψε «Δ/Ε»</div>
-      <div class="grow">${DL.PHV.map(([k,l])=>f(k,l,'')).join('')}</div>
+      <div class="grow">${DL.PHV.map(([k,l])=>f(k,l,'')+f('nm_'+k.slice(3),t('— ποιου είναι'),DL.PHN[k]||'')).join('')}</div>
       <div class="dim" style="font-size:12px;margin:-4px 0 8px">${t('Λεωφορεία: στον φάκελο της κάθε δράσης (αλλάζουν κάθε φορά). Επαρχιακός Έφορος: από το Οργανόγραμμα.')}</div>
       <label>Σημειώσεις<textarea id="vn_notes" rows="3" placeholder="νερό, ρεύμα, πρόσβαση ασθενοφόρου, τι να προσέχεις">${esc(v&&v.notes||'')}</textarea></label>
       <div style="margin-top:11px;display:flex;gap:8px">
@@ -19317,7 +19317,7 @@ function venueEdit(vid, backEvent){
     const rec={name, kind:g('kind'), area:g('area'), address:g('address'), contacts:cs,
       phone:(cs.find(x=>x.phone)||{}).phone||null, contact:lead.name?(lead.name+(lead.role?' ('+lead.role+')':'')):null, map_url:g('map_url'), spk_site:g('spk_site'), sleep_place:g('sleep_place'), directions:g('directions'),
       capacity_parts:cap, notes:g('notes')};
-    DL.PHV.forEach(([k])=>rec[k]=g(k));
+    DL.PHV.forEach(([k])=>{ rec[k]=g(k); rec['nm_'+k.slice(3)]=g('nm_'+k.slice(3)); });    
     if(v){ const {error}=await sb.from('venues').update(rec).eq('id',v.id);
       if(error)return toast('Δεν σώθηκε: '+error.message);
       Object.assign(v,rec); saveCache(); drw.classList.remove('on'); toast('Αποθηκεύτηκε'); back(); }
@@ -20814,6 +20814,7 @@ const DL={
     YOP:'Υπαρχηγός Ομάδας',AKA:'Αρχηγός Κοινότητας',YKA:'Υπαρχηγός Κοινότητας',APD:'Αρχηγός Δικτύου'},
   PH:[['ph_dimos','Δήμου ή Κοινότητας'],['ph_bus','Λεωφορεία'],['ph_dasiki','Δασική Υπηρεσία'],
       ['ph_police','Αστυνομικού Τμήματος'],['ph_medical','Ιατρικού Κέντρου ή Γιατρού'],['ph_eparxos','Επαρχιακού Εφόρου']],
+  PHN:{ph_dimos:t('π.χ. Κοινοτικό Συμβούλιο Λόφου'),ph_dasiki:t('π.χ. Δασικός Σταθμός Μαχαιρά'),ph_police:t('π.χ. Αστυνομικός Σταθμός Στροβόλου'),ph_medical:t('π.χ. Κέντρο Υγείας Κλήρου')},
   PHV:[['ph_dimos',dv('Δήμου ή Κοινότητας')],['ph_dasiki',dv('Δασική Υπηρεσία')],['ph_police',dv('Αστυνομικού Τμήματος')],['ph_medical',dv('Ιατρικού Κέντρου ή Γιατρού')]]
 };
 const GEV={};
@@ -20856,6 +20857,11 @@ const dlTr=(p,re)=>(D.tr||[]).some(t=>t.person_id===p.id&&re.test(t.type||'')&&!
 const dlDD=p=>dlTr(p,/Δ\.Δ\.|Αρχηγών Κατασκηνώσεων|Κατασκηνωτικής/);
 const dlSFH=p=>dlTr(p,/Safe From Harm/i);
 const dlEparx=()=>((D.or||[]).find(o=>/^Επαρχιακός Έφορος/.test(o.title||'')&&o.phone)||{}).phone||'';
+const dlEparxNm=()=>{ const o=(D.or||[]).find(o=>/^Επαρχιακός Έφορος/.test(o.title||'')&&o.phone); if(!o||!o.person_name)return '';
+  const ab=String(o.title).normalize('NFD').replace(/[̀-ͯ]/g,'').split(/\s+/).filter(Boolean).map(w=>w[0].toUpperCase()).join('');
+  return o.person_name+' '+ab; };
+const dlBusDef=()=>{ const s=(D.st||[]).find(x=>x.k==='bus_default'); const v=(s&&s.v)||{};
+  return {phone:v.phone||'', label:v.person?(v.person+(v.company?' ('+v.company+')':'')):(v.company||'')}; };
 const dlVen=x=>(D.ven||[]).find(v=>v.id===x.venue_id)||{name:'—'};
 const dlDig=s=>String(s||'').replace(/\D/g,'');
 
@@ -20877,7 +20883,7 @@ function dlChecks(e,g){
     if(!(V.area||V.address))m.push('τοποθεσία'); if(!V.phone)m.push('τηλέφωνο επικοινωνίας');
     if(!V.directions&&!V.map_url)m.push('πληροφορίες ανεύρεσης');
     const ph=DL.PHV.filter(([k])=>!V[k]).length; if(ph)m.push(ph+' '+t('από τα 4 χρήσιμα τηλέφωνα του χώρου (ή Δ/Ε)'));
-    if(!x.ph_bus)add(3,V.name+' — '+t('τηλέφωνο λεωφορείων (ή Δ/Ε)'));
+    if(!x.ph_bus&&!dlBusDef().phone)add(3,V.name+' — '+t('τηλέφωνο λεωφορείων (ή Δ/Ε)'));
     if(m.length)add(1,V.name+': '+m.join(', '));
     const ap=[]; if(!x.approver_name)ap.push('ποιος'); if(!x.approver_role)ap.push('ιδιότητα');
     if(!x.approval_method)ap.push('τρόπος'); if(!x.approval_date)ap.push('ημερομηνία');
@@ -21022,7 +21028,8 @@ function dlVHTML(e,g){
         <label>Ιδιότητα<input data-dlvf="${x.id}" data-k="approver_role" value="${esc(x.approver_role||'')}" placeholder="π.χ. Αρχηγός Συστήματος"${ro}></label>
         <label>Τρόπος<select data-dlvf="${x.id}" data-k="approval_method"${ro}><option value="">—</option>${DL.EGKRISI.map(t=>`<option${t===x.approval_method?' selected':''}>${t}</option>`).join('')}</select></label>
         <label>Ημερομηνία<input type="date" data-dlvf="${x.id}" data-k="approval_date" value="${esc(x.approval_date||'')}"${ro}></label></div>
-      <div class="grow"><label>${t('Λεωφορεία (τηλέφωνο για αυτή τη δράση)')}<input data-dlvf="${x.id}" data-k="ph_bus" value="${esc(x.ph_bus||'')}" placeholder="${esc(t('ή Δ/Ε'))}"${ro}></label>
+      <div class="grow"><label>${t('Λεωφορεία (τηλέφωνο για αυτή τη δράση)')}<input data-dlvf="${x.id}" data-k="ph_bus" value="${esc(x.ph_bus||'')}" placeholder="${esc(dlBusDef().phone?t('κενό = η εταιρεία που χρησιμοποιούμε συνήθως'):t('ή Δ/Ε'))}"${ro}></label>
+        <label>${t('Λεωφορεία — ποιος')}<input data-dlvf="${x.id}" data-k="nm_bus" value="${esc(x.nm_bus||'')}" placeholder="${esc(dlBusDef().label||t('π.χ. όνομα (εταιρεία)'))}"${ro}></label>
         <label>${t('Επαρχιακού Εφόρου')}<input value="${esc(dlEparx()||'—')}" disabled title="${esc(t('Από το Οργανόγραμμα'))}"></label></div></div>`};
   return dlCard('Χώρος δράσης',many?'πολλοί χώροι — ο καθένας με τη δική του έγκριση':'για ΜΔΥ πρόσθεσε κι άλλους',
     (g.v.length?g.v.map(one).join(''):`<div class="dim" style="font-size:13px">Δεν έχει οριστεί χώρος.</div>`)
@@ -21198,10 +21205,12 @@ function dlData(e,g,med){
       diet:med?efdMed(med[p.id]).diet.join('· '):'', days:days.map(d=>!x.pa.days||x.pa.days.includes(d)),
       k1:DL.KATHD.includes(x.pa.role)?x.pa.role:(st?DL.KDEF:''), k2:DL.KATHD.includes(x.pa.role2)?x.pa.role2:'',
       appt:st?dlAppt(p,e.event_date):''}};
-  const ven=g.v.map(x=>{const V=dlVen(x); const ph={}; DL.PHV.forEach(([k])=>ph[k.slice(3)]=V[k]||''); ph.bus=x.ph_bus||''; ph.eparxos=dlEparx();
+  const bd=dlBusDef();
+  const ven=g.v.map(x=>{const V=dlVen(x); const ph={}, pn={}; DL.PHV.forEach(([k])=>{ ph[k.slice(3)]=V[k]||''; pn[k.slice(3)]=V['nm_'+k.slice(3)]||''; });
+    const own=!!(x.ph_bus||x.nm_bus); ph.bus=own?(x.ph_bus||''):bd.phone; pn.bus=own?(x.nm_bus||''):(bd.phone?bd.label:''); ph.eparxos=dlEparx(); pn.eparxos=dlEparxNm();
     return {title:V.name, topos:V.area||V.address||'', phone:V.phone||'', sleep:V.sleep_place||V.name,
       dir:[V.directions||V.address,V.map_url,venueLLtxt(V)?t('συντεταγμένες')+' '+venueLLtxt(V):''].filter(Boolean).join(' · '), apName:x.approver_name, apRole:x.approver_role,
-      apMethod:x.approval_method, apDate:x.approval_date, ph}});
+      apMethod:x.approval_method, apDate:x.approval_date, ph, pn}});
   const spk=g.v.map(dlVen).find(V=>V.spk_site);
   const dd=dlP(e.dd_holder_id), ddx=dd&&staffX.find(x=>x.p.id===dd.id);
   const asHat=(D.ph||[]).find(h=>h.role_code==='AS'&&h.scout_year===YEAR&&!h.valid_to);
@@ -21608,7 +21617,8 @@ async function dlFill(buf,d,o){
 }
 const DL_PHL=[[dv('Δήμου ή Κοινότητας'),'B','dimos'],[dv('Λεωφορεία'),'B','bus'],[dv('Δασική Υπηρεσία'),'B','dasiki'],
   [dv('Αστυνομικού Τμήματος'),'E','police'],[dv('Ιατρικού Κέντρου ή Γιατρού'),'E','medical'],[dv('Επαρχιακού Εφόρου'),'E','eparxos']];
-function dlPhones(S,r0,get){ DL_PHL.forEach(([l,col,k])=>{ const a=S.find(l,{col,from:r0,to:r0+6}); if(a)S.set(a.r,a.c+1,dlPh(get(k))); }); }
+function dlPhones(S,r0,get,nmOf){ DL_PHL.forEach(([l,col,k])=>{ const a=S.find(l,{col,from:r0,to:r0+6}); if(!a)return;
+  S.set(a.r,a.c+1,dlPh(get(k))); if(nmOf)S.set(a.r,col==='B'?a.c-1:a.c+2,nmOf(k)||null); }); }
 function dlFillVenues3(S,d,rep,PH){
   const H=S.findAll(dv('Λεπτομέρειες Χώρου Δράσης'),{col:'B',starts:true}), ph=PH?null:S.find(dv('Χρήσιμα Τηλέφωνα'),{col:'B',starts:true});
   const many=d.venues.length>1;
@@ -21620,7 +21630,7 @@ function dlFillVenues3(S,d,rep,PH){
     put(at(dv('Χώρος Διανυκτέρευσης:'),'B'),0,1,v&&v.sleep); put(at(dv('Πληροφορίες Αν'),'E',true),1,0,v&&v.dir);
     put(at(dv('Όνομα:'),'B'),0,1,v&&v.apName); put(at(dv('Ιδιότητα:'),'B'),0,1,v&&v.apRole);
     put(at(dv('Τρόπος εξασφάλισης έγκρισης:'),'B'),0,1,v&&v.apMethod); put(at(dv('Ημερομηνία εξασφάλισης έγκρισης:'),'B'),0,1,v&&v.apDate,'date');
-    if(PH){ dlPhones(S,PH[i].r,k=>v&&v.ph?v.ph[k]:null);
+    if(PH){ dlPhones(S,PH[i].r,k=>v&&v.ph?v.ph[k]:null,k=>v&&v.pn?v.pn[k]:null);
       if(i>0)S.hide(H[i].r-1,PH[i].r+4,!v); } });        
   if(d.venues.length>H.length)rep.push(t('Χώροι: το αρχείο έχει')+' '+H.length+' '+t('μπλοκ, η δράση')+' '+d.venues.length+' — '+t('για τους υπόλοιπους: εισαγωγή γραμμών μέσα στο φύλλο ΓΕΝΙΚΑ'));
   if(!ph)return;
