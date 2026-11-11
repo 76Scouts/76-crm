@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 18:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 18:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19334,6 +19334,34 @@ function venueEdit(vid, backEvent){
     D.ven=(D.ven||[]).filter(x=>x.id!==v.id); saveCache(); drw.classList.remove('on'); back();};
 }
 
+function busEdit(id,done){
+  const b=id?(D.bus||[]).find(x=>x.id===id):null;
+  const f=(k,l,ph)=>`<label>${l}<input id="bu_${k}" value="${esc(b&&b[k]!=null?b[k]:'')}" placeholder="${esc(ph||'')}"></label>`;
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">${b?esc(b.company):t('Νέος συνεργάτης λεωφορείων')}</div>
+      <div class="dim" style="font-size:12.5px">${t('ξαναχρησιμοποιείται σε κάθε δράση')}</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">${f('company',t('Εταιρεία'),t('π.χ. G. Kouzalis Buses Ltd'))}
+      <div class="grow">${f('person',t('Υπεύθυνος'),'')}${f('phone',t('Τηλέφωνο'),'')}</div>
+      <label>${t('Σημειώσεις')}<textarea id="bu_notes" rows="2">${esc(b&&b.notes||'')}</textarea></label>
+      <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="bu_def"${b&&b.is_default?' checked':''} style="width:auto"> ${t('Ο συνήθης — μπαίνει μόνος του όταν η δράση δεν διαλέξει άλλον')}</label>
+      <div style="margin-top:11px;display:flex;gap:8px"><button class="btn p" id="buSave">${t('Αποθήκευση')}</button>
+        ${b?`<button class="btn gh" id="buOff">${b.active===false?t('Ενεργοποίηση'):t('Απενεργοποίηση')}</button>`:''}</div></div>`;
+  const drw=$('drw'); drw.classList.add('on');
+  $('buSave').onclick=async()=>{
+    const g=k=>($('bu_'+k).value||'').trim()||null;
+    const rec={company:g('company'),person:g('person'),phone:g('phone'),notes:g('notes'),is_default:$('bu_def').checked};
+    if(!rec.company)return toast(t('Θέλει όνομα εταιρείας'));
+    if(rec.is_default){ const old=(D.bus||[]).find(x=>x.is_default&&(!b||x.id!==b.id));
+      if(old){ const {error}=await sb.from('bus_partners').update({is_default:false}).eq('id',old.id); if(error)return toast(t('Δεν σώθηκε')+': '+error.message); old.is_default=false; } }
+    const r=b?await sb.from('bus_partners').update(rec).eq('id',b.id).select().single():await sb.from('bus_partners').insert(rec).select().single();
+    if(r.error)return toast(t('Δεν σώθηκε')+': '+r.error.message);
+    if(b)Object.assign(b,r.data); else (D.bus=D.bus||[]).push(r.data);
+    D.bus.sort((x,y)=>String(x.company).localeCompare(String(y.company),'el')); drw.classList.remove('on'); toast(t('Αποθηκεύτηκε')); done&&done(b?null:r.data.id); };
+  const off=$('buOff'); if(off)off.onclick=async()=>{ const v=b.active===false;
+    const {error}=await sb.from('bus_partners').update({active:v}).eq('id',b.id); if(error)return toast(t('Δεν σώθηκε')+': '+error.message);
+    b.active=v; drw.classList.remove('on'); done&&done(null); };
+}
+
 function efPower(e,parts){
   const live=parts.filter(x=>!/ακυρ/i.test(x.pa.status||'')&&x.pa.status!==PA_NO);
   const went=parts.filter(x=>paWent(x.pa)), past=evPast(e), est=e.est_count;
@@ -20820,8 +20848,10 @@ const DL={
 const GEV={};
 async function dlLoad(eid,force){
   if(GEV[eid]&&!force)return GEV[eid];
-  const [a,b]=await Promise.all([sb.from('event_venues').select('*').eq('event_id',eid).order('seq'),
-    sb.from('event_vehicles').select('*').eq('event_id',eid).order('seq')]);
+  const [a,b,c]=await Promise.all([sb.from('event_venues').select('*').eq('event_id',eid).order('seq'),
+    sb.from('event_vehicles').select('*').eq('event_id',eid).order('seq'),
+    D.bus?null:sb.from('bus_partners').select('*').order('company')]);    
+  if(c&&!c.error)D.bus=c.data||[];
   return GEV[eid]=(a.error||b.error)?{v:[],h:[],err:(a.error||b.error).message}:{v:a.data||[],h:b.data||[]};
 }
 const dlCanEdit=e=>!!ME.platform_admin||ME.role==='admin'||(ME.role==='section_head'&&!!ME.scope&&ME.scope===(e.owner_section||e.section));
@@ -20860,8 +20890,14 @@ const dlEparx=()=>((D.or||[]).find(o=>/^Επαρχιακός Έφορος/.test(
 const dlEparxNm=()=>{ const o=(D.or||[]).find(o=>/^Επαρχιακός Έφορος/.test(o.title||'')&&o.phone); if(!o||!o.person_name)return '';
   const ab=String(o.title).normalize('NFD').replace(/[̀-ͯ]/g,'').split(/\s+/).filter(Boolean).map(w=>w[0].toUpperCase()).join('');
   return o.person_name+' '+ab; };
-const dlBusDef=()=>{ const s=(D.st||[]).find(x=>x.k==='bus_default'); const v=(s&&s.v)||{};
-  return {phone:v.phone||'', label:v.person?(v.person+(v.company?' ('+v.company+')':'')):(v.company||'')}; };
+const dlSfhK=pa=>{ const k1=DL.KATHD.includes(pa.role)?pa.role:DL.KDEF, k2=DL.KATHD.includes(pa.role2)?pa.role2:'';
+  return {k1:dv('Υπεύθυνος SfH'), k2:k1===dv('Υπεύθυνος SfH')?k2:(k1||k2)}; };
+const dlBusLbl=b=>b?(b.person?b.person+' ('+b.company+')':b.company):'';
+const dlBusDefP=()=>(D.bus||[]).find(b=>b.is_default&&b.active!==false)||null;
+const DL_NA=dv('Δ/Ε');
+const dlBusOf=x=>{ if(x.ph_bus===DL_NA)return {phone:DL_NA,label:''};
+  const b=(D.bus||[]).find(y=>y.id===x.bus_id)||(!x.ph_bus&&!x.nm_bus?dlBusDefP():null);
+  return b?{phone:b.phone||'',label:dlBusLbl(b)}:{phone:x.ph_bus||'',label:x.nm_bus||''}; };
 const dlVen=x=>(D.ven||[]).find(v=>v.id===x.venue_id)||{name:'—'};
 const dlDig=s=>String(s||'').replace(/\D/g,'');
 
@@ -20883,7 +20919,7 @@ function dlChecks(e,g){
     if(!(V.area||V.address))m.push('τοποθεσία'); if(!V.phone)m.push('τηλέφωνο επικοινωνίας');
     if(!V.directions&&!V.map_url)m.push('πληροφορίες ανεύρεσης');
     const ph=DL.PHV.filter(([k])=>!V[k]).length; if(ph)m.push(ph+' '+t('από τα 4 χρήσιμα τηλέφωνα του χώρου (ή Δ/Ε)'));
-    if(!x.ph_bus&&!dlBusDef().phone)add(3,V.name+' — '+t('τηλέφωνο λεωφορείων (ή Δ/Ε)'));
+    if(!dlBusOf(x).phone)add(3,V.name+' — '+t('τηλέφωνο λεωφορείων (ή Δ/Ε)'));
     if(m.length)add(1,V.name+': '+m.join(', '));
     const ap=[]; if(!x.approver_name)ap.push('ποιος'); if(!x.approver_role)ap.push('ιδιότητα');
     if(!x.approval_method)ap.push('τρόπος'); if(!x.approval_date)ap.push('ημερομηνία');
@@ -21028,8 +21064,7 @@ function dlVHTML(e,g){
         <label>Ιδιότητα<input data-dlvf="${x.id}" data-k="approver_role" value="${esc(x.approver_role||'')}" placeholder="π.χ. Αρχηγός Συστήματος"${ro}></label>
         <label>Τρόπος<select data-dlvf="${x.id}" data-k="approval_method"${ro}><option value="">—</option>${DL.EGKRISI.map(t=>`<option${t===x.approval_method?' selected':''}>${t}</option>`).join('')}</select></label>
         <label>Ημερομηνία<input type="date" data-dlvf="${x.id}" data-k="approval_date" value="${esc(x.approval_date||'')}"${ro}></label></div>
-      <div class="grow"><label>${t('Λεωφορεία (τηλέφωνο για αυτή τη δράση)')}<input data-dlvf="${x.id}" data-k="ph_bus" value="${esc(x.ph_bus||'')}" placeholder="${esc(dlBusDef().phone?t('κενό = η εταιρεία που χρησιμοποιούμε συνήθως'):t('ή Δ/Ε'))}"${ro}></label>
-        <label>${t('Λεωφορεία — ποιος')}<input data-dlvf="${x.id}" data-k="nm_bus" value="${esc(x.nm_bus||'')}" placeholder="${esc(dlBusDef().label||t('π.χ. όνομα (εταιρεία)'))}"${ro}></label>
+      <div class="grow">${dlBusHTML(x,ro)}
         <label>${t('Επαρχιακού Εφόρου')}<input value="${esc(dlEparx()||'—')}" disabled title="${esc(t('Από το Οργανόγραμμα'))}"></label></div></div>`};
   return dlCard('Χώρος δράσης',many?'πολλοί χώροι — ο καθένας με τη δική του έγκριση':'για ΜΔΥ πρόσθεσε κι άλλους',
     (g.v.length?g.v.map(one).join(''):`<div class="dim" style="font-size:13px">Δεν έχει οριστεί χώρος.</div>`)
@@ -21037,7 +21072,27 @@ function dlVHTML(e,g){
         ${all.map(v=>`<option value="${v.id}">${esc(v.name)}${v.area?' — '+esc(v.area):''}</option>`).join('')}</select></label>
       <label style="max-width:150px">&nbsp;<button class="btn sm" id="dlVnew">+ Νέος χώρος</button></label></div>`));
 }
+function dlBusHTML(x,ro){
+  const def=dlBusDefP(), man=x.ph_bus&&x.ph_bus!==DL_NA&&!x.bus_id, cur=x.ph_bus===DL_NA?'na':man?'man':(x.bus_id||'');
+  const o=(v,l)=>`<option value="${esc(v)}"${v===cur?' selected':''}>${esc(l)}</option>`;
+  return `<label>${t('Λεωφορεία')}<select data-dlvbus="${x.id}"${ro}>${o('',def?t('Ο συνήθης')+' — '+dlBusLbl(def):'—')}
+      ${(D.bus||[]).filter(b=>b.active!==false&&b!==def).map(b=>o(b.id,dlBusLbl(b))).join('')}
+      ${man?o('man',t('Χειροκίνητα')+': '+(x.nm_bus||'')+' '+x.ph_bus):''}${o('na',t('Δ/Ε — χωρίς λεωφορείο'))}</select></label>
+    ${ro?'':`<label style="max-width:120px">&nbsp;<button class="btn sm gh" data-dlvbused="${x.id}">${t('Στοιχεία')}</button></label>
+    <label style="max-width:170px">&nbsp;<button class="btn sm" data-dlvbusnew="${x.id}">+ ${t('Νέος συνεργάτης')}</button></label>`}`;
+}
+function dlBusWire(e,g){
+  const setBus=async(x,v)=>{ const patch=v==='na'?{bus_id:null,ph_bus:DL_NA,nm_bus:null}:v==='man'?null:{bus_id:v||null,ph_bus:null,nm_bus:null};
+    if(!patch)return; const {error}=await sb.from('event_venues').update(patch).eq('id',x.id);
+    if(error)return toast(t('Δεν σώθηκε')+': '+error.message); Object.assign(x,patch); dlRe(e,'dlV'); };
+  document.querySelectorAll('[data-dlvbus]').forEach(el=>el.onchange=()=>{ const x=g.v.find(y=>y.id===el.dataset.dlvbus); if(x)setBus(x,el.value); });
+  document.querySelectorAll('[data-dlvbused]').forEach(b=>b.onclick=()=>{ const x=g.v.find(y=>y.id===b.dataset.dlvbused); if(!x)return;
+    const p=(D.bus||[]).find(y=>y.id===x.bus_id)||(!x.ph_bus?dlBusDefP():null); busEdit(p&&p.id,()=>dlRe(e,'dlV')); });
+  document.querySelectorAll('[data-dlvbusnew]').forEach(b=>b.onclick=()=>{ const x=g.v.find(y=>y.id===b.dataset.dlvbusnew); if(!x)return;
+    busEdit(null,id=>id?setBus(x,id):dlRe(e,'dlV')); });
+}
 function dlVWire(e,g){
+  dlBusWire(e,g);
   const add=$('dlVadd'); if(add)add.onchange=()=>add.value&&dlVenueAdd(e,add.value);
   const nw=$('dlVnew'); if(nw)nw.onclick=()=>venueEdit(null,e.id);
   document.querySelectorAll('[data-dlved]').forEach(b=>b.onclick=()=>venueEdit(b.dataset.dlved,e.id));
@@ -21204,10 +21259,9 @@ function dlData(e,g,med){
       father:p.father_name||'', mother:p.mother_name||'', paid:x.pa.paid?'Πληρωμένη':'',
       diet:med?efdMed(med[p.id]).diet.join('· '):'', days:days.map(d=>!x.pa.days||x.pa.days.includes(d)),
       k1:DL.KATHD.includes(x.pa.role)?x.pa.role:(st?DL.KDEF:''), k2:DL.KATHD.includes(x.pa.role2)?x.pa.role2:'',
-      appt:st?dlAppt(p,e.event_date):''}};
-  const bd=dlBusDef();
+      appt:st?dlAppt(p,e.event_date):'', ...(st&&p.id===e.sfh_id?dlSfhK(x.pa):{})}};
   const ven=g.v.map(x=>{const V=dlVen(x); const ph={}, pn={}; DL.PHV.forEach(([k])=>{ ph[k.slice(3)]=V[k]||''; pn[k.slice(3)]=V['nm_'+k.slice(3)]||''; });
-    const own=!!(x.ph_bus||x.nm_bus); ph.bus=own?(x.ph_bus||''):bd.phone; pn.bus=own?(x.nm_bus||''):(bd.phone?bd.label:''); ph.eparxos=dlEparx(); pn.eparxos=dlEparxNm();
+    const bo=dlBusOf(x); ph.bus=bo.phone; pn.bus=bo.label; ph.eparxos=dlEparx(); pn.eparxos=dlEparxNm();
     return {title:V.name, topos:V.area||V.address||'', phone:V.phone||'', sleep:V.sleep_place||V.name,
       dir:[V.directions||V.address,V.map_url,venueLLtxt(V)?t('συντεταγμένες')+' '+venueLLtxt(V):''].filter(Boolean).join(' · '), apName:x.approver_name, apRole:x.approver_role,
       apMethod:x.approval_method, apDate:x.approval_date, ph, pn}});
@@ -21429,11 +21483,15 @@ function xlRec(B,n,S){
   const raw=S.set;
   const seen=new Map();      
   S.set=(r,c,val,kind)=>{ const k=r+':'+c; if(!seen.has(k)){ const x={sh:n,r,c,old:S.v(r,c)}; seen.set(k,x); B.rec.push(x); }
+    if(kind==='date'||kind==='time')seen.get(k).kind=kind;    
     const ok=raw(r,c,val,kind); if(ok)seen.get(k).v=S.v(r,c); return ok };
   const rh=S.hide;
   S.hide=(a,b,on)=>{ const ch=rh(a,b,on);
     if(ch)B.rec.push({sh:n,dim:[a,b],old:!on,v:on}); return ch };
-  B.recDone=()=>{ B.rec=B.rec.filter(x=>'v' in x&&!xlSame(x.old,x.v)); return B.rec };
+  (B.recS=B.recS||{})[n]=S;
+  const fmtOk=(sh,r,c,kind)=>{ const x=B.recS[sh].cell(r,c), code=B.fmtCode?B.fmtCode(x?XL.attr(x.attrs,'s'):null):'';
+    return kind==='time'?/h/i.test(code):/^d{1,2}[\/.-]m{1,2}[\/.-]y{2,4}$/i.test(code.replace(/\\/g,'')); };
+  B.recDone=()=>{ B.rec=B.rec.filter(x=>'v' in x&&(!xlSame(x.old,x.v)||(x.kind&&typeof x.v==='number'&&!fmtOk(x.sh,x.r,x.c,x.kind)))); return B.rec };
   return S;
 }
 async function xlOpen(buf){
@@ -21452,7 +21510,8 @@ async function xlOpen(buf){
   const isDate=s=>{const id=xfs[+s||0]||0; if((id>=14&&id<=22)||(id>=45&&id<=47))return true;
     const f=fmts[id]; return !!(f&&/[dy]/i.test(f.replace(/\[[^\]]*\]|"[^"]*"/g,'')))};
   const open={};
-  const B={zip,ss,sheets,isDate,
+  const fmtCode=s=>{ const id=xfs[+s||0]||0; return fmts[id]||({14:'m/d/yyyy',18:'h:mm AM/PM',19:'h:mm:ss AM/PM',20:'h:mm',21:'h:mm:ss',22:'m/d/yyyy h:mm',45:'mm:ss',46:'[h]:mm:ss',47:'mm:ss.0'})[id]||''; };
+  const B={zip,ss,sheets,isDate,fmtCode,
     has:n=>!!sheets[n],
     sheet:async n=>{ if(open[n])return open[n]; const p=sheets[n]; if(!p)return null;
       return open[n]=xlRec(B,n,xlSheet(await rd(p),ss,isDate)) },
@@ -21606,7 +21665,9 @@ async function dlFill(buf,d,o){
   const B=await xlOpen(buf), rep=[]; if(o&&o.rec)B.rec=[];
   const G=await dlSh(B,'G'); if(!G)throw new Error('Το αρχείο δεν έχει φύλλο «ΓΕΝΙΚΑ» — δεν είναι Δελτίο Δράσης ΣΠΚ.');
   dlFillGenika(G,d,rep);
-  if(o&&o.live&&G.v(2,2)==null)G.set(2,2,DL_LIVE);
+  if(o&&o.live){ const A0=await dlSh(B,'A');
+    if(A0){ if(A0.v(3,1)==null)A0.set(3,1,DL_LIVE); if(XL.norm(G.v(2,2))===XL.norm(DL_LIVE))G.set(2,2,null); }
+    else if(G.v(2,2)==null)G.set(2,2,DL_LIVE); }
   const Y=await dlSh(B,'Y'); if(Y)dlFillSym(Y,d,rep); else rep.push('Λείπει το φύλλο ΣΥΜΜΕΤΟΧΕΣ');
   const U=await dlSh(B,'U'); if(U)dlFillSign(U,d);
   const A=await dlSh(B,'A'); if(A)dlFillArx(A,d,rep);
@@ -21840,7 +21901,7 @@ async function gsSyncChoices(R,I){
       list.forEach(c=>{ if(c.dim){ const h=S.v(c.dim[0]+1,2);
           ch.push({v:[c],on:true,t:sh+' '+t('γραμμές')+' '+c.dim[0]+'–'+c.dim[1]+(typeof h==='string'?' · '+h.trim():'')+': '+(c.v?t('απόκρυψη'):t('εμφάνιση'))}); return; }
         let lab=''; for(let k=c.c-1;k>=1&&!lab;k--){ const v=S.v(c.r,k); if(typeof v==='string'&&v.trim())lab=v.trim().slice(0,40); }
-        ch.push({v:[c],on:true,t:sh+' '+XL.ref(c.r,c.c)+(lab?' · '+lab:'')+': '+gsShow(c.old)+' → '+gsShow(c.v)}); });
+        ch.push({v:[c],on:true,t:sh+' '+XL.ref(c.r,c.c)+(lab?' · '+lab:'')+': '+(xlSame(c.old,c.v)?gsShow(c.v)+' — '+t('μορφή')+' '+(c.kind==='time'?t('ωω:λλ'):t('ηη/μμ/εεεε')):gsShow(c.old)+' → '+gsShow(c.v))}); });
     }else if(DL_SH.Y.includes(sh)){
       const nc=(S.findAll(dv('Ονοματεπώνυμο'))[0]||{}).c, rows={};
       list.forEach(c=>(rows[c.r]=rows[c.r]||[]).push(c));
@@ -21867,7 +21928,7 @@ async function gsSync(e,x){
   const pick=await uiChooseMulti(t('Τι θα ξαναγραφτεί από το e76;')+'\n\n'+t('Μόνο κελιά που γράφει το e76 και ΑΛΛΑΞΑΝ. Ξετσέκαρε ό,τι θέλεις να μείνει όπως το έγραψε κάποιος στο αρχείο.')
     +(R.rep.length?'\n\n'+R.rep.map(s=>'• '+s).join('\n'):''),ch,{ok:t('Ενημέρωση'),cancel:t('Άκυρο')});
   if(!pick||!pick.length){ done(); return; }
-  const all=pick.flat(), cells=all.filter(c=>c.sh&&!c.dim).map(c=>({sh:c.sh,a1:XL.ref(c.r,c.c),v:c.v})), dims=all.filter(c=>c.dim).map(c=>({sh:c.sh,r1:c.dim[0],r2:c.dim[1],hidden:!!c.v})), adds=all.filter(c=>c.img).map(c=>c.img);
+  const all=pick.flat(), cells=all.filter(c=>c.sh&&!c.dim).map(c=>({sh:c.sh,a1:XL.ref(c.r,c.c),v:c.v,...(c.kind?{fmt:c.kind}:{})})), dims=all.filter(c=>c.dim).map(c=>({sh:c.sh,r1:c.dim[0],r2:c.dim[1],hidden:!!c.v})), adds=all.filter(c=>c.img).map(c=>c.img);
   const rm=[...all.filter(c=>c.rm).map(c=>c.rm),...adds.filter(a=>a.old).map(a=>a.old)].map(q=>({r:q.r,c:q.c})), bad=[];
   try{
     x.textContent=t('Γράφω…');
