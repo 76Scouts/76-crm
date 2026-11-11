@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 17:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 17:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21753,6 +21753,7 @@ function gsHTML(e){
       ${ed?`<button class="btn sm" data-gsst="egkrisi">${GS_ST.egkrisi}</button>`:''}
       ${boss?`<button class="btn sm" data-gsst="teliko">${GS_ST.teliko}</button><button class="btn sm" data-gsst="apologismos">${GS_ST.apologismos}</button>`
         :`<span class="dim" style="font-size:12px">${t('«Τελικό» και «Απολογισμός»: ο αρχηγός της δράσης ή ο Α.Σ.')}</span>`}</div>
+    ${gsSignHTML(e)}
     ${snaps.length?`<ul style="margin:6px 0 0 18px;padding:0;font-size:13px">${snaps.map(row).join('')}</ul>`
       :`<div class="dim" style="font-size:12px;margin-top:4px">${t('Κάθε στιγμιότυπο: αντίγραφο στον φάκελο της δράσης (το βλέπουν μόνο τα μέλη του Drive) και .xlsx για την Επαρχία.')}</div>`}</div>`;
 }
@@ -21761,10 +21762,12 @@ function gsDraw(e){ const b=$('gsLive'); if(!b||EFID!==e.id)return; b.innerHTML=
   const on=(id,f)=>{const x=$(id); if(x)x.onclick=()=>f(x)};
   on('gsNew',x=>gsCreate(e,x)); on('gsRep',x=>gsReplace(e,x)); on('gsVis',x=>gsSync(e,x)); on('gsBack',x=>gsRestore(e,x));
   b.querySelectorAll('[data-gsst]').forEach(x=>x.onclick=()=>gsSnap(e,x.dataset.gsst,x));
+  b.querySelectorAll('[data-gssign]').forEach(x=>x.onclick=()=>gsSign(e,x.dataset.gssign,x));
 }
 async function gsWire(e){
   gsDraw(e); await gsLoad(e.id); gsDraw(e);
   const s=GS[e.id]; if(!s||!s.row)return;
+  try{ const k=await sb.rpc('sign_kit',{p_event:e.id,p_take:false}); s.kit=k.data||null; }catch(x){ s.kit=null }    
   const r=await gsCall({op:'locate',event_id:e.id});
   s.loc=r.ok?{state:r.state}:{state:'gone',why:t('Δεν βρέθηκε το αρχείο')+': '+r.why}; gsDraw(e);
 }
@@ -21872,6 +21875,24 @@ async function gsSync(e,x){
       v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+')':t('Φύλλα')+': '+v.shown+' '+t('ορατά')+' · '+v.hidden+' '+t('κρυφά'),
       bad.length?t('Εικόνες')+': '+bad[0]:''].filter(Boolean).join('\n\n'));
   }catch(err){ done(); toast(t('Δεν έγινε')+': '+(err.message||err)) }
+}
+function gsSignHTML(e){
+  const k=GS[e.id]&&GS[e.id].kit; if(!k||!k.sig)return '';
+  const b=[]; if(k.slot==='as')b.push(`<button class="btn sm" data-gssign="as">✍ ${t('Υπογραφή & σφραγίδα Α.Σ.')}</button>`);
+  if(ME.person_id&&ME.person_id===e.arxigos_id)b.push(`<button class="btn sm" data-gssign="arxigos">✍ ${t('Υπογραφή αρχηγού δράσης')}</button>`);
+  if(!b.length)return '';
+  return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px"><b style="font-size:12.5px">${t('Έγκριση')}</b>${b.join('')}
+    <span class="dim" style="font-size:12px">${t('Μπαίνει στο φύλλο ΥΠΟΓΡΑΦΕΣ· κάθε χρήση καταγράφεται.')}</span></div>`;
+}
+async function gsSign(e,role,x){
+  const who=role==='as'?t('Αρχηγός Συστήματος (υπογραφή και σφραγίδα)'):t('Αρχηγός Δράσης');
+  const v=await uiChoose(t('Υπογραφή στο φύλλο ΥΠΟΓΡΑΦΕΣ')+' — '+who+'\n\n'+t('Με την υπογραφή εγκρίνεις το Δελτίο όπως είναι τώρα. Μένει στο ζωντανό αρχείο και περνά στα στιγμιότυπα.'),
+    [{v:'sign',t:t('Υπογραφή'),primary:true},{v:'undo',t:t('Αφαίρεση υπογραφής'),danger:true}]);
+  if(!v)return;
+  const done=gsBusy(x,v==='sign'?t('Υπογράφω…'):t('Αφαιρώ…'));
+  const r=await gsCall({op:'sign',event_id:e.id,role,undo:v==='undo'}); done();
+  if(!r.ok)return toast(t('Δεν έγινε')+': '+r.why);
+  toast(v==='undo'?t('Η υπογραφή αφαιρέθηκε'):(r.stamp?t('Μπήκαν υπογραφή και σφραγίδα'):t('Μπήκε η υπογραφή')));
 }
 async function gsRestore(e,x){
   const done=gsBusy(x,t('Επαναφέρω…'));
