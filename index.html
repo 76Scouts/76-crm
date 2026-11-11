@@ -1312,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 22:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 22:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21329,7 +21329,7 @@ function dlData(e,g,med){
   const row=(x,st)=>{const p=x.p, y=myOf(p)||{};
     return {trip:y.triptycho_no||'ΕΚΚΡΕΜΕΙ', am:p.registry_no||'', name:nm(p), dob:dobOf(p), klim:'76ο Σ.Π.',
       tmima:st?'Βαθμοφόρος':(SEC[secOf(p)]||secOf(p)||''), phone:st?(p.phone||ctCallNo(p.id)):(ctCallNo(p.id)||p.phone),
-      father:p.father_name||'', mother:p.mother_name||'', paid:x.pa.paid?'Πληρωμένη':'',
+      father:((g.par||{})[p.id]||{}).father_name||'', mother:((g.par||{})[p.id]||{}).mother_name||'', paid:x.pa.paid?'Πληρωμένη':'',
       diet:med?efdMed(med[p.id]).diet.join('· '):'', days:days.map(d=>!x.pa.days||x.pa.days.includes(d)),
       k1:DL.KATHD.includes(x.pa.role)?x.pa.role:(st?DL.KDEF:''), k2:DL.KATHD.includes(x.pa.role2)?x.pa.role2:'',
       appt:st?dlAppt(p,e.event_date):'', ...(st&&p.id===e.sfh_id?dlSfhK(x.pa):{})}};
@@ -21358,6 +21358,9 @@ const DL_TPL='spk-deltio-v13-76e.xlsx';
 async function dlBuild(e,buf,o){
   const g=await dlLoad(e.id);
   const all=[...dlStaff(e),...dlHelpers(e),...dlKids(e)];
+  { const ids=[...new Set(all.map(x=>x.p.id))]; g.par={};
+    for(let i=0;i<ids.length;i+=150){ const {data}=await sb.from('badgeholders').select('id,father_name,mother_name').in('id',ids.slice(i,i+150));
+      (data||[]).forEach(x=>g.par[x.id]=x); } }
   const withMed=all.length&&await uiAsk('Να μπουν και τα διατροφικά στη στήλη «Διατροφικές ιδιαιτερότητες»;\n\nΘα καταγραφεί ανάγνωση ιατρικών για '+pln(all.length,'άτομο','άτομα')+' (σκοπός: Δελτίο Δράσης ΣΠΚ).',{ok:'Ναι, με διατροφικά',cancel:'Χωρίς'});
   let med=null;
   if(withMed){ toast('Διαβάζω τα διατροφικά…'); const r=await efdMedMany(all.map(x=>x.p.id),'Δελτίο Δράσης ΣΠΚ · '+(e.title||'')); med=r.med;
