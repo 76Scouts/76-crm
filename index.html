@@ -1312,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 21:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 22:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -20949,8 +20949,21 @@ const dlEparx=()=>((D.or||[]).find(o=>/^Επαρχιακός Έφορος/.test(
 const dlEparxNm=()=>{ const o=(D.or||[]).find(o=>/^Επαρχιακός Έφορος/.test(o.title||'')&&o.phone); if(!o||!o.person_name)return '';
   const ab=String(o.title).normalize('NFD').replace(/[̀-ͯ]/g,'').split(/\s+/).filter(Boolean).map(w=>w[0].toUpperCase()).join('');
   return o.person_name+' '+ab; };
-const dlSfhK=pa=>{ const k1=DL.KATHD.includes(pa.role)?pa.role:DL.KDEF, k2=DL.KATHD.includes(pa.role2)?pa.role2:'';
-  return {k1:dv('Υπεύθυνος SfH'), k2:k1===dv('Υπεύθυνος SfH')?k2:(k1||k2)}; };
+const DL_SFHR=dv('Υπεύθυνος SfH');
+const dlRealK=r=>!!r&&r!==DL_SFHR&&!dlRoleIsDefault(r);
+const dlSfhRoles=pa=>({role:DL_SFHR, role2:dlRealK(pa.role2)?pa.role2:(dlRealK(pa.role)?pa.role:null)});
+const dlSfhK=pa=>{ const r=dlSfhRoles(pa); return {k1:DL_SFHR, k2:DL.KATHD.includes(r.role2)?r.role2:''}; };
+async function dlSfhSet(e,id){
+  const S=dlStaff(e), old=S.find(x=>x.p.id===e.sfh_id), nw=S.find(x=>x.p.id===id), up=async(x,v)=>{
+    const {error}=await sb.from('participations').update(v).eq('id',x.pa.id); if(error){toast(t('Δεν άλλαξε')+': '+error.message);return false}
+    Object.assign(x.pa,v); return true };
+  if(nw&&nw.pa.role!==DL_SFHR){ const v=dlSfhRoles(nw.pa), lost=[nw.pa.role,nw.pa.role2].filter(r=>dlRealK(r)&&r!==v.role2);
+    if(lost.length&&!await uiAsk(nm(nw.p)+': '+t('το καθήκον')+' «'+lost.join('», «')+'» '+t('θα αντικατασταθεί από «Υπεύθυνος SfH». Συνέχεια;')))return false;
+    if(!await up(nw,v))return false; }
+  if(old&&old!==nw&&(old.pa.role===DL_SFHR||old.pa.role2===DL_SFHR))
+    await up(old,old.pa.role===DL_SFHR?{role:dlRealK(old.pa.role2)?old.pa.role2:DL.KDEF, role2:null}:{role2:null});
+  saveCache(); return true;
+}
 const dlBusLbl=b=>b?(b.person?b.person+' ('+b.company+')':b.company):'';
 const dlBusDefP=()=>(D.bus||[]).find(b=>b.is_default&&b.active!==false)||null;
 const DL_NA=dv('Δ/Ε');
@@ -21237,7 +21250,8 @@ function dlS2Wire(e,g){
     saveCache(); dlRe(e,'dlS2'); };
   dlFaWire(e);
   const dd=$('dlDD'); if(dd)dd.onchange=()=>dlSet(e,{dd_holder_id:dd.value||null},'dlS2');
-  const sf=$('dlSfh'); if(sf)sf.onchange=()=>dlSet(e,{sfh_id:sf.value||null},'dlS2');
+  const sf=$('dlSfh'); if(sf)sf.onchange=async()=>{ if(!await dlSfhSet(e,sf.value||null)){ sf.value=e.sfh_id||''; return }
+    dlSet(e,{sfh_id:sf.value||null},'dlS2') };
   const g2=()=>GEV[e.id];
   document.querySelectorAll('[data-dlhp]').forEach(el=>el.onchange=async()=>{const h=g2().h.find(y=>y.id===el.dataset.dlhp), v=el.value.trim().toUpperCase();
     if(!v){el.value=h.plate;return}
