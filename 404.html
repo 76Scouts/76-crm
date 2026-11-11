@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 15:13'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 15:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21567,7 +21567,7 @@ function gsHTML(e){
       <b>${t('Ζωντανό φύλλο (Google Sheets)')}</b><span class="sp"></span>
       <a class="btn sm p" href="${gsUrl(r.file_id)}" target="_blank" rel="noopener">${t('Άνοιγμα')}</a>
       <a class="btn sm" href="${gsDir(r.folder_id)}" target="_blank" rel="noopener">${t('Φάκελος')}</a>
-      ${isAdminUI()?`<button class="btn sm gh" id="gsRep" title="${t('Νέο αρχείο από το τρέχον πρότυπο του e76 — το σημερινό μένει στον φάκελο, μετονομασμένο')}">${t('Νέο από πρότυπο')}</button>`:''}
+      ${isAdminUI()?`<button class="btn sm gh" id="gsRep" title="${t('Νέο αρχείο από το τρέχον πρότυπο του e76 — το σημερινό πάει στον κάδο του Drive')}">${t('Νέο από πρότυπο')}</button>`:''}
       ${ed?`<button class="btn sm" id="gsVis" title="${t('Όταν αλλάξει είδος, τμήμα, πορεία ή μέσα μεταφοράς — ξαναϋπολογίζει ΜΟΝΟ ποια φύλλα φαίνονται')}">${t('Ενημέρωση φύλλων')}</button>`:''}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${t('Φτιάχτηκε')} ${fdate(r.created_at)}${who(r.created_by)?' · '+esc(who(r.created_by)):''}. ${t('Δουλεύετε όλοι σε αυτό το αρχείο — όχι αντίγραφα, όχι κατέβασμα και ξανανέβασμα.')}</div>
     ${warn}
@@ -21610,7 +21610,7 @@ async function gsCreate(e,x){
   }catch(err){ done(); toast(t('Δεν φτιάχτηκε')+': '+(err.message||err)) }
 }
 async function gsReplace(e,x){
-  if(!await uiAsk(t('Νέο ζωντανό αρχείο από το τρέχον πρότυπο;')+'\n\n'+t('Το σημερινό αρχείο μένει στον φάκελο της δράσης, μετονομασμένο «παλιό πρότυπο». ΟΤΙ ΕΧΕΙ ΓΡΑΦΤΕΙ ΜΕΣΑ ΤΟΥ ΔΕΝ ΜΕΤΑΦΕΡΕΤΑΙ — το νέο γεμίζει ξανά από το e76.'),{ok:t('Νέο αρχείο'),cancel:t('Άκυρο')}))return;
+  if(!await uiAsk(t('Νέο ζωντανό αρχείο από το τρέχον πρότυπο;')+'\n\n'+t('Το σημερινό αρχείο πάει στον κάδο του Κοινόχρηστου Drive (επανέρχεται για 30 μέρες). ΟΤΙ ΕΧΕΙ ΓΡΑΦΤΕΙ ΜΕΣΑ ΤΟΥ ΔΕΝ ΜΕΤΑΦΕΡΕΤΑΙ — το νέο γεμίζει ξανά από το e76.'),{ok:t('Νέο αρχείο'),cancel:t('Άκυρο')}))return;
   const done=gsBusy(x,t('Ετοιμάζω…'));
   try{
     const tpl=await espBytes(DL_TPL);
@@ -21621,7 +21621,7 @@ async function gsReplace(e,x){
     await gsLoad(e.id); GS[e.id].loc={state:'ok'}; gsDraw(e);
     const v=r.visibility||{};
     window.open(gsUrl(r.file_id),'_blank','noopener');
-    const msg=[t('Έτοιμο το νέο αρχείο.')+(r.old_kept?' '+t('Το παλιό μένει στον φάκελο ως «παλιό πρότυπο».'):''),
+    const msg=[t('Έτοιμο το νέο αρχείο.')+(r.old_trashed?' '+t('Το παλιό πήγε στον κάδο του Drive.'):' '+t('Το παλιό ΔΕΝ μπήκε στον κάδο — σβήσ’ το από το Drive.')),
       v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση φύλλων».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
     if(msg.length>1)await uiNote(msg.join('\n\n')); else toast(msg[0]);
   }catch(err){ done(); toast(t('Δεν έγινε')+': '+(err.message||err)) }
