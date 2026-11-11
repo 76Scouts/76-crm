@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 15:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 15:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -17237,7 +17237,7 @@ V.health=async()=>{
     exportRows(R,'ygeia-dedomenwn','Υγεία δεδομένων')};
 };
 
-const SAL_COL={'ιατρικό':'bad','ταυτότητα':'warn','κηδεμονικά':''};
+const SAL_COL={'ιατρικό':'bad','ταυτότητα':'warn','κηδεμονικά':'',[dv('πιστοποιητικό')]:''};    
 let SALQ='', SALDAYS=30;
 V.reads=async()=>{
   $('view').innerHTML='<div class="card pad dim">Φόρτωση…</div>';
@@ -21228,7 +21228,47 @@ async function dlBuild(e,buf,o){
     if(r.no)toast(pln(r.no,'άτομο','άτομα')+' χωρίς πρόσβαση στα ιατρικά — η στήλη μένει κενή γι’ αυτά'); }
   try{ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js') }
   catch(x){ throw new Error('Δεν φόρτωσε η βιβλιοθήκη — έλεγξε τη σύνδεση') }
-  return dlFill(buf,dlData(e,g,med),o);
+  const d=dlData(e,g,med);
+  d.certs=await dlCertImgs(e);
+  const r=await dlFill(buf,d,o);
+  if(d.certs.err)r.rep.unshift(t('Πιστοποιητικά')+': '+d.certs.err);
+  else r.rep.push(d.certs.length?t('Στο φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ μπήκαν')+' '+d.certs.length+' '+t('εικόνες πιστοποιητικών'):t('Δεν βρέθηκαν πιστοποιητικά σε ισχύ για το φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ'));
+  return r;
+}
+async function dlCertImgs(e){
+  const out=[];
+  let res;
+  try{ res=await sb.functions.invoke('action-sheet',{body:{op:'certs',event_id:e.id}}) }catch(x){ out.err=t('δεν απάντησε ο server'); return out; }
+  const {data,error}=res||{};
+  if(error||!data||!data.ok){ out.err=(data&&data.error)||t('δεν δόθηκαν'); return out; }
+  if(!(data.items||[]).length)return out;
+  toast(t('Ετοιμάζω τα πιστοποιητικά…'));
+  const jpg=c=>new Promise(r=>c.toBlob(b=>b?b.arrayBuffer().then(a=>r(new Uint8Array(a))):r(null),'image/jpeg',0.75));
+  const fit=(w,h,M)=>{ const s=Math.min(1,M/Math.max(w,h*0.78)); return [Math.round(w*s),Math.round(h*s)]; };
+  for(const it of data.items){
+    try{
+      const buf=new Uint8Array(await (await fetch(it.url)).arrayBuffer());
+      const isPdf=/pdf/i.test(it.mime||'')||String.fromCharCode(...buf.slice(0,4))==='%PDF';
+      if(isPdf){
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        const L=window.pdfjsLib; L.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const doc=await L.getDocument({data:buf}).promise;
+        for(let n=1;n<=Math.min(2,doc.numPages);n++){
+          const pg=await doc.getPage(n), v0=pg.getViewport({scale:1}), [w]=fit(v0.width,v0.height,1100), vp=pg.getViewport({scale:w/v0.width});
+          const c=document.createElement('canvas'); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
+          const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height);
+          await pg.render({canvasContext:x,viewport:vp}).promise;
+          const b=await jpg(c); if(b)out.push({cat:it.cat,label:it.label+(doc.numPages>1?' ('+n+'/'+Math.min(2,doc.numPages)+')':''),bytes:b,w:c.width,h:c.height});
+        }
+      }else{
+        const bm=await createImageBitmap(new Blob([buf])), [w,h]=fit(bm.width,bm.height,1100);
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(bm,0,0,w,h);
+        const b=await jpg(c); if(b)out.push({cat:it.cat,label:it.label,bytes:b,w,h});
+      }
+    }catch(x){ console.warn('cert img',x&&x.message); }
+  }
+  return out;
 }
 function dlExport(e,pick){
   const go=async(buf,fname)=>{
@@ -21376,7 +21416,7 @@ async function xlOpen(buf){
     has:n=>!!sheets[n],
     sheet:async n=>{ if(open[n])return open[n]; const p=sheets[n]; if(!p)return null;
       return open[n]=xlSheet(await rd(p),ss,isDate) },
-    save:async()=>{
+    save:async(hook)=>{
       for(const [n,S] of Object.entries(open))if(S.touched)zip.file(sheets[n],S.xml());
       zip.file('[Content_Types].xml',(await rd('[Content_Types].xml'))
         .replace('application/vnd.ms-excel.template.macroEnabled.main+xml','application/vnd.ms-excel.sheet.macroEnabled.main+xml')
@@ -21388,6 +21428,7 @@ async function xlOpen(buf){
       if(zip.file('xl/calcChain.xml')){ zip.remove('xl/calcChain.xml');
         zip.file('[Content_Types].xml',(await rd('[Content_Types].xml')).replace(/<Override\b[^>]*calcChain[^>]*\/>/g,''));
         zip.file('xl/_rels/workbook.xml.rels',(await rd('xl/_rels/workbook.xml.rels')).replace(/<Relationship\b[^>]*calcChain[^>]*\/>/g,'')); }
+      if(hook)await hook(zip,rd);       
       return zip.generateAsync({type:'uint8array',compression:'DEFLATE'}) }};
   return B;
 }
@@ -21520,7 +21561,8 @@ async function dlFill(buf,d,o){
   const Y=await dlSh(B,'Y'); if(Y)dlFillSym(Y,d,rep); else rep.push('Λείπει το φύλλο ΣΥΜΜΕΤΟΧΕΣ');
   const U=await dlSh(B,'U'); if(U)dlFillSign(U,d);
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
-  return {bytes:await B.save(), rep};
+  const hook=d.certs&&d.certs.length?await dlCertsPlan(B,d.certs,rep):null;
+  return {bytes:await B.save(hook), rep};
 }
 function dlFillVenues3(S,d,rep){
   const H=S.findAll(dv('Λεπτομέρειες Χώρου Δράσης'),{col:'B',starts:true}), ph=S.find(dv('Χρήσιμα Τηλέφωνα'),{col:'B',starts:true});
@@ -21540,6 +21582,50 @@ function dlFillVenues3(S,d,rep){
   [[dv('Δήμου ή Κοινότητας'),'B','dimos'],[dv('Λεωφορεία'),'B','bus'],[dv('Δασική Υπηρεσία'),'B','dasiki'],
    [dv('Αστυνομικού Τμήματος'),'E','police'],[dv('Ιατρικού Κέντρου ή Γιατρού'),'E','medical'],[dv('Επαρχιακού Εφόρου'),'E','eparxos']]
     .forEach(([l,col,k])=>{ const a=at(l,col); if(a)S.set(a.r,a.c+1,dlPh(first(k))); });
+}
+
+const DL_CERT_T={1:dv('Πρώτες Βοήθειες'),2:dv('Ναυαγοσωστική'),3:dv('Υγειονομικό'),4:dv('Ασφάλεια αυτοκινήτου'),5:dv('ΜΟΤ'),6:dv('Άδεια οδήγησης')};
+async function dlCertsPlan(B,certs,rep){
+  const name=[dv('ΠΙΣΤΟΠΟΙΗΤΙΚΑ'),'PISTOPOIHTIKA'].find(n=>B.has(n)); if(!name){ rep.push(t('Δεν βρέθηκε φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ — τα πιστοποιητικά δεν μπήκαν')); return null; }
+  const S=await B.sheet(name), plan=[];
+  for(const cat of [...new Set(certs.map(c=>c.cat))]){
+    const h=S.find(cat+'.',{col:'A',starts:true,from:15}); if(!h){ rep.push(t('ΠΙΣΤΟΠΟΙΗΤΙΚΑ: δεν βρέθηκε η θέση')+' «'+DL_CERT_T[cat]+'»'); continue; }
+    certs.filter(c=>c.cat===cat).forEach((c,k)=>{ plan.push({...c,hr:h.r,k}); if(k<4)S.set(h.r,1+2*k,cat+'. '+DL_CERT_T[cat]+' — '+c.label); });
+  }
+  return async(zip,rd)=>{
+    const sp=B.sheets[name]; let x=await rd(sp);
+    if(/<drawing\b/.test(x)){ rep.push(t('Το φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ έχει ήδη εικόνες — δεν μπήκαν νέες')); return; }
+    const hts={}; x.replace(/<row\b([^>]*)>/g,(m,a)=>{ const r=+XL.attr(a,'r'), v=+XL.attr(a,'ht'); if(r&&v)hts[r]=v; return m; });
+    const cw={}; x.replace(/<col\b([^>]*?)\/?>/g,(m,a)=>{ const w=+XL.attr(a,'width'); for(let c=+XL.attr(a,'min');c<=+XL.attr(a,'max');c++)cw[c]=w; return m; });
+    const px=c=>cw[c]!=null?Math.floor(cw[c]*7+5):64, BOX=556;
+    const slotCol=k=>{ if(k<4)return 1+2*k; let c=9; for(let i=4;i<k;i++){ let w=0; while(w<BOX+10){ w+=px(c); c++; } } return c; };
+    const imgRow=hr=>{ for(let r=hr+1;r<hr+8;r++)if((hts[r]||0)>=100)return r; return hr+2; };
+    const E=v=>Math.round(v*9525), anchors=[], rels=[];
+    plan.forEach((p,i)=>{ const r=imgRow(p.hr), c=slotCol(p.k), bw=(p.k<4?px(c):BOX)-8, bh=(hts[r]||315)*96/72-8;
+      const sc=Math.min(bw/p.w,bh/p.h,1), w=Math.round(p.w*sc), hh=Math.round(p.h*sc), rid='rId'+(i+1), f='e76cert'+(i+1)+'.jpeg';
+      zip.file('xl/media/'+f,p.bytes);
+      rels.push(`<Relationship Id="${rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${f}"/>`);
+      anchors.push(`<xdr:oneCellAnchor><xdr:from><xdr:col>${c-1}</xdr:col><xdr:colOff>${E(4)}</xdr:colOff><xdr:row>${r-1}</xdr:row><xdr:rowOff>${E(4)}</xdr:rowOff></xdr:from><xdr:ext cx="${E(w)}" cy="${E(hh)}"/>`
+        +`<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i+2}" name="${XL.esc(DL_CERT_T[p.cat]+' '+(p.k+1))}" descr="${XL.esc(p.label)}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>`
+        +`<xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>`
+        +`<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${E(w)}" cy="${E(hh)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`); });
+    if(!anchors.length)return;
+    const dn='drawingE76cert.xml';
+    zip.file('xl/drawings/'+dn,'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+anchors.join('')+'</xdr:wsDr>');
+    zip.file('xl/drawings/_rels/'+dn+'.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+rels.join('')+'</Relationships>');
+    const srp=sp.replace(/worksheets\/([^/]+)$/,'worksheets/_rels/$1.rels'), RID='rIdE76cert';
+    let sr=await rd(srp)||'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+    sr=sr.replace('</Relationships>',`<Relationship Id="${RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/${dn}"/></Relationships>`);
+    zip.file(srp,sr);
+    if(!/xmlns:r=/.test(x.slice(0,600)))x=x.replace(/<worksheet\b/,'<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"');
+    const at=['<legacyDrawing','<legacyDrawingHF','<picture','<oleObjects','<controls','<webPublishItems','<tableParts','<extLst','</worksheet>'].map(k=>x.indexOf(k)).filter(i=>i>=0);
+    const pos=Math.min(...at); x=x.slice(0,pos)+`<drawing r:id="${RID}"/>`+x.slice(pos);
+    zip.file(sp,x);
+    let ct=await rd('[Content_Types].xml');
+    if(!/Extension="jpeg"/i.test(ct))ct=ct.replace('<Override','<Default Extension="jpeg" ContentType="image/jpeg"/><Override');
+    ct=ct.replace('</Types>',`<Override PartName="/xl/drawings/${dn}" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`);
+    zip.file('[Content_Types].xml',ct);
+  };
 }
 const GS={};                                            
 const GS_ST={egkrisi:t('Για έγκριση'),teliko:t('Τελικό'),apologismos:t('Απολογισμός')};
