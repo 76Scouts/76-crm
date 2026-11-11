@@ -165,6 +165,7 @@ td{padding:9px 12px;border-bottom:1px solid var(--line)}
 tr:last-child td{border-bottom:0}
 tbody tr:hover td{background:var(--bg)}
 input,select{font:inherit;padding:7px 10px;border:1px solid var(--line2);border-radius:var(--rs);background:var(--card);color:var(--ink);width:100%}
+input[type=checkbox],input[type=radio]{width:auto;flex:0 0 auto;padding:0;margin:2px 0 0;accent-color:var(--acc)}
 input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;border-color:var(--acc)}
 input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .ppick{position:relative;display:block;min-width:170px}
@@ -1311,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 21:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 21:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -11230,6 +11231,14 @@ const psQueue=()=>(D.prq||[]).filter(x=>x.status==='υποβλήθηκε'
   &&(!PSEC||secOf(D.bh.find(b=>b.id===x.subject_id)||{})===PSEC));
 const psIamKid=()=>{const me=D.bh.find(b=>b.id===mePid()); return me&&isMem(me)};
 
+const psReadyHTML=rows=>`<div class="card pad" style="margin-bottom:12px">
+        <b style="font-size:13.5px">${t('Μετρήθηκαν από τις συμμετοχές')}</b>
+        <div class="dim" style="font-size:11.5px;margin-top:3px">${t('Το σύστημα μέτρησε· εσύ εγκρίνεις.')}</div>
+        <div style="margin-top:8px">${rows.map(x=>`<div class="kv" style="padding:7px 0;font-size:13px;align-items:center;border-top:1px solid var(--line)">
+          <span style="flex:1;min-width:0">${esc(x.label)}</span>
+          <span class="dim" style="font-variant-numeric:tabular-nums;min-width:52px;text-align:right">${x.exei}/${x.xreiazetai}</span>
+          <span style="min-width:110px;text-align:right">${x.etoimo?`<button class="btn p sm prdy" data-r="${x.requirement_id}">${t('Έγκριση')}</button>`
+                    :'<span class="dim" style="font-size:11.5px">'+t('δεν συμπληρώθηκε')+'</span>'}</span></div>`).join('')}</div></div>`;
 function passBody(){
   const kid=psIamKid();
   if(kid&&PSMODE==='now')PSMODE='ask';
@@ -11355,11 +11364,11 @@ function passBody(){
     <div id="psReady"></div>
     <div class="card pad" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">
       ${stages.map(x=>`<button class="btn sm${x.id===PSSTAGE?' p':''}" data-st="${x.id}">${esc(x.label)}</button>`).join('')}</div>
-    <div class="card">${reqs.map(r=>{
+    <div class="card" style="overflow:hidden">${reqs.map(r=>{
       const d=psDone(who.id,r.id), pend=psPend(who.id,r.id), L=LEV[r.verifier]||{};
-      return `<label class="kv" style="border-top:1px solid var(--line);padding:8px 12px;
+      return `<label class="kv" style="border-top:1px solid var(--line);padding:9px 14px;align-items:flex-start;gap:12px;
           ${d?'opacity:.55;':'cursor:pointer'}">
-        <input type="checkbox" class="psr" value="${r.id}"${d?' checked disabled':''}${PSSEL.has(r.id)?' checked':''}>
+        <input type="checkbox" class="psr" value="${r.id}"${d?' checked disabled':''}${PSSEL.has(r.id)?' checked':''} style="width:17px;height:17px;margin-top:2px">
         <span style="flex:1;min-width:0">
           <span style="color:var(--ink3);font-weight:700;font-size:12px">${esc(r.code||r.ordinal)}</span>
           <span style="font-size:13.5px"> ${esc(r.label)}</span>
@@ -11382,13 +11391,7 @@ function passBody(){
       const box=$('psReady'); if(!box||!data)return;
       const rows=data.filter(x=>!x.idi_perasmeni);
       if(!rows.length){box.innerHTML='';return}
-      box.innerHTML=`<div class="card pad" style="margin-bottom:12px">
-        <b style="font-size:13.5px">Μετρήθηκαν από τις συμμετοχές</b>
-        <div class="dim" style="font-size:11.5px;margin-top:3px">Το σύστημα μέτρησε· εσύ εγκρίνεις.</div>
-        ${rows.map(x=>`<div class="kv" style="padding:5px 0;font-size:13px">
-          <span>${esc(x.label)} <span class="dim">· ${x.exei}/${x.xreiazetai}</span></span>
-          ${x.etoimo?`<button class="btn p sm prdy" data-r="${x.requirement_id}">Έγκριση</button>`
-                    :'<span class="dim" style="font-size:11.5px">δεν συμπληρώθηκε</span>'}</div>`).join('')}</div>`;
+      box.innerHTML=psReadyHTML(rows);
       box.querySelectorAll('.prdy').forEach(b=>b.onclick=async()=>{
         b.disabled=true;
         const {data:r,error}=await sb.rpc('progress_record',
@@ -25730,7 +25733,25 @@ function stagePassBody(){
   };
 }
 
-let HSWHO=null, HSDATE='', HSSEL={}, HSOPEN={};
+let HSWHO=null, HSDATE='', HSSEL={}, HSOPEN={}, HSYEAR='', HSSIGN=null;
+const hsYears=()=>{ const y0=parseInt(String(YEAR||'').slice(0,4))||new Date().getFullYear();
+  return [0,1,2,3,4,5].map(i=>`${y0-i}-${String((y0-i+1)%100).padStart(2,'0')}`) };
+function hsWhenHTML(){
+  const chip=(v,l,on)=>`<button class="btn sm${on?' p':''}" data-hsy="${esc(v)}">${esc(l)}</button>`;
+  const recent=(typeof pgRecent==='function'?pgRecent():[]).slice(0,5), me=ME.person_id||null;
+  const who=[...new Set([me,...recent].filter(Boolean))];
+  return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:9px">
+      <b style="font-size:12.5px;min-width:96px">${t('Χρονιά')}:</b>
+      ${hsYears().map(y=>chip(y,y,!HSDATE&&HSYEAR===y)).join('')}${chip('',t('Δεν ξέρω'),!HSDATE&&!HSYEAR)}
+      <input id="hsDate" value="${esc(HSDATE)}" placeholder="${t('ή ακριβής ημ/νία, π.χ. 03/2024')}" style="max-width:200px;font-size:12.5px;padding:4px 8px"></div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px">
+      <b style="font-size:12.5px;min-width:96px">${t('Πέρασε από')}:</b>
+      ${who.map(id=>{ const p=(D.bh||[]).find(b=>b.id===id); if(!p)return ''; const c=typeof pgCol==='function'?pgCol(id):'var(--acc)';
+        return `<button class="btn sm" data-hss="${id}" style="${HSSIGN===id?`background:${c};color:#fff;border-color:${c}`:`border-color:${c}`}">${id===me?t('εγώ'):esc(nm(p))}</button>` }).join('')}
+      ${ppHTML('hsSign',HSSIGN&&!who.includes(HSSIGN)?HSSIGN:'',{ph:t('άλλος βαθμοφόρος…'),style:'width:180px'})}
+      <button class="btn sm${HSSIGN?'':' p'}" data-hss="">${t('κανείς / δεν ξέρω')}</button>
+      <span class="dim" style="font-size:11.5px">${t('προαιρετικό')}</span></div>`;
+}
 const HEADCODE={'Αγέλη':'AAL','Ομάδα':'AOP','Κοινότητα':'AKA'};
 const canHistory=()=>ME.role==='admin'||!!ME.platform_admin
   ||myHats().some(h=>['AS','YAS'].includes(h.role_code)||h.role_code===HEADCODE[PSEC]);
@@ -25769,20 +25790,19 @@ function histPassBody(){
         </label>`}).join('')}</div></details>`};
 
   $('view').innerHTML=`
-    <p class="lede">Κράτα ${esc(bookOf(book))} του παιδιού ανοιχτό και τσέκαρε ό,τι είναι υπογεγραμμένο. Γράψε την ημερομηνία που
-      <b>πραγματικά</b> πέρασε — αν θυμάσαι μόνο τη χρονιά, γράψε <b>2024</b> (ή <b>03/2024</b> αν θυμάσαι τον μήνα) — κρατιέται όσο ακριβής είναι.
-      Ό,τι έχει ήδη περάσει δεν ξαναγράφεται.</p>
+    <p class="lede">${t('Κράτα')} ${esc(bookOf(book))} ${t('του παιδιού ανοιχτό και τσέκαρε ό,τι είναι υπογεγραμμένο.')}
+      ${t('Συνήθως αρκεί ένα πάτημα στη χρονιά (μένει για όλα τα παιδιά)· ακριβή ημερομηνία μόνο αν την ξέρεις. Προαιρετικά και ποιος την πέρασε. Ό,τι έχει ήδη περάσει δεν ξαναγράφεται.')}</p>
     ${bookBar()}
     <div class="card pad hsbar" style="margin-bottom:12px">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn sm gh" id="hsPrev"${idx<=0?' disabled':''} title="Προηγούμενο παιδί">‹</button>
         ${ppHTML('hsWho',HSWHO||'',{ph:'Γράψε όνομα…',style:'max-width:260px;flex:1'})}
         <button class="btn sm gh" id="hsNext"${idx>=kids.length-1?' disabled':''} title="Επόμενο παιδί">›</button>
-        <span class="dim" style="font-size:12px">${idx+1}/${kids.length} · ${withHist} παιδιά έχουν ήδη ιστορικό</span>
+        <span class="dim" style="font-size:12px">${idx+1}/${kids.length} · ${withHist} ${t('παιδιά έχουν ήδη ιστορικό')}</span>
         <span class="sp"></span>
-        <input id="hsDate" value="${esc(HSDATE)}" placeholder="Ημ/νία για όλα, π.χ. 2024" style="max-width:190px">
-        <button class="btn p" id="hsSave"${sel?'':' disabled'}>Καταχώρηση${sel?' · '+sel:''}</button>
+        <button class="btn p" id="hsSave"${sel?'':' disabled'}>${t('Καταχώρηση')}${sel?' · '+sel:''}</button>
       </div>
+      ${hsWhenHTML()}
       <div class="dim" id="hsMsg" style="font-size:12px;margin-top:6px">${esc(nm(who))}: ${got} από ${pln(tot,'απαίτηση','απαιτήσεις')} ${esc(BOOKN[book]||book)}</div>
     </div>
     ${all.map(block).join('')||'<div class="card pad dim">Δεν υπάρχουν απαιτήσεις σε αυτό το βιβλίο.</div>'}`;
@@ -25795,7 +25815,15 @@ function histPassBody(){
   $('hsWho').onchange=e=>{ if(e.target.value)go(e.target.value) };
   $('hsPrev').onclick=()=>idx>0&&go(kids[idx-1].id);
   $('hsNext').onclick=()=>idx<kids.length-1&&go(kids[idx+1].id);
-  $('hsDate').oninput=e=>{HSDATE=e.target.value};
+  $('hsDate').oninput=e=>{HSDATE=e.target.value;
+    document.querySelectorAll('[data-hsy]').forEach(b=>b.classList.toggle('p',!HSDATE&&b.dataset.hsy===HSYEAR))};
+  document.querySelectorAll('[data-hsy]').forEach(b=>b.onclick=()=>{ HSYEAR=b.dataset.hsy; HSDATE=''; $('hsDate').value='';
+    document.querySelectorAll('[data-hsy]').forEach(x=>x.classList.toggle('p',x.dataset.hsy===HSYEAR)) });
+  const hsWho=id=>{ HSSIGN=id||null;
+    if(id&&typeof pgSetWho==='function'){ PGRECENT=[id,...pgRecent().filter(x=>x!==id)].slice(0,6); try{ localStorage.setItem('e76.pgwho',JSON.stringify(PGRECENT)) }catch(_){} }
+    stay() };
+  document.querySelectorAll('[data-hss]').forEach(b=>b.onclick=()=>hsWho(b.dataset.hss));
+  ppWire('hsSign',ppLeaders()); if($('hsSign'))$('hsSign').onchange=e=>{ if(e.target.value)hsWho(e.target.value) };
   wireBookBar();
   document.querySelectorAll('[data-hsblk]').forEach(d=>d.addEventListener('toggle',()=>{HSOPEN[d.dataset.hsblk]=d.open}));
   document.querySelectorAll('.hs-c').forEach(c=>c.onchange=()=>{
@@ -25813,11 +25841,12 @@ function histPassBody(){
     const ids=Object.keys(HSSEL);
     if(!ids.length)return toast('Δεν διάλεξες τίποτα');
     const byDate={};
-    ids.forEach(r=>{const d=(HSSEL[r]||HSDATE||'').trim(); (byDate[d]=byDate[d]||[]).push(r)});
+    ids.forEach(r=>{const d=(HSSEL[r]||HSDATE||'').trim(); (byDate[d]=byDate[d]||[]).push(r)});    
     const btn=$('hsSave'); btn.disabled=true; $('hsMsg').textContent='…';
     let ok=0, bad=0, why='';
     for(const [d,rs] of Object.entries(byDate)){
-      const {data,error}=await sb.rpc('grant_requirements_hist',{p_person:HSWHO, p_reqs:rs, p_when:d||null});
+      const {data,error}=await sb.rpc('grant_requirements_hist',{p_person:HSWHO, p_reqs:rs, p_when:d||null,
+        p_year:d?null:(HSYEAR||null), p_signer:HSSIGN||null});
       if(error){bad++; why=error.message; console.error(error)} else ok+=(data&&data.perasan)||0;
     }
     HSSEL={};
