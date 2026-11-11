@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 18:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 20:31'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21494,6 +21494,15 @@ function xlRec(B,n,S){
   B.recDone=()=>{ B.rec=B.rec.filter(x=>'v' in x&&(!xlSame(x.old,x.v)||(x.kind&&typeof x.v==='number'&&!fmtOk(x.sh,x.r,x.c,x.kind)))); return B.rec };
   return S;
 }
+function xlOwn(L){
+  const by={}; for(const x of L||[]){ if(x.dim)continue; const s=by[x.sh]=by[x.sh]||{}; (s[x.r]=s[x.r]||new Set()).add(x.c); }
+  return Object.entries(by).map(([sh,rows])=>{
+    const runs=[]; for(const [r,set] of Object.entries(rows)){ const cs=[...set].sort((a,b)=>a-b); let a=cs[0],p=a;
+      for(const c of cs.slice(1).concat([1e9])){ if(c===p+1){p=c;continue} runs.push([+r,a,+r,p]); a=p=c; } }
+    runs.sort((x,y)=>x[1]-y[1]||x[3]-y[3]||x[0]-y[0]); const m=[];
+    for(const q of runs){ const l=m[m.length-1]; if(l&&l[1]===q[1]&&l[3]===q[3]&&l[2]+1===q[0])l[2]=q[0]; else m.push(q.slice()); }
+    return {sh,ranges:m}; });
+}
 async function xlOpen(buf){
   const zip=await JSZip.loadAsync(buf);
   const rd=async p=>{const f=zip.file(p);return f?f.async('string'):null};
@@ -21662,7 +21671,7 @@ const DL_SH={A:[dv('ΑΡΧΗΓΟΥ')],G:[dv('ΓΕΝΙΚΑ'),'GENIKA'],Y:[dv('Σ�
 async function dlSh(B,k){ for(const n of DL_SH[k]){ const S=await B.sheet(n); if(S)return S; } return null; }
 const DL_LIVE=dv('⚠ Μην κάνετε αντίγραφο ή κατέβασμα/ξανανέβασμα — δουλεύετε ΜΟΝΟ σε αυτό το αρχείο (τα αντίγραφα χάνουν τη σύνδεση με το e76).');
 async function dlFill(buf,d,o){
-  const B=await xlOpen(buf), rep=[]; if(o&&o.rec)B.rec=[];
+  const B=await xlOpen(buf), rep=[]; if(o&&(o.rec||o.live))B.rec=[];    
   const G=await dlSh(B,'G'); if(!G)throw new Error('Το αρχείο δεν έχει φύλλο «ΓΕΝΙΚΑ» — δεν είναι Δελτίο Δράσης ΣΠΚ.');
   dlFillGenika(G,d,rep);
   if(o&&o.live){ const A0=await dlSh(B,'A');
@@ -21672,9 +21681,10 @@ async function dlFill(buf,d,o){
   const U=await dlSh(B,'U'); if(U)dlFillSign(U,d);
   const A=await dlSh(B,'A'); if(A)dlFillArx(A,d,rep);
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
-  if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs}; }
+  const own=B.rec?xlOwn(B.rec):null;
+  if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs,own}; }
   const hook=d.certs&&d.certs.length?await dlCertsPlan(B,d.certs,rep):null;
-  return {bytes:await B.save(hook), rep};
+  return {bytes:await B.save(hook), rep, own};
 }
 const DL_PHL=[[dv('Δήμου ή Κοινότητας'),'B','dimos'],[dv('Λεωφορεία'),'B','bus'],[dv('Δασική Υπηρεσία'),'B','dasiki'],
   [dv('Αστυνομικού Τμήματος'),'E','police'],[dv('Ιατρικού Κέντρου ή Γιατρού'),'E','medical'],[dv('Επαρχιακού Εφόρου'),'E','eparxos']];
@@ -21849,13 +21859,13 @@ async function gsCreate(e,x){
   const done=gsBusy(x,t('Ετοιμάζω…'));
   try{
     const tpl=await espBytes(DL_TPL);
-    const {bytes,rep}=await dlBuild(e,tpl.buffer,{live:true});
+    const {bytes,rep,own}=await dlBuild(e,tpl.buffer,{live:true});
     x.textContent=t('Ανεβαίνει στο Drive…');
-    const r=await gsCall({op:'create',event_id:e.id,xlsx_b64:gsB64(bytes)});
+    const r=await gsCall({op:'create',event_id:e.id,xlsx_b64:gsB64(bytes),own});
     if(!r.ok){ done(); return toast(t('Δεν φτιάχτηκε')+': '+r.why) }
     await gsLoad(e.id); GS[e.id].loc={state:'ok'}; gsDraw(e);
     const v=r.visibility||{};
-    const msg=[t('Έτοιμο — ανοίγει στο Google Sheets.'), v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση από το e76».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
+    const msg=[t('Έτοιμο — ανοίγει στο Google Sheets.'), gsShareTxt(r.share), v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση από το e76».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
     window.open(gsUrl(r.file_id),'_blank','noopener');
     if(msg.length>1)await uiNote(msg.join('\n\n')); else toast(msg[0]);
   }catch(err){ done(); toast(t('Δεν φτιάχτηκε')+': '+(err.message||err)) }
@@ -21865,17 +21875,23 @@ async function gsReplace(e,x){
   const done=gsBusy(x,t('Ετοιμάζω…'));
   try{
     const tpl=await espBytes(DL_TPL);
-    const {bytes,rep}=await dlBuild(e,tpl.buffer,{live:true});
+    const {bytes,rep,own}=await dlBuild(e,tpl.buffer,{live:true});
     x.textContent=t('Ανεβαίνει στο Drive…');
-    const r=await gsCall({op:'replace',event_id:e.id,xlsx_b64:gsB64(bytes)});
+    const r=await gsCall({op:'replace',event_id:e.id,xlsx_b64:gsB64(bytes),own});
     if(!r.ok){ done(); return toast(t('Δεν έγινε')+': '+r.why) }
     await gsLoad(e.id); GS[e.id].loc={state:'ok'}; gsDraw(e);
     const v=r.visibility||{};
     window.open(gsUrl(r.file_id),'_blank','noopener');
     const msg=[t('Έτοιμο το νέο αρχείο.')+(r.old_trashed?' '+t('Το παλιό πήγε στον κάδο του Drive.'):' '+t('Το παλιό ΔΕΝ μπήκε στον κάδο — σβήσ’ το από το Drive.')),
-      v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση από το e76».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
+      gsShareTxt(r.share), v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση από το e76».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
     if(msg.length>1)await uiNote(msg.join('\n\n')); else toast(msg[0]);
   }catch(err){ done(); toast(t('Δεν έγινε')+': '+(err.message||err)) }
+}
+function gsShareTxt(s){
+  if(!s)return ''; if(s.error)return t('Κοινοποίηση: δεν έγινε')+' ('+gsWhy(s.error)+')';
+  const a=[]; if(s.added&&s.added.length)a.push(t('Κοινοποιήθηκε σε')+': '+s.added.join(', '));
+  if(s.failed&&s.failed.length)a.push(t('Δεν κοινοποιήθηκε σε')+': '+s.failed.map(x=>x.replace(/ \(.*$/,'')).join(', ')+' — '+t('δες τις ρυθμίσεις κοινοποίησης του Κοινόχρηστου Drive'));
+  return a.join('\n');
 }
 const gsWhy=s=>{ const m=GS_WHY.find(([re])=>re.test(String(s||''))); return m?m[1]:String(s||'') };
 const gsShow=v=>{ if(v==null||v==='')return '—';
@@ -21923,8 +21939,9 @@ async function gsSync(e,x){
     I=R.certs?await gsImgPlan(R.B,R.certs):null;
   }catch(err){ done(); return toast(t('Δεν έγινε')+': '+(err.message||err)) }
   const ch=await gsSyncChoices(R,I);
-  if(!ch.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[]}); done();
-    return toast(t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'')); }
+  if(!ch.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own:R.own}); done();
+    const sh=gsShareTxt(r.share), tx=t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'');
+    if(sh)await uiNote(tx+'\n\n'+sh); else toast(tx); return; }
   const pick=await uiChooseMulti(t('Τι θα ξαναγραφτεί από το e76;')+'\n\n'+t('Μόνο κελιά που γράφει το e76 και ΑΛΛΑΞΑΝ. Ξετσέκαρε ό,τι θέλεις να μείνει όπως το έγραψε κάποιος στο αρχείο.')
     +(R.rep.length?'\n\n'+R.rep.map(s=>'• '+s).join('\n'):''),ch,{ok:t('Ενημέρωση'),cancel:t('Άκυρο')});
   if(!pick||!pick.length){ done(); return; }
@@ -21932,7 +21949,7 @@ async function gsSync(e,x){
   const rm=[...all.filter(c=>c.rm).map(c=>c.rm),...adds.filter(a=>a.old).map(a=>a.old)].map(q=>({r:q.r,c:q.c})), bad=[];
   try{
     x.textContent=t('Γράφω…');
-    const r=await gsCall({op:'sync',event_id:e.id,cells,dims}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
+    const r=await gsCall({op:'sync',event_id:e.id,cells,dims,own:R.own}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
     if(rm.length){ const q=await gsCall({op:'img',event_id:e.id,sheet:I.sheet,remove:rm}); if(!q.ok)bad.push(q.why); }
     for(const [i,a] of adds.entries()){ if(bad.length)break;
       x.textContent=t('Εικόνα')+' '+(i+1)+'/'+adds.length+'…';
@@ -21944,7 +21961,7 @@ async function gsSync(e,x){
     const v=r.visibility||{};
     await uiNote([t('Ενημερώθηκε το ζωντανό αρχείο.'),cells.length+' '+t('κελιά')+(adds.length?' · '+adds.length+' '+t('εικόνες'):''),
       v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+')':t('Φύλλα')+': '+v.shown+' '+t('ορατά')+' · '+v.hidden+' '+t('κρυφά'),
-      bad.length?t('Εικόνες')+': '+bad[0]:''].filter(Boolean).join('\n\n'));
+      bad.length?t('Εικόνες')+': '+bad[0]:'', gsShareTxt(r.share)].filter(Boolean).join('\n\n'));
   }catch(err){ done(); toast(t('Δεν έγινε')+': '+(err.message||err)) }
 }
 function gsSignHTML(e){
