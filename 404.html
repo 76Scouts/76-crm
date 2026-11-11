@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 17:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 18:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -15973,7 +15973,7 @@ V.rollover=()=>{
     if(error)return toast('Σφάλμα: '+error.message);
     const e=(D.ev||[]).find(x=>x.id===sel.dataset.e);
     if(e)Object.assign(e,patch);
-    saveCache(); sel.closest('div').style.opacity=.4; toast('Μπήκε: '+sel.value);
+    saveCache(); sel.closest('div').style.opacity=.4; toast('Μπήκε: '+sel.value); if(e)gcalSyncAfterSave(e);    
   });
   const kp=$('roKeep'); if(kp)kp.onchange=()=>{S.keepGroups=kp.checked;save();stay()};
   document.querySelectorAll('[data-grad]').forEach(b=>b.onclick=()=>{S.gradYears=b.dataset.grad;save();V.rollover()});
@@ -16202,7 +16202,7 @@ function issuesBody(){
     if(error)return toast('Σφάλμα: '+error.message);
     const e=(D.ev||[]).find(x=>x.id===sel.dataset.e);
     if(e)Object.assign(e,patch);
-    saveCache(); sel.closest('div').style.opacity=.4; toast('Μπήκε: '+sel.value);
+    saveCache(); sel.closest('div').style.opacity=.4; toast('Μπήκε: '+sel.value); if(e)gcalSyncAfterSave(e);    
   });
   document.querySelectorAll('[data-pk]').forEach(b=>b.onclick=()=>evSetKind(b.dataset.pk,b.dataset.v,b.closest('div')));
   const idDecide=async(id,ok,btn)=>{
@@ -18235,7 +18235,7 @@ async function annOpen(a){
   const lk=S.box.querySelector('#annLink'); if(lk)lk.onchange=async()=>{ const e=(D.ev||[]).find(x=>x.id===lk.value); if(!e)return;
     const r1=await sb.from('announcements').update({event_id:e.id}).eq('id',a.id).select('id');
     if(r1.error||!(r1.data||[]).length)return toast(t('Δεν δέθηκε')+(r1.error?': '+r1.error.message:''));
-    if(!e.info_url){ const r2=await sb.from('events').update({info_url:a.link_url}).eq('id',e.id); if(!r2.error)e.info_url=a.link_url; }
+    if(!e.info_url){ const r2=await sb.from('events').update({info_url:a.link_url}).eq('id',e.id); if(!r2.error){ e.info_url=a.link_url; gcalSyncAfterSave(e); } }    
     a.event_id=e.id; ANN.at=0; S.close(); toast(t('Δέθηκε με τη δράση')); annOpen(a); };
   S.box.querySelectorAll('[data-annf]').forEach(b=>b.onclick=async()=>{
     const f=a.files[+b.dataset.annf]; const {data}=await sb.storage.from('e76').createSignedUrl(f.path,300);
@@ -27824,6 +27824,7 @@ function molaInvWire(ev,redraw){
     const {error}=await sb.from('events').update({invitees:v}).eq('id',ev.id);
     if(error)return toast('Δεν σώθηκε: '+error.message);
     ev.invitees=v; saveCache(); redraw();
+    gcalSyncAfterSave(ev);    
   };
   const cur=()=>Array.isArray(ev.invitees)?ev.invitees.slice():[];
   document.querySelectorAll('[data-invdel]').forEach(a=>a.onclick=e=>{e.preventDefault();
