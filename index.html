@@ -1312,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 22:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 22:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -20933,8 +20933,8 @@ async function dlLoad(eid,force){
   const G=GEV[eid]=(a.error||b.error)?{v:[],h:[],err:(a.error||b.error).message}:{v:a.data||[],h:b.data||[]};
   await dlParLoad(eid,G); return G;
 }
-async function dlParLoad(eid,G){
-  const ids=[...new Set((D.pa||[]).filter(x=>x.event_id===eid).map(x=>x.person_id))]; G.par=G.par||{};
+async function dlParLoad(eid,G,extra){
+  const ids=[...new Set([...(D.pa||[]).filter(x=>x.event_id===eid).map(x=>x.person_id),...(extra||[])])]; G.par=G.par||{};
   for(let i=0;i<ids.length;i+=150){ const {data}=await sb.from('badgeholders').select('id,father_name,mother_name').in('id',ids.slice(i,i+150));
     (data||[]).forEach(x=>G.par[x.id]=x); }
 }
@@ -20958,6 +20958,11 @@ const efHelper=x=>!!x.p&&!isLed(x.p)&&x.pa.role===DL.KHELP;
 const dlStaff=e=>efPersons(e.id).filter(x=>x.p&&isLed(x.p)&&efdLive(x.pa));
 const dlHelpers=e=>efPersons(e.id).filter(x=>efHelper(x)&&efdLive(x.pa));
 const dlKids=e=>efPersons(e.id).filter(x=>x.p&&!isLed(x.p)&&!efHelper(x)&&efdLive(x.pa));
+const dlEligible=e=>{ if(evLeadersOnly(e))return [];
+  const secs=new Set(evSecs(e)); (D.emo||[]).forEach(o=>{ if(o.event_id===e.id&&o.section)secs.add(o.section) });
+  return (D.bh||[]).filter(p=>isMem(p)&&p.status===dv('Ενεργός')&&inScope(p)&&secs.has(secOf(p))&&evInvOk(e,p.id,secOf(p))); };
+const dlKidsFull=e=>{ const real=dlKids(e), have=new Set([...real,...dlHelpers(e)].map(x=>x.p.id));
+  return [...real,...dlEligible(e).filter(p=>!have.has(p.id)).map(p=>({p,pa:{},full:true}))]; };
 const dlP=id=>id?(D.bh||[]).find(b=>b.id===id)||null:null;
 const dlIsFA=x=>x.pa.role==='Πρώτος Βοηθός'||x.pa.role2==='Πρώτος Βοηθός';
 const dlFaList=e=>{ const o=e.fa_order||[], ix=id=>{const i=o.indexOf(id); return i<0?999:i};
@@ -20998,6 +21003,7 @@ const dlBusOf=x=>{ if(x.ph_bus===DL_NA)return {phone:DL_NA,label:''};
 const dlVen=x=>(D.ven||[]).find(v=>v.id===x.venue_id)||{name:'—'};
 const dlDig=s=>String(s||'').replace(/\D/g,'');
 
+const dlHome=g=>!!(g&&g.v&&g.v.length&&g.v.every(x=>/Εστία\s*76/i.test(dlVen(x).name||'')));
 function dlChecks(e,g){
   const out=[], add=(s,t,bad,who)=>out.push({s,t,bad:bad!==false,who});    
   g=g||{v:[],h:[]};
@@ -21016,7 +21022,7 @@ function dlChecks(e,g){
     if(!(V.area||V.address))m.push('τοποθεσία'); if(!V.phone)m.push('τηλέφωνο επικοινωνίας');
     if(!V.directions&&!V.map_url)m.push('πληροφορίες ανεύρεσης');
     const ph=DL.PHV.filter(([k])=>!V[k]).length; if(ph)m.push(ph+' '+t('από τα 4 χρήσιμα τηλέφωνα του χώρου (ή Δ/Ε)'));
-    if(!dlBusOf(x).phone)add(3,V.name+' — '+t('τηλέφωνο λεωφορείων (ή Δ/Ε)'));
+    if(!dlHome(g)&&!dlBusOf(x).phone)add(3,V.name+' — '+t('τηλέφωνο λεωφορείων (ή Δ/Ε)'));
     if(m.length)add(1,V.name+': '+m.join(', '));
     const ap=[]; if(!x.approver_name)ap.push('ποιος'); if(!x.approver_role)ap.push('ιδιότητα');
     if(!x.approval_method)ap.push('τρόπος'); if(!x.approval_date)ap.push('ημερομηνία');
@@ -21038,9 +21044,10 @@ function dlChecks(e,g){
   if(noPar.length)add(2,noPar.map(x=>nm(x.p)).join(', ')+': '+t('όνομα πατέρα / μητέρας'),true,noPar.map(x=>nm(x.p)).join(', '));
   const n91=staff.filter(x=>!['ok','hidden'].includes(certOn(x.p.id,'Ν91',end).k));    
   if(n91.length)add(2,pln(n91.length,'βαθμοφόρος','βαθμοφόροι')+' χωρίς Ν.91(Ι) σε ισχύ: '+n91.map(x=>nm(x.p)).join(', '),true,n91.map(x=>nm(x.p)).join(', '));
-  [['arrive_time','Ώρα προσέλευσης'],['depart_time','Ώρα αναχώρησης'],['return_time','Ώρα επιστροφής'],['release_time','Ώρα αποδέσμευσης']]
-    .forEach(([k,t])=>{ if(!e[k])add(3,t) });
-  if(!(e.transport||[]).length)add(3,'Μέσο μεταφοράς');
+  const home=dlHome(g);
+  [['arrive_time',home?t('Ώρα έναρξης'):'Ώρα προσέλευσης'],...(home?[]:[['depart_time','Ώρα αναχώρησης'],['return_time','Ώρα επιστροφής']]),['release_time','Ώρα αποδέσμευσης']]
+    .forEach(([k,tt])=>{ if(!e[k])add(3,tt) });
+  if(!home&&!(e.transport||[]).length)add(3,'Μέσο μεταφοράς');
   if(e.sea_other==null)add(3,'Θαλάσσιες δραστηριότητες: Ναι ή Όχι',false);
   const kids=[...dlKids(e),...dlHelpers(e)], noAm=kids.filter(x=>!x.p.registry_no), noDob=[...kids,...staff].filter(x=>!dobOf(x.p));
   if(noAm.length)add(3,pln(noAm.length,'μέλος','μέλη')+' χωρίς Α.Μ.',false);
@@ -21328,11 +21335,13 @@ function dlS2Wire(e,g){
 function dlS3HTML(e,g){
   const ro=dlRO(e), tr=e.transport||[], hm=t=>t?String(t).slice(0,5):'';
   const ti=(k,l)=>`<label>${l}<input type="time" data-dl3="${k}" value="${hm(e[k])}"${ro}></label>`;
-  return dlCard('3 · Πριν την υποβολή','',`<div class="grow">${ti('arrive_time','Προσέλευση')}${ti('depart_time','Αναχώρηση')}${ti('return_time','Επιστροφή')}${ti('release_time','Αποδέσμευση')}</div>
-    <div style="font-size:12.5px;color:var(--ink2);margin:4px 0">Μέσα μεταφοράς</div>
+  const home=dlHome(g);
+  return dlCard('3 · Πριν την υποβολή','',`<div class="grow">${home?ti('arrive_time',t('Έναρξη')):ti('arrive_time','Προσέλευση')+ti('depart_time','Αναχώρηση')+ti('return_time','Επιστροφή')}${ti('release_time','Αποδέσμευση')}</div>
+    ${home?`<div class="dim" style="font-size:12px;margin:4px 0">${t('Η δράση είναι στο Σύστημα: χωρίς μετάβαση — ούτε αναχώρηση/επιστροφή ούτε μέσο μεταφοράς.')}</div><div hidden>`:''}
+    <div style="font-size:12.5px;color:var(--ink2);margin:4px 0">${t('Μέσα μεταφοράς')}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">${DL.METAFORA.map(m=>`<label style="display:flex;gap:4px;align-items:center;font-size:13px;border:1px solid var(--line);border-radius:7px;padding:3px 8px">
       <input type="checkbox" data-dltr="${esc(m)}" ${tr.includes(m)?'checked':''} style="width:auto"${ro}>${esc(m)}</label>`).join('')}</div>
-    ${tr.some(m=>/^ΙΧ/.test(m))?`<div class="dim" style="font-size:12px;margin-top:5px">Με ΙΧ χρειάζονται άδεια οδηγού, ασφάλεια και ΜΟΤ των οχημάτων στα Πιστοποιητικά του δελτίου.</div>`:''}
+    ${tr.some(m=>/^ΙΧ/.test(m))?`<div class="dim" style="font-size:12px;margin-top:5px">Με ΙΧ χρειάζονται άδεια οδηγού, ασφάλεια και ΜΟΤ των οχημάτων στα Πιστοποιητικά του δελτίου.</div>`:''}${home?'</div>':''}
     <div class="grow" style="margin-top:10px">
       <label>Μέρες πορείας<input type="number" min="0" data-dl3n="march_days" value="${e.march_days??''}"${ro}></label>
       <label>Μέρες πλου (σκάφος)<input type="number" min="0" data-dl3n="sail_days" value="${e.sail_days??''}"${ro}></label>
@@ -21371,7 +21380,7 @@ function efDaysPanel(e,paid){
 }
 
 function dlData(e,g,med){
-  const days=dlDays(e), staffX=dlStaff(e), kidsX=dlKids(e), a=dlP(e.arxigos_id), camp=dlCamp(e);
+  const days=dlDays(e), staffX=dlStaff(e), kidsX=g&&g.full?dlKidsFull(e):dlKids(e), a=dlP(e.arxigos_id), camp=dlCamp(e);
   const rank=x=>x.p.id===e.arxigos_id?-1:(DL.KATHD.indexOf(x.pa.role)+1||99);
   const staff=staffX.slice().sort((x,y)=>rank(x)-rank(y)||sortByName(x.p,y.p));
   const kids=kidsX.slice().sort((x,y)=>String(secOf(x.p)||'').localeCompare(String(secOf(y.p)||''),'el')||sortByName(x.p,y.p));
@@ -21398,7 +21407,7 @@ function dlData(e,g,med){
     tmima:dlTmima(e), dd:camp&&dd?{name:nm(dd),am:dd.registry_no||'',kath:(ddx&&DL.KATHD.includes(ddx.pa.role)&&ddx.pa.role)||'Αρχηγός Κατασκήνωσης'}:null,
     sfh:(dlP(e.sfh_id)&&nm(dlP(e.sfh_id)))||null, from:e.event_date, to:e.end_date||e.event_date,
     march:e.march_days||null, sail:e.sail_days||null, sea:e.sea_other==null?null:(e.sea_other?'Ναι':'Όχι'),
-    times:{arrive:e.arrive_time,depart:e.depart_time,ret:e.return_time,release:e.release_time}, transport:e.transport||[],
+    times:{arrive:e.arrive_time,depart:dlHome(g)?null:e.depart_time,ret:dlHome(g)?null:e.return_time,release:e.release_time}, transport:dlHome(g)?[]:(e.transport||[]),
     spk:spk?spk.spk_site:'ο χώρος δεν ανήκει στο ΣΠΚ', venues:ven, ndays:days.length,
     staff:[...staff.map(x=>row(x,true)),...dlHelpers(e).sort((x,y)=>sortByName(x.p,y.p)).map(x=>row(x,false))], kids:kids.map(x=>row(x,false)),
     sign:{as:(dlP(asHat&&asHat.person_id)&&nm(dlP(asHat.person_id)))||'', eps:eps?cmName(eps):''},
@@ -21408,7 +21417,9 @@ const DL_TPL='spk-deltio-v13-76e.xlsx';
 async function dlBuild(e,buf,o){
   const g=await dlLoad(e.id);
   const all=[...dlStaff(e),...dlHelpers(e),...dlKids(e)];
-  await dlParLoad(e.id,g);
+  const gsr=typeof GS!=='undefined'&&GS[e.id]&&GS[e.id].row;
+  g.full=!!(o&&o.live)&&(o.final!==undefined?!o.final:!(gsr&&gsr.kids_final));
+  await dlParLoad(e.id,g,g.full?dlEligible(e).map(p=>p.id):null);
   const withMed=all.length&&await uiAsk('Να μπουν και τα διατροφικά στη στήλη «Διατροφικές ιδιαιτερότητες»;\n\nΘα καταγραφεί ανάγνωση ιατρικών για '+pln(all.length,'άτομο','άτομα')+' (σκοπός: Δελτίο Δράσης ΣΠΚ).',{ok:'Ναι, με διατροφικά',cancel:'Χωρίς'});
   let med=null;
   if(withMed){ toast('Διαβάζω τα διατροφικά…'); const r=await efdMedMany(all.map(x=>x.p.id),'Δελτίο Δράσης ΣΠΚ · '+(e.title||'')); med=r.med;
@@ -21419,6 +21430,7 @@ async function dlBuild(e,buf,o){
   if(o&&o.rec&&!withMed)d.noDiet=true;    
   d.certs=await dlCertImgs(e);
   const r=await dlFill(buf,d,o);
+  if(g.full){ const n=d.kids.length; r.rep.unshift(t('ΣΥΜΜΕΤΟΧΕΣ: όλη η δύναμη')+' — '+n+' '+t('μέλη που δικαιούνται να δηλώσουν (για τον προϋπολογισμό). Όταν κλείσουν οι δηλώσεις: «Πέρασε τις τελικές συμμετοχές».')); }
   if(o&&o.rec){ if(d.certs.err)r.rep.unshift(t('Πιστοποιητικά')+': '+d.certs.err); return r; }
   if(d.certs.err)r.rep.unshift(t('Πιστοποιητικά')+': '+d.certs.err);
   else r.rep.push(d.certs.length?t('Στο φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ μπήκαν')+' '+d.certs.length+' '+t('εικόνες πιστοποιητικών'):t('Δεν βρέθηκαν πιστοποιητικά σε ισχύ για το φύλλο ΠΙΣΤΟΠΟΙΗΤΙΚΑ'));
@@ -21950,7 +21962,9 @@ function gsHTML(e){
       <a class="btn sm p" href="${gsUrl(r.file_id)}" target="_blank" rel="noopener">${t('Άνοιγμα')}</a>
       <a class="btn sm" href="${gsDir(r.folder_id)}" target="_blank" rel="noopener">${t('Φάκελος')}</a>
       ${isAdminUI()?`<button class="btn sm gh" id="gsRep" title="${t('Νέο αρχείο από το τρέχον πρότυπο του e76 — το σημερινό πάει στον κάδο του Drive')}">${t('Νέο από πρότυπο')}</button>`:''}
-      ${ed?`<button class="btn sm" id="gsVis" title="${t('Ξαναγράφει στο ΙΔΙΟ αρχείο μόνο τα κελιά του e76 που άλλαξαν (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΠΙΣΤΟΠΟΙΗΤΙΚΑ…) — πρώτα σου δείχνει τι. Ό,τι γράψατε αλλού μένει.')}">${t('Ενημέρωση από το e76')}</button>`:''}</div>
+      ${ed?`<button class="btn sm" id="gsVis" title="${t('Ξαναγράφει στο ΙΔΙΟ αρχείο μόνο τα κελιά του e76 που άλλαξαν (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΠΙΣΤΟΠΟΙΗΤΙΚΑ…) — πρώτα σου δείχνει τι. Ό,τι γράψατε αλλού μένει.')}">${t('Ενημέρωση από το e76')}</button>`:''}
+      ${ed?(r.kids_final?`<span class="pill" style="font-size:11px">${t('τελικές συμμετοχές')}</span><button class="btn sm gh" id="gsFull" title="${t('Ξανά όλοι όσοι δικαιούνται να δηλώσουν, για τον προϋπολογισμό')}">${t('Πίσω σε όλη τη δύναμη')}</button>`
+        :`<button class="btn sm" id="gsFin" title="${t('Τώρα στις ΣΥΜΜΕΤΟΧΕΣ είναι όλη η δύναμη (για τον προϋπολογισμό). Με αυτό μένουν μόνο όσοι δήλωσαν.')}">${t('Πέρασε τις τελικές συμμετοχές')}</button>`):''}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${t('Φτιάχτηκε')} ${fdate(r.created_at)}${who(r.created_by)?' · '+esc(who(r.created_by)):''}. ${t('Δουλεύετε όλοι σε αυτό το αρχείο — όχι αντίγραφα, όχι κατέβασμα και ξανανέβασμα.')}</div>
     ${warn}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
@@ -21963,9 +21977,16 @@ function gsHTML(e){
       :`<div class="dim" style="font-size:12px;margin-top:4px">${t('Κάθε στιγμιότυπο: αντίγραφο στον φάκελο της δράσης (το βλέπουν μόνο τα μέλη του Drive) και .xlsx για την Επαρχία.')}</div>`}</div>`;
 }
 
+async function gsFinalSet(e,opt){
+  if(!opt||opt.final===undefined)return;
+  const {error}=await sb.rpc('event_sheet_final',{p_event:e.id,p_final:!!opt.final});
+  if(error)return toast(t('Δεν σημειώθηκε')+': '+error.message);
+  if(GS[e.id]&&GS[e.id].row)GS[e.id].row.kids_final=!!opt.final;
+}
 function gsDraw(e){ const b=$('gsLive'); if(!b||EFID!==e.id)return; b.innerHTML=gsHTML(e);
   const on=(id,f)=>{const x=$(id); if(x)x.onclick=()=>f(x)};
-  on('gsNew',x=>gsCreate(e,x)); on('gsRep',x=>gsReplace(e,x)); on('gsVis',x=>gsSync(e,x)); on('gsBack',x=>gsRestore(e,x));
+  on('gsNew',x=>gsCreate(e,x)); on('gsRep',x=>gsReplace(e,x)); on('gsVis',x=>gsSync(e,x));
+  on('gsFin',x=>gsFinal(e,x,true)); on('gsFull',x=>gsFinal(e,x,false)); on('gsBack',x=>gsRestore(e,x));
   b.querySelectorAll('[data-gsst]').forEach(x=>x.onclick=()=>gsSnap(e,x.dataset.gsst,x));
   b.querySelectorAll('[data-gssign]').forEach(x=>x.onclick=()=>gsSign(e,x.dataset.gssign,x));
 }
@@ -22053,17 +22074,22 @@ async function gsSyncChoices(R,I){
     I.stale.forEach(q=>ch.push({v:[{rm:q}],on:true,t:I.sheet+' · '+t('αφαίρεση εικόνας')+' '+XL.ref(q.r,q.c)+(q.descr?' — '+q.descr.replace(DL_CERT_TAG,''):'')})); }
   return ch;
 }
-async function gsSync(e,x){
+async function gsFinal(e,x,fin){
+  if(!await uiAsk(fin?t('Πέρασμα των τελικών συμμετοχών;')+'\n\n'+t('Στις ΣΥΜΜΕΤΟΧΕΣ θα μείνουν ΜΟΝΟ όσοι έχουν δηλώσει συμμετοχή (αντί για όλη τη δύναμη). Πρώτα θα δεις τι αλλάζει.')
+    :t('Πίσω σε όλη τη δύναμη;')+'\n\n'+t('Στις ΣΥΜΜΕΤΟΧΕΣ θα μπουν ξανά όλοι όσοι δικαιούνται να δηλώσουν.'),{ok:fin?t('Συνέχεια'):t('Ναι'),cancel:t('Άκυρο')}))return;
+  await gsSync(e,x,{final:fin});
+}
+async function gsSync(e,x,opt){
   const done=gsBusy(x,t('Διαβάζω το αρχείο…'));
   let R,I;
   try{
     const p=await gsCall({op:'pull',event_id:e.id}); if(!p.ok){ done(); return toast(t('Δεν διαβάστηκε το αρχείο')+': '+p.why) }
     x.textContent=t('Συγκρίνω…');
-    R=await dlBuild(e,Uint8Array.from(atob(p.xlsx_b64),c=>c.charCodeAt(0)).buffer,{live:true,rec:true});
+    R=await dlBuild(e,Uint8Array.from(atob(p.xlsx_b64),c=>c.charCodeAt(0)).buffer,{live:true,rec:true,...(opt&&opt.final!==undefined?{final:opt.final}:{})});
     I=R.certs?await gsImgPlan(R.B,R.certs):null;
   }catch(err){ done(); return toast(t('Δεν έγινε')+': '+(err.message||err)) }
   const ch=await gsSyncChoices(R,I);
-  if(!ch.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own:R.own}); done();
+  if(!ch.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own:R.own}); if(r.ok)await gsFinalSet(e,opt); done();
     const sh=gsShareTxt(r.share), tx=t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'');
     if(sh)await uiNote(tx+'\n\n'+sh); else toast(tx); return; }
   const pick=await uiChooseMulti(t('Τι θα ξαναγραφτεί από το e76;')+'\n\n'+t('Μόνο κελιά που γράφει το e76 και ΑΛΛΑΞΑΝ. Ξετσέκαρε ό,τι θέλεις να μείνει όπως το έγραψε κάποιος στο αρχείο.')
@@ -22074,6 +22100,7 @@ async function gsSync(e,x){
   try{
     x.textContent=t('Γράφω…');
     const r=await gsCall({op:'sync',event_id:e.id,cells,dims,own:R.own}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
+    await gsFinalSet(e,opt);
     if(rm.length){ const q=await gsCall({op:'img',event_id:e.id,sheet:I.sheet,remove:rm}); if(!q.ok)bad.push(q.why); }
     for(const [i,a] of adds.entries()){ if(bad.length)break;
       x.textContent=t('Εικόνα')+' '+(i+1)+'/'+adds.length+'…';
