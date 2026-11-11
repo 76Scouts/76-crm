@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 16:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 17:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -20860,7 +20860,7 @@ const dlVen=x=>(D.ven||[]).find(v=>v.id===x.venue_id)||{name:'—'};
 const dlDig=s=>String(s||'').replace(/\D/g,'');
 
 function dlChecks(e,g){
-  const out=[], add=(s,t,bad)=>out.push({s,t,bad:bad!==false});
+  const out=[], add=(s,t,bad,who)=>out.push({s,t,bad:bad!==false,who});    
   g=g||{v:[],h:[]};
   const n=dlNights(e), ei=dlEidos(e), en=dlEn(e), tm=dlTmima(e), camp=en>=5, end=e.end_date||e.event_date;
   const staff=dlStaff(e), ids=new Set(staff.map(x=>x.p.id));
@@ -20885,18 +20885,18 @@ function dlChecks(e,g){
   if(a){ if(!ids.has(a.id))add(2,nm(a)+' (αρχηγός δράσης) να μπει στο επιτελείο');
     if(!a.registry_no)add(2,'Α.Μ. του αρχηγού δράσης');
     if(!/^9\d{7}$/.test(dlDig(a.phone).slice(-8)))add(2,'Κινητό του αρχηγού δράσης');
-    if(dlAppt(a,e.event_date)==='ΕΚΚΡΕΜΕΙ')add(2,'Αρ. εντολής διοίκησης του αρχηγού (θα γραφτεί «ΕΚΚΡΕΜΕΙ»)',false); }
+    if(dlAppt(a,e.event_date)==='ΕΚΚΡΕΜΕΙ')add(2,'Αρ. εντολής διοίκησης του αρχηγού (θα γραφτεί «ΕΚΚΡΕΜΕΙ»)',false,dv('Αρχηγός Συστήματος')); }
   if(!staff.length)add(2,'Επιτελείο δράσης (Συμμετέχοντες)');
   const fa=staff.filter(dlIsFA);
   if(staff.length&&!fa.length)add(2,'Πρώτος Βοηθός (καθήκον στους Συμμετέχοντες)');
-  fa.filter(x=>certOn(x.p.id,'ΠΡΩΤΕΣ_ΒΟΗΘΕΙΕΣ',end).k!=='ok').forEach(x=>add(2,nm(x.p)+': Πρώτες Βοήθειες σε ισχύ την ημέρα της δράσης'));
+  fa.filter(x=>certOn(x.p.id,'ΠΡΩΤΕΣ_ΒΟΗΘΕΙΕΣ',end).k!=='ok').forEach(x=>add(2,nm(x.p)+': Πρώτες Βοήθειες σε ισχύ την ημέρα της δράσης',true,nm(x.p)));
   if(camp){ if(!e.dd_holder_id)add(2,'Κάτοχος ΔΔ (κατασκήνωση / ΜΔΥ)');
     else if(!ids.has(e.dd_holder_id))add(2,'Ο κάτοχος ΔΔ να μπει στο επιτελείο'); }
   const need=camp?2:(en>=3?1:0);
   if(g.h.length<need)add(2,need===2?'Δύο αυτοκίνητα ασφαλείας (κατασκήνωση / ΜΔΥ)':'Αυτοκίνητο ασφαλείας');
   g.h.filter(h=>!h.driver_id).forEach(h=>add(2,h.plate+': οδηγός'));
   const n91=staff.filter(x=>!['ok','hidden'].includes(certOn(x.p.id,'Ν91',end).k));    
-  if(n91.length)add(2,pln(n91.length,'βαθμοφόρος','βαθμοφόροι')+' χωρίς Ν.91(Ι) σε ισχύ: '+n91.map(x=>nm(x.p)).join(', '));
+  if(n91.length)add(2,pln(n91.length,'βαθμοφόρος','βαθμοφόροι')+' χωρίς Ν.91(Ι) σε ισχύ: '+n91.map(x=>nm(x.p)).join(', '),true,n91.map(x=>nm(x.p)).join(', '));
   [['arrive_time','Ώρα προσέλευσης'],['depart_time','Ώρα αναχώρησης'],['return_time','Ώρα επιστροφής'],['release_time','Ώρα αποδέσμευσης']]
     .forEach(([k,t])=>{ if(!e[k])add(3,t) });
   if(!(e.transport||[]).length)add(3,'Μέσο μεταφοράς');
@@ -21216,7 +21216,7 @@ function dlData(e,g,med){
     spk:spk?spk.spk_site:'ο χώρος δεν ανήκει στο ΣΠΚ', venues:ven, ndays:days.length,
     staff:[...staff.map(x=>row(x,true)),...dlHelpers(e).sort((x,y)=>sortByName(x.p,y.p)).map(x=>row(x,false))], kids:kids.map(x=>row(x,false)),
     sign:{as:(dlP(asHat&&asHat.person_id)&&nm(dlP(asHat.person_id)))||'', eps:eps?cmName(eps):''},
-    pending:dlChecks(e,g).map(c=>c.t)};
+    pending:dlChecks(e,g).map(c=>({t:c.t,who:c.who||(dlP(e.arxigos_id)?nm(dlP(e.arxigos_id)):dv('Αρχηγός δράσης'))}))};
 }
 const DL_TPL='spk-deltio-v13-76e.xlsx';
 async function dlBuild(e,buf,o){
@@ -21368,6 +21368,11 @@ function xlSheet(xml,ss,isDate){
     else if(typeof val==='number'){ inner=`<v>${val}</v>`; }
     else { t=' t="inlineStr"'; inner=`<is><t xml:space="preserve">${XL.esc(val)}</t></is>`; }
     R.cells.set(c,{col:c,attrs:` r="${ref}"${sa}${t}`,inner}); S.touched++; return true};
+  S.isHid=r=>{const R=rows.get(r); return !!R&&/\shidden="(?:1|true)"/.test(R.attrs)};
+  S.hide=(a,b,on)=>{ let ch=false;
+    for(let r=a;r<=b;r++){ let R=rows.get(r); if(!R){R={r,attrs:` r="${r}"`,cells:new Map()};rows.set(r,R)}
+      if(S.isHid(r)===on)continue; R.attrs=R.attrs.replace(/\shidden="[^"]*"/,'')+(on?' hidden="1"':''); ch=true; }
+    if(ch)S.touched++; return ch };
   S.rowEmpty=r=>{const R=rows.get(r); if(!R)return true;
     for(const x of R.cells.values())if(x.inner&&(/<f[\s>\/]/.test(x.inner)||/<v>|<is>/.test(x.inner)))return false; return true};
   S.clone=(a,b,t)=>{
@@ -21416,6 +21421,9 @@ function xlRec(B,n,S){
   const seen=new Map();      
   S.set=(r,c,val,kind)=>{ const k=r+':'+c; if(!seen.has(k)){ const x={sh:n,r,c,old:S.v(r,c)}; seen.set(k,x); B.rec.push(x); }
     const ok=raw(r,c,val,kind); if(ok)seen.get(k).v=S.v(r,c); return ok };
+  const rh=S.hide;
+  S.hide=(a,b,on)=>{ const ch=rh(a,b,on);
+    if(ch)B.rec.push({sh:n,dim:[a,b],old:!on,v:on}); return ch };
   B.recDone=()=>{ B.rec=B.rec.filter(x=>'v' in x&&!xlSame(x.old,x.v)); return B.rec };
   return S;
 }
@@ -21508,7 +21516,8 @@ function dlBlocks(S){
     const ds=S.find('Δασική Υπηρεσία',{col:'B',from:x.r,to:x.r+40}); return ds?{st:x.r,end:ds.r+1}:null}).filter(Boolean);
 }
 function dlFillVenues(S,d,rep){
-  { const H=S.findAll(dv('Λεπτομέρειες Χώρου Δράσης'),{col:'B',starts:true}), ph=S.find(dv('Χρήσιμα Τηλέφωνα'),{col:'B',starts:true});
+  { const H=S.findAll(dv('Λεπτομέρειες Χώρου Δράσης'),{col:'B',starts:true}), PH=S.findAll(dv('Χρήσιμα Τηλέφωνα'),{col:'B',starts:true}), ph=PH[0];
+    if(H.length>=2&&PH.length===H.length&&H.every((h,i)=>PH[i].r>h.r&&(!H[i+1]||PH[i].r<H[i+1].r)))return dlFillVenues3(S,d,rep,PH);    
     if(ph&&H.length>=2&&H.every(h=>h.r<ph.r))return dlFillVenues3(S,d,rep); }
   let B=dlBlocks(S); if(!B.length){ if(d.venues.length)rep.push('Δεν βρέθηκε «Λεπτομέρειες Χώρου Δράσης»'); return; }
   while(B.length<d.venues.length){
@@ -21572,9 +21581,16 @@ function dlFillSign(S,d){
 function dlFillPending(S,d){
   let h=S.find('ΕΚΚΡΕΜΟΤΗΤΕΣ'); if(!h){ S.set(2,2,'ΕΚΚΡΕΜΟΤΗΤΕΣ'); h={r:2,c:2}; }
   for(let r=h.r+1;r<=h.r+80;r++)if(S.v(r,h.c)!=null)S.set(r,h.c,null);
-  d.pending.forEach((t,i)=>S.set(h.r+1+i,h.c,t));
+  d.pending.forEach((x,i)=>S.set(h.r+1+i,h.c,x.t||x));
 }
-const DL_SH={G:[dv('ΓΕΝΙΚΑ'),'GENIKA'],Y:[dv('ΣΥΜΜΕΤΟΧΕΣ'),'SYMMETOXES'],U:[dv('ΥΠΟΓΡΑΦΕΣ'),'YPOGRAFES'],K:[dv('ΕΚΚΡΕΜΟΤΗΤΕΣ')]};
+function dlFillArx(S,d,rep){
+  const h=S.find(dv('Τι εκκρεμεί'),{col:'A'}); if(!h)return;
+  const L=S.find(dv('Φύλλα για αυτή τη δράση'),{col:'A'}), last=L?L.r-2:h.r+30, cap=last-h.r, P=d.pending||[];
+  for(let r=h.r+1;r<=last;r++){ [1,2].forEach(c=>{ if(S.v(r,c)!=null)S.set(r,c,null) }); }
+  P.slice(0,cap).forEach((x,i)=>{ S.set(h.r+1+i,1,x.t||x); S.set(h.r+1+i,2,x.who||''); });
+  if(P.length>cap)rep.push(t('ΑΡΧΗΓΟΥ: χωρούν')+' '+cap+' '+t('εκκρεμότητες, είναι')+' '+P.length);
+}
+const DL_SH={A:[dv('ΑΡΧΗΓΟΥ')],G:[dv('ΓΕΝΙΚΑ'),'GENIKA'],Y:[dv('ΣΥΜΜΕΤΟΧΕΣ'),'SYMMETOXES'],U:[dv('ΥΠΟΓΡΑΦΕΣ'),'YPOGRAFES'],K:[dv('ΕΚΚΡΕΜΟΤΗΤΕΣ')]};
 async function dlSh(B,k){ for(const n of DL_SH[k]){ const S=await B.sheet(n); if(S)return S; } return null; }
 const DL_LIVE=dv('⚠ Μην κάνετε αντίγραφο ή κατέβασμα/ξανανέβασμα — δουλεύετε ΜΟΝΟ σε αυτό το αρχείο (τα αντίγραφα χάνουν τη σύνδεση με το e76).');
 async function dlFill(buf,d,o){
@@ -21584,29 +21600,31 @@ async function dlFill(buf,d,o){
   if(o&&o.live&&G.v(2,2)==null)G.set(2,2,DL_LIVE);
   const Y=await dlSh(B,'Y'); if(Y)dlFillSym(Y,d,rep); else rep.push('Λείπει το φύλλο ΣΥΜΜΕΤΟΧΕΣ');
   const U=await dlSh(B,'U'); if(U)dlFillSign(U,d);
+  const A=await dlSh(B,'A'); if(A)dlFillArx(A,d,rep);
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
   if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs}; }
   const hook=d.certs&&d.certs.length?await dlCertsPlan(B,d.certs,rep):null;
   return {bytes:await B.save(hook), rep};
 }
-function dlFillVenues3(S,d,rep){
-  const H=S.findAll(dv('Λεπτομέρειες Χώρου Δράσης'),{col:'B',starts:true}), ph=S.find(dv('Χρήσιμα Τηλέφωνα'),{col:'B',starts:true});
+const DL_PHL=[[dv('Δήμου ή Κοινότητας'),'B','dimos'],[dv('Λεωφορεία'),'B','bus'],[dv('Δασική Υπηρεσία'),'B','dasiki'],
+  [dv('Αστυνομικού Τμήματος'),'E','police'],[dv('Ιατρικού Κέντρου ή Γιατρού'),'E','medical'],[dv('Επαρχιακού Εφόρου'),'E','eparxos']];
+function dlPhones(S,r0,get){ DL_PHL.forEach(([l,col,k])=>{ const a=S.find(l,{col,from:r0,to:r0+6}); if(a)S.set(a.r,a.c+1,dlPh(get(k))); }); }
+function dlFillVenues3(S,d,rep,PH){
+  const H=S.findAll(dv('Λεπτομέρειες Χώρου Δράσης'),{col:'B',starts:true}), ph=PH?null:S.find(dv('Χρήσιμα Τηλέφωνα'),{col:'B',starts:true});
   const many=d.venues.length>1;
-  H.forEach((h,i)=>{ const end=(H[i+1]?H[i+1].r:(ph?ph.r:h.r+9))-1, v=d.venues[i]||null;
+  H.forEach((h,i)=>{ const end=(H[i+1]?H[i+1].r:(PH?PH[i].r+5:ph?ph.r:h.r+9))-1, v=d.venues[i]||null;
     const at=(t,col,st)=>S.find(t,{col,from:h.r,to:end,starts:st});
     const put=(a,dr,dc,val,k)=>{ if(a)S.set(a.r+dr,a.c+dc,val==null||val===''?null:val,k) };
     S.set(h.r,2,dv('Λεπτομέρειες Χώρου Δράσης')+' '+(i+1)+(many&&v?' - '+v.title:''));
     put(at(dv('Τοποθεσία:'),'B'),0,1,v&&v.topos); put(at(dv('Τηλέφωνο Επικοινωνίας:'),'E'),0,1,v&&dlPh(v.phone));
     put(at(dv('Χώρος Διανυκτέρευσης:'),'B'),0,1,v&&v.sleep); put(at(dv('Πληροφορίες Αν'),'E',true),1,0,v&&v.dir);
     put(at(dv('Όνομα:'),'B'),0,1,v&&v.apName); put(at(dv('Ιδιότητα:'),'B'),0,1,v&&v.apRole);
-    put(at(dv('Τρόπος εξασφάλισης έγκρισης:'),'B'),0,1,v&&v.apMethod); put(at(dv('Ημερομηνία εξασφάλισης έγκρισης:'),'B'),0,1,v&&v.apDate,'date'); });
+    put(at(dv('Τρόπος εξασφάλισης έγκρισης:'),'B'),0,1,v&&v.apMethod); put(at(dv('Ημερομηνία εξασφάλισης έγκρισης:'),'B'),0,1,v&&v.apDate,'date');
+    if(PH){ dlPhones(S,PH[i].r,k=>v&&v.ph?v.ph[k]:null);
+      if(i>0)S.hide(H[i].r-1,PH[i].r+4,!v); } });        
   if(d.venues.length>H.length)rep.push(t('Χώροι: το αρχείο έχει')+' '+H.length+' '+t('μπλοκ, η δράση')+' '+d.venues.length+' — '+t('για τους υπόλοιπους: εισαγωγή γραμμών μέσα στο φύλλο ΓΕΝΙΚΑ'));
   if(!ph)return;
-  const first=k=>{ for(const v of d.venues){ const x=v.ph&&v.ph[k]; if(x)return x; } return null; };
-  const at=(t,col)=>S.find(t,{col,from:ph.r,to:ph.r+6});
-  [[dv('Δήμου ή Κοινότητας'),'B','dimos'],[dv('Λεωφορεία'),'B','bus'],[dv('Δασική Υπηρεσία'),'B','dasiki'],
-   [dv('Αστυνομικού Τμήματος'),'E','police'],[dv('Ιατρικού Κέντρου ή Γιατρού'),'E','medical'],[dv('Επαρχιακού Εφόρου'),'E','eparxos']]
-    .forEach(([l,col,k])=>{ const a=at(l,col); if(a)S.set(a.r,a.c+1,dlPh(first(k))); });
+  dlPhones(S,ph.r,k=>{ for(const v of d.venues){ const x=v.ph&&v.ph[k]; if(x)return x; } return null; });
 }
 
 const DL_CERT_TAG='e76 · ';
@@ -21806,7 +21824,9 @@ async function gsSyncChoices(R,I){
   for(const [sh,list] of Object.entries(by)){
     const S=await R.B.sheet(sh);
     if(DL_SH.G.includes(sh)||/ΠΙΣΤΟΠ|PISTOP/.test(sh)){
-      list.forEach(c=>{ let lab=''; for(let k=c.c-1;k>=1&&!lab;k--){ const v=S.v(c.r,k); if(typeof v==='string'&&v.trim())lab=v.trim().slice(0,40); }
+      list.forEach(c=>{ if(c.dim){ const h=S.v(c.dim[0]+1,2);
+          ch.push({v:[c],on:true,t:sh+' '+t('γραμμές')+' '+c.dim[0]+'–'+c.dim[1]+(typeof h==='string'?' · '+h.trim():'')+': '+(c.v?t('απόκρυψη'):t('εμφάνιση'))}); return; }
+        let lab=''; for(let k=c.c-1;k>=1&&!lab;k--){ const v=S.v(c.r,k); if(typeof v==='string'&&v.trim())lab=v.trim().slice(0,40); }
         ch.push({v:[c],on:true,t:sh+' '+XL.ref(c.r,c.c)+(lab?' · '+lab:'')+': '+gsShow(c.old)+' → '+gsShow(c.v)}); });
     }else if(DL_SH.Y.includes(sh)){
       const nc=(S.findAll(dv('Ονοματεπώνυμο'))[0]||{}).c, rows={};
@@ -21834,11 +21854,11 @@ async function gsSync(e,x){
   const pick=await uiChooseMulti(t('Τι θα ξαναγραφτεί από το e76;')+'\n\n'+t('Μόνο κελιά που γράφει το e76 και ΑΛΛΑΞΑΝ. Ξετσέκαρε ό,τι θέλεις να μείνει όπως το έγραψε κάποιος στο αρχείο.')
     +(R.rep.length?'\n\n'+R.rep.map(s=>'• '+s).join('\n'):''),ch,{ok:t('Ενημέρωση'),cancel:t('Άκυρο')});
   if(!pick||!pick.length){ done(); return; }
-  const all=pick.flat(), cells=all.filter(c=>c.sh).map(c=>({sh:c.sh,a1:XL.ref(c.r,c.c),v:c.v})), adds=all.filter(c=>c.img).map(c=>c.img);
+  const all=pick.flat(), cells=all.filter(c=>c.sh&&!c.dim).map(c=>({sh:c.sh,a1:XL.ref(c.r,c.c),v:c.v})), dims=all.filter(c=>c.dim).map(c=>({sh:c.sh,r1:c.dim[0],r2:c.dim[1],hidden:!!c.v})), adds=all.filter(c=>c.img).map(c=>c.img);
   const rm=[...all.filter(c=>c.rm).map(c=>c.rm),...adds.filter(a=>a.old).map(a=>a.old)].map(q=>({r:q.r,c:q.c})), bad=[];
   try{
     x.textContent=t('Γράφω…');
-    const r=await gsCall({op:'sync',event_id:e.id,cells}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
+    const r=await gsCall({op:'sync',event_id:e.id,cells,dims}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
     if(rm.length){ const q=await gsCall({op:'img',event_id:e.id,sheet:I.sheet,remove:rm}); if(!q.ok)bad.push(q.why); }
     for(const [i,a] of adds.entries()){ if(bad.length)break;
       x.textContent=t('Εικόνα')+' '+(i+1)+'/'+adds.length+'…';
