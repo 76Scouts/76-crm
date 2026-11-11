@@ -1312,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 22:14'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 22:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3460,6 +3460,23 @@ function labelsBody(){
     const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); stay(); });
 }
 let OPENPID=null;    
+const pfParCan=p=>!!p&&!isMem(p)&&!isPar(p)&&(ME.role==='admin'||!!ME.platform_admin||(!!ME.person_id&&p.id===ME.person_id));
+async function pfParWire(p){
+  const box=$('pfPar'); if(!box)return;
+  const {data,error}=await sb.from('badgeholders').select('father_name,mother_name').eq('id',p.id).maybeSingle();
+  if(error||!data){ box.textContent=t('δεν διαβάστηκε'); return }
+  const show=()=>{ box.className=''; box.innerHTML=`${esc(data.father_name||'—')} · ${esc(data.mother_name||'—')}
+    <button class="btn sm gh" id="pfParEd" style="margin-left:6px">${t('Αλλαγή')}</button>`;
+    $('pfParEd').onclick=()=>{ box.innerHTML=`<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <input id="pfParF" placeholder="${esc(t('Πατέρας'))}" value="${esc(data.father_name||'')}" style="max-width:150px">
+      <input id="pfParM" placeholder="${esc(t('Μητέρα'))}" value="${esc(data.mother_name||'')}" style="max-width:150px">
+      <button class="btn sm p" id="pfParOk">${t('Αποθήκευση')}</button></span>`;
+      $('pfParOk').onclick=async()=>{ const v={father_name:$('pfParF').value.trim()||null, mother_name:$('pfParM').value.trim()||null};
+        const {data:u,error:e2}=await sb.from('badgeholders').update(v).eq('id',p.id).select('id');
+        if(e2||!(u||[]).length)return toast(t('Δεν αποθηκεύτηκε')+(e2?': '+e2.message:''));
+        Object.assign(data,v); toast(t('Αποθηκεύτηκε')); show(); }; }; };
+  show();
+}
 async function openProfile(id){
   const p=D.bh.find(x=>x.id===id); if(!p)return; OPENPID=id;
   {const _pp=photoOf(p); if(_pp&&!/^https?:/.test(_pp)&&!PHOTO.has(_pp))await ensurePhotos([_pp]);}
@@ -3538,6 +3555,7 @@ async function openProfile(id){
                  +tmpHTML):'')})()}
       ${kv('Τάξη',esc(y.grade||''))}
       ${kv('Ημ. γέννησης',sn.dob?fdate(sn.dob)+(agey(sn.dob)?` <span class="dim">(${agey(sn.dob)} ετών)</span>`:''):'')}
+      ${pfParCan(p)?kv(t('Όνομα πατέρα / μητέρας'),'<span id="pfPar" class="dim">…</span>'):''}
       ${p.status==='Αρχειοθετημένος'?'<div style="margin-top:7px"><span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">Αρχειοθετημένος</span></div>':''}
       ${p.is_commissioner?'<div style="margin-top:7px"><span class="pill">Έφορος</span></div>':''}${p.is_network?'<span class="pill">Δίκτυο</span>':''}</div>
 
@@ -3591,6 +3609,7 @@ async function openProfile(id){
   drw.classList.add('on');
   ctWire(p);
   wireLabels(p);
+  pfParWire(p);
   oneCarerWire(p);    
   wireFiles({person_id:p.id},()=>openProfile(p.id));
   const ab=$('avaBtn'); if(ab)ab.onclick=async()=>{
