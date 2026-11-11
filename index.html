@@ -1311,7 +1311,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 13:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-11 15:13'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21192,7 +21192,7 @@ function dlData(e,g,med){
     sign:{as:(dlP(asHat&&asHat.person_id)&&nm(dlP(asHat.person_id)))||'', eps:eps?cmName(eps):''},
     pending:dlChecks(e,g).map(c=>c.t)};
 }
-const DL_TPL='spk-deltio-v13-76.xlsx';
+const DL_TPL='spk-deltio-v13-76e.xlsx';
 async function dlBuild(e,buf,o){
   const g=await dlLoad(e.id);
   const all=[...dlStaff(e),...dlHelpers(e),...dlKids(e)];
@@ -21356,7 +21356,7 @@ async function xlOpen(buf){
         .replace('application/vnd.ms-excel.template.macroEnabled.main+xml','application/vnd.ms-excel.sheet.macroEnabled.main+xml')
         .replace('application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml'));
       let w=await rd('xl/workbook.xml');
-      w=/<calcPr\b/.test(w)?w.replace(/<calcPr\b([^>]*?)(\/?)>/,(m,a,s)=>`<calcPr${a.replace(/\sfullCalcOnLoad="[^"]*"/,'')} fullCalcOnLoad="1"${s}>`)
+      w=/<calcPr\b/.test(w)?w.replace(/<calcPr\b([^>]*?)(\/?)>/,(m,a,s)=>`<calcPr${a.replace(/\sfullCalcOnLoad=\x22[^\x22]*\x22/,'')} fullCalcOnLoad="1"${s}>`)
         :w.replace('</workbook>','<calcPr fullCalcOnLoad="1"/></workbook>');
       zip.file('xl/workbook.xml',w);
       if(zip.file('xl/calcChain.xml')){ zip.remove('xl/calcChain.xml');
@@ -21418,6 +21418,7 @@ function dlBlocks(S){
     const ds=S.find('Δασική Υπηρεσία',{col:'B',from:x.r,to:x.r+40}); return ds?{st:x.r,end:ds.r+1}:null}).filter(Boolean);
 }
 function dlFillVenues(S,d,rep){
+  if(S.find(dv('Λεπτομέρειες Χώρου Δράσης 1'),{col:'B'}))return dlFillVenues3(S,d,rep);
   let B=dlBlocks(S); if(!B.length){ if(d.venues.length)rep.push('Δεν βρέθηκε «Λεπτομέρειες Χώρου Δράσης»'); return; }
   while(B.length<d.venues.length){
     const L=B[B.length-1], gap=B.length>1?B[1].st-B[0].end:3;
@@ -21495,6 +21496,25 @@ async function dlFill(buf,d,o){
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
   return {bytes:await B.save(), rep};
 }
+function dlFillVenues3(S,d,rep){
+  const H=S.findAll(dv('Λεπτομέρειες Χώρου Δράσης'),{col:'B',starts:true}), ph=S.find(dv('Χρήσιμα Τηλέφωνα'),{col:'B',starts:true});
+  const many=d.venues.length>1;
+  H.forEach((h,i)=>{ const end=(H[i+1]?H[i+1].r:(ph?ph.r:h.r+9))-1, v=d.venues[i]||null;
+    const at=(t,col,st)=>S.find(t,{col,from:h.r,to:end,starts:st});
+    const put=(a,dr,dc,val,k)=>{ if(a)S.set(a.r+dr,a.c+dc,val==null||val===''?null:val,k) };
+    S.set(h.r,2,dv('Λεπτομέρειες Χώρου Δράσης')+' '+(i+1)+(many&&v?' - '+v.title:''));
+    put(at(dv('Τοποθεσία:'),'B'),0,1,v&&v.topos); put(at(dv('Τηλέφωνο Επικοινωνίας:'),'E'),0,1,v&&dlPh(v.phone));
+    put(at(dv('Χώρος Διανυκτέρευσης:'),'B'),0,1,v&&v.sleep); put(at(dv('Πληροφορίες Αν'),'E',true),1,0,v&&v.dir);
+    put(at(dv('Όνομα:'),'B'),0,1,v&&v.apName); put(at(dv('Ιδιότητα:'),'B'),0,1,v&&v.apRole);
+    put(at(dv('Τρόπος εξασφάλισης έγκρισης:'),'B'),0,1,v&&v.apMethod); put(at(dv('Ημερομηνία εξασφάλισης έγκρισης:'),'B'),0,1,v&&v.apDate,'date'); });
+  if(d.venues.length>H.length)rep.push(t('Χώροι: το αρχείο έχει')+' '+H.length+' '+t('μπλοκ, η δράση')+' '+d.venues.length+' — '+t('για τους υπόλοιπους: εισαγωγή γραμμών μέσα στο φύλλο ΓΕΝΙΚΑ'));
+  if(!ph)return;
+  const first=k=>{ for(const v of d.venues){ const x=v.ph&&v.ph[k]; if(x)return x; } return null; };
+  const at=(t,col)=>S.find(t,{col,from:ph.r,to:ph.r+6});
+  [[dv('Δήμου ή Κοινότητας'),'B','dimos'],[dv('Λεωφορεία'),'B','bus'],[dv('Δασική Υπηρεσία'),'B','dasiki'],
+   [dv('Αστυνομικού Τμήματος'),'E','police'],[dv('Ιατρικού Κέντρου ή Γιατρού'),'E','medical'],[dv('Επαρχιακού Εφόρου'),'E','eparxos']]
+    .forEach(([l,col,k])=>{ const a=at(l,col); if(a)S.set(a.r,a.c+1,dlPh(first(k))); });
+}
 const GS={};                                            
 const GS_ST={egkrisi:t('Για έγκριση'),teliko:t('Τελικό'),apologismos:t('Απολογισμός')};
 const gsBoss=e=>isAdminUI()||(!!ME.person_id&&ME.person_id===e.arxigos_id);
@@ -21547,6 +21567,7 @@ function gsHTML(e){
       <b>${t('Ζωντανό φύλλο (Google Sheets)')}</b><span class="sp"></span>
       <a class="btn sm p" href="${gsUrl(r.file_id)}" target="_blank" rel="noopener">${t('Άνοιγμα')}</a>
       <a class="btn sm" href="${gsDir(r.folder_id)}" target="_blank" rel="noopener">${t('Φάκελος')}</a>
+      ${isAdminUI()?`<button class="btn sm gh" id="gsRep" title="${t('Νέο αρχείο από το τρέχον πρότυπο του e76 — το σημερινό μένει στον φάκελο, μετονομασμένο')}">${t('Νέο από πρότυπο')}</button>`:''}
       ${ed?`<button class="btn sm" id="gsVis" title="${t('Όταν αλλάξει είδος, τμήμα, πορεία ή μέσα μεταφοράς — ξαναϋπολογίζει ΜΟΝΟ ποια φύλλα φαίνονται')}">${t('Ενημέρωση φύλλων')}</button>`:''}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${t('Φτιάχτηκε')} ${fdate(r.created_at)}${who(r.created_by)?' · '+esc(who(r.created_by)):''}. ${t('Δουλεύετε όλοι σε αυτό το αρχείο — όχι αντίγραφα, όχι κατέβασμα και ξανανέβασμα.')}</div>
     ${warn}
@@ -21561,7 +21582,7 @@ function gsHTML(e){
 
 function gsDraw(e){ const b=$('gsLive'); if(!b||EFID!==e.id)return; b.innerHTML=gsHTML(e);
   const on=(id,f)=>{const x=$(id); if(x)x.onclick=()=>f(x)};
-  on('gsNew',x=>gsCreate(e,x)); on('gsVis',x=>gsRefresh(e,x)); on('gsBack',x=>gsRestore(e,x));
+  on('gsNew',x=>gsCreate(e,x)); on('gsRep',x=>gsReplace(e,x)); on('gsVis',x=>gsRefresh(e,x)); on('gsBack',x=>gsRestore(e,x));
   b.querySelectorAll('[data-gsst]').forEach(x=>x.onclick=()=>gsSnap(e,x.dataset.gsst,x));
 }
 async function gsWire(e){
@@ -21587,6 +21608,23 @@ async function gsCreate(e,x){
     window.open(gsUrl(r.file_id),'_blank','noopener');
     if(msg.length>1)await uiNote(msg.join('\n\n')); else toast(msg[0]);
   }catch(err){ done(); toast(t('Δεν φτιάχτηκε')+': '+(err.message||err)) }
+}
+async function gsReplace(e,x){
+  if(!await uiAsk(t('Νέο ζωντανό αρχείο από το τρέχον πρότυπο;')+'\n\n'+t('Το σημερινό αρχείο μένει στον φάκελο της δράσης, μετονομασμένο «παλιό πρότυπο». ΟΤΙ ΕΧΕΙ ΓΡΑΦΤΕΙ ΜΕΣΑ ΤΟΥ ΔΕΝ ΜΕΤΑΦΕΡΕΤΑΙ — το νέο γεμίζει ξανά από το e76.'),{ok:t('Νέο αρχείο'),cancel:t('Άκυρο')}))return;
+  const done=gsBusy(x,t('Ετοιμάζω…'));
+  try{
+    const tpl=await espBytes(DL_TPL);
+    const {bytes,rep}=await dlBuild(e,tpl.buffer,{live:true});
+    x.textContent=t('Ανεβαίνει στο Drive…');
+    const r=await gsCall({op:'replace',event_id:e.id,xlsx_b64:gsB64(bytes)});
+    if(!r.ok){ done(); return toast(t('Δεν έγινε')+': '+r.why) }
+    await gsLoad(e.id); GS[e.id].loc={state:'ok'}; gsDraw(e);
+    const v=r.visibility||{};
+    window.open(gsUrl(r.file_id),'_blank','noopener');
+    const msg=[t('Έτοιμο το νέο αρχείο.')+(r.old_kept?' '+t('Το παλιό μένει στον φάκελο ως «παλιό πρότυπο».'):''),
+      v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+') — '+t('πάτησε «Ενημέρωση φύλλων».'):'', ...rep.map(s=>'• '+s)].filter(Boolean);
+    if(msg.length>1)await uiNote(msg.join('\n\n')); else toast(msg[0]);
+  }catch(err){ done(); toast(t('Δεν έγινε')+': '+(err.message||err)) }
 }
 const gsWhy=s=>{ const m=GS_WHY.find(([re])=>re.test(String(s||''))); return m?m[1]:String(s||'') };
 async function gsRefresh(e,x){
