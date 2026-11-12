@@ -1312,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-12 08:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-12 14:11'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -25827,7 +25827,19 @@ function stagePassBody(){
   };
 }
 
-let HSWHO=null, HSDATE='', HSSEL={}, HSOPEN={}, HSYEAR='', HSSIGN=null;
+let HSWHO=null, HSDATE='', HSSEL={}, HSOPEN={}, HSYEAR='', HSBR='', HSSG={};
+const hsLeaders=()=>(D.bh||[]).filter(b=>b.kind===dv('Βαθμοφόρος')).sort(sortByName);
+const hsNames=()=>[...new Set([...hsLeaders().map(nm),
+  ...(D.psig||[]).filter(s=>!s.signer_id&&s.ypegrapse).map(s=>s.ypegrapse)])];
+const hsClean=s=>String(s||'').trim().replace(/\s+/g,' ');
+function hsRes(txt){
+  const s=hsClean(txt); if(!s)return null; const k=nameKey(s), L=hsLeaders();
+  const p=L.find(b=>nameKey(nm(b))===k)||L.find(b=>nameKey(b.last_name+' '+b.first_name)===k);
+  return p?{id:p.id}:{name:s} }
+const hsPaint=i=>{ const r=hsRes(i.value), c=r&&r.id&&typeof pgCol==='function'?pgCol(r.id):null;
+  i.style.borderLeft=c?'4px solid '+c:(r?'4px dashed var(--line)':''); };
+const hsWhoOf=a=>{ const x=(D.psig||[]).find(y=>y.target===dv('ΑΠΑΙΤΗΣΗ')&&y.target_id===a.id&&y.role===dv('ενέκρινε'));
+  if(x)return x.ypegrapse||''; const m=/: ([^·]+)$/.exec(String(a.notes||'').split(' · ').find(n=>n.startsWith(dv('πέρασε')))||''); return m?m[1].trim():'' };
 const hsYears=()=>{ const y0=parseInt(String(YEAR||'').slice(0,4))||new Date().getFullYear();
   return [0,1,2,3,4,5].map(i=>`${y0-i}-${String((y0-i+1)%100).padStart(2,'0')}`) };
 function hsWhenHTML(){
@@ -25840,11 +25852,12 @@ function hsWhenHTML(){
       <input id="hsDate" value="${esc(HSDATE)}" placeholder="${t('ή ακριβής ημ/νία, π.χ. 03/2024')}" style="max-width:200px;font-size:12.5px;padding:4px 8px"></div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px">
       <b style="font-size:12.5px;min-width:96px">${t('Πέρασε από')}:</b>
-      ${who.map(id=>{ const p=(D.bh||[]).find(b=>b.id===id); if(!p)return ''; const c=typeof pgCol==='function'?pgCol(id):'var(--acc)';
-        return `<button class="btn sm" data-hss="${id}" style="${HSSIGN===id?`background:${c};color:#fff;border-color:${c}`:`border-color:${c}`}">${id===me?t('εγώ'):esc(nm(p))}</button>` }).join('')}
-      ${ppHTML('hsSign',HSSIGN&&!who.includes(HSSIGN)?HSSIGN:'',{ph:t('άλλος βαθμοφόρος…'),style:'width:180px'})}
-      <button class="btn sm${HSSIGN?'':' p'}" data-hss="">${t('κανείς / δεν ξέρω')}</button>
-      <span class="dim" style="font-size:11.5px">${t('προαιρετικό')}</span></div>`;
+      ${who.map(id=>{ const p=(D.bh||[]).find(b=>b.id===id); if(!p)return ''; const c=typeof pgCol==='function'?pgCol(id):'var(--acc)', on=hsClean(HSBR)===nm(p);
+        return `<button class="btn sm" data-hss="${esc(nm(p))}" style="${on?`background:${c};color:#fff;border-color:${c}`:`border-color:${c}`}">${id===me?t('εγώ'):esc(nm(p))}</button>` }).join('')}
+      <input id="hsBr" list="hsLdr" value="${esc(HSBR)}" placeholder="${t('άλλος — γράψε όνομα…')}" style="max-width:190px;font-size:12.5px;padding:4px 8px">
+      <button class="btn sm${HSBR?'':' p'}" data-hss="">${t('κανείς / δεν ξέρω')}</button>
+      <span class="dim" style="font-size:11.5px">${t('προαιρετικό · μπαίνει σε ό,τι τσεκάρεις μετά — και αλλάζει σε κάθε απαίτηση')}</span></div>
+    <datalist id="hsLdr">${hsNames().map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>`;
 }
 const HEADCODE={'Αγέλη':'AAL','Ομάδα':'AOP','Κοινότητα':'AKA'};
 const canHistory=()=>ME.role==='admin'||!!ME.platform_admin
@@ -25875,17 +25888,18 @@ function histPassBody(){
           :'<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">πλήρες</span>'}
       </summary>
       <div style="padding:0 16px 10px">${reqs.map(r=>{const a=already(r);
-        return `<label class="kv" style="padding:6px 0;border-top:1px solid var(--line);gap:10px;align-items:center;cursor:${a?'default':'pointer'}${a?';opacity:.6':''}">
+        return `<label class="kv" style="padding:6px 0;border-top:1px solid var(--line);gap:10px;align-items:center;flex-wrap:wrap;cursor:${a?'default':'pointer'}${a?';opacity:.6':''}">
           ${a?'<span style="width:18px;text-align:center;color:var(--ok)">✓</span>'
              :`<input type="checkbox" class="hs-c" data-r="${r.id}" data-st="${st.id}"${HSSEL[r.id]!==undefined?' checked':''} style="width:auto;margin:0">`}
           <span style="flex:1;min-width:0;font-size:13px">${esc(r.code?r.code+' ':(r.ordinal?r.ordinal+'. ':''))}${esc(r.label||r.text||'')}</span>
-          ${a?`<span class="dim" style="font-size:11.5px">${a.date?fdate(a.date):'—'}${a.date_approx?' · κατά προσ.':''}</span>`
-             :`<input class="hs-d" data-r="${r.id}" value="${esc(HSSEL[r.id]||'')}" placeholder="ημ/νία" style="font-size:12px;padding:3px 6px;max-width:110px">`}
+          ${a?`<span class="dim" style="font-size:11.5px">${a.date?fdate(a.date):'—'}${a.date_approx?' · κατά προσ.':''}${hsWhoOf(a)?' · '+esc(hsWhoOf(a)):''}</span>`
+             :`<input class="hs-d" data-r="${r.id}" value="${esc(HSSEL[r.id]||'')}" placeholder="${t('ημ/νία')}" style="font-size:12px;padding:3px 6px;max-width:110px">
+               <input class="hs-s" data-r="${r.id}" list="hsLdr" value="${esc(HSSG[r.id]||'')}" placeholder="${t('ποιος; (προαιρ.)')}" style="font-size:12px;padding:3px 6px;max-width:160px">`}
         </label>`}).join('')}</div></details>`};
 
   $('view').innerHTML=`
     <p class="lede">${t('Κράτα')} ${esc(bookOf(book))} ${t('του παιδιού ανοιχτό και τσέκαρε ό,τι είναι υπογεγραμμένο.')}
-      ${t('Συνήθως αρκεί ένα πάτημα στη χρονιά (μένει για όλα τα παιδιά)· ακριβή ημερομηνία μόνο αν την ξέρεις. Προαιρετικά και ποιος την πέρασε. Ό,τι έχει ήδη περάσει δεν ξαναγράφεται.')}</p>
+      ${t('Συνήθως αρκεί ένα πάτημα στη χρονιά (μένει για όλα τα παιδιά)· ακριβή ημερομηνία μόνο αν την ξέρεις. Προαιρετικά και ποιος την πέρασε, σε κάθε απαίτηση — βαθμοφόρος του e76 ή απλώς ένα όνομα, αν δεν είναι πια στο σύστημα. Ό,τι έχει ήδη περάσει δεν ξαναγράφεται.')}</p>
     ${bookBar()}
     <div class="card pad hsbar" style="margin-bottom:12px">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -25904,7 +25918,7 @@ function histPassBody(){
   const selUI=()=>{ const n=Object.keys(HSSEL).length, b=$('hsSave');
     b.disabled=!n; b.textContent='Καταχώρηση'+(n?' · '+n:''); };
   const go=async id=>{ if(Object.keys(HSSEL).length&&!await uiAsk('Έχεις τσεκαρισμένα που δεν καταχωρήθηκαν. Να χαθούν;'))return;
-    HSWHO=id; HSSEL={}; HSOPEN={}; stay(); };
+    HSWHO=id; HSSEL={}; HSSG={}; HSOPEN={}; stay(); };
   ppWire('hsWho',kids,{note:k=>{const n=(D.mreq||[]).filter(x=>x.person_id===k.id).length; return n?n+' ✓':''}});
   $('hsWho').onchange=e=>{ if(e.target.value)go(e.target.value) };
   $('hsPrev').onclick=()=>idx>0&&go(kids[idx-1].id);
@@ -25913,15 +25927,18 @@ function histPassBody(){
     document.querySelectorAll('[data-hsy]').forEach(b=>b.classList.toggle('p',!HSDATE&&b.dataset.hsy===HSYEAR))};
   document.querySelectorAll('[data-hsy]').forEach(b=>b.onclick=()=>{ HSYEAR=b.dataset.hsy; HSDATE=''; $('hsDate').value='';
     document.querySelectorAll('[data-hsy]').forEach(x=>x.classList.toggle('p',x.dataset.hsy===HSYEAR)) });
-  const hsWho=id=>{ HSSIGN=id||null;
-    if(id&&typeof pgSetWho==='function'){ PGRECENT=[id,...pgRecent().filter(x=>x!==id)].slice(0,6); try{ localStorage.setItem('e76.pgwho',JSON.stringify(PGRECENT)) }catch(_){} }
+  const setBr=v=>{ HSBR=hsClean(v); const w=hsRes(HSBR);
+    if(w&&w.id&&typeof pgRecent==='function'){ PGRECENT=[w.id,...pgRecent().filter(x=>x!==w.id)].slice(0,6); try{ localStorage.setItem('e76.pgwho',JSON.stringify(PGRECENT)) }catch(_){} }
     stay() };
-  document.querySelectorAll('[data-hss]').forEach(b=>b.onclick=()=>hsWho(b.dataset.hss));
-  ppWire('hsSign',ppLeaders()); if($('hsSign'))$('hsSign').onchange=e=>{ if(e.target.value)hsWho(e.target.value) };
+  document.querySelectorAll('[data-hss]').forEach(b=>b.onclick=()=>setBr(b.dataset.hss));
+  $('hsBr').onchange=e=>setBr(e.target.value); hsPaint($('hsBr'));
+  const hsSg=(r,v)=>{ const i=document.querySelector(`.hs-s[data-r="${r}"]`); if(v)HSSG[r]=v; else delete HSSG[r]; if(i){ i.value=v||''; hsPaint(i) } };
   wireBookBar();
   document.querySelectorAll('[data-hsblk]').forEach(d=>d.addEventListener('toggle',()=>{HSOPEN[d.dataset.hsblk]=d.open}));
-  document.querySelectorAll('.hs-c').forEach(c=>c.onchange=()=>{
-    if(c.checked)HSSEL[c.dataset.r]=HSSEL[c.dataset.r]||''; else delete HSSEL[c.dataset.r]; selUI()});
+  document.querySelectorAll('.hs-c').forEach(c=>c.onchange=()=>{ const r=c.dataset.r;
+    if(c.checked){ HSSEL[r]=HSSEL[r]||''; if(!HSSG[r]&&HSBR)hsSg(r,HSBR) } else { delete HSSEL[r]; hsSg(r,'') } selUI()});
+  document.querySelectorAll('.hs-s').forEach(i=>{ hsPaint(i); i.oninput=()=>{ const r=i.dataset.r; HSSG[r]=i.value; hsPaint(i);
+    const c=document.querySelector(`.hs-c[data-r="${r}"]`); if(c&&i.value&&!c.checked){ c.checked=true; HSSEL[r]=HSSEL[r]||'' } selUI() } });
   document.querySelectorAll('.hs-d').forEach(i=>i.oninput=()=>{
     HSSEL[i.dataset.r]=i.value;
     const c=document.querySelector(`.hs-c[data-r="${i.dataset.r}"]`);
@@ -25929,21 +25946,22 @@ function histPassBody(){
   document.querySelectorAll('[data-hsall]').forEach(b=>b.onclick=e=>{
     e.preventDefault(); e.stopPropagation();
     const d=b.closest('details'); d.open=true; HSOPEN[b.dataset.hsall]=true;
-    d.querySelectorAll('.hs-c').forEach(c=>{c.checked=true; HSSEL[c.dataset.r]=HSSEL[c.dataset.r]||''}); selUI()});
+    d.querySelectorAll('.hs-c').forEach(c=>{c.checked=true; HSSEL[c.dataset.r]=HSSEL[c.dataset.r]||''; if(!HSSG[c.dataset.r]&&HSBR)hsSg(c.dataset.r,HSBR)}); selUI()});
 
   $('hsSave').onclick=async()=>{
     const ids=Object.keys(HSSEL);
     if(!ids.length)return toast('Δεν διάλεξες τίποτα');
-    const byDate={};
-    ids.forEach(r=>{const d=(HSSEL[r]||HSDATE||'').trim(); (byDate[d]=byDate[d]||[]).push(r)});    
+    const byKey={};    
+    ids.forEach(r=>{const d=(HSSEL[r]||HSDATE||'').trim(), s=hsClean(HSSG[r]), k=d+'\u0001'+s; (byKey[k]=byKey[k]||{d,s,rs:[]}).rs.push(r)});
     const btn=$('hsSave'); btn.disabled=true; $('hsMsg').textContent='…';
     let ok=0, bad=0, why='';
-    for(const [d,rs] of Object.entries(byDate)){
+    for(const {d,s,rs} of Object.values(byKey)){
+      const w=hsRes(s);
       const {data,error}=await sb.rpc('grant_requirements_hist',{p_person:HSWHO, p_reqs:rs, p_when:d||null,
-        p_year:d?null:(HSYEAR||null), p_signer:HSSIGN||null});
+        p_year:d?null:(HSYEAR||null), p_signer:w&&w.id||null, p_signer_name:w&&!w.id?w.name:null});
       if(error){bad++; why=error.message; console.error(error)} else ok+=(data&&data.perasan)||0;
     }
-    HSSEL={};
+    HSSEL={}; HSSG={};
     await reloadProgress();
     toast(bad?`${ok} πέρασαν · ${bad} ομάδες απέτυχαν: ${why}`:`${ok} πέρασαν — ${nm(who)}`);
     stay();
