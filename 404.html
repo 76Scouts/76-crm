@@ -1312,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-12 14:11'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-12 16:06'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1855,7 +1855,7 @@ async function loadAll(){
   Object.keys(LZON).forEach(k=>{ if(LZON[k]==='ok'){ LZON[k]=null; lazyFire(k) } });
   const q=[
     pageAll('badgeholders','id,registry_no,first_name,last_name,sex,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location,studying'),
-    sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,voided_at,triptycho_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
+    sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,voided_at,triptycho_no,reg_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
     sb.from('sessions').select('id,session_date,section,scout_year,status,title,session_type,event_id,no_theme,planned_reqs').order('session_date').limit(500),
     pageAll('attendance','session_id,person_id,status'),
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
@@ -15537,11 +15537,11 @@ function myhomeLed(M,today,row,go){
     sa.slice(0,3).map(e=>esc(e.title||'')+(e.event_date?' · '+fdate(e.event_date):'')).join('<br>')
       +'<br><span class="dim">'+t('Δήλωσε ενδιαφέρον αν θέλεις να πας.')+'</span>',go('myschools',t('Αιτήσεις σχολών'))));
   const ws=(D.sh||[]).filter(s=>s.person_id===p.id&&/Εντολ|Ανάθ/.test(s.warrant_type||'')&&warInYear(s));
-  const live=ws.find(s=>s.start_date&&s.start_date<=today&&(!s.end_date||s.end_date>=today))||ws.find(s=>s.start_date), pend=ws.find(warPending);
+  const cw=warPick(ws,today), live=cw?(cw.pending?null:cw.h):ws.find(s=>s.start_date), pend=cw&&cw.pending?cw.h:null;
   const dash='<span style="font-size:15px;font-weight:500;color:var(--ink3)">—</span>';
   const wv=live?esc(live.warrant_type):pend?t('σε εξέταση'):dash;
   const wsub=live?(live.end_date?t('ως')+' '+fdate(live.end_date):t('χωρίς ημερομηνία λήξης'))
-    :pend?t('αίτηση')+' '+fdate(pend.request_date):t('δεν βλέπω εντολή — ρώτα τον Α.Σ.');
+    :pend?t('αίτηση')+' '+(pend.appointment_no?esc(pend.appointment_no)+' · ':'')+fdate(pend.request_date):t('δεν βλέπω εντολή — ρώτα τον Α.Σ.');
   const nv=n9.exp?fdate(n9.exp):dash, nsub={ok:t('σε ισχύ'),soon:t('λήγει σύντομα'),expired:t('έληξε'),none:t('δεν το έχουμε'),na:'—'}[n9.k]||'';
   $('view').innerHTML=M.head+`<div class="card pad pdash" style="margin-bottom:14px">
       <b style="font-size:16px">${t('Γεια σου')}${p.first_name?', '+esc(p.first_name):''}</b>
@@ -20968,9 +20968,10 @@ const dlIsFA=x=>x.pa.role==='Πρώτος Βοηθός'||x.pa.role2==='Πρώτ�
 const dlFaList=e=>{ const o=e.fa_order||[], ix=id=>{const i=o.indexOf(id); return i<0?999:i};
   return dlStaff(e).filter(dlIsFA).sort((a,b)=>ix(a.p.id)-ix(b.p.id)||sortByName(a.p,b.p)); };
 function dlAppt(p,day){ day=day||new Date().toISOString().slice(0,10);
-  const s=(D.sh||[]).filter(x=>x.person_id===p.id&&(x.start_date?(x.start_date<=day&&(!x.end_date||x.end_date>=day)):warPending(x)))
-    .sort((a,b)=>String(b.start_date||'').localeCompare(String(a.start_date||'')))[0];
-  return (s&&s.appointment_no)||'ΕΚΚΡΕΜΕΙ'}
+  const w=warCurrent(p.id,day);
+  return (w&&w.no)||'ΕΚΚΡΕΜΕΙ'}
+const dlApptTxt=(p,day)=>{ const w=warCurrent(p.id,day||new Date().toISOString().slice(0,10));
+  return w&&w.no?w.no+(w.pending?' · '+t('σε εξέταση'):''):dlAppt(p,day) };
 const dlKath=p=>DL.HAT[((typeof hatOfYear==='function'&&hatOfYear(p,YEAR))||{}).role_code]||'';
 const dlTr=(p,re)=>(D.tr||[]).some(t=>t.person_id===p.id&&re.test(t.type||'')&&!/Κοινό Μέρος/.test(t.type||''));
 const dlDD=p=>dlTr(p,/Δ\.Δ\.|Αρχηγών Κατασκηνώσεων|Κατασκηνωτικής/);
@@ -21110,7 +21111,7 @@ function dlS1HTML(e,g){
     <div class="grow" style="margin-top:8px"><label style="flex:2">${esc(t('Αρχηγός δράσης'))}${ro
       ?`<input disabled value="${esc(a?nm(a):'—')}">`
       :ppHTML('dlArx', e.arxigos_id, {ph:t('Γράψε όνομα…')})}</label></div>
-    ${a?`<div class="dim" style="font-size:12.5px">Α.Μ. ${esc(a.registry_no||'—')} · εντολή ${esc(dlAppt(a,e.event_date))} · ${esc(dlKath(a)||'χωρίς καπέλο της χρονιάς')} · ${a.phone?fphone(a.phone):'χωρίς κινητό'}</div>`:''}`);
+    ${a?`<div class="dim" style="font-size:12.5px">Α.Μ. ${esc(a.registry_no||'—')} · εντολή ${esc(dlApptTxt(a,e.event_date))} · ${esc(dlKath(a)||'χωρίς καπέλο της χρονιάς')} · ${a.phone?fphone(a.phone):'χωρίς κινητό'}</div>`:''}`);
 }
 const dlRoleIsDefault=r=>!r||r===dv('Συμμετέχων')||r===dv('Συνοδός Βαθμοφόρος')||r===DL.KDEF;
 const DL_HEADS=['AAL','AMAL','AOP','AKA','APD'];
@@ -21386,7 +21387,7 @@ function dlData(e,g,med){
   const kids=kidsX.slice().sort((x,y)=>String(secOf(x.p)||'').localeCompare(String(secOf(y.p)||''),'el')||sortByName(x.p,y.p));
   const SEC={'Αγέλη':'Λυκόπουλο','Ομάδα':'Πρόσκοπος','Κοινότητα':'Ανιχνευτής','Δίκτυο':'Δίκτυο'};
   const row=(x,st)=>{const p=x.p, y=myOf(p)||{};
-    return {trip:y.triptycho_no||'ΕΚΚΡΕΜΕΙ', am:p.registry_no||'', name:nm(p), dob:dobOf(p), klim:'76ο Σ.Π.',
+    return {trip:y.triptycho_no||y.reg_no||'ΕΚΚΡΕΜΕΙ', am:p.registry_no||'', name:nm(p), dob:dobOf(p), klim:'76ο Σ.Π.',
       tmima:st?'Βαθμοφόρος':(SEC[secOf(p)]||secOf(p)||''), phone:st?(p.phone||ctCallNo(p.id)):(ctCallNo(p.id)||p.phone),
       father:((g.par||{})[p.id]||{}).father_name||'', mother:((g.par||{})[p.id]||{}).mother_name||'', paid:x.pa.paid?'Πληρωμένη':'',
       diet:med?efdMed(med[p.id]).diet.join('· '):'', days:days.map(d=>!x.pa.days||x.pa.days.includes(d)),
@@ -25446,6 +25447,16 @@ const warRejInYear=(h,y)=>{ const s=String(y||YEAR).slice(0,4), d=h.request_date
 const warKlim=s=>String(s||'').split(' · ')[0];
 const warNote=s=>String(s||'').split(' · ').slice(1).join(' · ');
 const warPending=h=>!!h&&!h.start_date&&!h.end_date&&!!h.request_date&&warInYear(h);
+function warPick(rows,day){ day=day||isoLocal(new Date());
+  const on=h=>!!h.start_date&&h.start_date<=day&&(!h.end_date||h.end_date>=day);
+  const late=k=>(a,b)=>String(b[k]||'').localeCompare(String(a[k]||''));
+  const a=rows.filter(h=>warCounts(h)&&on(h)).sort(late('start_date'))[0];
+  if(a)return {h:a, no:a.appointment_no, pending:false};
+  const b=rows.filter(h=>warCounts(h)&&warPending(h)).sort(late('request_date'))[0];
+  if(b)return {h:b, no:b.appointment_no, pending:true};
+  const c=rows.filter(h=>!warCounts(h)&&!warRejected(h)&&on(h)).sort(late('start_date'))[0];
+  return c?{h:c, no:'', pending:false, draft:true}:null; }
+const warCurrent=(pid,day)=>warPick((D.sh||[]).filter(h=>h.person_id===pid),day);
 const warLive=(h,day)=>{ day=day||isoLocal(new Date());
   return warPending(h)?h.request_date<=day:(!!h.start_date&&h.start_date<=day&&(!h.end_date||h.end_date>=day)); };
 async function warrantsXlsx(){
