@@ -1312,7 +1312,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-11 22:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-12 08:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22043,12 +22043,13 @@ const gsShow=v=>{ if(v==null||v==='')return '—';
   if(typeof v==='number'){ if(v>20000&&v<80000&&Number.isInteger(v))return fdate(new Date(Date.UTC(1899,11,30)+v*864e5).toISOString().slice(0,10));
     if(v>0&&v<1){ const m=Math.round(v*1440); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); } }
   const s=String(v); return s.length>60?s.slice(0,57)+'…':s };
-async function gsImgPlan(B,P){
-  const zip=B.zip, x=await zip.file(B.sheets[P.name]).async('string'), geo=dlCertGeo(x), pics=await dlSheetPics(B,P.name);
+async function gsImgPlan(B,P,live){
+  const zip=B.zip, x=await zip.file(B.sheets[P.name]).async('string'), geo=dlCertGeo(x);
+  const pics=live?live.map(q=>({...q,name:q.title||''})):await dlSheetPics(B,P.name);
   const add=[], key=(r,c)=>r+':'+c, slots=new Set();
   for(const p of P.plan){ const g=geo.at(p.hr,p.k); slots.add(key(g.r,g.c));
-    const old=pics.find(q=>q.r===g.r&&q.c===g.c), descr=DL_CERT_TAG+p.label;
-    if(old&&old.descr===descr)continue;                        
+    const here=pics.filter(q=>q.r===g.r&&q.c===g.c), old=here[0], descr=DL_CERT_TAG+p.label;
+    if(here.length===1&&old.descr===descr&&old.kind!=='over')continue;    
     add.push({p,g,descr,old}); }
   const stale=pics.filter(q=>!slots.has(key(q.r,q.c))&&(q.name+q.descr).indexOf(DL_CERT_TAG)>=0);
   return {sheet:P.name,add,stale};
@@ -22086,7 +22087,8 @@ async function gsSync(e,x,opt){
     const p=await gsCall({op:'pull',event_id:e.id}); if(!p.ok){ done(); return toast(t('Δεν διαβάστηκε το αρχείο')+': '+p.why) }
     x.textContent=t('Συγκρίνω…');
     R=await dlBuild(e,Uint8Array.from(atob(p.xlsx_b64),c=>c.charCodeAt(0)).buffer,{live:true,rec:true,...(opt&&opt.final!==undefined?{final:opt.final}:{})});
-    I=R.certs?await gsImgPlan(R.B,R.certs):null;
+    let live=null; if(R.certs){ const L=await gsCall({op:'imglist',event_id:e.id,sheet:R.certs.name}); if(L.ok&&Array.isArray(L.items))live=L.items; }
+    I=R.certs?await gsImgPlan(R.B,R.certs,live):null;
   }catch(err){ done(); return toast(t('Δεν έγινε')+': '+(err.message||err)) }
   const ch=await gsSyncChoices(R,I);
   if(!ch.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own:R.own}); if(r.ok)await gsFinalSet(e,opt); done();
