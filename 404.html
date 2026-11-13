@@ -241,6 +241,10 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .bd-2 input{width:100%!important;min-width:0;text-align:right;padding:4px 6px;font-size:13px}
 #bdBox input[type=number]{-moz-appearance:textfield;appearance:textfield}
 #bdBox input[type=number]::-webkit-outer-spin-button,#bdBox input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.bd-meta{flex-basis:100%;display:flex;gap:6px;align-items:center;font-size:12px;margin:-1px 0 4px}
+.bd-meta input{font-size:12px!important;padding:3px 6px}
+.bd-meta input[type=date]{width:auto!important;flex:0 0 auto}
+.bd-meta [data-bd=sup]{flex:1;min-width:120px}
 .wlrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;
   padding:4px 9px;border-bottom:1px solid var(--line);background:var(--card)}
 .wlrow:hover{background:var(--bg)}
@@ -1326,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-13 11:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-13 11:31'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22284,7 +22288,7 @@ function bdHTML(e){
   const two=(a,b)=>`<span class="bd-2"><b>${bdEur(a)}</b><span>${bdEur(b)}</span></span>`;
   const sel=(k,opts,v)=>`<select data-bd="${k}"${ro}>${opts.map(([a,b])=>`<option value="${a}"${a===v?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   const amt=(l,ld)=>l.calc?two(l.poso,ld.poso):'';
-  const btns=(c)=>ed?`<button class="btn sm gh" data-bd="calc" title="${c?t('σκέτο ποσό — με 2ο ποσό για τους δηλωμένους'):t('ανά άτομο: € × παιδιά/επιτελείο… (× μέρες) — αλλάζει μόνο του με τις τελικές συμμετοχές')}">${c?'€':t('× άτομα')}</button><button class="btn sm gh" data-bd="del" title="${t('Αφαίρεση')}">✕</button>`:'';
+  const btns=(c)=>ed?`<button class="btn sm gh" data-bd="calc" title="${c?t('σκέτο ποσό — με 2ο ποσό για τους δηλωμένους'):t('ανά άτομο: € × παιδιά/επιτελείο… (× μέρες) — αλλάζει μόνο του με τις τελικές συμμετοχές')}">${c?t('σκέτο ποσό'):t('× άτομα')}</button><button class="btn sm gh" data-bd="del" title="${t('Αφαίρεση')}">✕</button>`:'';
   const line=(l,ld)=>{
     if(l.auto)return `<div class="bd-l"><span class="pill" style="font-size:10.5px">auto</span> <span style="flex:1">${esc(l.ait)}</span><span class="bd-amt">${two(l.poso,ld?ld.poso:0)}</span></div>`;
     const c=l.calc;
@@ -22296,6 +22300,8 @@ function bdHTML(e){
            ${c.basis==='omades'?`<input data-bd="g" type="number" min="1" value="${esc(String(c.g??6))}" style="width:52px" title="${t('άτομα ανά ομάδα')}"${ro}>`:''}
            ${sel('pd',BD_PD(),c.pd||'no')}${btns(c)}<span class="bd-amt">${amt(l,ld)}</span>`
         :`${btns(c)}<span class="bd-2 bd-amt"><input data-bd="poso" type="number" step="0.01" inputmode="decimal" value="${l.poso??''}" title="${t('όλοι')}"${ro}><input data-bd="poso_d" type="number" step="0.01" inputmode="decimal" value="${l.poso_d??''}" placeholder="${t('ίδιο')}" title="${t('δηλωμένοι — κενό = ίδιο ποσό')}"${ro}></span>`}
+      <div class="bd-meta"><span class="dim">${t('Πότε')}</span><input data-bd="when" type="date" value="${esc(l.when||'')}"${ro}>
+        <input data-bd="sup" value="${esc(l.sup||'')}" placeholder="${l.side==='esoda'?t('από ποιον'):t('από πού (κατάστημα / προμηθευτής)')}"${ro}></div>
       ${c?`<div class="dim" style="flex-basis:100%;font-size:11.5px">${t('όλοι')}: ${esc(bdFormula(F,l))} · ${t('δηλωμένοι')}: ${esc(bdFormula(Dd,l))}</div>`:''}</div>`; };
   const col=side=>{ const GF=bdGroups(F,d,side), GD=bdGroups(Dd,d,side);
     return GF.filter(g=>ed||g.items.length).map(g=>{ const gd=GD.find(x=>x.cat===g.cat)||{items:[],sum:0};
@@ -22363,6 +22369,8 @@ function bdWireUI(e){
     if(k==='calc')return x.onclick=()=>{ if(l.calc){ l.poso=bdAmount(bdCtx(e).full,l); delete l.calc; } else l.calc={unit:l.poso||0,basis:'paidia',pd:'no'}; bdTouch(e); };
     x.onchange=()=>{ const v=x.value; if(k==='ait')l.ait=v.slice(0,200); else if(k==='poso')l.poso=bdR(v);
       else if(k==='poso_d')l.poso_d=v.trim()===''?null:bdR(v);
+      else if(k==='when')l.when=/^\d{4}-\d{2}-\d{2}$/.test(v)?v:null;
+      else if(k==='sup')l.sup=v.trim().slice(0,120)||null;
       else { l.calc[k]=['unit','n','g'].includes(k)?bdN(v):v; } bdTouch(e); }; });
   box.querySelectorAll('[data-bds] [data-bd]').forEach(x=>{
     const sp=s.d.special.find(y=>y.id===x.closest('[data-bds]').dataset.bds), k=x.dataset.bd;
