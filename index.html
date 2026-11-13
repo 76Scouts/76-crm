@@ -237,6 +237,8 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .bd-2>span{color:var(--ink2)}
 .bd-pc{font-size:11.5px;display:flex;justify-content:flex-end;gap:6px;align-items:baseline}
 .bd-pc .bd-2 b{font-weight:500}
+.bd-amt{margin-left:auto}
+.bd-2 input{width:100%!important;min-width:0;text-align:right;padding:4px 6px;font-size:13px}
 .wlrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;
   padding:4px 9px;border-bottom:1px solid var(--line);background:var(--card)}
 .wlrow:hover{background:var(--bg)}
@@ -1322,7 +1324,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-13 11:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-13 11:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22280,8 +22282,9 @@ function bdHTML(e){
   const two=(a,b)=>`<span class="bd-2"><b>${bdEur(a)}</b><span>${bdEur(b)}</span></span>`;
   const sel=(k,opts,v)=>`<select data-bd="${k}"${ro}>${opts.map(([a,b])=>`<option value="${a}"${a===v?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   const amt=(l,ld)=>l.calc?two(l.poso,ld.poso):'';
+  const btns=(c)=>ed?`<button class="btn sm gh" data-bd="calc" title="${c?t('σκέτο ποσό — με 2ο ποσό για τους δηλωμένους'):t('ανά άτομο: € × παιδιά/επιτελείο… (× μέρες) — αλλάζει μόνο του με τις τελικές συμμετοχές')}">${c?'€':t('× άτομα')}</button><button class="btn sm gh" data-bd="del" title="${t('Αφαίρεση')}">✕</button>`:'';
   const line=(l,ld)=>{
-    if(l.auto)return `<div class="bd-l"><span class="pill" style="font-size:10.5px">auto</span> <span style="flex:1">${esc(l.ait)}</span>${two(l.poso,ld?ld.poso:0)}</div>`;
+    if(l.auto)return `<div class="bd-l"><span class="pill" style="font-size:10.5px">auto</span> <span style="flex:1">${esc(l.ait)}</span><span class="bd-amt">${two(l.poso,ld?ld.poso:0)}</span></div>`;
     const c=l.calc;
     return `<div class="bd-l" data-bdl="${l.id}">
       <input data-bd="ait" value="${esc(l.ait||'')}" placeholder="${t('ανάλυση (προαιρετικό)')}" style="flex:1;min-width:120px"${ro}>
@@ -22289,10 +22292,8 @@ function bdHTML(e){
            ${sel('basis',BD_BASES(),c.basis||'synolo')}
            ${c.basis==='custom'?`<input data-bd="n" type="number" min="0" value="${esc(String(c.n??''))}" style="width:60px"${ro}>`:''}
            ${c.basis==='omades'?`<input data-bd="g" type="number" min="1" value="${esc(String(c.g??6))}" style="width:52px" title="${t('άτομα ανά ομάδα')}"${ro}>`:''}
-           ${sel('pd',BD_PD(),c.pd||'no')}${amt(l,ld)}`
-        :`<input data-bd="poso" type="number" step="0.01" value="${l.poso??''}" style="width:92px;text-align:right" title="${t('όλοι')}"${ro}>
-          <input data-bd="poso_d" type="number" step="0.01" value="${l.poso_d??''}" placeholder="${t('ίδιο')}" style="width:92px;text-align:right" title="${t('δηλωμένοι — κενό = ίδιο ποσό')}"${ro}>`}
-      ${ed?`<button class="btn sm gh" data-bd="calc" title="${c?t('σκέτο ποσό (ίδιο για όλους και για δηλωμένους)'):t('ανά άτομο: € × παιδιά/επιτελείο… (× μέρες) — αλλάζει με τις τελικές συμμετοχές')}">${c?'€':'×'}</button><button class="btn sm gh" data-bd="del" title="${t('Αφαίρεση')}">✕</button>`:''}
+           ${sel('pd',BD_PD(),c.pd||'no')}${btns(c)}<span class="bd-amt">${amt(l,ld)}</span>`
+        :`${btns(c)}<span class="bd-2 bd-amt"><input data-bd="poso" type="number" step="0.01" value="${l.poso??''}" title="${t('όλοι')}"${ro}><input data-bd="poso_d" type="number" step="0.01" value="${l.poso_d??''}" placeholder="${t('ίδιο')}" title="${t('δηλωμένοι — κενό = ίδιο ποσό')}"${ro}></span>`}
       ${c?`<div class="dim" style="flex-basis:100%;font-size:11.5px">${t('όλοι')}: ${esc(bdFormula(F,l))} · ${t('δηλωμένοι')}: ${esc(bdFormula(Dd,l))}</div>`:''}</div>`; };
   const col=side=>{ const GF=bdGroups(F,d,side), GD=bdGroups(Dd,d,side);
     return GF.filter(g=>ed||g.items.length).map(g=>{ const gd=GD.find(x=>x.cat===g.cat)||{items:[],sum:0};
