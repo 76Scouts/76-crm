@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-13 14:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-13 21:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4002,8 +4002,9 @@ function insChip(ins){
     :['okbg','ok','Ασφαλισμένο ως '+fdate(ins.expires_on)];
   return `<span class="pill" style="background:var(--${s[0]});border-color:transparent;color:var(--${s[1]})">${s[2]}</span>`;
 }
+const vehCanEdit=p=>isAdminUI()||(!!ME.person_id&&p&&p.id===ME.person_id);
 function vehHTML(p){
-  const list=vehOf(p.id);
+  const list=vehOf(p.id), canE=vehCanEdit(p);
   const age=(()=>{const s=(D.sen||[]).find(x=>x.person_id===p.id);return s&&s.dob?agey(s.dob):null})();
   return `<div class="dsec"><h4>Οχήματα <span class="dim" style="text-transform:none;letter-spacing:0;font-weight:400">· ${list.length}</span></h4>
     ${list.length?list.map(x=>{
@@ -4014,7 +4015,7 @@ function vehHTML(p){
           <span class="dim" style="font-size:12px">${esc([x.v.make,x.v.model].filter(Boolean).join(' '))}</span>
           <span class="pill" style="font-size:11px">${esc(x.link.relation)}</span>
           <span class="sp"></span>${insChip(x.ins)}
-          <button class="btn gh sm vldel" data-id="${x.link.id}" title="Αποσύνδεση">✕</button></div>
+          ${canE?`<button class="btn gh sm vldel" data-id="${x.link.id}" title="Αποσύνδεση">✕</button>`:''}</div>
         <div class="dim" style="font-size:11.5px">${x.ins?`${esc(x.ins.insurer||'')}${x.ins.holder_name?' · ασφαλισμένος: '+esc(x.ins.holder_name):''}${x.ins.allows_any_driver?' · καλύπτει εξουσιοδοτημένους οδηγούς':''}${x.ins.min_age?` · ηλικία ${x.ins.min_age}-${x.ins.max_age||'—'}`:''}`:'δεν έχει καταχωρηθεί ασφάλεια'}</div>
         ${warn?`<div style="font-size:12px;color:var(--bad);margin-top:3px">⚠ Η ηλικία (${age}) είναι εκτός των ορίων της ασφάλειας</div>`:''}
         ${
@@ -4026,14 +4027,14 @@ function vehHTML(p){
             <span style="min-width:74px">${l}</span><span class="dim" style="flex:1">${esc(paperDates(r)||'χωρίς ημερομηνίες')}</span>
             ${can?`<button class="btn gh sm vxedit" data-t="${t}" data-id="${r.id}" title="Διόρθωση ημερομηνιών">✎</button>`:''}</div>`).join('')})()}
       </div>`}).join(''):'<div class="dim" style="font-size:13px">Κανένα όχημα</div>'}
-    <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Σύνδεση οχήματος</summary>
+    ${canE?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Σύνδεση οχήματος</summary>
       <div style="display:grid;gap:7px;margin-top:9px">
         <input id="vhPlate" placeholder="Αριθμός πινακίδας" list="plateList" style="text-transform:uppercase">
         <datalist id="plateList">${(D.veh||[]).map(v=>`<option>${esc(v.plate)}</option>`).join('')}</datalist>
         <select id="vhRel">${REL.map(r=>`<option>${r}</option>`).join('')}</select>
         <button class="btn p sm" id="vhAdd">Σύνδεση</button>
         <span class="dim" style="font-size:11.5px">Αν η πινακίδα υπάρχει ήδη, συνδέεται το ίδιο όχημα — έτσι αδέλφια ή ζευγάρι μοιράζονται ένα αυτοκίνητο με μία ασφάλεια.</span>
-      </div></details></div>`;
+      </div></details>`:''}</div>`;
 }
 const PLATE_GR2LAT={'Α':'A','Β':'B','Ε':'E','Ζ':'Z','Η':'H','Ι':'I','Κ':'K','Μ':'M',
   'Ν':'N','Ο':'O','Ρ':'P','Τ':'T','Χ':'X','Υ':'Y'};
@@ -4059,11 +4060,13 @@ function wireVeh(p,after){
     ad.disabled=true;
     try{
       let v=(D.veh||[]).find(x=>plateKey(x.plate)===plateKey(plate));
-      if(!v){const {data,error}=await sb.from('vehicles').insert({plate}).select().single();
+      if(!v){const {data,error}=await sb.from('vehicles').insert({plate,owner_id:p.id,created_by:ME.person_id||null}).select().single();
         if(error)throw error; v=data; D.veh=(D.veh||[]); D.veh.push(v);}
       const {data:l,error:e2}=await sb.from('vehicle_links').insert({vehicle_id:v.id,person_id:p.id,relation:$('vhRel').value}).select().single();
       if(e2)throw e2; D.vl=(D.vl||[]); D.vl.push(l); saveCache(); toast('Συνδέθηκε'); after&&after();
-    }catch(e){toast('Σφάλμα: '+(e.message||e))}
+    }catch(e){
+      const rls=e&&(e.code==='42501'||/row-level security/i.test(e.message||''));
+      toast(rls?t('Το όχημα είναι καταχωρισμένο σε άλλον — τη σύνδεση την κάνει ο ιδιοκτήτης του ή ο Α.Σ.'):'Σφάλμα: '+(e.message||e))}
     ad.disabled=false;};
 }
 
@@ -23272,7 +23275,7 @@ function pasteParts(eid,pool,after){
       <div class="dim" style="font-size:12.5px">${esc(e.title||'')}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
     <div class="dsec"><div class="dim" style="font-size:12.5px;margin-bottom:7px">Κόλλησε ονόματα — ένα ανά γραμμή. Δέχεται «Επώνυμο Όνομα», «Όνομα Επώνυμο», με αρίθμηση ή Α.Μ. μπροστά.</div>
-      <textarea id="ppTxt" rows="9" style="width:100%;font-size:13px" placeholder="1. Αθανασίου Μάρκος&#10;Άννα Αλφάρο&#10;33826 Ανδρονίκου Κωνσταντίνος"></textarea>
+      <textarea id="ppTxt" rows="9" style="width:100%;font-size:13px" placeholder="1. Μενελάου Μάρκος&#10;Άννα Ρίζου&#10;12345 Περδίκη Κωνσταντίνος"></textarea>
       <button class="btn p sm" id="ppGo" style="margin-top:9px">Αντιστοίχιση</button></div>
     <div class="dsec" id="ppRes" style="border:0"></div>`;
   drw.classList.add('on');
