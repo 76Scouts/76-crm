@@ -227,6 +227,16 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .tile:hover{border-color:var(--ink3);transform:translateY(-1px)}
 .tile[style*="cursor:default"]{box-shadow:none;background:transparent}
 .btn.p .dim,.btn.bad .dim{color:inherit}
+.bd-cols{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+@media(max-width:860px){.bd-cols{grid-template-columns:1fr}}
+.bd-c{border-top:1px solid var(--line);padding:9px 0 4px;margin-top:8px}
+.bd-l{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:5px 0;font-size:13px}
+.bd-l input,.bd-l select{font-size:13px;padding:4px 6px}
+.bd-l select{width:auto!important;flex:0 0 auto}
+.bd-2{display:inline-grid;grid-template-columns:92px 92px;gap:6px;text-align:right;white-space:nowrap}
+.bd-2>span{color:var(--ink2)}
+.bd-pc{font-size:11.5px;display:flex;justify-content:flex-end;gap:6px;align-items:baseline}
+.bd-pc .bd-2 b{font-weight:500}
 .wlrow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;
   padding:4px 9px;border-bottom:1px solid var(--line);background:var(--card)}
 .wlrow:hover{background:var(--bg)}
@@ -1312,7 +1322,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-12 17:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-13 10:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19225,13 +19235,14 @@ function V_efolder(){
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
         ${[['venue','Γενικά','home'],['people','Συμμετέχοντες','users'],
-           ['forms','Δηλώσεις','book'],['docs','Έγγραφα','down'],['phones','Τηλέφωνα','mail'],['certs','Πιστοποιητικά','shield']]
+           ['forms','Δηλώσεις','book'],['budget',t('Προϋπολογισμός'),'trend'],['docs','Έγγραφα','down'],['phones','Τηλέφωνα','mail'],['certs','Πιστοποιητικά','shield']]
           .map(([k,t,i])=>`<button class="btn sm${tab===k?' p':' gh'}" data-eftab="${k}">${ic(i,14)} ${t}</button>`).join('')}
       </div></div>`;
 
   const body = tab==='venue'  ? efGenika(e)
              : tab==='people' ? efPower(e,parts)+efPeople(e,parts)
              : tab==='forms'  ? ntHTML(e)+'<div id="efForms" class="card"><div class="pad dim">Φόρτωση…</div></div>'
+             : tab==='budget' ? bdHTML(e)
              : tab==='docs'   ? efDocs(e,parts)
              : tab==='phones' ? efPhones(e,parts)
              :                  efCerts(e,parts,endD);
@@ -19244,6 +19255,7 @@ function V_efolder(){
   if(tab==='venue')  efGenikaWire(e);
   if(tab==='people'){ efPowerWire(e); efPeopleWire(e); }
   if(tab==='forms'){ ntWire(e); efFormsLoad(e); }
+  if(tab==='budget') bdWire(e);    
   if(tab==='docs')   efDocsWire(e,parts);
   if(tab==='phones') efPhonesWire(e,parts);
   if(tab==='certs')  efCertsWire(e,parts,endD);
@@ -21429,6 +21441,7 @@ async function dlBuild(e,buf,o){
   const d=dlData(e,g,med);
   if(o&&o.rec&&!withMed)d.noDiet=true;    
   d.certs=await dlCertImgs(e);
+  d.budget=await bdForSheet(e,g.full);    
   const r=await dlFill(buf,d,o);
   if(g.full){ const n=d.kids.length; r.rep.unshift(t('ΣΥΜΜΕΤΟΧΕΣ: όλη η δύναμη')+' — '+n+' '+t('μέλη που δικαιούνται να δηλώσουν (για τον προϋπολογισμό). Όταν κλείσουν οι δηλώσεις: «Πέρασε τις τελικές συμμετοχές».')); }
   if(o&&o.rec){ if(d.certs.err)r.rep.unshift(t('Πιστοποιητικά')+': '+d.certs.err); return r; }
@@ -21817,6 +21830,7 @@ async function dlFill(buf,d,o){
   const U=await dlSh(B,'U'); if(U)dlFillSign(U,d);
   const A=await dlSh(B,'A'); if(A)dlFillArx(A,d,rep);
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
+  if(d.budget){ const P=await B.sheet(dv('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); if(P)dlFillBudget(P,d.budget,rep); else rep.push(t('Λείπει το φύλλο ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); }
   const own=B.rec?xlOwn(B.rec):null;
   if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs,own}; }
   const hook=d.certs&&d.certs.length?await dlCertsPlan(B,d.certs,rep):null;
@@ -22151,6 +22165,231 @@ async function gsSnap(e,st,x){
   else toast(t('Έτοιμο')+': '+r.name);
 }
 function gsB64(u){ let s=''; for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); }
+const BD={};                                                     
+const BD_X=()=>[dv('Διατροφή'),dv('Διαμονή'),dv('Μεταφορικά'),dv('Υλικά Προγράμματος'),dv('Επισκευές'),dv('Υλικά Φαρμακείου'),
+  dv('Αναμνηστικά'),dv('Δημόσιες Σχέσεις κ.ά.'),dv('Απρόβλεπτα'),dv('Άλλο')];                        
+const BD_E=()=>[dv('Από Ταμείο Τμήματος'),dv('Ενίσχυση από Ε.Π.Σ.'),dv('Από δωρεές κλπ')];          
+const BD_EKD=()=>dv('Από Εκδρομείς');
+const BD_BASES=()=>[['synolo',t('όλους')],['paidia',t('παιδιά')],['epiteleio',t('επιτελείο')],['vathm',t('βαθμοφόρους')],['omades',t('ανά ομάδα')],['custom',t('αριθμό')]];
+const BD_PD=()=>[['no',t('—')],['days',t('× μέρες')],['nights',t('× βράδια')],['parousia',t('× παρουσίες ανά μέρα')]];
+const bdN=x=>{ const n=parseFloat(String(x??'').replace(',','.')); return Number.isFinite(n)?n:0 };
+const bdR=x=>Math.round((bdN(x)+Number.EPSILON)*100)/100;
+const bdEur=v=>{ const n=bdR(v), s=Math.abs(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return (n<0?'−':'')+s+' €' };
+const bdId=()=>Math.random().toString(36).slice(2,10);
+
+function bdCtx(e){
+  const gsr=typeof GS!=='undefined'&&GS[e.id]&&GS[e.id].row, final=!!(gsr&&gsr.kids_final);
+  const staff=[...dlStaff(e),...dlHelpers(e)], days=dlDays(e), nights=e.nights||Math.max(0,days.length-1);
+  const one=kids=>({fee:bdN(e.fee), kids, staff, vathm:dlStaff(e).length, days, nights});
+  return {final, full:one(dlKidsFull(e)), dec:one(dlKids(e))};    
+}
+const bdHere=(x,day)=>!day||!x.pa||!x.pa.days||!x.pa.days.length||x.pa.days.includes(day);
+function bdCount(C,c,day){
+  c=c||{}; if(c.basis==='flat')return 1; if(c.basis==='custom')return Math.max(0,Math.round(bdN(c.n)));
+  const k=C.kids.filter(x=>bdHere(x,day)).length, s=C.staff.filter(x=>bdHere(x,day)).length;
+  if(c.basis==='paidia')return k; if(c.basis==='epiteleio')return s;
+  if(c.basis==='vathm')return day?dlStaffOnly(C).filter(x=>bdHere(x,day)).length:C.vathm;
+  if(c.basis==='omades'){ const g=Math.max(1,Math.round(bdN(c.g)||6)); return k?Math.ceil(k/g):0; }
+  return k+s;                                                    
+}
+const dlStaffOnly=C=>C.staff.filter(x=>x.p&&isLed(x.p));
+function bdAmount(C,l){
+  if(!l||!l.calc)return bdR(l&&l.poso);
+  const c=l.calc, u=bdN(c.unit), pd=c.pd||'no';
+  if(pd==='parousia'&&C.days.length&&c.basis!=='flat'&&c.basis!=='custom')return bdR(u*C.days.reduce((s,d)=>s+bdCount(C,c,d),0));
+  const n=bdCount(C,c,null);
+  if(pd==='nights')return bdR(u*n*C.nights);
+  if(pd==='days'||pd==='parousia')return bdR(u*n*Math.max(1,C.days.length));
+  return bdR(u*n);
+}
+function bdFormula(C,l){
+  if(!l||!l.calc)return ''; const c=l.calc, u=bdR(c.unit)+'€', pd=c.pd||'no', a=bdEur(bdAmount(C,l));
+  if(pd==='parousia'&&C.days.length&&c.basis!=='flat'&&c.basis!=='custom')return u+' × '+C.days.reduce((s,d)=>s+bdCount(C,c,d),0)+' '+t('παρουσίες')+' = '+a;
+  const n=bdCount(C,c,null);
+  return u+' × '+n+(pd==='nights'?' × '+C.nights+' '+t('βράδια'):pd==='no'?'':' × '+Math.max(1,C.days.length)+' '+t('μέρες'))+' = '+a;
+}
+function bdAuto(C,d){
+  const sp=w=>(d.special||[]).filter(s=>(s.who||'kataskinotes')===w), sum=l=>l.reduce((a,s)=>a+Math.max(0,Math.round(bdN(s.count))),0);
+  const kn=Math.max(0,C.kids.length-sum(sp('kataskinotes'))), sn=Math.max(0,C.staff.length-sum(sp('epiteleio'))), de=bdN(d.dik_epit);
+  const L=[{side:'esoda',cat:BD_EKD(),ait:t('Παιδιά')+' ('+kn+' × '+bdR(C.fee)+'€)',poso:bdR(kn*C.fee),auto:'kids'}];
+  sp('kataskinotes').forEach(s=>L.push({side:'esoda',cat:BD_EKD(),ait:t('Παιδιά')+' · '+(s.label||t('ειδικό'))+' ('+bdN(s.count)+' × '+bdR(s.fee)+'€)',poso:bdR(bdN(s.count)*bdN(s.fee)),auto:'sp',sp:s}));
+  if(de>0||sp('epiteleio').length)L.push({side:'esoda',cat:BD_EKD(),ait:t('Επιτελείο')+' ('+sn+' × '+bdR(de)+'€)',poso:bdR(sn*de),auto:'staff'});
+  sp('epiteleio').forEach(s=>L.push({side:'esoda',cat:BD_EKD(),ait:t('Επιτελείο')+' · '+(s.label||t('ειδικό'))+' ('+bdN(s.count)+' × '+bdR(s.fee)+'€)',poso:bdR(bdN(s.count)*bdN(s.fee)),auto:'sp',sp:s}));
+  return L;
+}
+function bdAll(C,d){ return [...bdAuto(C,d),...(d.lines||[]).filter(l=>!l.auto).map(l=>({...l,poso:bdAmount(C,l)}))]; }
+function bdGroups(C,d,side){
+  const std=side==='esoda'?[BD_EKD(),...BD_E()]:BD_X(), g=new Map(std.map(c=>[c,[]]));
+  bdAll(C,d).filter(l=>l.side===side).forEach(l=>{ const c=String(l.cat||'').trim()||dv('Άλλο'); if(!g.has(c))g.set(c,[]); g.get(c).push(l); });
+  return [...g].map(([cat,items])=>({cat,items,sum:bdR(items.reduce((s,l)=>s+l.poso,0)),std:std.includes(cat)}));
+}
+function bdTotals(C,d){ const A=bdAll(C,d), s=side=>bdR(A.filter(l=>l.side===side).reduce((a,l)=>a+l.poso,0));
+  const es=s('esoda'), ex=s('exoda'); return {es,ex,bal:bdR(es-ex),per:C.kids.length?bdR(ex/C.kids.length):0}; }
+
+function bdSheet(C,d){
+  const out={fee:C.fee,inc:{},incFree:[],exp:{},expFree:[]};
+  bdAuto(C,d).forEach(l=>{ if(l.auto==='kids')return;
+    if(l.auto==='sp'&&(l.sp.who||'kataskinotes')==='kataskinotes'){ const n=bdN(l.sp.count), f=bdN(l.sp.fee);
+      if(n&&f!==C.fee)out.incFree.push([t('Ειδικό τίμημα')+' — '+(l.sp.label||'')+' ('+n+' × '+bdR(f)+'€ '+t('αντί')+' '+bdR(C.fee)+'€)',bdR(n*(f-C.fee))]); return; }
+    if(l.poso)out.incFree.push([l.ait,l.poso]); });
+  bdGroups(C,d,'esoda').forEach(g=>{ if(g.cat===BD_EKD())return; if(BD_E().includes(g.cat))out.inc[g.cat]=g.sum; else if(g.sum)out.incFree.push([g.cat,g.sum]); });
+  bdGroups(C,d,'exoda').forEach(g=>{ if(BD_X().includes(g.cat))out.exp[g.cat]=g.sum; else if(g.sum)out.expFree.push([g.cat,g.sum]); });
+  return out;
+}
+async function bdLoad(eid){
+  const [a,b]=await Promise.all([sb.from('event_budget').select('*').eq('event_id',eid).maybeSingle(),
+    sb.from('event_budget_log').select('at,by_person,stage,esoda,exoda,esoda_d,exoda_d,note').eq('event_id',eid).order('at',{ascending:false}).limit(12)]);
+  const row=a.data||null;
+  return BD[eid]={row, log:b.data||[], err:a.error||b.error||null, dirty:false,
+    d:row?{dik_epit:bdN(row.dik_epit),special:(row.special||[]).map(s=>({...s,id:s.id||bdId()})),lines:(row.lines||[]).filter(l=>!l.auto).map(l=>({...l,id:l.id||bdId()}))}
+         :{dik_epit:0,special:[],lines:[]}};
+}
+async function bdForSheet(e,full){
+  const {data:row,error}=await sb.from('event_budget').select('dik_epit,special,lines').eq('event_id',e.id).maybeSingle();
+  if(error)throw new Error(t('Προϋπολογισμός')+': '+error.message);
+  if(!row)return null;
+  const X=bdCtx(e), C=full?X.full:X.dec;
+  return bdSheet(C,{dik_epit:row.dik_epit,special:row.special||[],lines:(row.lines||[]).filter(l=>!l.auto)});
+}
+function dlFillBudget(S,b,rep){
+  if(!b)return;
+  const dk=S.find(dv('Δικαίωμα Συμμετοχής:'),{col:'B'}); if(dk)S.set(dk.r,dk.c+1,b.fee);
+  const h=S.find(dv('ΑΙΤΙΟΛΟΓΙΑ'),{col:'C'}), end=S.find(dv('Σύνολο Εσόδων'),{col:'C'});
+  if(!h||!end){ rep.push(t('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ: δεν βρέθηκε ο πίνακας')); return; }
+  const side=(cL,cV,fixed,free,what,spill)=>{
+    const key=r=>{ const lab=XL.norm(S.v(r,cL)||''); return lab?Object.keys(fixed).find(c=>XL.norm(c)===lab):null };
+    const fr=[]; let spillAt=null;
+    for(let r=h.r+1;r<end.r;r++){ if(S.isF(r,cV)||S.isF(r,cL))continue; const k=key(r);
+      if(k){ S.set(r,cV,fixed[k]); if(k===spill)spillAt=r; } else fr.push(r); }
+    free.slice(0,fr.length).forEach(([l,v],i)=>{ S.set(fr[i],cL,l); S.set(fr[i],cV,v); });
+    fr.slice(free.length).forEach(r=>{ if(S.v(r,cL)!=null)S.set(r,cL,null); if(bdN(S.v(r,cV)))S.set(r,cV,0); });
+    if(free.length>fr.length){ const rest=free.slice(fr.length), sum=bdR(rest.reduce((a,x)=>a+x[1],0));
+      if(spillAt)S.set(spillAt,cV,bdR(bdN(fixed[spill])+sum));
+      rep.push(t('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')+' ('+what+'): '+t('δεν χωρούν')+' '+rest.length+' '+t('κατηγορίες')+(spillAt?' — '+t('μπήκαν στο «Άλλο»')+' ('+bdEur(sum)+')':'')); } };
+  side(3,4,b.inc,b.incFree,t('έσοδα'),null);
+  side(7,8,b.exp,b.expFree,t('έξοδα'),dv('Άλλο'));
+}
+
+function bdHTML(e){
+  const s=BD[e.id]; if(!s)return `<div class="card pad dim" id="bdBox">${t('Φόρτωση…')}</div>`;
+  if(s.err)return `<div class="card pad" id="bdBox">${t('Δεν φόρτωσε')}: ${esc(s.err.message||'')}</div>`;
+  const X=bdCtx(e), F=X.full, Dd=X.dec, d=s.d, ed=gsCan(e), TF=bdTotals(F,d), TD=bdTotals(Dd,d), ro=ed?'':' disabled';
+  const two=(a,b)=>`<span class="bd-2"><b>${bdEur(a)}</b><span>${bdEur(b)}</span></span>`;
+  const sel=(k,opts,v)=>`<select data-bd="${k}"${ro}>${opts.map(([a,b])=>`<option value="${a}"${a===v?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
+  const amt=(l,ld)=>l.calc?two(l.poso,ld.poso):'';
+  const line=(l,ld)=>{
+    if(l.auto)return `<div class="bd-l"><span class="pill" style="font-size:10.5px">auto</span> <span style="flex:1">${esc(l.ait)}</span>${two(l.poso,ld?ld.poso:0)}</div>`;
+    const c=l.calc;
+    return `<div class="bd-l" data-bdl="${l.id}">
+      <input data-bd="ait" value="${esc(l.ait||'')}" placeholder="${t('ανάλυση (προαιρετικό)')}" style="flex:1;min-width:120px"${ro}>
+      ${c?`<input data-bd="unit" type="number" step="0.01" min="0" value="${esc(String(c.unit??''))}" style="width:74px" title="${t('€ ανά μονάδα')}"${ro}>
+           ${sel('basis',BD_BASES(),c.basis||'synolo')}
+           ${c.basis==='custom'?`<input data-bd="n" type="number" min="0" value="${esc(String(c.n??''))}" style="width:60px"${ro}>`:''}
+           ${c.basis==='omades'?`<input data-bd="g" type="number" min="1" value="${esc(String(c.g??6))}" style="width:52px" title="${t('άτομα ανά ομάδα')}"${ro}>`:''}
+           ${sel('pd',BD_PD(),c.pd||'no')}${amt(l,ld)}`
+        :`<input data-bd="poso" type="number" step="0.01" value="${l.poso??''}" style="width:96px;text-align:right"${ro}>`}
+      ${ed?`<button class="btn sm gh" data-bd="calc" title="${c?t('σκέτο ποσό (ίδιο για όλους και για δηλωμένους)'):t('ανά άτομο: € × παιδιά/επιτελείο… (× μέρες) — αλλάζει με τις τελικές συμμετοχές')}">${c?'€':'×'}</button><button class="btn sm gh" data-bd="del" title="${t('Αφαίρεση')}">✕</button>`:''}
+      ${c?`<div class="dim" style="flex-basis:100%;font-size:11.5px">${t('όλοι')}: ${esc(bdFormula(F,l))} · ${t('δηλωμένοι')}: ${esc(bdFormula(Dd,l))}</div>`:''}</div>`; };
+  const col=side=>{ const GF=bdGroups(F,d,side), GD=bdGroups(Dd,d,side);
+    return GF.filter(g=>ed||g.items.length).map(g=>{ const gd=GD.find(x=>x.cat===g.cat)||{items:[],sum:0};
+      return `<div class="bd-c">
+      <div style="display:flex;gap:6px;align-items:baseline"><b style="font-size:13px;flex:1">${esc(g.cat)}</b>${two(g.sum,gd.sum)}</div>
+      ${side==='exoda'&&(g.sum||gd.sum)?`<div class="dim bd-pc">${t('ανά παιδί')}: ${two(F.kids.length?g.sum/F.kids.length:0,Dd.kids.length?gd.sum/Dd.kids.length:0)}</div>`:''}
+      ${g.items.map((l,i)=>line(l,gd.items[i])).join('')}
+      ${ed&&!(side==='esoda'&&g.cat===BD_EKD())?`<button class="btn sm gh" data-bdadd="${side}" data-bdcat="${esc(g.cat)}">+ ${g.items.length?t('ανάλυση'):t('ποσό')}</button>`:''}</div>`; }).join('')
+    +(ed?`<input data-bdnew="${side}" placeholder="+ ${side==='esoda'?t('άλλη κατηγορία εσόδου'):t('άλλη κατηγορία εξόδου')}" style="margin-top:8px;width:100%">`:''); };
+  const spec=(d.special||[]).map(x=>`<div class="bd-l" data-bds="${x.id}">
+      ${sel('who',[['kataskinotes',t('παιδιά')],['epiteleio',t('επιτελείο')]],x.who||'kataskinotes')}
+      <input data-bd="label" value="${esc(x.label||'')}" placeholder="${t('π.χ. Μόνο Σάββατο')}" style="flex:1;min-width:110px"${ro}>
+      <input data-bd="count" type="number" min="0" value="${esc(String(x.count??''))}" style="width:60px" title="${t('πόσοι')}"${ro}> ×
+      <input data-bd="fee" type="number" min="0" step="0.01" value="${esc(String(x.fee??''))}" style="width:70px" title="€"${ro}>
+      ${ed?`<button class="btn sm gh" data-bd="sdel">✕</button>`:''}</div>`).join('');
+  const who=id=>{const p=dlP(id); return p?nm(p):''};
+  const row=(lab,C,T,on)=>`<div style="display:flex;gap:8px;align-items:baseline;margin:10px 0 6px"><b>${lab}</b>
+      <span class="dim" style="font-size:12.5px">${pln(C.kids.length,t('παιδί'),t('παιδιά'))} · ${t('επιτελείο')} ${C.staff.length}</span>
+      ${on?`<span class="pill" style="font-size:11px">${t('αυτό είναι τώρα στο Δελτίο')}</span>`:''}</div>
+    <div class="tiles">
+      <div class="tile" style="cursor:default"><div class="k">${t('Έσοδα')}</div><div class="v">${bdEur(T.es)}</div></div>
+      <div class="tile" style="cursor:default"><div class="k">${t('Έξοδα')}</div><div class="v">${bdEur(T.ex)}</div></div>
+      <div class="tile" style="cursor:default"><div class="k">${t('Υπόλοιπο')}</div><div class="v" style="color:${T.bal<0?'var(--bad)':T.bal>0?'var(--ok)':'inherit'}">${bdEur(T.bal)}</div></div>
+      <div class="tile" style="cursor:default"><div class="k">${t('Κόστος ανά παιδί')}</div><div class="v">${bdEur(T.per)}</div><div class="s">${t('έξοδα ÷ παιδιά')}${C.fee?' · '+t('τίμημα')+' '+bdEur(C.fee):''}</div></div></div>`;
+  const TN=X.final?TD:TF;
+  const bal=!ed||TN.bal===0?'':`<button class="btn sm" id="bdBal">⚖ ${TN.bal<0?t('Από Ταμείο Τμήματος')+' '+bdEur(-TN.bal):t('Προς Ταμείο (Άλλο)')+' '+bdEur(TN.bal)}</button>
+      <span class="dim" style="font-size:12px">${t('ισοσκελίζει αυτό που είναι τώρα στο Δελτίο')}</span>`;
+  return `<div id="bdBox">
+  <div class="card pad" style="margin-bottom:13px">
+    <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>${t('Προϋπολογισμός')}</b>
+      <span class="pill">${X.final?t('Τελειοποίηση'):t('Σχεδιασμός')}</span><span class="sp"></span>
+      ${s.dirty?`<span class="dim" style="font-size:12px">${t('αλλαγές χωρίς αποθήκευση')}</span>`:''}
+      ${ed?`<button class="btn sm p" id="bdSave"${s.dirty?'':' disabled'}>${t('Αποθήκευση')}</button>`:''}</div>
+    <div class="dim" style="font-size:12.5px;margin-top:4px">${t('Κάθε ποσό δύο φορές')}: <b>${t('όλοι')}</b> (${pln(F.kids.length,t('παιδί'),t('παιδιά'))} ${t('που δικαιούνται')}) · ${t('δηλωμένοι')} (${pln(Dd.kids.length,t('παιδί'),t('παιδιά'))}).
+      ${t('Σκέτο ποσό (π.χ. λεωφορείο) μένει ίδιο· «€ × άτομα» (π.χ. τροφοδοσία) αλλάζει.')} · ${pln(F.days.length,t('μέρα'),t('μέρες'))} / ${pln(F.nights,t('βράδυ'),t('βράδια'))}
+      ${!F.fee?' · <b>'+t('δεν έχει μπει τίμημα στη δράση')+'</b>':''}</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+      <span style="font-size:12.5px">${t('Τίμημα επιτελείου')}</span>
+      <input data-bd="dik_epit" type="number" min="0" step="0.01" value="${d.dik_epit||0}" style="width:76px"${ro}>
+      <span class="dim" style="font-size:12px">${t('Ειδικά τιμήματα (π.χ. μόνο μία μέρα) — είναι μέρος των παιδιών/του επιτελείου:')}</span>
+      ${ed?`<button class="btn sm gh" id="bdSpAdd">+ ${t('ειδικό τίμημα')}</button>`:''}</div>
+    ${spec}</div>
+  <div class="bd-cols">
+    <div class="card pad"><div style="display:flex;align-items:baseline"><b style="color:var(--ok);flex:1">${t('ΕΣΟΔΑ')}</b><span class="bd-2 dim" style="font-size:11.5px"><b>${t('όλοι')}</b><span>${t('δηλωμένοι')}</span></span></div>${col('esoda')}</div>
+    <div class="card pad"><div style="display:flex;align-items:baseline"><b style="color:var(--warn);flex:1">${t('ΕΞΟΔΑ')}</b><span class="bd-2 dim" style="font-size:11.5px"><b>${t('όλοι')}</b><span>${t('δηλωμένοι')}</span></span></div>${col('exoda')}</div></div>
+  <div class="card pad" style="margin-top:13px">
+    ${row(t('Όλη η δύναμη'),F,TF,!X.final)}
+    ${row(t('Δηλωμένοι (τελικές συμμετοχές)'),Dd,TD,X.final)}
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">${bal}</div>
+    <div class="dim" style="font-size:12px;margin-top:6px">${t('Στο Δελτίο (φύλλο ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ) μπαίνει μία γραμμή ανά κατηγορία, με «Ενημέρωση από το e76» — με όλη τη δύναμη ως το «Πέρασε τις τελικές συμμετοχές», μετά με τους δηλωμένους.')}</div>
+    ${s.log.length?`<ul style="margin:8px 0 0 18px;padding:0;font-size:12.5px">${s.log.slice(0,8).map(x=>`<li>${fdate(x.at)} · ${esc(x.stage)}${who(x.by_person)?' · '+esc(who(x.by_person)):''} · ${t('όλοι')} ${bdEur(x.esoda)} / ${bdEur(x.exoda)} · ${t('δηλωμένοι')} ${bdEur(x.esoda_d)} / ${bdEur(x.exoda_d)}${x.note?' · '+esc(x.note):''}</li>`).join('')}</ul>`:''}</div></div>`;
+}
+const bdLine=(s,id)=>s.d.lines.find(l=>l.id===id);
+function bdDraw(e){ const b=$('bdBox'); if(!b||EFID!==e.id)return; b.outerHTML=bdHTML(e); bdWireUI(e); }
+function bdTouch(e){ BD[e.id].dirty=true; bdDraw(e); }
+function bdWireUI(e){
+  const s=BD[e.id], box=$('bdBox'); if(!box||!s||s.err)return;
+  const on=(id,f)=>{const x=$(id); if(x)x.onclick=f};
+  box.querySelectorAll('[data-bdl] [data-bd]').forEach(x=>{
+    const l=bdLine(s,x.closest('[data-bdl]').dataset.bdl), k=x.dataset.bd;
+    if(k==='del')return x.onclick=()=>{ s.d.lines=s.d.lines.filter(y=>y!==l); bdTouch(e); };
+    if(k==='calc')return x.onclick=()=>{ if(l.calc){ l.poso=bdAmount(bdCtx(e).full,l); delete l.calc; } else l.calc={unit:l.poso||0,basis:'paidia',pd:'no'}; bdTouch(e); };
+    x.onchange=()=>{ const v=x.value; if(k==='ait')l.ait=v.slice(0,200); else if(k==='poso')l.poso=bdR(v);
+      else { l.calc[k]=['unit','n','g'].includes(k)?bdN(v):v; } bdTouch(e); }; });
+  box.querySelectorAll('[data-bds] [data-bd]').forEach(x=>{
+    const sp=s.d.special.find(y=>y.id===x.closest('[data-bds]').dataset.bds), k=x.dataset.bd;
+    if(k==='sdel')return x.onclick=()=>{ s.d.special=s.d.special.filter(y=>y!==sp); bdTouch(e); };
+    x.onchange=()=>{ sp[k]=k==='label'?x.value.slice(0,60):k==='who'?x.value:String(Math.max(0,bdR(x.value))); bdTouch(e); }; });
+  const dk=box.querySelector('[data-bd="dik_epit"]'); if(dk)dk.onchange=()=>{ s.d.dik_epit=Math.max(0,bdR(dk.value)); bdTouch(e); };
+  box.querySelectorAll('[data-bdadd]').forEach(x=>x.onclick=()=>{ s.d.lines.push({id:bdId(),side:x.dataset.bdadd,cat:x.dataset.bdcat,ait:'',poso:0}); bdTouch(e); });
+  box.querySelectorAll('[data-bdnew]').forEach(x=>x.onchange=()=>{ const c=x.value.trim(); if(!c)return;
+    s.d.lines.push({id:bdId(),side:x.dataset.bdnew,cat:c.slice(0,80),ait:'',poso:0}); bdTouch(e); });
+  on('bdSpAdd',()=>{ s.d.special.push({id:bdId(),who:'kataskinotes',label:'',count:'0',fee:'0'}); bdTouch(e); });
+  on('bdBal',()=>{ const X=bdCtx(e), T=bdTotals(X.final?X.dec:X.full,s.d);
+    s.d.lines.push(T.bal<0?{id:bdId(),side:'esoda',cat:dv('Από Ταμείο Τμήματος'),ait:t('ισοσκέλιση'),poso:bdR(-T.bal)}
+                         :{id:bdId(),side:'exoda',cat:dv('Άλλο'),ait:t('απόδοση στο Ταμείο (ισοσκέλιση)'),poso:bdR(T.bal)}); bdTouch(e); });
+  on('bdSave',()=>bdSave(e));
+}
+function bdNote(C,old,d){
+  const sums=x=>{ const m={}; if(!x)return m; ['esoda','exoda'].forEach(sd=>bdGroups(C,x,sd).forEach(g=>{ if(g.sum||g.items.length)m[g.cat]=g.sum })); return m; };
+  const a=sums(old), b=sums(d), ch=[...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>bdR(a[k]||0)!==bdR(b[k]||0))
+    .map(k=>k+' '+bdEur(a[k]||0)+' → '+bdEur(b[k]||0));
+  return ch.join(' · ').slice(0,500)||null;
+}
+async function bdSave(e){
+  const s=BD[e.id], X=bdCtx(e), C=X.full, x=$('bdSave'); if(x){ x.disabled=true; x.textContent=t('Αποθηκεύω…'); }
+  const lines=s.d.lines.map(l=>l.calc?{...l,poso:bdAmount(C,l)}:{...l,poso:bdR(l.poso)});    
+  const TF=bdTotals(X.full,s.d), TD=bdTotals(X.dec,s.d);
+  const old=s.row?{dik_epit:s.row.dik_epit,special:s.row.special||[],lines:(s.row.lines||[]).filter(l=>!l.auto)}:null;
+  const {data,error}=await sb.rpc('budget_save',{p_event:e.id,p_dik_epit:bdR(s.d.dik_epit),
+    p_special:s.d.special.map(({id,who,label,count,fee})=>({id,who,label,count:String(Math.round(bdN(count))),fee:String(bdR(fee))})),
+    p_lines:lines, p_tot:{esoda:TF.es,exoda:TF.ex,esoda_d:TD.es,exoda_d:TD.ex},
+    p_since:s.row?s.row.updated_at:null, p_note:bdNote(C,old,s.d)});
+  if(error){ if(x){ x.disabled=false; x.textContent=t('Αποθήκευση'); } return toast(t('Δεν αποθηκεύτηκε')+': '+error.message); }
+  await bdLoad(e.id); bdDraw(e); toast(t('Αποθηκεύτηκε')+' · '+data.stage);
+}
+async function bdWire(e){
+  if(typeof GS!=='undefined'&&!GS[e.id])await gsLoad(e.id);         
+  if(!BD[e.id]||!BD[e.id].dirty)await bdLoad(e.id);
+  bdDraw(e);
+}
 const efdtNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ς/g,dv('σ')).replace(/\s+/g,' ').trim();
 function efdtCol(h){ const x=efdtNorm(h);
   if(!x)return null;
