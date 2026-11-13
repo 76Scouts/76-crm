@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-13 21:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-13 22:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3303,6 +3303,7 @@ function evInvOk(e,pid,sec){
   if(e.owner_section&&sec&&sec===e.owner_section)return true;
   return e.invitees.includes(pid);
 }
+const evInvEmpty=e=>!!e&&Array.isArray(e.invitees)&&!e.invitees.length&&!e.owner_section;
 function evOwnerSec(e){return (e&&(e.owner_section||e.section))||null}
 function evSecs(e){
   const M={'ΑΛ':'Αγέλη','ΟΠ':'Ομάδα','ΚΑ':'Κοινότητα'}, out=new Set();
@@ -17279,8 +17280,9 @@ function dhEventRows(){
       out.push({code:'ΔΡΑΣΗ_ΦΟΡΜΑ_ΟΧΙ_ΔΗΜΟΣΙΕΥΣΗ',severity:'κρίσιμο',route:'cal',
         title:'Δράση με φόρμα που οι γονείς ΔΕΝ βλέπουν — δεν είναι στη Δημοσίευση',
         who:e.title,detail:when+' · στάδιο «'+(evStage(e)==='annual'?'Ετήσιο':'Προσχέδιο')+'»'});
-    if(evStage(e)==='published'&&Array.isArray(e.invitees)&&!e.invitees.length&&!e.owner_section)
-      out.push({code:'ΔΡΑΣΗ_ΚΕΝΗ_ΛΙΣΤΑ_ΚΑΛΕΣΜΕΝΩΝ',severity:'κρίσιμο',route:'cal',
+    if(evStage(e)!=='draft'&&evInvEmpty(e))
+      out.push({code:evStage(e)==='published'?'ΔΡΑΣΗ_ΚΕΝΗ_ΛΙΣΤΑ_ΚΑΛΕΣΜΕΝΩΝ':dv('ΔΡΑΣΗ_ΚΕΝΗ_ΛΙΣΤΑ_ΚΑΛΕΣΜΕΝΩΝ_ΕΤΗΣΙΟ'),
+        severity:evStage(e)==='published'?'κρίσιμο':dv('προσοχή'),route:'cal',
         title:'Δράση με φόρμα και ΚΕΝΗ λίστα καλεσμένων — δεν τη βλέπει κανένας γονέας',
         who:e.title,detail:when+' · άνοιξε τη δράση στη Μόλα → «Ποιοι καλούνται»'});
   });
@@ -20983,9 +20985,16 @@ const efHelper=x=>!!x.p&&!isLed(x.p)&&x.pa.role===DL.KHELP;
 const dlStaff=e=>efPersons(e.id).filter(x=>x.p&&isLed(x.p)&&efdLive(x.pa));
 const dlHelpers=e=>efPersons(e.id).filter(x=>efHelper(x)&&efdLive(x.pa));
 const dlKids=e=>efPersons(e.id).filter(x=>x.p&&!isLed(x.p)&&!efHelper(x)&&efdLive(x.pa));
+const dlEligSecs=e=>{ const secs=new Set(evSecs(e)); (D.emo||[]).forEach(o=>{ if(o.event_id===e.id&&o.section)secs.add(o.section) }); return secs; };
 const dlEligible=e=>{ if(evLeadersOnly(e))return [];
-  const secs=new Set(evSecs(e)); (D.emo||[]).forEach(o=>{ if(o.event_id===e.id&&o.section)secs.add(o.section) });
-  return (D.bh||[]).filter(p=>isMem(p)&&p.status===dv('Ενεργός')&&inScope(p)&&secs.has(secOf(p))&&evInvOk(e,p.id,secOf(p))); };
+  const secs=dlEligSecs(e);
+  return (D.bh||[]).filter(p=>isMem(p)&&p.status===dv('Ενεργός')&&!vaHidesPerson(p)&&secs.has(secOf(p))&&evInvOk(e,p.id,secOf(p))); };
+const dlEligMissing=e=>{ if(!e||evLeadersOnly(e)||ME.role==='admin'||ME.platform_admin)return [];
+  return [...dlEligSecs(e)].filter(s=>!(D.bh||[]).some(p=>isMem(p)&&p.status===dv('Ενεργός')&&secOf(p)===s)); };
+const dlEligWarn=e=>{ const w=[]; if(!e||evLeadersOnly(e))return w;
+  if(evInvEmpty(e))w.push(t('Η δράση είναι «Μόνο συγκεκριμένοι» χωρίς κανέναν καλεσμένο — 0 δικαιούνται και κανένας γονέας δεν τη βλέπει. Άνοιξέ τη στη Μόλα › «Ποιοι καλούνται».'));
+  const m=dlEligMissing(e); if(m.length)w.push(t('Ο αριθμός είναι μερικός — δεν βλέπεις τα μέλη όλων των τμημάτων της δράσης')+': '+m.join(', '));
+  return w; };
 const dlKidsFull=e=>{ const real=dlKids(e), have=new Set([...real,...dlHelpers(e)].map(x=>x.p.id));
   return [...real,...dlEligible(e).filter(p=>!have.has(p.id)).map(p=>({p,pa:{},full:true}))]; };
 const dlP=id=>id?(D.bh||[]).find(b=>b.id===id)||null:null;
@@ -21036,6 +21045,7 @@ function dlChecks(e,g){
   const n=dlNights(e), ei=dlEidos(e), en=dlEn(e), tm=dlTmima(e), camp=en>=5, end=e.end_date||e.event_date;
   const staff=dlStaff(e), ids=new Set(staff.map(x=>x.p.id));
   if(!e.event_date)add(1,'Ημερομηνίες δράσης');
+  dlEligWarn(e).forEach(w=>add(1,w,false));
   const a=dlP(e.arxigos_id);
   if(!a)add(1,'Αρχηγός δράσης');
   if((en===4||en===6)&&tm!=='Κοινότητα Ανιχνευτών')add(1,'«'+ei+'» δηλώνεται μόνο για την Κοινότητα Ανιχνευτών');
@@ -21457,6 +21467,7 @@ async function dlBuild(e,buf,o){
   d.certs=await dlCertImgs(e);
   d.budget=await bdForSheet(e,g.full);    
   const r=await dlFill(buf,d,o);
+  if(g.full)dlEligWarn(e).reverse().forEach(w=>r.rep.unshift('⚠ '+w));
   if(g.full){ const n=d.kids.length; r.rep.unshift(t('ΣΥΜΜΕΤΟΧΕΣ: όλη η δύναμη')+' — '+n+' '+t('μέλη που δικαιούνται να δηλώσουν (για τον προϋπολογισμό). Όταν κλείσουν οι δηλώσεις: «Πέρασε τις τελικές συμμετοχές».')); }
   if(o&&o.rec){ if(d.certs.err)r.rep.unshift(t('Πιστοποιητικά')+': '+d.certs.err); return r; }
   if(d.certs.err)r.rep.unshift(t('Πιστοποιητικά')+': '+d.certs.err);
@@ -22340,7 +22351,8 @@ function bdHTML(e){
   const newFee=kn?Math.max(0,bdR(CN.fee-TN.bal/kn)):null;
   const bal=!ed||TN.bal===0?'':(!bdHasForm(e)&&newFee!=null?`<button class="btn sm" id="bdBalFee">⚖ ${t('Τίμημα')} → ${bdEur(newFee)}</button>`:'')+`<button class="btn sm" id="bdBal">⚖ ${TN.bal<0?t('Από Ταμείο Τμήματος')+' '+bdEur(-TN.bal):t('Προς Ταμείο (Άλλο)')+' '+bdEur(TN.bal)}</button>
       <span class="dim" style="font-size:12px">${t('ισοσκελίζει αυτό που είναι τώρα στο Δελτίο')}</span>`;
-  return `<div id="bdBox">
+  const ew=typeof dlEligWarn==='function'?dlEligWarn(e):[];
+  return `<div id="bdBox">${ew.map(w=>`<div class="card pad" style="border-left:3px solid var(--warn);margin-bottom:10px;font-size:13px">⚠ ${esc(w)}</div>`).join('')}
   <div class="card pad" style="margin-bottom:13px">
     <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>${t('Προϋπολογισμός')}</b>
       <span class="pill">${X.final?t('Τελειοποίηση'):t('Σχεδιασμός')}</span><span class="sp"></span>
@@ -28281,7 +28293,7 @@ function molaBody(){
         const st=evStage(e);
         return `<div class="mev${e.bold?' b':''}${alien?' alien':''}${st!=='published'?' st-'+st:''}" data-ev="${e.id}" style="color:${col};border-left-color:${col}"
           title="${esc(e.title)}&#10;${esc(lv.t)}${rng?' · '+esc(rng):''}${e.hours?' · '+esc(e.hours):''}${st!=='published'?'&#10;'+esc(STG[st].t):''}">
-          ${esc(e.title)}${rng?`<i class="mrng">${esc(rng)}</i>`:''}${shared?'<i class="mko">κοινό</i>':''}${st!=='published'?`<i class="mst">${esc(STG[st].s)}</i>`:''}</div>`}).join('')}
+          ${esc(e.title)}${rng?`<i class="mrng">${esc(rng)}</i>`:''}${shared?'<i class="mko">κοινό</i>':''}${st!=='published'?`<i class="mst">${esc(STG[st].s)}</i>`:''}${evInvEmpty(e)?`<i class="mst" style="color:var(--warn)" title="${esc(t('«Μόνο συγκεκριμένοι» χωρίς κανέναν καλεσμένο — κανένας γονέας δεν τη βλέπει'))}">⚠ ${esc(t('κανείς'))}</i>`:''}</div>`}).join('')}
       ${molaCanEdit()?`<button class="madd" data-add="${mi}_${si}" title="Πρόσθεσε δράση">＋</button>`:''}
     </td>`;
   };
