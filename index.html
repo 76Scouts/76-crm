@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-13 11:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-13 12:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1872,7 +1872,7 @@ function mergeStubs(){
 async function loadAll(){
   Object.keys(LZON).forEach(k=>{ if(LZON[k]==='ok'){ LZON[k]=null; lazyFire(k) } });
   const q=[
-    pageAll('badgeholders','id,registry_no,first_name,last_name,sex,section,category,kind,phone,email,status,is_commissioner,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location,studying'),
+    pageAll('badgeholders','id,registry_no,first_name,last_name,sex,section,category,kind,phone,email,status,is_commissioner,commissioner_at,is_network,appointment,headrole,scout_dates,scout_name,nickname,same_as,home_phone,home_address,special,location,studying'),
     sb.from('member_year').select('person_id,scout_year,section,group_name,grade,registered,voided_at,triptycho_no,reg_no,role,source,fee_tier,fee_due,fee_paid,fee_note,pay_method,paid_on').limit(3000),
     sb.from('sessions').select('id,session_date,section,scout_year,status,title,session_type,event_id,no_theme,planned_reqs').order('session_date').limit(500),
     pageAll('attendance','session_id,person_id,status'),
@@ -20989,7 +20989,8 @@ const dlFaList=e=>{ const o=e.fa_order||[], ix=id=>{const i=o.indexOf(id); retur
   return dlStaff(e).filter(dlIsFA).sort((a,b)=>ix(a.p.id)-ix(b.p.id)||sortByName(a.p,b.p)); };
 function dlAppt(p,day){ day=day||new Date().toISOString().slice(0,10);
   const w=warCurrent(p.id,day);
-  return (w&&w.no)||'ΕΚΚΡΕΜΕΙ'}
+  return (w&&w.no)||dlEforia(p)||'ΕΚΚΡΕΜΕΙ'}
+const dlEforia=p=>p&&p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at)?p.commissioner_at:null;
 
 const dlKath=p=>DL.HAT[((typeof hatOfYear==='function'&&hatOfYear(p,YEAR))||{}).role_code]||'';
 const dlTr=(p,re)=>(D.tr||[]).some(t=>t.person_id===p.id&&re.test(t.type||'')&&!/Κοινό Μέρος/.test(t.type||''));
@@ -21406,7 +21407,7 @@ function dlData(e,g,med){
   const kids=kidsX.slice().sort((x,y)=>String(secOf(x.p)||'').localeCompare(String(secOf(y.p)||''),'el')||sortByName(x.p,y.p));
   const SEC={'Αγέλη':'Λυκόπουλο','Ομάδα':'Πρόσκοπος','Κοινότητα':'Ανιχνευτής','Δίκτυο':'Δίκτυο'};
   const row=(x,st)=>{const p=x.p, y=myOf(p)||{};
-    return {trip:y.triptycho_no||y.reg_no||'ΕΚΚΡΕΜΕΙ', am:p.registry_no||'', name:nm(p), dob:dobOf(p), klim:'76ο Σ.Π.',
+    return {trip:y.triptycho_no||y.reg_no||dlEforia(p)||'ΕΚΚΡΕΜΕΙ', am:p.registry_no||'', name:nm(p), dob:dobOf(p), klim:'76ο Σ.Π.',
       tmima:st?'Βαθμοφόρος':(SEC[secOf(p)]||secOf(p)||''), phone:st?(p.phone||ctCallNo(p.id)):(ctCallNo(p.id)||p.phone),
       father:((g.par||{})[p.id]||{}).father_name||'', mother:((g.par||{})[p.id]||{}).mother_name||'', paid:x.pa.paid?'Πληρωμένη':dv('Απλήρωτη'),    
       diet:med?efdMed(med[p.id]).diet.join('· '):'', days:days.map(d=>!x.pa.days||x.pa.days.includes(d)),
