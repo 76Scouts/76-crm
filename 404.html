@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-13 22:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-14 15:28'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -11617,7 +11617,12 @@ function pgWire(g, people){
   };
 }
 let KL={date:'', rows:[]};
-const klNew=()=>({pid:'', badge:'', nums:'', kane:false});
+const klNew=()=>({pid:'', badge:'', nums:'', kane:false, part:false});
+const klFold=s=>String(s||'').toUpperCase().replace(/[ΑΒΕΖΗΙΚΜΝΟΡΤΧΥ]/g,c=>PLATE_GR2LAT[c]||c);    
+const klPool=row=>(D.rc2||[]).filter(r=>r.section==='Ομάδα'&&r.active!==false&&!r.retired_at
+    &&(row.badge?r.stage_catalog_id===row.badge:r.item_kind!=='απαίτηση πτυχίου'&&r.item_kind!=='προϋπόθεση'))
+  .sort((a,b)=>String(a.code||'').localeCompare(String(b.code||''),'el',{numeric:true}));
+const klBadgeName=row=>{ const b=(D.pcat||[]).find(c=>c.id===row.badge); return b?b.label:'' };
 function klMyPatrols(){
   const me=mePid(); if(!me)return [];
   return (D.sg||[]).filter(g=>g.active!==false&&g.section==='Ομάδα'&&g.scout_year===curScoutYear()
@@ -11635,13 +11640,13 @@ function klKids(){
 const klBadges=()=>(D.pcat||[]).filter(c=>c.section==='Ομάδα'&&(c.item_kind==='ειδικότητα'||c.item_kind==='πτυχίο')&&!c.retired_at)
   .sort((a,b)=>String(a.label).localeCompare(String(b.label),'el'));
 function klResolve(row){
-  const pool=(D.rc2||[]).filter(r=>r.section==='Ομάδα'&&r.active!==false&&!r.retired_at
-    &&(row.badge?r.stage_catalog_id===row.badge:r.item_kind!=='απαίτηση πτυχίου'&&r.item_kind!=='προϋπόθεση'));
+  const pool=klPool(row);
+  if(row.badge&&!row.part)return {ok:pool, bad:[], whole:true};
   const toks=[]; String(row.nums||'').split(/[\s,;]+/).filter(Boolean).forEach(t=>{
     const m=t.match(/^(\d+)-(\d+)$/);
     if(m&&+m[2]>=+m[1]&&+m[2]-+m[1]<40){for(let i=+m[1];i<=+m[2];i++)toks.push(String(i))} else toks.push(t)});
   const ok=[], bad=[];
-  toks.forEach(t=>{ const r=pool.find(x=>String(x.code||'').toUpperCase()===t.toUpperCase());
+  toks.forEach(t=>{ const r=pool.find(x=>klFold(x.code)===klFold(t));
     r?(ok.some(y=>y.id===r.id)||ok.push(r)):bad.push(t) });
   return {ok, bad};
 }
@@ -11653,12 +11658,14 @@ function klLine(i){
       <span style="flex:1;min-width:200px">${ppHTML('klP'+i,row.pid,{ph:'Παιδί…'})}</span>
       <select class="kl-b" data-i="${i}" style="max-width:190px"><option value="">Τρίφυλλα (1–92)</option>
         ${klBadges().map(b=>`<option value="${b.id}"${b.id===row.badge?' selected':''}>Πτυχίο ${esc(b.label)}</option>`).join('')}</select>
-      <input class="kl-n" data-i="${i}" value="${esc(row.nums)}" placeholder="π.χ. 48, 53" style="max-width:150px">
+      ${row.badge&&!row.part?'':`<input class="kl-n" data-i="${i}" value="${esc(row.nums)}" placeholder="π.χ. 48, 53" style="max-width:150px">`}
+      ${row.badge?`<button type="button" class="btn sm ${row.part?'p':'gh'} kl-part" data-i="${i}" aria-pressed="${row.part}">${t('Μέρος πτυχίου')}</button>`:''}
       <label style="display:flex;gap:4px;align-items:center;font-size:12px"><input type="checkbox" class="kl-k" data-i="${i}"${row.kane?' checked':''} style="width:auto"> ΚΑΝΕ</label>
     </div>
+    ${row.badge&&row.part?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${klPool(row).map(r=>`<button type="button" class="btn sm gh kl-c" data-i="${i}" data-c="${esc(r.code)}" title="${esc(r.label)}">${esc(r.code)}</button>`).join('')}</div>`:''}
     <div class="dim kl-prev" data-i="${i}" style="font-size:11.5px;margin-top:5px">${klPrev(row,res,has)}</div></div>`;
 }
-const klPrev=(row,res,has)=>res.ok.map(r=>`<span${has(r)?' style="text-decoration:line-through" title="την έχει ήδη"':''}>${esc(r.code)} ${esc(r.label)}</span>`).join(' · ')
+const klPrev=(row,res,has)=>(res.whole?`<b>${t('Όλο το πτυχίο')}</b> (${res.ok.length}): `:'')+res.ok.map(r=>`<span${has(r)?' style="text-decoration:line-through" title="την έχει ήδη"':''}>${esc(r.code)} ${esc(r.label)}</span>`).join(' · ')
   +(res.bad.length?` <b style="color:var(--bad)">δεν υπάρχει: ${esc(res.bad.join(', '))}</b>`:'');
 
 function kollaBody(head){
@@ -11689,16 +11696,14 @@ function klWire(kids){
   $('klDate').onchange=e=>{KL.date=e.target.value};
   const prev=i=>{ const row=KL.rows[i], el=document.querySelector(`.kl-prev[data-i="${i}"]`);
     if(el)el.innerHTML=klPrev(row,klResolve(row),r=>row.pid&&psDone(row.pid,r.id)) };
-  KL.rows.forEach((row,i)=>{ ppWire('klP'+i,kids,{note:p=>{const y=(D.my||[]).find(y=>y.person_id===p.id&&y.scout_year===curScoutYear());return y&&y.group_name||''}});
-    $('klP'+i).onchange=e=>{row.pid=e.target.value||''; prev(i)} });
-  document.querySelectorAll('.kl-b').forEach(s=>s.onchange=()=>{KL.rows[+s.dataset.i].badge=s.value; prev(+s.dataset.i)});
-  document.querySelectorAll('.kl-n').forEach(s=>s.oninput=()=>{KL.rows[+s.dataset.i].nums=s.value; prev(+s.dataset.i)});
-  document.querySelectorAll('.kl-k').forEach(s=>s.onchange=()=>{KL.rows[+s.dataset.i].kane=s.checked});
+  KL.rows.forEach((_,i)=>klWireRow(i,kids,prev));
   $('klAdd').onclick=()=>{ KL.rows.push(klNew()); const i=KL.rows.length-1;
     $('klRows').insertAdjacentHTML('beforeend',klLine(i)); klWireRow(i,kids,prev) };
   $('klGo').onclick=async()=>{
     const rows=KL.rows.map(r=>({r,res:klResolve(r)})).filter(x=>x.r.pid&&x.res.ok.length);
     if(KL.rows.some(r=>r.pid&&klResolve(r).bad.length))return toast('Υπάρχουν αριθμοί που δεν βρέθηκαν — διόρθωσέ τους πρώτα');
+    const noNum=KL.rows.find(r=>r.pid&&r.badge&&r.part&&!klResolve(r).ok.length);
+    if(noNum)return toast(t('Στο πτυχίο')+' «'+klBadgeName(noNum)+'» '+t('γράψε ποιες απαιτήσεις πέρασε')+': '+klPool(noNum).map(r=>r.code).join(', '));
     if(!rows.length)return toast('Δεν συμπλήρωσες καμία γραμμή');
     const btn=$('klGo'); btn.disabled=true;
     const {data,error}=await sb.rpc('kolla_submit',{p_date:KL.date, p_examiner:$('klExam').value||null,
@@ -11712,10 +11717,18 @@ function klWire(kids){
 }
 function klWireRow(i,kids,prev){
   const row=KL.rows[i];
-  ppWire('klP'+i,kids,{}); $('klP'+i).onchange=e=>{row.pid=e.target.value||''; prev(i)};
+  ppWire('klP'+i,kids,{note:p=>{const y=(D.my||[]).find(y=>y.person_id===p.id&&y.scout_year===curScoutYear());return y&&y.group_name||''}});
+  $('klP'+i).onchange=e=>{row.pid=e.target.value||''; prev(i)};
   const q=s=>document.querySelector(`${s}[data-i="${i}"]`);
-  q('.kl-b').onchange=e=>{row.badge=e.target.value; prev(i)};
-  q('.kl-n').oninput=e=>{row.nums=e.target.value; prev(i)};
+  const redo=()=>{ const el=document.querySelector(`.kl-row[data-i="${i}"]`); if(!el)return;
+    el.outerHTML=klLine(i); klWireRow(i,kids,prev) };
+  q('.kl-b').onchange=e=>{row.badge=e.target.value; row.part=false; row.nums=''; redo()};
+  const n=q('.kl-n'); if(n)n.oninput=e=>{row.nums=e.target.value; prev(i)};
+  const pt=q('.kl-part'); if(pt)pt.onclick=()=>{row.part=!row.part; if(!row.part)row.nums=''; redo()};
+  document.querySelectorAll(`.kl-c[data-i="${i}"]`).forEach(b=>b.onclick=()=>{
+    const have=String(row.nums||'').split(/[\s,;]+/).filter(Boolean);
+    if(!have.some(x=>klFold(x)===klFold(b.dataset.c)))row.nums=[...have,b.dataset.c].join(', ');
+    const nn=q('.kl-n'); if(nn)nn.value=row.nums; prev(i) });
   q('.kl-k').onchange=e=>{row.kane=e.target.checked};
 }
 
