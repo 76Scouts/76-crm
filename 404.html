@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-14 20:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-15 06:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19341,7 +19341,7 @@ function V_efolder(){
   const body = tab==='venue'  ? efGenika(e)
              : tab==='people' ? efPower(e,parts)+efPeople(e,parts)
              : tab==='forms'  ? ntHTML(e)+'<div id="efForms" class="card"><div class="pad dim">Φόρτωση…</div></div>'
-             : tab==='budget' ? bdHTML(e)
+             : tab==='budget' ? OIK.bdHTML(e)
              : tab==='docs'   ? efDocs(e,parts)
              : tab==='phones' ? efPhones(e,parts)
              :                  efCerts(e,parts,endD);
@@ -19354,7 +19354,7 @@ function V_efolder(){
   if(tab==='venue')  efGenikaWire(e);
   if(tab==='people'){ efPowerWire(e); efPeopleWire(e); }
   if(tab==='forms'){ ntWire(e); efFormsLoad(e); }
-  if(tab==='budget') bdWire(e);    
+  if(tab==='budget') OIK.bdWire(e);    
   if(tab==='docs')   efDocsWire(e,parts);
   if(tab==='phones') efPhonesWire(e,parts);
   if(tab==='certs')  efCertsWire(e,parts,endD);
@@ -21603,7 +21603,7 @@ async function dlBuild(e,buf,o){
   const d=dlData(e,g,med);
   if(o&&o.rec&&!withMed)d.noDiet=true;    
   d.certs=await dlCertImgs(e);
-  d.budget=await bdForSheet(e,g.full);    
+  d.budget=await OIK.bdForSheet(e,g.full);    
   const r=await dlFill(buf,d,o);
   if(g.full)dlEligWarn(e).reverse().forEach(w=>r.rep.unshift('⚠ '+w));
   if(g.full){ const n=d.kids.length; r.rep.unshift(t('ΣΥΜΜΕΤΟΧΕΣ: όλη η δύναμη')+' — '+n+' '+t('μέλη που δικαιούνται να δηλώσουν (για τον προϋπολογισμό). Όταν κλείσουν οι δηλώσεις: «Πέρασε τις τελικές συμμετοχές».')); }
@@ -21993,7 +21993,7 @@ async function dlFill(buf,d,o){
   const U=await dlSh(B,'U'); if(U)dlFillSign(U,d);
   const A=await dlSh(B,'A'); if(A)dlFillArx(A,d,rep);
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
-  if(d.budget){ const P=await B.sheet(dv('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); if(P)dlFillBudget(P,d.budget,rep); else rep.push(t('Λείπει το φύλλο ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); }
+  if(d.budget){ const P=await B.sheet(dv('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); if(P)OIK.dlFillBudget(P,d.budget,rep); else rep.push(t('Λείπει το φύλλο ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); }
   const own=B.rec?xlOwn(B.rec):null;
   if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs,own}; }
   const hook=d.certs&&d.certs.length?await dlCertsPlan(B,d.certs,rep):null;
@@ -22328,7 +22328,6 @@ async function gsSnap(e,st,x){
   else toast(t('Έτοιμο')+': '+r.name);
 }
 function gsB64(u){ let s=''; for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); }
-const BD={};                                                     
 const BD_X=()=>[dv('Διατροφή'),dv('Διαμονή'),dv('Μεταφορικά'),dv('Υλικά Προγράμματος'),dv('Επισκευές'),dv('Υλικά Φαρμακείου'),
   dv('Αναμνηστικά'),dv('Δημόσιες Σχέσεις κ.ά.'),dv('Απρόβλεπτα'),dv('Άλλο')];                        
 const BD_E=()=>[dv('Από Ταμείο Τμήματος'),dv('Ενίσχυση από Ε.Π.Σ.'),dv('Από δωρεές κλπ')];          
@@ -22338,19 +22337,7 @@ const BD_PD=()=>[['no',t('—')],['days',t('× μέρες')],['nights',t('× β�
 const bdN=x=>{ const n=parseFloat(String(x??'').replace(',','.')); return Number.isFinite(n)?n:0 };
 const bdR=x=>Math.round((bdN(x)+Number.EPSILON)*100)/100;
 const bdEur=v=>{ const n=bdR(v), s=Math.abs(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return (n<0?'−':'')+s+' €' };
-const bdId=()=>Math.random().toString(36).slice(2,10);
-
-const bdEpex=e=>{ const s=BD[e.id]; return s&&s.d&&s.d.epex!=null?bdN(s.d.epex):1 };
-const bdDik=e=>{ const s=BD[e.id]; return s&&s.d&&s.d.dik!=null?bdN(s.d.dik):null };
 const bdHasForm=e=>!(e.fee==null||e.fee==='');
-function bdCtx(e,epex,dik){
-  epex=epex==null?bdEpex(e):bdN(epex); dik=dik===undefined?bdDik(e):dik;
-  const gsr=typeof GS!=='undefined'&&GS[e.id]&&GS[e.id].row, final=!!(gsr&&gsr.kids_final);
-  const staff=[...dlStaff(e),...dlHelpers(e)], days=dlDays(e), nights=e.nights||Math.max(0,days.length-1);
-  const fee=bdHasForm(e)?Math.max(0,bdR(bdN(e.fee)-epex)):Math.max(0,bdR(dik||0));
-  const one=kids=>({fee, gross:bdN(e.fee), epex, kids, staff, vathm:dlStaff(e).length, days, nights});
-  return {final, full:one(dlKidsFull(e)), dec:{...one(dlKids(e)),dec:true}};    
-}
 const bdHere=(x,day)=>!day||!x.pa||!x.pa.days||!x.pa.days.length||x.pa.days.includes(day);
 function bdCount(C,c,day){
   c=c||{}; if(c.basis==='flat')return 1; if(c.basis==='custom')return Math.max(0,Math.round(bdN(c.n)));
@@ -22404,6 +22391,25 @@ function bdSheet(C,d){
   bdGroups(C,d,'exoda').forEach(g=>{ if(BD_X().includes(g.cat))out.exp[g.cat]=g.sum; else if(g.sum)out.expFree.push([g.cat,g.sum]); });
   return out;
 }
+function bdNote(C,old,d){
+  const sums=x=>{ const m={}; if(!x)return m; ['esoda','exoda'].forEach(sd=>bdGroups(C,x,sd).forEach(g=>{ if(g.sum||g.items.length)m[g.cat]=g.sum })); return m; };
+  const a=sums(old), b=sums(d), ch=[...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>bdR(a[k]||0)!==bdR(b[k]||0))
+    .map(k=>k+' '+bdEur(a[k]||0)+' → '+bdEur(b[k]||0));
+  return ch.join(' · ').slice(0,500)||null;
+}
+const BD={};                                                     
+const bdId=()=>Math.random().toString(36).slice(2,10);
+
+const bdEpex=e=>{ const s=BD[e.id]; return s&&s.d&&s.d.epex!=null?bdN(s.d.epex):1 };
+const bdDik=e=>{ const s=BD[e.id]; return s&&s.d&&s.d.dik!=null?bdN(s.d.dik):null };
+function bdCtx(e,epex,dik){
+  epex=epex==null?bdEpex(e):bdN(epex); dik=dik===undefined?bdDik(e):dik;
+  const G=DRA.GS, gsr=G&&G[e.id]&&G[e.id].row, final=!!(gsr&&gsr.kids_final);
+  const staff=[...DRA.dlStaff(e),...DRA.dlHelpers(e)], days=DRA.dlDays(e), nights=e.nights||Math.max(0,days.length-1);
+  const fee=bdHasForm(e)?Math.max(0,bdR(bdN(e.fee)-epex)):Math.max(0,bdR(dik||0));
+  const one=kids=>({fee, gross:bdN(e.fee), epex, kids, staff, vathm:DRA.dlStaff(e).length, days, nights});
+  return {final, full:one(DRA.dlKidsFull(e)), dec:{...one(DRA.dlKids(e)),dec:true}};    
+}
 async function bdLoad(eid){
   const [a,b]=await Promise.all([sb.from('event_budget').select('*').eq('event_id',eid).maybeSingle(),
     sb.from('event_budget_log').select('at,by_person,stage,esoda,exoda,esoda_d,exoda_d,note').eq('event_id',eid).order('at',{ascending:false}).limit(12)]);
@@ -22425,7 +22431,7 @@ function dlFillBudget(S,b,rep){
   const h=S.find(dv('ΑΙΤΙΟΛΟΓΙΑ'),{col:'C'}), end=S.find(dv('Σύνολο Εσόδων'),{col:'C'});
   if(!h||!end){ rep.push(t('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ: δεν βρέθηκε ο πίνακας')); return; }
   const side=(cL,cV,fixed,free,what,spill)=>{
-    const key=r=>{ const lab=XL.norm(S.v(r,cL)||''); return lab?Object.keys(fixed).find(c=>XL.norm(c)===lab):null };
+    const key=r=>{ const lab=DRA.XL.norm(S.v(r,cL)||''); return lab?Object.keys(fixed).find(c=>DRA.XL.norm(c)===lab):null };
     const fr=[]; let spillAt=null;
     for(let r=h.r+1;r<end.r;r++){ if(S.isF(r,cV)||S.isF(r,cL))continue; const k=key(r);
       if(k){ S.set(r,cV,fixed[k]); if(k===spill)spillAt=r; } else fr.push(r); }
@@ -22438,10 +22444,20 @@ function dlFillBudget(S,b,rep){
   side(7,8,b.exp,b.expFree,t('έξοδα'),dv('Άλλο'));
 }
 
+async function bdSaveRpc(e){
+  const s=BD[e.id], X=bdCtx(e), C=X.full;
+  const lines=s.d.lines.map(({_meta,...l})=>l).map(l=>l.calc?{...l,poso:bdAmount(C,l)}:{...l,poso:bdR(l.poso),...(l.poso_d!=null&&l.poso_d!==''?{poso_d:bdR(l.poso_d)}:{poso_d:null})});    
+  const TF=bdTotals(X.full,s.d), TD=bdTotals(X.dec,s.d);
+  const old=s.row?{dik_epit:s.row.dik_epit,special:s.row.special||[],lines:(s.row.lines||[]).filter(l=>!l.auto)}:null;
+  return sb.rpc('budget_save',{p_event:e.id,p_dik_epit:bdR(s.d.dik_epit),p_epex:bdR(s.d.epex??1),p_dik:s.d.dik==null?null:bdR(s.d.dik),
+    p_special:s.d.special.map(({id,who,label,count,fee})=>({id,who,label,count:String(Math.round(bdN(count))),fee:String(bdR(fee))})),
+    p_lines:lines, p_tot:{esoda:TF.es,exoda:TF.ex,esoda_d:TD.es,exoda_d:TD.ex},
+    p_since:s.row?s.row.updated_at:null, p_note:bdNote(C,old,s.d)});
+}
 function bdHTML(e){
   const s=BD[e.id]; if(!s)return `<div class="card pad dim" id="bdBox">${t('Φόρτωση…')}</div>`;
   if(s.err)return `<div class="card pad" id="bdBox">${t('Δεν φόρτωσε')}: ${esc(s.err.message||'')}</div>`;
-  const X=bdCtx(e), F=X.full, Dd=X.dec, d=s.d, ed=gsCan(e), TF=bdTotals(F,d), TD=bdTotals(Dd,d), ro=ed?'':' disabled';
+  const X=bdCtx(e), F=X.full, Dd=X.dec, d=s.d, ed=DRA.gsCan(e), TF=bdTotals(F,d), TD=bdTotals(Dd,d), ro=ed?'':' disabled';
   const two=(a,b)=>`<span class="bd-2"><b>${bdEur(a)}</b><span>${bdEur(b)}</span></span>`;
   const sel=(k,opts,v)=>`<select data-bd="${k}"${ro}>${opts.map(([a,b])=>`<option value="${a}"${a===v?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   const amt=(l,ld)=>l.calc?two(l.poso,ld.poso):'';
@@ -22475,7 +22491,7 @@ function bdHTML(e){
       <input data-bd="count" type="number" min="0" value="${esc(String(x.count??''))}" style="width:60px" title="${t('πόσοι')}"${ro}> ×
       <input data-bd="fee" type="number" min="0" step="0.01" value="${esc(String(x.fee??''))}" style="width:70px" title="€"${ro}>
       ${ed?`<button class="btn sm gh" data-bd="sdel">✕</button>`:''}</div>`).join('');
-  const who=id=>{const p=dlP(id); return p?nm(p):''};
+  const who=id=>{const p=DRA.dlP(id); return p?nm(p):''};
   const row=(lab,C,T,on)=>`<div style="display:flex;gap:8px;align-items:baseline;margin:10px 0 6px"><b>${lab}</b>
       <span class="dim" style="font-size:12.5px">${pln(C.kids.length,t('παιδί'),t('παιδιά'))} · ${t('επιτελείο')} ${C.staff.length}</span>
       ${on?`<span class="pill" style="font-size:11px">${t('αυτό είναι τώρα στο Δελτίο')}</span>`:''}</div>
@@ -22489,7 +22505,7 @@ function bdHTML(e){
   const newFee=kn?Math.max(0,bdR(CN.fee-TN.bal/kn)):null;
   const bal=!ed||TN.bal===0?'':(!bdHasForm(e)&&newFee!=null?`<button class="btn sm" id="bdBalFee">⚖ ${t('Τίμημα')} → ${bdEur(newFee)}</button>`:'')+`<button class="btn sm" id="bdBal">⚖ ${TN.bal<0?t('Από Ταμείο Τμήματος')+' '+bdEur(-TN.bal):t('Προς Ταμείο (Άλλο)')+' '+bdEur(TN.bal)}</button>
       <span class="dim" style="font-size:12px">${t('ισοσκελίζει αυτό που είναι τώρα στο Δελτίο')}</span>`;
-  const ew=typeof dlEligWarn==='function'?dlEligWarn(e):[];
+  const ew=DRA.dlEligWarn(e);
   return `<div id="bdBox">${ew.map(w=>`<div class="card pad" style="border-left:3px solid var(--warn);margin-bottom:10px;font-size:13px">⚠ ${esc(w)}</div>`).join('')}
   <div class="card pad" style="margin-bottom:13px">
     <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>${t('Προϋπολογισμός')}</b>
@@ -22523,7 +22539,7 @@ function bdHTML(e){
 }
 const hasMetaL=l=>!!(l.when||l.sup||l._meta);
 const bdLine=(s,id)=>s.d.lines.find(l=>l.id===id);
-function bdDraw(e){ const b=$('bdBox'); if(!b||EFID!==e.id)return; b.outerHTML=bdHTML(e); bdWireUI(e); }
+function bdDraw(e){ const b=$('bdBox'); if(!b||DRA.EFID!==e.id)return; b.outerHTML=bdHTML(e); bdWireUI(e); }
 function bdTouch(e){ BD[e.id].dirty=true; bdDraw(e); }
 function bdWireUI(e){
   const s=BD[e.id], box=$('bdBox'); if(!box||!s||s.err)return;
@@ -22557,29 +22573,37 @@ function bdWireUI(e){
     if(kn){ s.d.dik=Math.max(0,bdR(C.fee-T.bal/kn)); bdTouch(e); } });
   on('bdSave',()=>bdSave(e));
 }
-function bdNote(C,old,d){
-  const sums=x=>{ const m={}; if(!x)return m; ['esoda','exoda'].forEach(sd=>bdGroups(C,x,sd).forEach(g=>{ if(g.sum||g.items.length)m[g.cat]=g.sum })); return m; };
-  const a=sums(old), b=sums(d), ch=[...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>bdR(a[k]||0)!==bdR(b[k]||0))
-    .map(k=>k+' '+bdEur(a[k]||0)+' → '+bdEur(b[k]||0));
-  return ch.join(' · ').slice(0,500)||null;
-}
 async function bdSave(e){
-  const s=BD[e.id], X=bdCtx(e), C=X.full, x=$('bdSave'); if(x){ x.disabled=true; x.textContent=t('Αποθηκεύω…'); }
-  const lines=s.d.lines.map(({_meta,...l})=>l).map(l=>l.calc?{...l,poso:bdAmount(C,l)}:{...l,poso:bdR(l.poso),...(l.poso_d!=null&&l.poso_d!==''?{poso_d:bdR(l.poso_d)}:{poso_d:null})});    
-  const TF=bdTotals(X.full,s.d), TD=bdTotals(X.dec,s.d);
-  const old=s.row?{dik_epit:s.row.dik_epit,special:s.row.special||[],lines:(s.row.lines||[]).filter(l=>!l.auto)}:null;
-  const {data,error}=await sb.rpc('budget_save',{p_event:e.id,p_dik_epit:bdR(s.d.dik_epit),p_epex:bdR(s.d.epex??1),p_dik:s.d.dik==null?null:bdR(s.d.dik),
-    p_special:s.d.special.map(({id,who,label,count,fee})=>({id,who,label,count:String(Math.round(bdN(count))),fee:String(bdR(fee))})),
-    p_lines:lines, p_tot:{esoda:TF.es,exoda:TF.ex,esoda_d:TD.es,exoda_d:TD.ex},
-    p_since:s.row?s.row.updated_at:null, p_note:bdNote(C,old,s.d)});
+  const x=$('bdSave'); if(x){ x.disabled=true; x.textContent=t('Αποθηκεύω…'); }
+  const {data,error}=await bdSaveRpc(e);    
   if(error){ if(x){ x.disabled=false; x.textContent=t('Αποθήκευση'); } return toast(t('Δεν αποθηκεύτηκε')+': '+error.message); }
   await bdLoad(e.id); bdDraw(e); toast(t('Αποθηκεύτηκε')+' · '+data.stage);
 }
 async function bdWire(e){
-  if(typeof GS!=='undefined'&&!GS[e.id])await gsLoad(e.id);         
+  const G=DRA.GS; if(G&&!G[e.id])await DRA.gsLoad(e.id);         
   if(!BD[e.id]||!BD[e.id].dirty)await bdLoad(e.id);
   bdDraw(e);
 }
+const DRA=Object.freeze({
+  dlKids:(...a)=>dlKids(...a),             
+  dlKidsFull:(...a)=>dlKidsFull(...a),     
+  dlDays:(...a)=>dlDays(...a),             
+  dlP:(...a)=>dlP(...a),                   
+  dlStaff:(...a)=>dlStaff(...a),           
+  dlHelpers:(...a)=>dlHelpers(...a),       
+  dlEligWarn:(...a)=>dlEligWarn(...a),     
+  get GS(){ return GS; },                  
+  gsCan:(...a)=>gsCan(...a),               
+  gsLoad:(...a)=>gsLoad(...a),             
+  get XL(){ return XL; },                  
+  get EFID(){ return EFID; },              
+});
+const OIK=Object.freeze({
+  bdHTML:(...a)=>bdHTML(...a),             
+  bdWire:(...a)=>bdWire(...a),             
+  bdForSheet:(...a)=>bdForSheet(...a),     
+  dlFillBudget:(...a)=>dlFillBudget(...a), 
+});
 const efdtNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ς/g,dv('σ')).replace(/\s+/g,' ').trim();
 function efdtCol(h){ const x=efdtNorm(h);
   if(!x)return null;
