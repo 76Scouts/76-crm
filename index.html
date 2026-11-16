@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-16 09:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-16 11:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4296,7 +4296,7 @@ function certsHTML(p){
         <select id="pcType">${certTypesFor(p).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')
           ||'<option value="">— κανένα διαθέσιμο —</option>'}</select>
         <div class="dim" style="font-size:12px">${esc(t('Ασφάλεια, άδεια κυκλοφορίας ή ΜΟΤ; Αυτά είναι χαρτιά του οχήματος — ανεβαίνουν στο όχημα, όχι εδώ.'))}${ME.person_id===p.id?` <a href="#" onclick="route('myveh');return false">${esc(t('Τα οχήματά μου'))}</a>`:''}</div>
-        <input id="pcLabel" placeholder="${esc(t('Κατηγορία / περιγραφή'))}">
+        <input id="pcLabel" list="pcLabelL" placeholder="${esc(t('Κατηγορία / περιγραφή'))}">
         <div style="display:flex;gap:7px">
           <label style="flex:1;display:flex;flex-direction:column;gap:2px">
             <span class="dim" id="pcIssL" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em">Ημ. έκδοσης</span>
@@ -4382,6 +4382,8 @@ function wireCerts(p,after){
   const upd=()=>{
     const t=ctype(ty.value), iss=$('pcIss'), ex=$('pcExp'), ov=$('pcOv');
     $('pcLabel').placeholder=t.label_hint||'Περιγραφή (προαιρετικά)';
+    if(!$('pcLabelL'))document.body.insertAdjacentHTML('beforeend','<datalist id="pcLabelL"></datalist>');
+    $('pcLabelL').innerHTML=t.code===dv('Ν91')?[t('Λευκό Ποινικό Μητρώο — '),t('Αντίστοιχο πιστοποιητικό — ')].map(x=>`<option value="${esc(x)}">`).join(''):'';
     const byExp=t.date_basis==='λήξη', auto=certAuto(t);
     $('pcIssL').textContent = byExp?'Ημ. έκδοσης (προαιρετικά)':'Ημ. έκδοσης';
     $('pcOvL').style.display = auto?'flex':'none';
@@ -19891,8 +19893,8 @@ function efCerts(e,parts,onDate){
   const expired=code=>led.filter(x=>certOn(x.p.id,code,onDate).k==='expired');
   const efGE=p=>!!p&&!!p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at);
   const geN91=led.filter(x=>efGE(x.p)).length;
-  const missingN91=led.filter(x=>!efGE(x.p)&&!['ok','hidden'].includes(certOn(x.p.id,'Ν91',onDate).k));
-  const hidN91=led.filter(x=>!efGE(x.p)&&certOn(x.p.id,dv('Ν91'),onDate).k==='hidden').length;
+  const missingN91=led.filter(x=>!efGE(x.p)&&!['ok','hidden'].includes(dlN91k(e,x.p.id,onDate)));    
+  const hidN91=led.filter(x=>!efGE(x.p)&&dlN91k(e,x.p.id,onDate)==='hidden').length;
 
   const box=(code,level,why)=>{
     const h=holders(code), x=expired(code), need=level==='απαραίτητο';
@@ -21137,6 +21139,9 @@ async function dlLoad(eid,force){
   G.cmn=m&&!m.error&&Array.isArray(m.data)?m.data:[];
   await rhLoad((D.ev||[]).find(x=>x.id===eid),force);    
   await guLoad((D.ev||[]).find(x=>x.id===eid),force);    
+  const ev0=(D.ev||[]).find(x=>x.id===eid);    
+  if(ev0&&dlStaff(ev0).some(x=>!dlIsGE(x.p)&&!n91Visible(x.p.id))){ const {data,error}=await sb.rpc('event_n91_status',{p_event:eid});
+    if(!error&&Array.isArray(data)){ G.n91s={}; data.forEach(r=>{ G.n91s[r.person_id]={ok:!!r.ok}; }); } }
   await dlParLoad(eid,G); return G;
 }
 async function dlParLoad(eid,G,extra){
@@ -21210,8 +21215,10 @@ function dlAppt(p,day){ day=day||new Date().toISOString().slice(0,10);
   const w=warCurrent(p.id,day)||(p._war?warPick(p._war,day):null);    
   return (w&&w.no)||dlEforia(p)||'ΕΚΚΡΕΜΕΙ'}
 const dlIsGE=p=>!!p&&!!p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at);
+const dlN91k=(e,pid,end)=>{ const k=certOn(pid,'Ν91',end).k; if(k!=='hidden')return k;
+  const s=((GEV[e.id]||{}).n91s||{})[pid]; return s?(s.ok?'ok':'none'):'hidden'; };
 function dlN91(e){ const end=e.end_date||e.event_date, staff=dlStaff(e), o={total:staff.length,ge:[],ok:[],hid:[],bad:[]};
-  staff.forEach(x=>{ if(dlIsGE(x.p))return o.ge.push(x); const k=certOn(x.p.id,'Ν91',end).k; (k==='ok'?o.ok:k==='hidden'?o.hid:o.bad).push(x); });
+  staff.forEach(x=>{ if(dlIsGE(x.p))return o.ge.push(x); const k=dlN91k(e,x.p.id,end); (k==='ok'?o.ok:k==='hidden'?o.hid:o.bad).push(x); });
   return o; }
 const dlN91Sheet=C=>dv('Ν.91(Ι): ελέγχθηκαν στο e76')+' '+C.ok+' '+dv('από τους')+' '+C.total+' '+dv('βαθμοφόρους του επιτελείου και έχουν Ν.91(Ι) σε ισχύ')
   +(C.ge?' · '+C.ge+' '+dv('εξαιρούνται — η Εντολή Διοίκησης εκδίδεται από την Εφορεία τους (ΓΕ/ΕΕΛ)'):'')
@@ -22151,8 +22158,8 @@ async function dlFill(buf,d,o){
   const A=await dlSh(B,'A'); if(A)dlFillArx(A,d,rep);
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
   if(d.budget){ const P=await B.sheet(dv('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); if(P)OIK.dlFillBudget(P,d.budget,rep); else rep.push(t('Λείπει το φύλλο ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); }
-  const own=B.rec?xlOwn(B.rec):null;
-  if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs,own}; }
+  const recAll=B.rec?B.rec.slice():null, own=recAll?xlOwn(recAll):null;    
+  if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs,own,recAll}; }
   const hook=d.certs&&d.certs.length?await dlCertsPlan(B,d.certs,rep):null;
   return {bytes:await B.save(hook), rep, own};
 }
@@ -22300,6 +22307,7 @@ function gsHTML(e){
       ${ed?(r.kids_final?`<span class="pill" style="font-size:11px">${t('τελικές συμμετοχές')}</span><button class="btn sm gh" id="gsFull" title="${t('Ξανά όλοι όσοι δικαιούνται να δηλώσουν, για τον προϋπολογισμό')}">${t('Πίσω σε όλη τη δύναμη')}</button>`
         :`<button class="btn sm" id="gsFin" title="${t('Τώρα στις ΣΥΜΜΕΤΟΧΕΣ είναι όλη η δύναμη (για τον προϋπολογισμό). Με αυτό μένουν μόνο όσοι δήλωσαν.')}">${t('Πέρασε τις τελικές συμμετοχές')}</button>`):''}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${t('Φτιάχτηκε')} ${fdate(r.created_at)}${who(r.created_by)?' · '+esc(who(r.created_by)):''}. ${t('Δουλεύετε όλοι σε αυτό το αρχείο — όχι αντίγραφα, όχι κατέβασμα και ξανανέβασμα.')}</div>
+    ${ed?gsHandHTML(r):''}
     ${warn}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
       <b style="font-size:12.5px">${t('Στιγμιότυπα')}</b>
@@ -22323,6 +22331,7 @@ function gsDraw(e){ const b=$('gsLive'); if(!b||EFID!==e.id)return; b.innerHTML=
   on('gsFin',x=>gsFinal(e,x,true)); on('gsFull',x=>gsFinal(e,x,false)); on('gsBack',x=>gsRestore(e,x));
   b.querySelectorAll('[data-gsst]').forEach(x=>x.onclick=()=>gsSnap(e,x.dataset.gsst,x));
   b.querySelectorAll('[data-gssign]').forEach(x=>x.onclick=()=>gsSign(e,x.dataset.gssign,x));
+  b.querySelectorAll('[data-gshand]').forEach(x=>x.onclick=()=>gsHandSet(e,x.dataset.gshand,x));    
 }
 async function gsWire(e){
   gsDraw(e); await gsLoad(e.id); gsDraw(e);
@@ -22414,6 +22423,28 @@ async function gsFinal(e,x,fin){
     :t('Πίσω σε όλη τη δύναμη;')+'\n\n'+t('Στις ΣΥΜΜΕΤΟΧΕΣ θα μπουν ξανά όλοι όσοι δικαιούνται να δηλώσουν.'),{ok:fin?t('Συνέχεια'):t('Ναι'),cancel:t('Άκυρο')}))return;
   await gsSync(e,x,{final:fin});
 }
+const GS_AREAS=[['genika',t('Γενικά')],['staff',t('Συμμετοχές — Επιτελείο')],['kids',t('Συμμετοχές — Ανήλικοι')],
+  ['budget',t('Προϋπολογισμός')],['certs',t('Πιστοποιητικά')],['pending',t('Εκκρεμότητες (ΑΡΧΗΓΟΥ)')]];
+const gsHand=e=>new Set(((GS[e.id]||{}).row||{}).hand_areas||[]);
+async function gsAreaOf(R){
+  const S=await dlSh(R.B,'Y'), H=S?S.findAll(dv('Ονοματεπώνυμο')):[], kr=H[1]?H[1].r:1e9;    
+  return c=>{ if(!c||c.img||c.rm)return 'certs'; const sh=c.sh||'';
+    if(DL_SH.Y.includes(sh))return (c.dim?c.dim[0]:c.r)>=kr?'kids':'staff';
+    if(/ΠΙΣΤΟΠ|PISTOP/.test(sh))return 'certs';
+    if(/ΠΡΟΫΠΟΛΟΓΙΣΜ/.test(sh))return 'budget';
+    if(DL_SH.A.includes(sh)||DL_SH.K.includes(sh))return 'pending';
+    return 'genika'; }; }
+async function gsHandSet(e,k,x){
+  const s=GS[e.id]; if(!s||!s.row)return; const cur=new Set(s.row.hand_areas||[]); cur.has(k)?cur.delete(k):cur.add(k);
+  x.disabled=true; const {data,error}=await sb.rpc('event_sheet_hand',{p_event:e.id,p_areas:[...cur]});
+  if(error){ x.disabled=false; return toast(t('Δεν άλλαξε')+': '+error.message); }
+  s.row.hand_areas=data||[]; gsDraw(e); }
+function gsHandHTML(r){
+  return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px"><b style="font-size:12.5px">${t('Με το χέρι')}</b>${GS_AREAS.map(([k,l])=>{
+    const on=(r.hand_areas||[]).includes(k);
+    return `<button class="btn sm ${on?'p':'gh'}" data-gshand="${k}" aria-pressed="${on}" title="${esc(on?t('Το γεμίζετε με το χέρι — η «Ενημέρωση από το e76» δεν το αγγίζει. Πάτα για να το ξαναπάρει το e76.'):t('Πάτα αν θέλετε να το γεμίζετε με το χέρι — η «Ενημέρωση από το e76» δεν θα το αγγίζει.'))}">${on?'✋ ':''}${esc(l)}</button>`; }).join('')}
+    <span class="dim" style="font-size:11.5px">${t('η προειδοποίηση «το γράφει το e76» φεύγει με την επόμενη ενημέρωση')}</span></div>`;
+}
 async function gsSync(e,x,opt){
   const done=gsBusy(x,t('Διαβάζω το αρχείο…'));
   let R,I;
@@ -22425,17 +22456,31 @@ async function gsSync(e,x,opt){
     I=R.certs?await gsImgPlan(R.B,R.certs,live):null;
   }catch(err){ done(); return toast(t('Δεν έγινε')+': '+(err.message||err)) }
   const ch=await gsSyncChoices(R,I);
-  if(!ch.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own:R.own}); if(r.ok)await gsFinalSet(e,opt); done();
+  const areaOf=await gsAreaOf(R), hand=gsHand(e);
+  const own=R.recAll?xlOwn(R.recAll.filter(c=>!hand.has(areaOf(c)))):R.own;    
+  ch.forEach(c=>{ c.area=areaOf(c.v[0]); });
+  let ch2=ch.filter(c=>!hand.has(c.area));
+  const cnt={}; ch.forEach(c=>{ cnt[c.area]=(cnt[c.area]||0)+1; });
+  const avail=GS_AREAS.filter(([k])=>cnt[k]);
+  if(avail.length>1||avail.some(([k])=>hand.has(k))){
+    const ap=await uiChooseMulti(t('Ποια τμήματα να ενημερωθούν από το e76;')+'\n\n'+t('Ό,τι ξετσεκάρεις μένει όπως είναι στο αρχείο.')
+        +(avail.some(([k])=>hand.has(k))?'\n'+t('Τα «με το χέρι» είναι ξετσεκαρισμένα — τα γεμίζετε εσείς.'):''),
+      avail.map(([k,l])=>({v:k,on:!hand.has(k),t:l+' · '+cnt[k]+' '+t('αλλαγές')+(hand.has(k)?' · ✋ '+t('με το χέρι'):'')})),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
+    if(!ap){ done(); return; }
+    const on=new Set(ap); ch2=ch.filter(c=>on.has(c.area));
+    if(!ch2.length){ done(); return toast(t('Δεν διάλεξες κανένα τμήμα — δεν άλλαξε τίποτα.')); }
+  }
+  if(!ch2.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own}); if(r.ok)await gsFinalSet(e,opt); done();
     const sh=gsShareTxt(r.share), tx=t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'');
     if(sh)await uiNote(tx+'\n\n'+sh); else toast(tx); return; }
   const pick=await uiChooseMulti(t('Τι θα ξαναγραφτεί από το e76;')+'\n\n'+t('Μόνο κελιά που γράφει το e76 και ΑΛΛΑΞΑΝ. Ξετσέκαρε ό,τι θέλεις να μείνει όπως το έγραψε κάποιος στο αρχείο.')
-    +(R.rep.length?'\n\n'+R.rep.map(s=>'• '+s).join('\n'):''),ch,{ok:t('Ενημέρωση'),cancel:t('Άκυρο')});
+    +(R.rep.length?'\n\n'+R.rep.map(s=>'• '+s).join('\n'):''),ch2,{ok:t('Ενημέρωση'),cancel:t('Άκυρο')});
   if(!pick||!pick.length){ done(); return; }
   const all=pick.flat(), cells=all.filter(c=>c.sh&&!c.dim).map(c=>({sh:c.sh,a1:XL.ref(c.r,c.c),v:c.v,...(c.kind?{fmt:c.kind}:{})})), dims=all.filter(c=>c.dim).map(c=>({sh:c.sh,r1:c.dim[0],r2:c.dim[1],hidden:!!c.v})), adds=all.filter(c=>c.img).map(c=>c.img);
   const rm=[...all.filter(c=>c.rm).map(c=>c.rm),...adds.filter(a=>a.old).map(a=>a.old)].map(q=>({r:q.r,c:q.c})), bad=[];
   try{
     x.textContent=t('Γράφω…');
-    const r=await gsCall({op:'sync',event_id:e.id,cells,dims,own:R.own}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
+    const r=await gsCall({op:'sync',event_id:e.id,cells,dims,own}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
     await gsFinalSet(e,opt);
     if(rm.length){ const q=await gsCall({op:'img',event_id:e.id,sheet:I.sheet,remove:rm}); if(!q.ok)bad.push(q.why); }
     for(const [i,a] of adds.entries()){ if(bad.length)break;
