@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-16 13:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-16 18:15'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -25273,35 +25273,50 @@ const telIntl=t=>{const d=String(t||'').replace(/\D/g,'');
   if(d.length===8)return '+357'+d;
   if(d.length===11&&d.startsWith('357'))return '+'+d;
   return '+'+d;};
+const CT_LEGAL=new Set([dv('Κηδεμόνας'),dv('Θετή μητέρα'),dv('Θετός πατέρας'),dv('Ανάδοχος')]);
+const ctFold=x=>latin(String(x||'')).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,'');
+function ctSameSur(a,b){ a=ctFold(a); b=ctFold(b); if(!a||!b)return false; if(a===b)return true;
+  let i=0; while(i<a.length&&i<b.length&&a[i]===b[i])i++; return i>=4&&a.length-i<=2&&b.length-i<=2; }
 function contactRows(scope){
   const {sec,grp,prefix,lang}=scope; const L=lang==='la';
   const evid=sec.startsWith('ev:')?sec.slice(3):null;
   const inEv=evid?new Set((D.pa||[]).filter(x=>x.event_id===evid).map(x=>x.person_id)):null;
   const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)
      &&(evid?inEv.has(p.id):(sec==='all'||secOf(p)===sec))&&(!grp||(myOf(p)||{}).group_name===grp)).sort(sortByName);
-  const seen={}, out=[];
+  const seen={}, out=[], today=new Date().toISOString().slice(0,10);
   kids.forEach(p=>{
-    const g=gOf(p.registry_no)||{}, y=myOf(p)||{};
-    const kid=L?(p.latin_name||latin(nm(p))):nm(p);
-    const grpn=y.group_name?(L?latin(y.group_name):y.group_name):'';
-    const secn=L?latin(secOf(p)||''):(secOf(p)||'');
-    [[g.father_name,g.father_mobile,g.father_work_phone,g.father_email,'Πατέρας','Father',g.father_latin,g.father_nocomms],
-     [g.mother_name,g.mother_mobile,g.mother_work_phone,g.mother_email,'Μητέρα','Mother',g.mother_latin,g.mother_nocomms]]
-    .forEach(([n,mob,wrk,mail,relG,relL,lat,nc])=>{
+    const g=gOf(p.registry_no)||{}, lw=String(p.latin_name||'').trim().split(/\s+/);
+    const kf=L?(lw.length>1?lw.slice(0,-1).join(' '):latin(p.first_name)):p.first_name;
+    const kl=L?(lw.length>1?lw[lw.length-1]:latin(p.last_name)):p.last_name;
+    const add=(n,lat,mob,wrk,mail,rel,nc)=>{
       const tel=telIntl(mob)||telIntl(wrk); if(!n||!tel||nc)return;    
-      const key=tel+'|'+n; if(seen[key]){seen[key].kids.push(kid);return}
-      const rec={name:L?(lat||latin(n)):n, own:!!lat, tel, tel2:(telIntl(mob)&&telIntl(wrk))?telIntl(wrk):null,
-        mail:mail&&/@/.test(mail)?mail:'', rel:L?relL:relG, kids:[kid], sec:secn, grp:grpn, prefix};
-      seen[key]=rec; out.push(rec);});
+      const name=L?(lat||latin(n)):n, kid={f:kf, l:ctSameSur(String(name).trim().split(/\s+/).pop(),kl)?'':kl};
+      const key=tel+'|'+n; if(seen[key]){ if(!seen[key].k.some(x=>x.f===kid.f&&x.l===kid.l))seen[key].k.push(kid); return; }
+      const rec={name, own:!!lat, tel, tel2:(telIntl(mob)&&telIntl(wrk))?telIntl(wrk):null,
+        mail:mail&&/@/.test(mail)?mail:'', rel:rel||'', k:[kid], prefix};
+      seen[key]=rec; out.push(rec); };
+    add(g.father_name,g.father_latin,g.father_mobile,g.father_work_phone,g.father_email,'',g.father_nocomms);
+    add(g.mother_name,g.mother_latin,g.mother_mobile,g.mother_work_phone,g.mother_email,'',g.mother_nocomms);
+    const single=!!g.father_name!==!!g.mother_name;
+    (D.care_op||[]).filter(l=>l.member_id===p.id&&l.relation&&l.relation!==dv('Πατέρας')&&l.relation!==dv('Μητέρα')
+        &&l.receives_comms!==false&&(!l.valid_to||l.valid_to>=today)&&(CT_LEGAL.has(l.relation)||(single&&l.call_order)))
+      .forEach(l=>{ const c=D.bh.find(x=>x.id===l.carer_id)||{};
+        add([l.first_name,l.last_name].filter(Boolean).join(' '),c.latin_name||'',l.phone,null,l.email,l.relation); });
   });
+  out.forEach(r=>{ r.kids=ctKids(r.k); });
   return {kids,out};
+}
+function ctKids(k){
+  const out=k.filter(x=>!x.l).map(x=>x.f), grp=[];
+  k.filter(x=>x.l).forEach(x=>{ const g=grp.find(G=>ctSameSur(G[0].l,x.l)); g?g.push(x):grp.push([x]); });
+  grp.forEach(G=>out.push(G.map(x=>x.f).join(', ')+' '+G[G.length-1].l));
+  return out;
 }
 function vcfEsc(s){return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n')}
 function buildVCF(rows){
   return rows.map(r=>{
     const parts=r.name.trim().split(/\s+/), last=parts.length>1?parts[parts.length-1]:r.name, first=parts.slice(0,-1).join(' ')||'';
-    const org=r.prefix+(r.grp?' · '+r.grp:'');
-    const note=r.rel+' — '+r.kids.join(', ')+(r.sec?' · '+r.sec:'')+(r.grp?' · '+r.grp:'');
+    const org=r.prefix;    
     return ['BEGIN:VCARD','VERSION:3.0',
       'N:'+vcfEsc(last)+';'+vcfEsc(first)+';;;',
       'FN:'+vcfEsc(r.name),
@@ -25310,14 +25325,14 @@ function buildVCF(rows){
       'TEL;TYPE=CELL:'+r.tel,
       r.tel2?'TEL;TYPE=WORK:'+r.tel2:null,
       r.mail?'EMAIL;TYPE=INTERNET:'+r.mail:null,
-      'NOTE:'+vcfEsc(note),
+      r.rel?'NOTE:'+vcfEsc(r.rel):null,    
       'CATEGORIES:'+vcfEsc(r.prefix),
       'END:VCARD'].filter(Boolean).join('\r\n')}).join('\r\n')+'\r\n';
 }
 function buildContactsCSV(rows){
   const head=['Name','Given Name','Family Name','Group Membership','Organization 1 - Name','Organization 1 - Title','Phone 1 - Type','Phone 1 - Value','Phone 2 - Value','E-mail 1 - Value','Notes'];
   const body=rows.map(r=>{const parts=r.name.trim().split(/\s+/),last=parts.length>1?parts[parts.length-1]:r.name,first=parts.slice(0,-1).join(' ');
-    return [r.name,first,last,r.prefix+' ::: * myContacts',r.prefix+(r.grp?' · '+r.grp:''),r.prefix+' - '+r.kids.join(', '),'Mobile',r.tel,r.tel2||'',r.mail,r.rel+' — '+r.kids.join(', ')+(r.sec?' · '+r.sec:'')]});
+    return [r.name,first,last,r.prefix+' ::: * myContacts',r.prefix,r.prefix+' - '+r.kids.join(', '),'Mobile',r.tel,r.tel2||'',r.mail,r.rel||'']});
   return '\ufeff'+[head].concat(body).map(a=>a.map(v=>{const s=v==null?'':String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}).join(',')).join('\r\n');
 }
 function saveBlob(txt,mime,fn){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:mime}));a.download=fn;a.click()}
@@ -25354,19 +25369,20 @@ function contactExport(){
       <b>vCard (.vcf)</b> — στείλ' το στον εαυτό σου και άνοιξέ το στο κινητό· μπαίνουν όλες μαζί.<br>
       <b>CSV</b> — για Google Contacts (Import) ή Outlook.<br><br>
       Στο <b>Viber</b> δεν υπάρχει τρόπος να προστεθούν μαζικά μέλη σε ομάδα από έξω — το κλείνει το ίδιο το Viber. Αφού όμως μπουν οι επαφές στο κινητό, τις βρίσκεις γράφοντας «<span id="xpre2">76Γ</span>» στον επιλογέα και τις προσθέτεις με μερικά χτυπήματα.</div></div>`;
+  $('xpre').value='76G'; $('xlang').value='la';    
   const upd=()=>{
     const sec=$('xsec').value;
     const grps=[...new Set(D.bh.filter(p=>(sec.startsWith('ev:')||sec==='all'||secOf(p)===sec)&&inYear(p)).map(p=>(myOf(p)||{}).group_name).filter(Boolean))].sort();
     const cur=$('xgrp').value;
     $('xgrp').innerHTML='<option value="">Όλες</option>'+grps.map(g=>`<option${g===cur?' selected':''}>${esc(g)}</option>`).join('');
-    const sc={sec,grp:$('xgrp').value,prefix:$('xpre').value.trim()||'76Γ',lang:$('xlang').value};
+    const sc={sec,grp:$('xgrp').value,prefix:$('xpre').value.trim()||'76G',lang:$('xlang').value};
     const {kids,out}=contactRows(sc);
     $('xpre2').textContent=sc.prefix;
     const auto=sc.lang==='la'?out.filter(r=>!r.own).length:0;
     $('xprev').innerHTML=`<b>${out.length}</b> επαφές από <b>${kids.length}</b> παιδιά${out.length&&kids.length?` · ${(out.length/kids.length).toFixed(1)} ανά παιδί`:''}`
       +(auto?`<div style="margin-top:6px;color:var(--warn)">${auto} ονόματα γράφτηκαν αυτόματα — δεν έχουν δώσει οι ίδιοι τη λατινική τους γραφή</div>`:'');
     const s=out[0];
-    $('xsample').innerHTML=s?`<b>Όνομα</b> ${esc(s.name)}<br><b>Εταιρεία</b> ${esc(s.prefix+(s.grp?' · '+s.grp:''))}<br><b>Θέση</b> ${esc(s.prefix+' - '+s.kids.join(', '))}<br><b>Τηλέφωνο</b> ${esc(s.tel)}`:'<span class="dim">Καμία επαφή</span>';
+    $('xsample').innerHTML=s?`<b>Όνομα</b> ${esc(s.name)}<br><b>Εταιρεία</b> ${esc(s.prefix)}<br><b>Θέση</b> ${esc(s.prefix+' - '+s.kids.join(', '))}<br><b>Τηλέφωνο</b> ${esc(s.tel)}`:'<span class="dim">Καμία επαφή</span>';
     return {sc,out};
   };
   ['xsec','xgrp','xpre','xlang'].forEach(id=>$(id).addEventListener('input',upd));
