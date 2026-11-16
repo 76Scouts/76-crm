@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-16 18:15'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-16 21:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -17286,6 +17286,78 @@ async function n91mSend(kind,go){
     +(rem>0&&!j.error?`<div class="dim" style="margin-top:4px">${t('Έμειναν')} ${rem} — ${t('πάτα ξανά «Ποιοι θα το πάρουν».')}</div>`:'')
     +((j.unreached||[]).length?`<div style="margin-top:6px;font-size:12.5px"><span style="color:var(--warn)">${t('Χωρίς email — πες τους αλλιώς:')}</span> ${j.unreached.map(u=>esc(u.name)).join(' · ')}</div>`:'');
 }
+const EYX_K=[
+  {k:'genethlia',     t:()=>t('Γενέθλια'),     d:()=>t('Κάθε μέρα 09:00 — για παιδί στους γονείς/κηδεμόνες και στο ίδιο αν έχει email· για βαθμοφόρο στον ίδιο')},
+  {k:'christougenna', t:()=>t('Χριστούγεννα'), d:()=>t('24 Δεκεμβρίου 09:00 — γονείς, παιδιά με δικό τους email, βαθμοφόροι· μία φορά ανά διεύθυνση')},
+  {k:'protochronia',  t:()=>t('Πρωτοχρονιά'),  d:()=>t('31 Δεκεμβρίου 09:00 — γονείς, παιδιά με δικό τους email, βαθμοφόροι· μία φορά ανά διεύθυνση')}];
+const eyxSay=m=>{ const o=$('eyxMsg'); if(o)o.textContent=m||''; };
+const eyxCfg=()=>{ const r=(D.st||[]).find(x=>x.k==='eyxes'); return (r&&r.v)||{}; };
+async function eyxCall(body){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    const r=await fetch(SB_URL+'/functions/v1/greetings',{method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
+      body:JSON.stringify(body)});
+    let j={}; try{ j=await r.json() }catch(x){}
+    if(!r.ok&&!j.error)j.error=t('Δεν απάντησε η αποστολή')+' ('+r.status+').';
+    return j;
+  }catch(x){ return {error:t('Δεν απάντησε η αποστολή')} }
+}
+function eyxBody(){
+  const c=eyxCfg();
+  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+      <b>${t('Ευχές με email — αυτόματα')}</b>
+      <div class="muted" style="margin-top:5px;font-size:13px;line-height:1.6">${t('Φεύγουν μόνες τους 09:00 ώρα Κύπρου, με υπογραφή «Το 76ο Σύστημα Προσκόπων Στροβόλου». Κανείς δεν παίρνει το ίδιο δύο φορές. Όσοι δεν δέχονται επικοινωνία δεν παίρνουν τίποτα.')}</div>
+      <div id="eyxMail" class="dim" style="font-size:12.5px;margin-top:6px"></div>
+      <div id="eyxMsg" role="status" style="font-size:13px;margin-top:6px;font-weight:600"></div></div>
+    ${EYX_K.map(x=>`<div class="card pad" style="margin-bottom:12px">
+      <div class="kv"><b style="flex:1;font-size:14px">${x.t()}</b>
+        <span class="pill${c[x.k]?' ok':''}" style="font-size:11px">${c[x.k]?t('ανοιχτό'):t('κλειστό')}</span>
+        <button class="btn sm${c[x.k]?'':' p'}" data-eyxon="${x.k}">${c[x.k]?t('Κλείσε'):t('Άνοιξε')}</button></div>
+      <div class="dim" style="font-size:12.5px;margin-top:3px">${x.d()}</div>
+      <div id="eyxN_${x.k}" class="dim" style="font-size:12.5px;margin-top:6px">${t('Μετράω…')}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn sm" data-eyxpv="${x.k}">${t('Δες το μήνυμα')}</button>
+        <button class="btn sm gh" data-eyxts="${x.k}">${t('Στείλε δοκιμή σε μένα')}</button></div></div>`).join('')}`;
+  document.querySelectorAll('[data-eyxon]').forEach(b=>b.onclick=()=>eyxToggle(b.dataset.eyxon,b));
+  document.querySelectorAll('[data-eyxpv]').forEach(b=>b.onclick=()=>eyxPreview(b.dataset.eyxpv,b));
+  document.querySelectorAll('[data-eyxts]').forEach(b=>b.onclick=()=>eyxTest(b.dataset.eyxts,b));
+  eyxStatus();
+}
+async function eyxStatus(){
+  const j=await eyxCall({op:'status'});
+  EYX_K.forEach(x=>{ const o=$('eyxN_'+x.k); if(!o)return;
+    if(j.error||!j.ok){ o.innerHTML=`<span style="color:var(--bad)">${esc(j.error||'—')}</span>`; return; }
+    const s=(j.kinds||{})[x.k]||{};
+    o.textContent=x.k==='genethlia'
+      ? t('Σήμερα')+': '+(s.people||0)+' '+t('γενέθλια')+' → '+(s.addresses||0)+' '+t('διευθύνσεις')+' · '+t('φέτος στάλθηκαν')+' '+(s.sent_this_year||0)
+      : (s.addresses||0)+' '+t('διευθύνσεις')+' '+t('στις')+' '+fdate(s.day)+' · '+t('φέτος στάλθηκαν')+' '+(s.sent_this_year||0); });
+  const m=$('eyxMail'); if(m&&j.ok&&!j.mail_ok)m.innerHTML=`<span style="color:var(--warn)">${t('Η αποστολή email δεν είναι ρυθμισμένη — δεν θα φύγει τίποτα.')}</span>`;
+}
+async function eyxToggle(k,btn){
+  const c={...eyxCfg()}, x=EYX_K.find(y=>y.k===k), turnOn=!c[k];
+  if(turnOn&&!await uiAsk(t('Να ανοίξουν οι ευχές')+' «'+x.t()+'»;\n\n'+x.d()+'\n\n'+t('Από εδώ και πέρα φεύγουν μόνες τους.'),{ok:t('Άνοιξε'),cancel:t('Άκυρο')}))return;
+  c[k]=turnOn; btn.disabled=true;
+  const {error}=await sb.from('app_settings').upsert({k:'eyxes',v:c,updated_at:new Date().toISOString()},{onConflict:'k'});
+  btn.disabled=false;
+  if(error)return eyxSay(t('Δεν αποθηκεύτηκε')+': '+error.message);
+  const r=(D.st||[]).find(y=>y.k==='eyxes'); if(r)r.v=c; else (D.st=D.st||[]).push({k:'eyxes',v:c});
+  eyxBody(); eyxSay(turnOn?t('Άνοιξε')+': '+x.t():t('Έκλεισε')+': '+x.t());
+}
+async function eyxPreview(k,btn){
+  btn.disabled=true; const j=await eyxCall({op:'preview',kind:k}); btn.disabled=false;
+  if(j.error||!j.ok)return eyxSay(j.error||'—');
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">${esc(j.subject||'')}</div>
+      <div class="dim" style="font-size:12.5px">${t('Παράδειγμα — το όνομα μπαίνει το πραγματικό')}</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <iframe title="${t('Το μήνυμα')}" sandbox="" style="width:100%;height:560px;border:0;border-radius:10px;background:#f4f6f8" srcdoc="${esc(j.html||'')}"></iframe>`;
+  drw.classList.add('on');
+}
+async function eyxTest(k,btn){
+  if(!await uiAsk(t('Να σταλεί δοκιμή στο δικό σου email;'),{ok:t('Στείλε'),cancel:t('Άκυρο')}))return;
+  btn.disabled=true; const j=await eyxCall({op:'test',kind:k}); btn.disabled=false;
+  eyxSay(j.ok?t('Στάλθηκε η δοκιμή στο email σου'):(j.error||'—'));
+}
 const DH_COL={'κρίσιμο':'bad','προσοχή':'warn','πληροφορία':''};
 function dhEventRows(){
   const today=new Date().toISOString().slice(0,10), out=[];
@@ -27876,7 +27948,8 @@ V.comms=()=>tabView('comms',[
   {k:'rules',t:'Κανόνες',         i:'cog',   fn:remRulesBody, d:'πότε φεύγει το καθένα και τι λέει'},
   {k:'forms',t:'Φόρμες',          i:'book',  fn:()=>formcatBody(), d:'οι ζωντανές φόρμες του Smartespot'},
   {k:'ann',  t:t('Ανακοινώσεις'),  i:'mail',  fn:annEdBody, d:t('γράψε, ενέκρινε, δες πόσοι τις άνοιξαν')},
-  {k:'push', t:t('Στο κινητό'),     i:'mail',  fn:pushAnnBody, d:t('ανακοίνωση με ειδοποίηση στο κινητό — μόνο ο Α.Σ.'), nav:'progfix'}]);
+  {k:'push', t:t('Στο κινητό'),     i:'mail',  fn:pushAnnBody, d:t('ανακοίνωση με ειδοποίηση στο κινητό — μόνο ο Α.Σ.'), nav:'progfix'},
+  ...(ME.role==='admin'?[{k:'eyx', t:t('Ευχές'), i:'mail', fn:eyxBody, d:t('γενέθλια, Χριστούγεννα, Πρωτοχρονιά — αυτόματα με email')}]:[])]);
 
 V.dataqa=()=>tabView('dataqa',[
   {k:'health', t:'Υγεία δεδομένων', i:'shield', fn:()=>healthBody(), d:'τι λείπει ή δεν ταιριάζει'},
@@ -28400,7 +28473,7 @@ let SENT_Q='', SENT_F='';
 function sentKind(tp){
   const s=String(tp||'');
   return /^send-invite/.test(s)?t('Πρόσκληση'):/^n91-reminder/.test(s)?t('Υπενθύμιση Ν91')
-    :/^notify-signup/.test(s)?t('Δηλώσεις δράσης'):/^weekly-digest/.test(s)?t('Εβδομαδιαία σύνοψη'):s;
+    :/^notify-signup/.test(s)?t('Δηλώσεις δράσης'):/^weekly-digest/.test(s)?t('Εβδομαδιαία σύνοψη'):/^greetings/.test(s)?t('Ευχές'):s;
 }
 const sentTime=x=>{const d=new Date(x); return isNaN(d)?'':fdate(x)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
 function sentRow(r,nmOf){
