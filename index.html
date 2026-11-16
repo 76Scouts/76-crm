@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-16 11:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-16 13:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21798,11 +21798,11 @@ async function dlCertImgs(e){
           const doc=await L.getDocument({data:buf}).promise;
           for(let n=1;n<=Math.min(2,doc.numPages);n++){
             const pg=await doc.getPage(n), v0=pg.getViewport({scale:1}), vp=pg.getViewport({scale:fit(v0.width,v0.height)});
-            const [c,x]=canvas(Math.round(vp.width),Math.round(vp.height)); await pg.render({canvasContext:x,viewport:vp}).promise; parts.push(c);
+            const [c,x]=canvas(Math.round(vp.width),Math.round(vp.height)); await pg.render({canvasContext:x,viewport:vp}).promise; parts.push(dlTrim(c));
           }
         }else{
           const bm=await createImageBitmap(new Blob([buf])), f=fit(bm.width,bm.height);
-          const [c,x]=canvas(Math.round(bm.width*f),Math.round(bm.height*f)); x.drawImage(bm,0,0,c.width,c.height); parts.push(c);
+          const [c,x]=canvas(Math.round(bm.width*f),Math.round(bm.height*f)); x.drawImage(bm,0,0,c.width,c.height); parts.push(dlTrim(c));
         }
       }catch(x){ console.warn('cert img',x&&x.message); }
     }
@@ -21828,7 +21828,7 @@ function dlExport(e,pick){
       const {bytes,rep}=await dlBuild(e,buf);
       const ext=(/\.(xlsx|xlsm|xltm|xltx)$/i.exec(fname)||[,'xlsm'])[1].toLowerCase().replace('xltm','xlsm').replace('xltx','xlsx');
       const mime=ext==='xlsm'?'application/vnd.ms-excel.sheet.macroEnabled.12':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      saveBlob(bytes,mime,'Δελτίο Δράσης - '+(e.title||'δράση').replace(/[\\/:*?"<>|]+/g,'-')+'.'+ext);
+      saveBlob(bytes,mime,dlFileBase(e)+'.'+ext);    
       if(rep.length)await uiNote('Κατέβηκε. Να προσέξεις:\n\n• '+rep.join('\n• ')); else toast('Κατέβηκε γεμάτο');
     }catch(x){ toast('Δεν γέμισε: '+(x.message||x)) }
   };
@@ -22185,6 +22185,15 @@ function dlFillVenues3(S,d,rep,PH){
   dlPhones(S,ph.r,k=>{ for(const v of d.venues){ const x=v.ph&&v.ph[k]; if(x)return x; } return null; });
 }
 
+function dlTrim(c){
+  try{ const W=c.width,H=c.height, d=c.getContext('2d').getImageData(0,0,W,H).data; let x0=W,y0=H,x1=-1,y1=-1;
+    for(let y=0;y<H;y+=2)for(let x=0;x<W;x+=2){ const i=(y*W+x)*4; if(d[i]+d[i+1]+d[i+2]<690){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+    if(x1<0)return c;
+    const p=Math.round(Math.max(W,H)*0.015); x0=Math.max(0,x0-p); y0=Math.max(0,y0-p); x1=Math.min(W,x1+p+2); y1=Math.min(H,y1+p+2);
+    if((x1-x0)*(y1-y0)>0.92*W*H)return c;
+    const o=document.createElement('canvas'); o.width=x1-x0; o.height=y1-y0; o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height); return o;
+  }catch(_){ return c; }
+}
 const DL_CERT_TAG='e76 · ';
 const DL_CERT_T={1:dv('Πρώτες Βοήθειες'),2:dv('Ναυαγοσωστική'),3:dv('Υγειονομικό'),4:dv('Ασφάλεια αυτοκινήτου'),5:dv('ΜΟΤ'),6:dv('Άδεια οδήγησης')};
 function dlCertGeo(x){
@@ -22302,6 +22311,7 @@ function gsHTML(e){
       <b>${t('Ζωντανό φύλλο (Google Sheets)')}</b><span class="sp"></span>
       <a class="btn sm p" href="${gsUrl(r.file_id)}" target="_blank" rel="noopener">${t('Άνοιγμα')}</a>
       <a class="btn sm" href="${gsDir(r.folder_id)}" target="_blank" rel="noopener">${t('Φάκελος')}</a>
+      ${ed?`<button class="btn sm gh" id="gsName" title="${t('Όνομα αρχείου κατά το μοτίβο «Δελτίο Δράσης 76ης ΚΑ - Είδος Τίτλος - ηη.μμ.εεεε Τόπος» — τα στιγμιότυπα το παίρνουν κι αυτά')}">${t('Όνομα')}</button>`:''}
       ${isAdminUI()?`<button class="btn sm gh" id="gsRep" title="${t('Νέο αρχείο από το τρέχον πρότυπο του e76 — το σημερινό πάει στον κάδο του Drive')}">${t('Νέο από πρότυπο')}</button>`:''}
       ${ed?`<button class="btn sm" id="gsVis" title="${t('Ξαναγράφει στο ΙΔΙΟ αρχείο μόνο τα κελιά του e76 που άλλαξαν (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΠΙΣΤΟΠΟΙΗΤΙΚΑ…) — πρώτα σου δείχνει τι. Ό,τι γράψατε αλλού μένει.')}">${t('Ενημέρωση από το e76')}</button>`:''}
       ${ed?(r.kids_final?`<span class="pill" style="font-size:11px">${t('τελικές συμμετοχές')}</span><button class="btn sm gh" id="gsFull" title="${t('Ξανά όλοι όσοι δικαιούνται να δηλώσουν, για τον προϋπολογισμό')}">${t('Πίσω σε όλη τη δύναμη')}</button>`
@@ -22327,7 +22337,7 @@ async function gsFinalSet(e,opt){
 }
 function gsDraw(e){ const b=$('gsLive'); if(!b||EFID!==e.id)return; b.innerHTML=gsHTML(e);
   const on=(id,f)=>{const x=$(id); if(x)x.onclick=()=>f(x)};
-  on('gsNew',x=>gsCreate(e,x)); on('gsRep',x=>gsReplace(e,x)); on('gsVis',x=>gsSync(e,x));
+  on('gsNew',x=>gsCreate(e,x)); on('gsRep',x=>gsReplace(e,x)); on('gsName',x=>gsRename(e,x)); on('gsVis',x=>gsSync(e,x));
   on('gsFin',x=>gsFinal(e,x,true)); on('gsFull',x=>gsFinal(e,x,false)); on('gsBack',x=>gsRestore(e,x));
   b.querySelectorAll('[data-gsst]').forEach(x=>x.onclick=()=>gsSnap(e,x.dataset.gsst,x));
   b.querySelectorAll('[data-gssign]').forEach(x=>x.onclick=()=>gsSign(e,x.dataset.gssign,x));
@@ -22343,13 +22353,15 @@ async function gsWire(e){
 const gsBusy=(x,txt)=>{ const o=x.textContent; x.disabled=true; x.textContent=txt; return ()=>{ x.disabled=false; x.textContent=o } };
 
 async function gsCreate(e,x){
-  if(!await uiAsk(t('Να φτιαχτεί το ζωντανό Google Sheet της δράσης;')+'\n\n'+t('Γίνεται ΜΙΑ φορά: το e76 γεμίζει το έντυπο του ΣΠΚ (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΥΠΟΓΡΑΦΕΣ) και το ανεβάζει στο Κοινόχρηστο Drive. Μετά δουλεύετε εκεί — το e76 δεν το ξαναγράφει.'),{ok:t('Φτιάξ’ το'),cancel:t('Άκυρο')}))return;
+  await dlLoad(e.id);
+  const name=await uiText(t('Να φτιαχτεί το ζωντανό Google Sheet της δράσης;')+'\n\n'+t('Γίνεται ΜΙΑ φορά: το e76 γεμίζει το έντυπο του ΣΠΚ (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΥΠΟΓΡΑΦΕΣ) και το ανεβάζει στο Κοινόχρηστο Drive. Μετά δουλεύετε εκεί — το e76 δεν το ξαναγράφει.')+'\n\n'+t('Όνομα αρχείου (διόρθωσέ το αν θέλεις):'),dlFileBase(e),{ok:t('Φτιάξ’ το')});
+  if(name==null)return;
   const done=gsBusy(x,t('Ετοιμάζω…'));
   try{
     const tpl=await espBytes(DL_TPL);
     const {bytes,rep,own}=await dlBuild(e,tpl.buffer,{live:true});
     x.textContent=t('Ανεβαίνει στο Drive…');
-    const r=await gsCall({op:'create',event_id:e.id,xlsx_b64:gsB64(bytes),own});
+    const r=await gsCall({op:'create',event_id:e.id,xlsx_b64:gsB64(bytes),own,name:String(name).trim()});
     if(!r.ok){ done(); return toast(t('Δεν φτιάχτηκε')+': '+r.why) }
     await gsLoad(e.id); GS[e.id].loc={state:'ok'}; gsDraw(e);
     const v=r.visibility||{};
@@ -22528,6 +22540,36 @@ async function gsSnap(e,st,x){
   await gsLoad(e.id); gsDraw(e);
   if(r.xlsx_error)await uiNote(t('Το αντίγραφο Google φτιάχτηκε')+' ('+r.name+').\n\n'+t('Το .xlsx ΔΕΝ βγήκε — το Google εξάγει ως 10 MB· αν έχει εικόνες πιστοποιητικών, κατέβασέ το από το αντίγραφο (Αρχείο → Λήψη) ή αφαίρεσε εικόνες.'));
   else toast(t('Έτοιμο')+': '+r.name);
+}
+const DLN_EIDOS=['',dv('Μονοήμερο'),dv('Διήμερο'),dv('Τριήμερο'),dv('Τετραήμερο'),dv('Πενθήμερο')];
+const DLN_SEC={[dv('Αγέλη')]:dv('ΑΛ'),[dv('Μικρή Αγέλη')]:dv('ΜΑ'),[dv('Ομάδα')]:dv('ΟΠ'),[dv('Κοινότητα')]:dv('ΚΑ'),[dv('Δίκτυο')]:dv('Δ'),[dv('Σύστημα')]:dv('ΣΥΣ')};
+const dlnFold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+function dlnTopos(V){ const n=String((V&&V.name)||'').trim(); if(!n||n==='—')return '';
+  if(/^Εστία 76ου/.test(n))return dv('Εστία 76ου');
+  return /(Σύστημα|Σχολείο)/.test(n)?n.split(/\s+/).pop():n; }
+function dlnDates(a,b){ if(!a)return ''; b=b||a; const [y1,m1,d1]=a.split('-'), [y2,m2,d2]=b.split('-');
+  if(a===b)return d1+'.'+m1+'.'+y1; if(y1!==y2)return d1+'.'+m1+'.'+y1+'-'+d2+'.'+m2+'.'+y2;
+  return m1===m2?d1+'-'+d2+'.'+m1+'.'+y1:d1+'.'+m1+'-'+d2+'.'+m2+'.'+y1; }
+function dlFileBase(e){
+  const sec=e.owner_section||e.section||dv('Σύστημα'), code=DLN_SEC[sec]||sec;
+  const a=e.event_date, b=e.end_date||e.event_date, nd=a?Math.round((Date.parse(b)-Date.parse(a))/864e5)+1:1;
+  const V=((GEV[e.id]||{}).v||[]).map(dlVen)[0], topos=dlnTopos(V);
+  let ti=String(e.title||'').replace(/(\d)o(?=\s|$)/g,dv('$1ο'))
+    .replace(/\s*\([^)]*(?:\d+\/\d+|Σάβ|Κυρ|Δευ|Τρί|Τετ|Πέμ|Παρ|\?)[^)]*\)/g,'')
+    .replace(/\s*[—–-]\s*(?:ΑΛ|ΟΠ|ΚΑ)\s*$/,'')
+    .replace(/\s+(?:Αγέλης|Ομάδας|Κοινότητας|ΑΓΕΛΗΣ|ΟΜΑΔΑΣ|ΚΟΙΝΟΤΗΤΑΣ)(?=\s|$)/g,'');
+  ti=ti.replace(/\s+[—–-]\s+([^—–-]+)$/,(m,x)=>{ const f=dlnFold(x); return f&&(f===dlnFold(dv('Σύστημα'))||dlnFold(topos).includes(f)||dlnFold(V&&V.name).includes(f))?'':m; })
+    .replace(/\s+[—–-]\s+/g,' ').replace(/\s+/g,' ').trim();
+  const ei=/ημερ|κατασκην|μδυ/.test(dlnFold(ti))?'':(DLN_EIDOS[nd]||'');
+  return (dv('Δελτίο Δράσης 76ης')+' '+code+' - '+[ei,ti].filter(Boolean).join(' ')+' - '+[dlnDates(a,b),topos].filter(Boolean).join(' '))
+    .replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim();
+}
+async function gsRename(e,x){
+  await dlLoad(e.id);
+  const name=await uiText(t('Όνομα του ζωντανού αρχείου')+'\n\n'+t('Τα στιγμιότυπα παίρνουν αυτό το όνομα και προσθέτουν « - Για έγκριση», « - Τελικό» ή « - Απολογισμός».'),dlFileBase(e),{ok:t('Μετονομασία')});
+  if(name==null||!String(name).trim())return;
+  const done=gsBusy(x,t('Μετονομάζω…')); const r=await gsCall({op:'rename',event_id:e.id,name:String(name).trim()}); done();
+  toast(r.ok?t('Νέο όνομα')+': '+r.name:t('Δεν έγινε')+': '+r.why);
 }
 function gsB64(u){ let s=''; for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000)); return btoa(s); }
 const BD_X=()=>[dv('Διατροφή'),dv('Διαμονή'),dv('Μεταφορικά'),dv('Υλικά Προγράμματος'),dv('Επισκευές'),dv('Υλικά Φαρμακείου'),
