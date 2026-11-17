@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-17 16:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-17 16:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4022,12 +4022,7 @@ function vehHTML(p){
         ${warn?`<div style="font-size:12px;color:var(--bad);margin-top:3px">⚠ Η ηλικία (${age}) είναι εκτός των ορίων της ασφάλειας</div>`:''}
         ${
 ''}
-        ${(()=>{const can=isAdminUI()||x.v.owner_id===ME.person_id;
-          const last=k=>(D.vp||[]).filter(y=>y.vehicle_id===x.v.id&&y.kind===k).sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
-          const rows=[['Ασφάλεια','vi',x.ins],['ΜΟΤ','vp',last('ΜΟΤ')],['Άδεια κυκλ.','vp',last('ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ')]].filter(r=>r[2]);
-          return rows.map(([l,t,r])=>`<div style="display:flex;gap:6px;align-items:center;font-size:12px;margin-top:3px">
-            <span style="min-width:74px">${l}</span><span class="dim" style="flex:1">${esc(paperDates(r)||'χωρίς ημερομηνίες')}</span>
-            ${can?`<button class="btn gh sm vxedit" data-t="${t}" data-id="${r.id}" title="Διόρθωση ημερομηνιών">✎</button>`:''}</div>`).join('')})()}
+        ${vxRowsHTML(x,p)}
       </div>`}).join(''):'<div class="dim" style="font-size:13px">Κανένα όχημα</div>'}
     ${canE?`<details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Σύνδεση οχήματος</summary>
       <div style="display:grid;gap:7px;margin-top:9px">
@@ -4044,6 +4039,67 @@ const plateKey=s=>String(s||'').toUpperCase().replace(/[\s.\-_]/g,'')
   .replace(/[ΑΒΕΖΗΙΚΜΝΟΡΤΧΥ]/g,c=>PLATE_GR2LAT[c]||c);
 const platePretty=s=>{const k=plateKey(s),m=k.match(/^([A-Z]+)(\d+)$/);return m?m[1]+' '+m[2]:k};
 
+const VX_K=[{k:dv('ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'),l:()=>t('Ασφάλεια'),t:'vi'},{k:dv('ΜΟΤ'),l:()=>t('ΜΟΤ'),t:'vp'},{k:dv('ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'),l:()=>t('Άδεια κυκλ.'),t:'vp'}];
+function vxRowsHTML(x,p){
+  const can=isAdminUI()||x.v.owner_id===ME.person_id, up=can||p.id===ME.person_id;
+  const last=k=>(D.vp||[]).filter(y=>y.vehicle_id===x.v.id&&y.kind===k).sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
+  return VX_K.map(K=>{ const r=K.t==='vi'?x.ins:last(K.k), free=!r&&K.k===dv('ΜΟΤ')&&motFree(x.v,todayISO());
+    return `<div style="display:flex;gap:6px;align-items:center;font-size:12px;margin-top:3px">
+      <span style="min-width:74px">${K.l()}</span>
+      <span class="dim" style="flex:1">${r?esc(paperDates(r)||t('χωρίς ημερομηνίες')):free?esc(t('δεν χρειάζεται ακόμη (νέο όχημα)')):`<span style="color:var(--bad)">${esc(t('λείπει'))}</span>`}</span>
+      ${r&&can?`<button class="btn gh sm vxedit" data-t="${K.t}" data-id="${r.id}" title="${esc(t('Διόρθωση ημερομηνιών'))}">✎</button>`:''}
+      ${up?`<button class="btn gh sm vxup" data-v="${x.v.id}" data-k="${K.k}">${r?'＋ '+esc(t('νέο')):'＋ '+esc(t('Ανέβασμα'))}</button>`:''}</div>`; }).join('')
+    +`<div class="vxbox" data-v="${x.v.id}"></div>`;
+}
+function vxUpForm(box,vid,kind){
+  const K=VX_K.find(y=>y.k===kind)||VX_K[0], v=(D.veh||[]).find(y=>y.id===vid)||{}, ty=ctype(kind)||{};
+  box.innerHTML=`<div style="display:grid;gap:6px;margin-top:7px;padding:9px;border:1px dashed var(--line2);border-radius:var(--rs)">
+    <b style="font-size:12.5px">${K.l()} · ${esc(v.plate||'')}</b>
+    <input type="file" class="vxF" accept="application/pdf,image/*" aria-label="${esc(t('Το χαρτί'))}">
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <label style="flex:1;min-width:130px;font-size:11.5px">${esc(t('Ημ. έκδοσης'))}<input type="date" class="vxI"></label>
+      <label style="flex:1;min-width:130px;font-size:11.5px">${esc(t('Λήγει'))}<input type="date" class="vxE"></label></div>
+    <div class="dim" style="font-size:11.5px">${certAuto(ty)?esc(t('Αν γράψεις μόνο την έκδοση, η λήξη βγαίνει μόνη της'))+': '+esc(certRuleTxt(ty))+'.':esc(t('Γράψε τη λήξη που τυπώνει το χαρτί.'))}</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn p sm vxGo">${esc(isAdminUI()?t('Καταχώρηση'):t('Ανέβασμα για έλεγχο'))}</button>
+      <button class="btn gh sm vxNo">${esc(t('Άκυρο'))}</button><span class="dim vxM" style="font-size:12px"></span></div></div>`;
+  box.querySelector('.vxNo').onclick=()=>{ box.innerHTML=''; };
+  return box.querySelector('.vxGo');
+}
+async function vxUpGo(box,p,vid,kind,after){
+  const m=x=>{const e=box.querySelector('.vxM'); if(e)e.textContent=x}, go=box.querySelector('.vxGo');
+  const f=(box.querySelector('.vxF').files||[])[0], ty=ctype(kind)||{}, iss=box.querySelector('.vxI').value||null;
+  let exp=box.querySelector('.vxE').value||null;
+  if(!f)return m(t('Διάλεξε αρχείο — χωρίς χαρτί δεν υπάρχει τι να ελεγχθεί.'));
+  if(!exp&&iss&&certAuto(ty))exp=certExpiry(ty,iss).exp||null;
+  if(!exp)return m(t('Γράψε τη λήξη (ή την έκδοση, αν η λήξη βγαίνει μόνη της).'));
+  if(!dateSane(iss)||!dateSane(exp))return m(t('Η ημερομηνία δεν φαίνεται σωστή — έλεγξε τη χρονιά.'));
+  go.disabled=true; m(t('Ανεβάζω…'));
+  const path=`vehicles/${vid}/${Date.now()}_${f.name.replace(/[^\w.\-]/g,'_')}`;
+  const up=await sb.storage.from('e76').upload(path,f,{upsert:false});
+  if(up.error){go.disabled=false;return m(t('Το αρχείο δεν ανέβηκε')+': '+upMsg(up.error))}
+  const {data:dd,error:de}=await sb.from('documents').insert({person_id:p.id,kind,title:kind,path,mime:f.type,size_bytes:f.size,issued_on:iss,expires_on:exp}).select().single();
+  if(de){ await sb.storage.from('e76').remove([path]); go.disabled=false; return m(t('Σφάλμα εγγράφου')+': '+de.message) }
+  const {data:ib,error:ie}=await sb.from('vehicle_paper_inbox').insert({document_id:dd.id,person_id:p.id,kind,vehicle_id:vid,ocr_expires:exp}).select().single();
+  if(ie){ await sb.from('documents').delete().eq('id',dd.id); await sb.storage.from('e76').remove([path]); go.disabled=false; return m(t('Δεν στάλθηκε')+': '+ie.message) }
+  D.doc=[...(D.doc||[]),dd];
+  if(isAdminUI()){
+    const {data:res,error:ae}=await sb.rpc('vehicle_paper_assign',{p_inbox:ib.id,p_vehicle:vid,p_expires:exp});
+    if(ae||(res&&res.error)){ go.disabled=false; return m(t('Ανέβηκε, αλλά δεν επιβεβαιώθηκε')+': '+((res&&res.error)||ae.message)+' — '+t('θα το βρεις στα «Χαρτιά οχημάτων».')) }
+    if(iss)await sb.rpc('vehicle_paper_set_issued',{p_inbox:ib.id,p_issued:iss});
+    const [a,b]=await Promise.all([sb.from('vehicle_papers').select('*').eq('vehicle_id',vid),sb.from('vehicle_insurance').select('*').eq('vehicle_id',vid)]);
+    if(!a.error)D.vp=(D.vp||[]).filter(y=>y.vehicle_id!==vid).concat(a.data||[]);
+    if(!b.error)D.vi=(D.vi||[]).filter(y=>y.vehicle_id!==vid).concat(b.data||[]);
+    saveCache(); toast(t('Καταχωρήθηκε — μετράει αμέσως.'));
+  } else { saveCache(); toast(t('Ανέβηκε — περιμένει έλεγχο από τον Α.Σ.')); }
+  after&&after();
+}
+function wireVxUp(p,after){
+  document.querySelectorAll('.vxup').forEach(b=>b.onclick=()=>{ const vid=b.dataset.v, kind=b.dataset.k;
+    const box=document.querySelector(`.vxbox[data-v="${vid}"]`); if(!box)return;
+    const go=vxUpForm(box,vid,kind); go.onclick=()=>vxUpGo(box,p,vid,kind,after);
+    try{ box.scrollIntoView({block:'nearest',behavior:'smooth'}) }catch(e){} });
+}
+
 function wireVxEdit(after){
   document.querySelectorAll('.vxedit').forEach(b=>b.onclick=e=>{ e.preventDefault();
     const t=b.dataset.t, r=(D[t]||[]).find(x=>x.id===b.dataset.id); if(!r)return;
@@ -4052,7 +4108,7 @@ function wireVxEdit(after){
     else paperEdit({t,row:r,type:ctype(r.kind),name:(r.kind==='ΜΟΤ'?'ΜΟΤ':'Άδεια κυκλοφορίας')+pl,after});});
 }
 function wireVeh(p,after){
-  wireVxEdit(after);
+  wireVxEdit(after); wireVxUp(p,after);    
   document.querySelectorAll('.vldel').forEach(b=>b.onclick=async()=>{
     if(!await uiAsk('Αποσύνδεση οχήματος από το άτομο;'))return;
     await sb.from('vehicle_links').delete().eq('id',b.dataset.id);
@@ -8225,6 +8281,7 @@ const PUSH_KINDS=()=>[
   {k:'forma', t:t('Φόρμα ή έντυπο που λείπει')},
   ...(meRec()&&isLed(meRec())?[{k:'lixi', t:t('Λήξεις πιστοποιητικών και Ν.91')}]:[]),
   ...(meRec()&&isLed(meRec())?[{k:'parousies', t:t('Παρουσίες που δεν περάστηκαν (19:00, για Αρχηγό/Υπαρχηγούς τμήματος)')}]:[]),
+  ...(ME&&(ME.role==='admin'||ME.platform_admin)?[{k:'xarti', t:t('Χαρτιά που ανέβηκαν και περιμένουν επιβεβαίωση')}]:[]),
   {k:'anakoinosi', t:t('Ανακοινώσεις του Συστήματος')}];
 const pushOk=()=>typeof navigator!=='undefined'&&'serviceWorker' in navigator&&typeof window!=='undefined'&&'PushManager' in window&&'Notification' in window;
 const pushIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -20375,8 +20432,7 @@ function efcMotOn(v, onDate){
 function efcVehPapers(v, onDate){
   return [
     [t('Ασφάλεια'),dv('ΑΣΦΑΛΕΙΑ'), efcPaperOn((D.vi||[]).filter(x=>x.vehicle_id===v.id), onDate)],
-    [t('ΜΟΤ'),dv('ΧΑΡΤΙ'), efcMotOn(v, onDate)],
-    [t('Άδεια κυκλοφορίας'),dv('ΧΑΡΤΙ'), efcPaperOn((D.vp||[]).filter(x=>x.vehicle_id===v.id&&x.kind===dv('ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ')), onDate)]];
+    [t('ΜΟΤ'),dv('ΧΑΡΤΙ'), efcMotOn(v, onDate)]];
 }
 function efcVehSides(target,row){
   const ds=(D.vds||[]).filter(s=>s.target===target&&s.target_id===row.id).sort((a,b)=>(a.seq||0)-(b.seq||0))
