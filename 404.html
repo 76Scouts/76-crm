@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-16 21:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-17 08:51'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -17317,9 +17317,11 @@ function eyxBody(){
       <div class="dim" style="font-size:12.5px;margin-top:3px">${x.d()}</div>
       <div id="eyxN_${x.k}" class="dim" style="font-size:12.5px;margin-top:6px">${t('Μετράω…')}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn sm" data-eyxtx="${x.k}">${t('Κείμενο')}</button>
         <button class="btn sm" data-eyxpv="${x.k}">${t('Δες το μήνυμα')}</button>
         <button class="btn sm gh" data-eyxts="${x.k}">${t('Στείλε δοκιμή σε μένα')}</button></div></div>`).join('')}`;
   document.querySelectorAll('[data-eyxon]').forEach(b=>b.onclick=()=>eyxToggle(b.dataset.eyxon,b));
+  document.querySelectorAll('[data-eyxtx]').forEach(b=>b.onclick=()=>eyxEdit(b.dataset.eyxtx,b));
   document.querySelectorAll('[data-eyxpv]').forEach(b=>b.onclick=()=>eyxPreview(b.dataset.eyxpv,b));
   document.querySelectorAll('[data-eyxts]').forEach(b=>b.onclick=()=>eyxTest(b.dataset.eyxts,b));
   eyxStatus();
@@ -17357,6 +17359,53 @@ async function eyxTest(k,btn){
   if(!await uiAsk(t('Να σταλεί δοκιμή στο δικό σου email;'),{ok:t('Στείλε'),cancel:t('Άκυρο')}))return;
   btn.disabled=true; const j=await eyxCall({op:'test',kind:k}); btn.disabled=false;
   eyxSay(j.ok?t('Στάλθηκε η δοκιμή στο email σου'):(j.error||'—'));
+}
+const EYX_F=[{f:'subject',t:()=>t('Θέμα email'),n:150},{f:'big',t:()=>t('Τίτλος στην κάρτα'),n:60},{f:'text',t:()=>t('Κείμενο'),n:1500}];
+let EYX_TX=null;
+const eyxTxCfg=()=>{ const r=(D.st||[]).find(x=>x.k==='eyxes_text'); return (r&&r.v)||{}; };
+const eyxDraft=()=>Object.fromEntries(EYX_F.map(x=>[x.f,($('eyxF_'+x.f)||{}).value||'']));
+const eyxTxSay=m=>{ const o=$('eyxTxMsg'); if(o)o.textContent=m||''; };
+async function eyxEdit(k,btn){
+  btn.disabled=true; const j=await eyxCall({op:'texts'}); btn.disabled=false;
+  if(j.error||!j.ok||!j.defaults)return eyxSay(j.error||'—');
+  EYX_TX=j;
+  const x=EYX_K.find(y=>y.k===k), mine=(j.saved||{})[k]||{}, cur={...j.defaults[k]};
+  EYX_F.forEach(f=>{ if(typeof mine[f.f]==='string'&&mine[f.f].trim())cur[f.f]=mine[f.f]; });
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">${t('Κείμενο')} — ${x.t()}</div>
+      <div class="dim" style="font-size:12.5px;line-height:1.5">${t('Γράψε {έτος} ή {νέο έτος} και μπαίνουν μόνα τους· **έτσι** = έντονα. Στα γενέθλια το όνομα μπαίνει μόνο του, κάτω από τον τίτλο.')}</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    ${EYX_F.map(f=>`<label style="display:block;margin:10px 0 4px;font-size:13px;font-weight:600" for="eyxF_${f.f}">${f.t()}</label>
+      ${f.f==='text'?`<textarea id="eyxF_text" maxlength="${f.n}" rows="7" style="width:100%">${esc(cur.text)}</textarea>`
+        :`<input id="eyxF_${f.f}" maxlength="${f.n}" value="${esc(cur[f.f])}" style="width:100%">`}`).join('')}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 6px">
+      <button class="btn sm p" id="eyxSave">${t('Αποθήκευση')}</button>
+      <button class="btn sm" id="eyxSee">${t('Δες πώς βγαίνει')}</button>
+      <button class="btn sm gh" id="eyxReset">${t('Επαναφορά στο αρχικό')}</button></div>
+    <div id="eyxTxMsg" role="status" style="font-size:13px;font-weight:600;min-height:18px"></div>
+    <iframe id="eyxTxPv" title="${t('Το μήνυμα')}" sandbox="" style="width:100%;height:560px;border:0;border-radius:10px;background:#f4f6f8;margin-top:6px"></iframe>`;
+  drw.classList.add('on');
+  $('eyxSee').onclick=()=>eyxSee(k);
+  $('eyxSave').onclick=()=>eyxSaveTx(k);
+  $('eyxReset').onclick=()=>{ EYX_F.forEach(f=>{ $('eyxF_'+f.f).value=EYX_TX.defaults[k][f.f]; });
+    eyxTxSay(t('Γύρισε το αρχικό — πάτησε Αποθήκευση για να μείνει.')); eyxSee(k); };
+  eyxSee(k);
+}
+async function eyxSee(k){
+  const j=await eyxCall({op:'preview',kind:k,draft:eyxDraft()});
+  if(j.error||!j.ok)return eyxTxSay(j.error||'—');
+  const f=$('eyxTxPv'); if(f)f.srcdoc=j.html||'';
+}
+async function eyxSaveTx(k){
+  const d=eyxDraft(), def=EYX_TX.defaults[k], c={...eyxTxCfg()};
+  if(EYX_F.some(f=>!d[f.f].trim()))return eyxTxSay(t('Συμπλήρωσε θέμα, τίτλο και κείμενο.'));
+  if(EYX_F.every(f=>d[f.f].trim()===def[f.f]))delete c[k];
+  else c[k]=Object.fromEntries(EYX_F.map(f=>[f.f,d[f.f].trim()]));
+  const b=$('eyxSave'); b.disabled=true;
+  const {error}=await sb.from('app_settings').upsert({k:'eyxes_text',v:c,updated_at:new Date().toISOString()},{onConflict:'k'});
+  b.disabled=false;
+  if(error)return eyxTxSay(t('Δεν αποθηκεύτηκε')+': '+error.message);
+  const r=(D.st||[]).find(y=>y.k==='eyxes_text'); if(r)r.v=c; else (D.st=D.st||[]).push({k:'eyxes_text',v:c});
+  eyxTxSay(t('Αποθηκεύτηκε — από εδώ και πέρα φεύγει αυτό.')); eyxSee(k);
 }
 const DH_COL={'κρίσιμο':'bad','προσοχή':'warn','πληροφορία':''};
 function dhEventRows(){
