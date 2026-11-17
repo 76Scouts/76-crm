@@ -1330,7 +1330,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-17 16:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-17 16:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -8324,18 +8324,20 @@ async function pushCardFill(){
     $('pushOn').onclick=()=>pushOn($('pushOn'));
     return;
   }
-  const have=new Set(row.kinds||[]);
+  const have=new Set(row.kinds||[]), all=have.has('all');
   box.innerHTML=head+note(t('Ενεργές σε αυτή τη συσκευή. Τι θέλεις να σου έρχεται:'))
-    +`<div style="margin-top:8px;display:grid;gap:6px">${PUSH_KINDS().map(x=>`<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;max-width:none">
-        <input type="checkbox" data-pushk="${x.k}" style="width:auto"${have.has(x.k)?' checked':''}> ${esc(x.t)}</label>`).join('')}</div>
+    +`<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;max-width:none;margin-top:8px;padding:7px 9px;border:1px solid var(--line);border-radius:var(--rs)">
+        <input type="checkbox" id="pushAll" style="width:auto"${all?' checked':''}> <b>${esc(t('Όλες — και όσες προστεθούν στο μέλλον'))}</b></label>
+     <div style="margin-top:8px;display:grid;gap:6px">${PUSH_KINDS().map(x=>`<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;max-width:none${all?';opacity:.55':''}">
+        <input type="checkbox" data-pushk="${x.k}" style="width:auto"${all||have.has(x.k)?' checked':''}${all?' disabled':''}> ${esc(x.t)}</label>`).join('')}</div>
      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:11px">
        <button class="btn sm" id="pushTest">${t('Στείλε μου δοκιμαστική')}</button>
        <button class="btn sm gh" id="pushOff">${t('Απενεργοποίηση σε αυτή τη συσκευή')}</button></div>`;
-  box.querySelectorAll('[data-pushk]').forEach(c=>c.onchange=async()=>{
-    const kinds=[...box.querySelectorAll('[data-pushk]:checked')].map(x=>x.dataset.pushk);
-    const {error}=await sb.from('push_subscription').update({kinds}).eq('id',row.id);
-    toast(error?t('Δεν αποθηκεύτηκε.'):t('Αποθηκεύτηκε'));
-  });
+  const save=async kinds=>{ const {error}=await sb.from('push_subscription').update({kinds}).eq('id',row.id);
+    toast(error?t('Δεν αποθηκεύτηκε.'):t('Αποθηκεύτηκε')); return !error; };
+  box.querySelectorAll('[data-pushk]').forEach(c=>c.onchange=()=>save([...box.querySelectorAll('[data-pushk]:checked')].map(x=>x.dataset.pushk)));
+  $('pushAll').onchange=async()=>{ const on=$('pushAll').checked;
+    if(await save(on?['all',...PUSH_KINDS().map(x=>x.k)]:PUSH_KINDS().map(x=>x.k)))pushCardFill(); };
   $('pushTest').onclick=()=>pushTest($('pushTest'));
   $('pushOff').onclick=async()=>{ if(!await uiAsk(t('Απενεργοποίηση των ειδοποιήσεων σε αυτή τη συσκευή;')))return;
     await pushForget(); pushCardFill(); };
