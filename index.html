@@ -1338,7 +1338,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 00:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 00:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3079,6 +3079,7 @@ function uc(m){
 const myOfRef={fn:p=>D.my.find(x=>x.person_id===p.id&&x.scout_year===YEAR&&!x.voided_at)}; const myOf=p=>myOfRef.fn(p);
 const inYear=p=>!!myOf(p);
 const secOf=p=>(myOf(p)||{}).section||p.section;
+const LED_SEC_HATS={[dv('Αγέλη')]:/^(A|Y|B)AL(_PT)?$|^AMAL$/,[dv('Μικρή Αγέλη')]:/^AMAL$|^(A|Y|B)AL(_PT)?$/,[dv('Ομάδα')]:/^(A|Y|B)OP(_PT)?$/,[dv('Κοινότητα')]:/^(A|Y|B)KA(_PT)?$/,[dv('Δίκτυο')]:/^(A|Y|M)PD$/};
 const hasOpenHat=(pid,code)=>(D.ph||[]).some(h=>h.person_id===pid&&h.role_code===code&&!h.valid_to);
 const isAnix=p=>{
   if(!p)return false;
@@ -4341,7 +4342,10 @@ function n91Visible(pid){
   const hs=(D.ph||[]).filter(h=>h.person_id===ME.person_id&&!h.valid_to);
   if(hs.some(h=>h.role_code==='AS'))return true;
   const p=(D.bh||[]).find(b=>b.id===pid);
-  return !!p&&hs.some(h=>/^(AAL|AOP|AKA|APD)$/.test(h.role_code)&&h.scope_value&&h.scope_value===secOf(p));
+  if(!p)return false;
+  const inSec=s=>s===secOf(p)||(p.kind===dv('Βαθμοφόρος')&&s!==dv('Δίκτυο')&&!!LED_SEC_HATS[s]
+    &&(D.ph||[]).some(x=>x.person_id===pid&&!x.valid_to&&LED_SEC_HATS[s].test(x.role_code||'')));
+  return hs.some(h=>/^(AAL|AOP|AKA|APD)$/.test(h.role_code)&&h.scope_value&&inSec(h.scope_value));
 }
 function certState(id){
   {const pp=(D.bh||[]).find(b=>b.id===id); if(coveredAbove(pp))return {k:'above',d:null,at:pp.commissioner_at};}
@@ -21653,7 +21657,6 @@ function dlS1HTML(e,g){
 }
 const dlRoleIsDefault=r=>!r||r===dv('Συμμετέχων')||r===dv('Συνοδός Βαθμοφόρος')||r===DL.KDEF;
 const DL_HEADS=['AAL','AMAL','AOP','AKA','APD'];
-const LED_SEC_HATS={[dv('Αγέλη')]:/^(A|Y|B)AL(_PT)?$|^AMAL$/,[dv('Μικρή Αγέλη')]:/^AMAL$|^(A|Y|B)AL(_PT)?$/,[dv('Ομάδα')]:/^(A|Y|B)OP(_PT)?$/,[dv('Κοινότητα')]:/^(A|Y|B)KA(_PT)?$/,[dv('Δίκτυο')]:/^(A|Y|M)PD$/};
 function ledInSec(p,sec){
   if(!sec||!p)return false;
   if(p.section===sec||secOf(p)===sec)return true;
