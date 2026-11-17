@@ -1338,7 +1338,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-17 22:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-17 22:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3192,6 +3192,8 @@ const pln=(n,one,many)=>n+' '+(+n===1?one:many);
 const isAdminUI=()=>ME.role==='admin'||!!ME.platform_admin;
 const ageYears=b=>{const n=new Date(); let a=n.getFullYear()-b.getFullYear();
   if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate()))a--; return a;};
+const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
+                  +'-'+String(d.getDate()).padStart(2,'0');
 const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const NEW_LABEL='Νέο μέλος';
 const isNewMember=(pid,day)=>{day=day||todayISO(); return (D.plab||[]).some(l=>l.person_id===pid&&l.label===NEW_LABEL&&(!l.valid_from||l.valid_from<=day)&&(!l.valid_to||l.valid_to>=day))};
@@ -3430,7 +3432,7 @@ function wireLabels(p){
     toast('Πρώτος Βοηθός — '+nm(p)); openProfile(p.id); };
   document.querySelectorAll('[data-lboff]').forEach(b=>b.onclick=async()=>{
     if(!await uiAsk('Αφαίρεση της ετικέτας; Χάνει την πρόσβαση στα ιατρικά από σήμερα.'))return;
-    const today=new Date(Date.now()-864e5).toISOString().slice(0,10);
+    const today=isoLocal(new Date(Date.now()-864e5));
     const {error}=await sb.from('person_labels').update({valid_to:today}).eq('id',b.dataset.lboff);
     if(error)return toast('Σφάλμα: '+error.message);
     const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); openProfile(p.id); });
@@ -3485,7 +3487,7 @@ function labelsBody(){
     const row=(D.plab||[]).find(x=>x.id===b.dataset.lboff)||{};
     const wh=row.scope_section?('για '+row.scope_section):'για όλο το Σύστημα';
     if(!await uiAsk('Αφαίρεση '+wh+'; Χάνει την πρόσβαση στα ιατρικά από σήμερα.'))return;
-    const today=new Date(Date.now()-864e5).toISOString().slice(0,10);
+    const today=isoLocal(new Date(Date.now()-864e5));
     const {error}=await sb.from('person_labels').update({valid_to:today}).eq('id',b.dataset.lboff);
     if(error)return toast('Σφάλμα: '+error.message);
     const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); stay(); });
@@ -3523,7 +3525,8 @@ function pfPapersSum(p){
     wait?`<b style="color:var(--warn);font-weight:500">${wait} ${esc(wait===1?t('περιμένει έλεγχο'):t('περιμένουν έλεγχο'))}</b>`:'',
     gone?`<b style="color:var(--bad);font-weight:500">${gone} ${esc(gone===1?t('έληξε'):t('έληξαν'))}</b>`:''].filter(Boolean).join(' · ');
 }
-function pfOtherDocs(p){return (D.doc||[]).filter(d=>d.person_id===p.id&&(docLink(d)||{}).t!=='pc')}
+function pfOtherDocs(p){const vx=(p.kind||'')==='Μέλος'?new Set():vxShownDocs(p);
+  return (D.doc||[]).filter(d=>d.person_id===p.id&&(docLink(d)||{}).t!=='pc'&&!vx.has(d.id))}
 function pfGrpShow(k){const g=document.querySelector(`#drwp details[data-pfg="${k}"]`); if(g)g.open=true;}
 function wirePfGrp(){
   document.querySelectorAll('#drwp details.pfgrp').forEach(d=>{
@@ -3660,7 +3663,7 @@ async function openProfile(id){
     ${pfGrpOpen('papers',t('Χαρτιά'),pfPapersSum(p))}
     ${certsHTML(p)}
     ${isMem?'':vehHTML(p)}
-    ${filesHTML(pfOtherDocs(p),{person_id:p.id,title:t('Παλιά & Άλλα Αρχεία'),pre:certOldHTML(p),preN:certSplit(p.id).old.length})}</details>
+    ${filesHTML(pfOtherDocs(p),{person_id:p.id,title:t('Παλιά & Άλλα Αρχεία'),certBtn:true,pre:certOldHTML(p),preN:certSplit(p.id).old.length})}</details>
     ${pfGrpOpen('hist',t('Ιστορικό'),'')}
     ${mailsHTML(p)}
     ${histHTML(p)}</details>`;
@@ -4076,13 +4079,20 @@ const plateKey=s=>String(s||'').toUpperCase().replace(/[\s.\-_]/g,'')
 const platePretty=s=>{const k=plateKey(s),m=k.match(/^([A-Z]+)(\d+)$/);return m?m[1]+' '+m[2]:k};
 
 const VX_K=[{k:dv('ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'),l:()=>t('Ασφάλεια'),t:'vi'},{k:dv('ΜΟΤ'),l:()=>t('ΜΟΤ'),t:'vp'},{k:dv('ΑΔΕΙΑ_ΚΥΚΛΟΦΟΡΙΑΣ'),l:()=>t('Άδεια κυκλ.'),t:'vp'}];
+const vxLast=(vid,k)=>(D.vp||[]).filter(y=>y.vehicle_id===vid&&y.kind===k).sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
+function vxShownDocs(p){
+  const s=new Set();
+  vehOf(p.id).forEach(x=>VX_K.forEach(K=>{const r=K.t==='vi'?x.ins:vxLast(x.v.id,K.k); if(r&&r.document_id)s.add(r.document_id)}));
+  return s;
+}
 function vxRowsHTML(x,p){
   const can=isAdminUI()||x.v.owner_id===ME.person_id, up=can||p.id===ME.person_id;
-  const last=k=>(D.vp||[]).filter(y=>y.vehicle_id===x.v.id&&y.kind===k).sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
+  const last=k=>vxLast(x.v.id,k);
   return VX_K.map(K=>{ const r=K.t==='vi'?x.ins:last(K.k), free=!r&&K.k===dv('ΜΟΤ')&&motFree(x.v,todayISO());
     return `<div style="display:flex;gap:6px;align-items:center;font-size:12px;margin-top:3px">
       <span style="min-width:74px">${K.l()}</span>
       <span class="dim" style="flex:1">${r?esc(paperDates(r)||t('χωρίς ημερομηνίες')):free?esc(t('δεν χρειάζεται ακόμη (νέο όχημα)')):`<span style="color:var(--bad)">${esc(t('λείπει'))}</span>`}</span>
+      ${(dd=>dd?`<a href="#" class="btn gh sm docopen" data-path="${esc(dd.path)}" title="${esc(t('Δες το χαρτί'))}">👁</a>`:'')(r&&r.document_id&&(D.doc||[]).find(d=>d.id===r.document_id))}
       ${r&&can?`<button class="btn gh sm vxedit" data-t="${K.t}" data-id="${r.id}" title="${esc(t('Διόρθωση ημερομηνιών'))}">✎</button>`:''}
       ${up?`<button class="btn gh sm vxup" data-v="${x.v.id}" data-k="${K.k}">${r?'＋ '+esc(t('νέο')):'＋ '+esc(t('Ανέβασμα'))}</button>`:''}</div>`; }).join('')
     +`<div class="vxbox" data-v="${x.v.id}"></div>`;
@@ -4485,8 +4495,8 @@ function wireCerts(p,after){
     if(!await uiAsk('Διαγραφή πιστοποιητικού — μαζί και το αρχείο του;'))return;
     try{ await certPurge(b.dataset.id); after&&after() }
     catch(e){ toast('Δεν διαγράφηκε: '+(e.message||e)) }});
-  let pending=null, pOcr=null;
-  const pf=$('pcFile'); if(pf)pf.onchange=()=>{pending=pf.files&&pf.files[0];$('pcFileName').textContent=pending?pending.name:''; pOcr=null;
+  let pending=null, pOcr=null, fromDoc=null;    
+  const pf=$('pcFile'); if(pf)pf.onchange=()=>{pending=pf.files&&pf.files[0]; fromDoc=null;$('pcFileName').textContent=pending?pending.name:''; pOcr=null;
     if(pending)Promise.resolve(ocrAssist(pending,{box:$('pcOcr'),type:ctype($('pcType').value),person:p,
       fill:{iss:$('pcIss'),exp:$('pcExp'),ov:$('pcOv')}})).then(x=>{pOcr=x}).catch(()=>{});};
   const ty=$('pcType');
@@ -4515,6 +4525,13 @@ function wireCerts(p,after){
     }
   };
   if(ty){ ty.onchange=()=>{ $('pcOv').checked=false; $('pcExp').value=''; upd() };
+  document.querySelectorAll('.doc2cert').forEach(b=>b.onclick=()=>{
+    const d=(D.doc||[]).find(x=>x.id===b.dataset.id); if(!d)return;
+    fromDoc=d; pending=null; if(pf)pf.value='';
+    $('pcFileName').textContent='📄 '+(d.title||t('αρχείο'))+' — '+t('από τα αρχεία');
+    const ct=(D.ct||[]).find(x=>x.name===d.kind)||(/Ν\.?\s?91/.test(d.kind||'')?{code:'Ν91'}:null);
+    if(ct&&[...ty.options].some(o=>o.value===ct.code)){ty.value=ct.code; ty.onchange();}
+    const dt=ty.closest('details'); if(dt)dt.open=true; ty.scrollIntoView({behavior:'smooth',block:'center'}); });
     $('pcIss').oninput=upd; $('pcIss').onchange=upd; $('pcOv').onchange=upd; upd(); }
   const ad=$('pcAdd'); if(ad)ad.onclick=async()=>{
     const t=ctype($('pcType').value);
@@ -4528,6 +4545,7 @@ function wireCerts(p,after){
     try{
       let docId=null;
       if(pending){const d=await docUpload(pending,{person_id:p.id,kind:t.name,title:t.name+(($('pcLabel').value)?' '+$('pcLabel').value:''),captured_note:ocrNoteTxt(pOcr,iss)});docId=d.id;}
+      else if(fromDoc)docId=fromDoc.id;    
       const rec={person_id:p.id,type_code:t.code,label:$('pcLabel').value.trim()||null,
                  issued_on:iss,expires_on:exp,document_id:docId,source:'e76'};
       const {data,error}=await sb.from('person_certificates').insert(rec).select().single();
@@ -4786,6 +4804,7 @@ function filesHTML(list,ctx){
             return pd?`<span style="display:block;font-size:12px;color:var(--ink2)">${esc(pd)}${expTag((lk?lk.row:d).expires_on)}</span>`:''})()}
           <span class="dim" style="font-size:11.5px">${esc(d.kind)}${d.size_bytes?' · '+fsize(d.size_bytes):''}${d.uploaded_at?' · ανέβηκε '+fdate(d.uploaded_at):''}${
             d.original_path?' · <span title="Διορθώθηκε — το πρωτότυπο φυλάσσεται">διορθωμένο</span>':''}</span></span>
+        ${ctx.certBtn&&!docLink(d)?`<button class="btn gh sm doc2cert" data-id="${d.id}" title="${esc(t('Καταχώρησέ το ως πιστοποιητικό — το αρχείο δένεται μαζί του'))}">＋ ${esc(t('Ως πιστοποιητικό'))}</button>`:''}
         <button class="btn gh sm docmeta" data-id="${d.id}" title="Διόρθωση ημερομηνιών / στοιχείων">✎</button>
         ${isImg(d.path)?`<button class="btn gh sm docedit" data-id="${d.id}" title="Σάρωση — σύρε τις τέσσερις γωνίες">✂</button>`:''}
         ${d.original_path?`<button class="btn gh sm docrev" data-id="${d.id}" title="Επαναφορά πρωτοτύπου">↺</button>`:''}
@@ -10407,7 +10426,7 @@ let EXPQ='';
 function expiryBody(){
   const items=expiryItems();
   const today=todayISO();
-  const plus=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+  const plus=n=>{const d=new Date();d.setDate(d.getDate()+n);return isoLocal(d)};
   const q=nameKey(EXPQ);
   const hit=x=>!q||nameKey((x.who?nm(x.who):'')+' '+x.kind+' '+x.what).includes(q);
 
@@ -12821,7 +12840,7 @@ function grantsBody(){
     </div>
     <div class="grow">
      <label>Πού<select id="gSec">${secs.map(s=>`<option value="${s}">${s}</option>`).join('')}<option value="ΟΛΑ">ΟΛΑ (μόνο ο Α.Σ.)</option></select></label>
-     <label>Μέχρι<input type="date" id="gTo" value="${(new Date(new Date().getFullYear()+(new Date().getMonth()>=8?1:0),7,31)).toISOString().slice(0,10)}"></label>
+     <label>Μέχρι<input type="date" id="gTo" value="${isoLocal(new Date(new Date().getFullYear()+(new Date().getMonth()>=8?1:0),7,31))}"></label>
      <label style="flex:2;min-width:220px">Γιατί<input id="gWhy" placeholder="π.χ. καλύπτει την Ομάδα όσο λείπει ο υπαρχηγός"></label>
     </div>
     <div class="dim" style="font-size:12.5px;margin:6px 0 10px">
@@ -16511,8 +16530,6 @@ function issRowsHTML(it){
     </select>`}</div>`).join('');
 }
 
-const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
-                  +'-'+String(d.getDate()).padStart(2,'0');
 function addMonths(iso,m){
   const d=new Date(iso+'T00:00:00'); const day=d.getDate();
   d.setMonth(d.getMonth()+m);
@@ -18217,7 +18234,7 @@ const REM_VARS=[['{τι}','τι αφορά — όχημα, πιστοποιητ�
                 ['{πότε}','η ημερομηνία λήξης, γραμμένη ολογράφως']];
 function remPreview(body){
   return String(body||'').replace(/\{τι\}/g,'<b>ΚΑ 1234 · Ασφάλεια</b>')
-                         .replace(/\{πότε\}/g,'<b>'+fdate(new Date(Date.now()+14*864e5).toISOString().slice(0,10))+'</b>');
+                         .replace(/\{πότε\}/g,'<b>'+fdate(isoLocal(new Date(Date.now()+14*864e5)))+'</b>');
 }
 function remRuleEdit(code){
   const r=(D.rr||[]).find(x=>x.code===code); if(!r)return;
@@ -20739,7 +20756,7 @@ async function efdUnmFill(e,id){
 }
 function efdSignExport(){
   const v=$('view'); if(!v||!v.insertAdjacentHTML)return;
-  const secs=typeof expSecs==='function'?expSecs():null, from=new Date(Date.now()-45*864e5).toISOString().slice(0,10);
+  const secs=typeof expSecs==='function'?expSecs():null, from=isoLocal(new Date(Date.now()-45*864e5));
   const evs=(D.ev||[]).filter(e=>!e.hidden&&e.event_date&&e.event_date>=from&&EFD_LOGO[efdSec(e)]!==undefined&&(!secs||secs.includes(efdSec(e))))
     .sort((a,b)=>String(a.event_date).localeCompare(String(b.event_date)));
   v.insertAdjacentHTML('beforeend',`<div class="sec"><h3>${t('Λίστα υπογραφών δράσης')}</h3></div><div class="card pad" id="efdX">
@@ -25084,7 +25101,7 @@ function vehUpload(vid, kind){ VEHPRE={v:vid, k:kind||'ΑΣΦΑΛΕΙΑ_ΟΧΗΜ
 function mineHTML(){
   const me=meRec(); if(!me)return '';
   const today=todayISO();
-  const plus=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+  const plus=n=>{const d=new Date();d.setDate(d.getDate()+n);return isoLocal(d)};
   const all=expiryItems().filter(x=>x.who&&x.who.id===me.id);
   const late=all.filter(x=>x.d!=='9999-12-31'&&x.d<today);
   const soon=all.filter(x=>x.d>=today&&x.d<=plus(60));
@@ -27938,7 +27955,7 @@ async function wlPreset(id, key){
   const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
   const v={...P.p};
   if(P.days){ const d=new Date(); d.setDate(d.getDate()+P.days);
-    v.callback_on=d.toISOString().slice(0,10); }
+    v.callback_on=isoLocal(d); }
   if(P.sept) v.callback_on=wlNextSept();
   if(P.k==='later'){
     const a=await uiText('Γιατί όχι φέτος; (θα το δεις του χρόνου)', r.last_year_note||'');
@@ -28449,7 +28466,7 @@ async function deletionBody(){
         <option>αποχώρηση</option><option>άλλο</option></select></label>
       <label>Τι σβήνεται<select id="dnS"><option value="πλήρης">Όλα (πλήρης διαγραφή)</option>
         <option value="ευαίσθητα">Μόνο τα ευαίσθητα (ιατρικά, ταυτότητα)</option><option value="αρχείο">Αρχείο — κρατά ό,τι ορίζει ο νόμος</option></select></label>
-      <label>Προθεσμία (εκτέλεση)<input id="dnR" type="date" value="${d.toISOString().slice(0,10)}"></label>
+      <label>Προθεσμία (εκτέλεση)<input id="dnR" type="date" value="${isoLocal(d)}"></label>
       <label>Σημείωση <span class="dim">— χωρίς ευαίσθητα στοιχεία</span><input id="dnN" placeholder="π.χ. email γονέα 21/09"></label>
       <button class="btn p" id="dnGo" style="margin-top:10px">Καταχώρηση αιτήματος</button>`);
     wirePick('dnP');
@@ -28615,7 +28632,7 @@ function spkExportBody(){
     } else if(k==='inv'){
       const R=[['Κλάδος','Ιδιότητα','Α.Μ.','Επώνυμο','Όνομα','Τάξη']];
       kids.forEach(p=>{const y=myOf(p)||{};
-        R.push([y.section||secOf(p)||'','Μέλος',p.registry_no||'',p.last_name,p.first_name,y.grade||''])});
+        R.push([y.section||secOf(p)||'',dv('Μέλος'),p.registry_no||'',p.last_name,p.first_name,y.grade||''])});
       led.forEach(p=>R.push([secOf(p)||'',ledLabel(p,true)||'Βαθμοφόρος',
         p.registry_no||'',p.last_name,p.first_name,'']));
       exportRows(R,`SPK-apografi-melwn-${yr}`,`Απογραφή Μελών ${yr}`);
