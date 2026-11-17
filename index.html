@@ -1338,7 +1338,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-17 22:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-17 23:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3190,6 +3190,7 @@ function sortByName(a,b){return nameKey(a.last_name+a.first_name).localeCompare(
 const plu=(n,one,many)=>(+n===1?one:many);
 const pln=(n,one,many)=>n+' '+(+n===1?one:many);    
 const isAdminUI=()=>ME.role==='admin'||!!ME.platform_admin;
+const coveredAbove=p=>!!p&&!!p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at);
 const ageYears=b=>{const n=new Date(); let a=n.getFullYear()-b.getFullYear();
   if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate()))a--; return a;};
 const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
@@ -3254,7 +3255,7 @@ function riskList(){
 
 function certList(){
   const today=new Date(); const out=[];
-  D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').forEach(p=>{
+  D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός'&&!coveredAbove(p)).forEach(p=>{    
     const c=D.cert.find(x=>x.person_id===p.id);
     const exp=c&&c.sexoxarto_expiry?new Date(c.sexoxarto_expiry):null;
     const days=exp?Math.round((exp-today)/864e5):null;
@@ -3794,6 +3795,7 @@ function trainLevel(id, sec){
   return 0;
 }
 function warrantOf(id, yr){
+  if(coveredAbove((D.bh||[]).find(b=>b.id===id)))return {k:'above'};    
   let rows=(D.sh||[]).filter(x=>x.person_id===id&&x.warrant_type&&x.warrant_type!=='ΠΡΟΣ ΕΛΕΓΧΟ');
   if(yr) rows=rows.filter(x=>x.scout_year===yr);
   if(!rows.length)return {k:'none'};
@@ -3805,10 +3807,13 @@ function warrantOf(id, yr){
   }
   return {k:'expired',rec:rows.slice().sort((a,b)=>(a.end_date||'')<(b.end_date||'')?1:-1)[0]};
 }
-const RING={entoli:'#22c55e',anathesi:'#eab308',expired:'#ef4444',none:null};
+const RING={entoli:'#22c55e',anathesi:'#eab308',expired:'#ef4444',none:null,above:'#8e44ad'};
+const RINGTXT_A=()=>t('Εντολή Διοίκησης από την Εφορεία (ΓΕ/ΕΕΛ)');
 const RINGTXT={entoli:'ενεργή Εντολή Διοίκησης',anathesi:'ενεργή Ανάθεση Καθηκόντων',expired:'έληξε',none:'δεν έχει αιτηθεί'};
-const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6',na:'#c7ced6',hidden:'#e6e9ee'};
+RINGTXT.above=RINGTXT_A();    
+const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6',na:'#c7ced6',hidden:'#e6e9ee',above:'#8e44ad'};    
 const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντομα',expired:'Ν.91(Ι) έληξε',none:'χωρίς Ν.91(Ι)',na:'Ν.91(Ι) — δεν απαιτείται ακόμη (ανήλικος)'};
+CERTTXT.above=t('Ν.91(Ι) — εξαιρείται: η Εντολή Διοίκησης εκδίδεται από την Εφορεία (ΓΕ/ΕΕΛ)');
 CERTTXT.hidden=t('Ν.91(Ι) — το βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματος και ο Α.Σ.');
 const TRC=['#e74c3c','#f4c20d','#27ae60'];
 const TRTXT=['χωρίς εκπαίδευση','Προκαταρκτική','Βασική'];
@@ -3846,7 +3851,7 @@ function statusBar(p,mini){
       CERTTXT[cs.k]+(cs.k==='soon'&&cs.d!=null?` (${pln(cs.d,'μέρα','μέρες')})`:''));
     const tl=trainLevel(p.id); push(tl===0?SB_EMPTY:TRC[tl], TRTXT[tl]);
     const w=warrantOf(p.id); push(RING[w.k]||SB_EMPTY, 'εντολή: '+RINGTXT[w.k]);
-    push(inYear(p)?'#27ae60':SB_EMPTY, inYear(p)?'εγγεγραμμένος '+YEAR:'χωρίς εγγραφή '+YEAR);
+    push(inYear(p)?'#27ae60':coveredAbove(p)?'#8e44ad':SB_EMPTY, inYear(p)?'εγγεγραμμένος '+YEAR:coveredAbove(p)?t('εγγραφή από την Εφορεία')+' ('+p.commissioner_at+')':'χωρίς εγγραφή '+YEAR);    
   }
   return sbarDraw(segs,tips,mini,nm(p),sec);
 }
@@ -4334,6 +4339,7 @@ function n91Visible(pid){
   return !!p&&hs.some(h=>/^(AAL|AOP|AKA|APD)$/.test(h.role_code)&&h.scope_value&&h.scope_value===secOf(p));
 }
 function certState(id){
+  {const pp=(D.bh||[]).find(b=>b.id===id); if(coveredAbove(pp))return {k:'above',d:null,at:pp.commissioner_at};}
   if(!n91Visible(id))return {k:'hidden',d:null};
   const c=(D.pc||[]).filter(x=>x.person_id===id&&x.type_code==='Ν91'&&x.confirmed_on)
     .sort((a,b)=>(a.expires_on||'')<(b.expires_on||'')?1:-1)[0];
@@ -10379,12 +10385,13 @@ function expiryItems(){
 
   D.bh.filter(p=>p.status==='Ενεργός').forEach(p=>{
     if(isLed(p)){
-      const c=(D.cert||[]).find(x=>x.person_id===p.id);
-      if(c&&c.sexoxarto_expiry) add(c.sexoxarto_expiry,'Ν.91(Ι)',p,'Πιστοποιητικό σεξουαλικών αδικημάτων',
+      const c=(D.cert||[]).find(x=>x.person_id===p.id), ab=coveredAbove(p);    
+      if(ab){}
+      else if(c&&c.sexoxarto_expiry) add(c.sexoxarto_expiry,'Ν.91(Ι)',p,'Πιστοποιητικό σεξουαλικών αδικημάτων',
         'Νέα αίτηση στην Αστυνομία','certs');
       else if(!c||!c.sexoxarto_expiry) add('9999-12-31','Ν.91(Ι)',p,'Δεν έχει καταχωρηθεί καθόλου',
         'Ζήτησέ το','certs');
-      (D.sh||[]).filter(s=>s.person_id===p.id&&s.warrant_type==='Εντολή Διοίκησης'&&s.end_date)
+      (ab?[]:(D.sh||[])).filter(s=>s.person_id===p.id&&s.warrant_type==='Εντολή Διοίκησης'&&s.end_date)
         .sort((a,b)=>(b.end_date||'').localeCompare(a.end_date||''))
         .slice(0,1).forEach(s=>add(s.end_date,'Εντολή',p,'Εντολή Διοίκησης'+(s.appointment?' · '+s.appointment:''),
           'Αίτηση ανανέωσης','warrants'));
@@ -15715,7 +15722,7 @@ function myhomeLed(M,today,row,go){
   const wv=live?esc(live.warrant_type):pend?t('σε εξέταση'):dash;
   const wsub=live?(live.end_date?t('ως')+' '+fdate(live.end_date):t('χωρίς ημερομηνία λήξης'))
     :pend?t('αίτηση')+' '+(pend.appointment_no?esc(pend.appointment_no)+' · ':'')+fdate(pend.request_date):t('δεν βλέπω εντολή — ρώτα τον Α.Σ.');
-  const nv=n9.exp?fdate(n9.exp):dash, nsub={ok:t('σε ισχύ'),soon:t('λήγει σύντομα'),expired:t('έληξε'),none:t('δεν το έχουμε'),na:'—'}[n9.k]||'';
+  const nv=n9.exp?fdate(n9.exp):dash, nsub={ok:t('σε ισχύ'),soon:t('λήγει σύντομα'),expired:t('έληξε'),none:t('δεν το έχουμε'),na:'—',above:t('εξαιρείται — Εφορεία')}[n9.k]||'';
   $('view').innerHTML=M.head+`<div class="card pad pdash" style="margin-bottom:14px">
       <b style="font-size:16px">${t('Γεια σου')}${p.first_name?', '+esc(p.first_name):''}</b>
       <div class="dim" style="font-size:12.5px;margin-top:3px">${esc(ledLabel(p,true)||sec||'')}</div>
@@ -15913,7 +15920,8 @@ function trainLevelBody(){
   const trOf=id=>(D.tr||[]).filter(t=>t.person_id===id).sort((a,b)=>(a.date||'')<(b.date||'')?1:-1);
   const lvl=id=>{const n=Math.max(0,...trOf(id).map(trLevel));
     return n===2?{t:'Βασική',c:'ok',n:2}:n===1?{t:'Προκαταρκτική',c:'warn',n:1}:{t:'Καμία',c:'bad',n:0}};
-  const cert=id=>{const c=D.cert.find(x=>x.person_id===id); if(!c||!c.sexoxarto_expiry)return false;
+  const cert=id=>{if(coveredAbove(D.bh.find(b=>b.id===id)))return true;    
+    const c=D.cert.find(x=>x.person_id===id); if(!c||!c.sexoxarto_expiry)return false;
     return new Date(c.sexoxarto_expiry)>new Date()};
   const counts={2:0,1:0,0:0}; led.forEach(p=>counts[lvl(p.id).n]++);
   const ready=led.filter(p=>lvl(p.id).n===2&&cert(p.id)).length;
@@ -20143,7 +20151,7 @@ function efCerts(e,parts,onDate){
   const nameOf=c=>(types.find(t=>t.code===c)||{}).name||c;
   const holders=code=>led.filter(x=>certOn(x.p.id,code,onDate).k==='ok');
   const expired=code=>led.filter(x=>certOn(x.p.id,code,onDate).k==='expired');
-  const efGE=p=>!!p&&!!p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at);
+  const efGE=coveredAbove;
   const geN91=led.filter(x=>efGE(x.p)).length;
   const missingN91=led.filter(x=>!efGE(x.p)&&!['ok','hidden'].includes(dlN91k(e,x.p.id,onDate)));    
   const hidN91=led.filter(x=>!efGE(x.p)&&dlN91k(e,x.p.id,onDate)==='hidden').length;
@@ -21463,7 +21471,7 @@ const dlFaList=e=>{ const o=e.fa_order||[], ix=id=>{const i=o.indexOf(id); retur
 function dlAppt(p,day){ day=day||todayISO();
   const w=warCurrent(p.id,day)||(p._war?warPick(p._war,day):null);    
   return (w&&w.no)||dlEforia(p)||'ΕΚΚΡΕΜΕΙ'}
-const dlIsGE=p=>!!p&&!!p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at);
+const dlIsGE=coveredAbove;
 const dlN91k=(e,pid,end)=>{ const k=certOn(pid,'Ν91',end).k; if(k!=='hidden')return k;
   const s=((GEV[e.id]||{}).n91s||{})[pid]; return s?(s.ok?'ok':'none'):'hidden'; };
 function dlN91(e){ const end=e.end_date||e.event_date, staff=dlStaff(e), o={total:staff.length,ge:[],ok:[],hid:[],bad:[]};
@@ -21472,7 +21480,7 @@ function dlN91(e){ const end=e.end_date||e.event_date, staff=dlStaff(e), o={tota
 const dlN91Sheet=C=>dv('Ν.91(Ι): ελέγχθηκαν στο e76')+' '+C.ok+' '+dv('από τους')+' '+C.total+' '+dv('βαθμοφόρους του επιτελείου και έχουν Ν.91(Ι) σε ισχύ')
   +(C.ge?' · '+C.ge+' '+dv('εξαιρούνται — η Εντολή Διοίκησης εκδίδεται από την Εφορεία τους (ΓΕ/ΕΕΛ)'):'')
   +'. '+dv('Για τους υπόλοιπους')+' '+C.rest+' '+dv('αποφασίζει ο Α.Σ. στο e76.');
-const dlEforia=p=>p&&p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at)?p.commissioner_at:null;
+const dlEforia=p=>coveredAbove(p)?p.commissioner_at:null;
 
 const dlKath=p=>DL.HAT[((typeof hatOfYear==='function'&&hatOfYear(p,YEAR))||{}).role_code]||'';
 const dlTr=(p,re)=>(D.tr||[]).some(t=>t.person_id===p.id&&re.test(t.type||'')&&!/Κοινό Μέρος/.test(t.type||''));
@@ -24011,7 +24019,7 @@ function evParts(eid){
   const rw=rhReady(e); if(rw){ $('view').innerHTML='<div class="dim" style="padding:20px">…</div>'; return rw.then(()=>evParts(eid)); }
   const endD=e.end_date||e.event_date;
   const EROLES=[DL.KDEF,...DL.KATHD.filter(r=>r!==DL.KDEF)];    
-  const geAt=id=>{const p=D.bh.find(b=>b.id===id); return !!p&&!!p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at);};
+  const geAt=id=>coveredAbove(D.bh.find(b=>b.id===id));
   const certAt=id=>geAt(id)?'ge':DRA.certOn(id,dv('Ν91'),endD).k;
   const n91Why=k=>({none:'χωρίς Ν.91(Ι)',expired:'έληξε πριν τη δράση',pending:t('δεν έχει επιβεβαιωθεί από τον Α.Σ.'),nodate:t('χωρίς ημερομηνία λήξης'),
     hidden:t('δεν ελέγχθηκε — την ισχύ τη βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματός του και ο Α.Σ.'),ge:t('εξαιρείται — η Εντολή Διοίκησης εκδίδεται από την Εφορεία του (ΓΕ/ΕΕΛ)'),
@@ -25469,8 +25477,9 @@ V.leaders=()=>{
       {k:'fa',opts:[{v:'y',l:t('Με Α΄ Βοήθειες')},{v:'n',l:t('Χωρίς Α΄ Βοήθειες')}]}
     ]),true)+`<div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th class="hide-s">Ιδιότητα</th><th class="hide-s">Τηλέφωνο</th><th>Λογαριασμός</th><th><span title="Πιστοποιητικό — Αρχείο Καταδικασθέντων για Σεξουαλικά Αδικήματα εναντίον Ανηλίκων, Ν.91(Ι)/2014">Ν.91(Ι)</span></th></tr></thead><tbody>${
     list.map(p=>{const c=D.cert.find(x=>x.person_id===p.id);const d=c&&c.sexoxarto_expiry?Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5):null;
-      const st=d===null?'<span class="pill" style="border-color:var(--line2)">—</span>':d<0?`<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Έληξε</span>`:d<=90?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">${pln(d,'μέρα','μέρες')}</span>`:`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Σε ισχύ</span>`;
-      const cst=d===null?'none':d<0?'bad':d<=90?'warn':'ok';
+      const ab=coveredAbove(p);    
+      const st=ab?`<span class="pill" style="background:rgba(142,68,173,.13);border-color:transparent;color:#8e44ad" title="${esc(t('εξαιρείται — η Εντολή Διοίκησης εκδίδεται από την Εφορεία τους (ΓΕ/ΕΕΛ)'))}">${esc(t('εξαιρείται'))} · ${esc(p.commissioner_at)}</span>`:d===null?'<span class="pill" style="border-color:var(--line2)">—</span>':d<0?`<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Έληξε</span>`:d<=90?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">${pln(d,'μέρα','μέρες')}</span>`:`<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Σε ισχύ</span>`;
+      const cst=ab?'ok':d===null?'none':d<0?'bad':d<=90?'warn':'ok';
       const nd=(D.doc||[]).filter(x=>x.person_id===p.id).length;
       const ak=accSt(p), [acol,atxt]=LACC[ak];
       const fa=leadFA(p.id);
@@ -26610,7 +26619,7 @@ function xmReady(){
   const rows=[[t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Ιδιότητα'),t('Ν.91(Ι) λήξη'),t('Ν.91(Ι)'),t('Πρώτες Βοήθειες λήξη'),t('Πρώτες Βοήθειες'),t('BLS λήξη'),t('BLS'),t('Άδεια οδήγησης λήξη')]].concat(
     L.map(p=>{const n=certState(p.id)||{}, fa=last(p.id,dv('ΠΡΩΤΕΣ_ΒΟΗΘΕΙΕΣ')), bl=last(p.id,'BLS'), dr=last(p.id,dv('ΑΔΕΙΑ_ΟΔΗΓΗΣΗΣ'));
       const ne=n.exp||'';
-      return [p.registry_no,p.last_name,p.first_name,p.section||'',p.appointment||p.category||'',ne,n.k==='na'?t('δεν χρειάζεται'):st(ne),
+      return [p.registry_no,p.last_name,p.first_name,p.section||'',p.appointment||p.category||'',ne,n.k==='na'?t('δεν χρειάζεται'):n.k==='above'?t('εξαιρείται — Εφορεία'):st(ne),
         fa&&fa.expires_on||'',st(fa&&fa.expires_on),bl&&bl.expires_on||'',st(bl&&bl.expires_on),dr?(dr.expires_on||t('χωρίς λήξη')):'']}));
   exportRows(rows,xmName(t('Πιστοποιητικά βαθμοφόρων')+xmTag(),today),t('Πιστοποιητικά βαθμοφόρων'));
 }
