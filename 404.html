@@ -1338,7 +1338,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-17 21:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-17 22:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2235,7 +2235,7 @@ function renderPersona(){
   }
   const va=$('viewas');
   if(va){
-    const canVA=(ME.role==='admin')||ME.platform_admin||(PA&&PA.sc==='ΟΛΑ');
+    const canVA=isAdminUI()||(PA&&PA.sc==='ΟΛΑ');
     va.style.display=canVA?'':'none';
     if(canVA){
       va.innerHTML=VA_OPTS().map(o=>`<option value="${esc(o.k)}"${VIEWAS&&VIEWAS.k===o.k?' selected':''}>${esc(o.t)}</option>`).join('');
@@ -2694,7 +2694,7 @@ function renderNav(){
     if(NAV_ALWAYS.includes(id)) return true;       
     { const mn=mineAllowed(id,K); if(mn!==null)return mn; }
     if(AL && !AL.includes(id)) return false;
-    if(!AL && id==='dev' && !(ME.platform_admin||ME.role==='admin')) return false;
+    if(!AL && id==='dev' && !isAdminUI()) return false;
     if(!AL && NAV_PARENT.includes(id) && K!=='parent') return false;    
     if(!AL && NAV_SELF.includes(id)   && K!=='member') return false;    
     if(!noMode && MN && !personalRole && !MN.includes(id)) return false;  
@@ -3189,6 +3189,9 @@ function sortByName(a,b){return nameKey(a.last_name+a.first_name).localeCompare(
 
 const plu=(n,one,many)=>(+n===1?one:many);
 const pln=(n,one,many)=>n+' '+(+n===1?one:many);    
+const isAdminUI=()=>ME.role==='admin'||!!ME.platform_admin;
+const ageYears=b=>{const n=new Date(); let a=n.getFullYear()-b.getFullYear();
+  if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate()))a--; return a;};
 const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const NEW_LABEL='Νέο μέλος';
 const isNewMember=(pid,day)=>{day=day||todayISO(); return (D.plab||[]).some(l=>l.person_id===pid&&l.label===NEW_LABEL&&(!l.valid_from||l.valid_from<=day)&&(!l.valid_to||l.valid_to>=day))};
@@ -3394,9 +3397,9 @@ function faNote(p){
   return [secOf(p)||p.section||'', n91, fa?'':'χωρίς Πρώτες Βοήθειες'].filter(Boolean).join(' · ');
 }
 const FA_LABEL='Πρώτος Βοηθός';
-const labelsOf=pid=>(D.plab||[]).filter(l=>l.person_id===pid&&l.label===FA_LABEL&&(!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10)));
+const labelsOf=pid=>(D.plab||[]).filter(l=>l.person_id===pid&&l.label===FA_LABEL&&(!l.valid_to||l.valid_to>=todayISO()));
 function labelsHTML(p){
-  const mine=labelsOf(p.id), admin=ME.role==='admin'||!!ME.platform_admin;
+  const mine=labelsOf(p.id), admin=isAdminUI();
   if(!admin&&!mine.length)return '';
   if(!isLed(p)&&!mine.length)return '';
   const fa=(D.pc||[]).some(c=>c.person_id===p.id&&/FIRSTAID|BLS|Πρώτ/i.test(String(c.type_code||'')+String(c.label||'')));
@@ -3433,7 +3436,7 @@ function wireLabels(p){
     const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); openProfile(p.id); });
 }
 function labelsBody(){
-  const L=(D.plab||[]).filter(l=>l.label===FA_LABEL&&(!l.valid_to||l.valid_to>=new Date().toISOString().slice(0,10)));
+  const L=(D.plab||[]).filter(l=>l.label===FA_LABEL&&(!l.valid_to||l.valid_to>=todayISO()));
   const led=D.bh.filter(b=>isLed(b)&&b.status==='Ενεργός').sort(sortByName);
   $('view').innerHTML=`<p class="lede">Ο <b>Πρώτος Βοηθός</b> βλέπει ιατρικά και σημάνσεις διατροφής των παιδιών — στο τμήμα που ορίζεις ή σε όλο το Σύστημα —
       μόνο εφόσον έχει έγκυρο Ν.91(Ι). Κάθε ανάγνωση καταγράφεται όπως όλες.</p>
@@ -3488,7 +3491,7 @@ function labelsBody(){
     const l=(D.plab||[]).find(x=>x.id===b.dataset.lboff); if(l)l.valid_to=today; saveCache(); stay(); });
 }
 let OPENPID=null;    
-const pfParCan=p=>!!p&&!isMem(p)&&!isPar(p)&&(ME.role==='admin'||!!ME.platform_admin||(!!ME.person_id&&p.id===ME.person_id));
+const pfParCan=p=>!!p&&!isMem(p)&&!isPar(p)&&(isAdminUI()||(!!ME.person_id&&p.id===ME.person_id));
 async function pfParWire(p){
   let box=$('pfPar'); if(!box)return;
   const {data,error}=await sb.from('badgeholders').select('father_name,mother_name').eq('id',p.id).maybeSingle();
@@ -3762,7 +3765,7 @@ function histHTML(p){
       `<div class="kv"><b>${esc(x.award_date?fdate(x.award_date):'—')}</b><span>${esc(x.title||x.code||'')}</span></div>`).join('')}</div>`;
   return out;
 }
-function agey(d){if(!d)return 0;const b=new Date(d),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a}
+function agey(d){if(!d)return 0;return ageYears(new Date(d))}
 let PF_SCH=false;    
 const isPar=p=>(p.kind||'')==='Γονέας';
 const isLed=p=>!isPar(p)&&(p.kind||'Βαθμοφόρος')!=='Μέλος';
@@ -3774,7 +3777,6 @@ const pnm=p=>`<b class="pn" data-p="${p.id}">${esc(nm(p))}</b>${
 
 
 
-const TR_B=/βασικ/i;
 const SEC_CODE={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Σύστημα':'ΑΣ','Δίκτυο':'Δ'};
 function trainLevel(id, sec){
   const t=(D.tr||[]).filter(x=>x.person_id===id);
@@ -3792,7 +3794,7 @@ function warrantOf(id, yr){
   let rows=(D.sh||[]).filter(x=>x.person_id===id&&x.warrant_type&&x.warrant_type!=='ΠΡΟΣ ΕΛΕΓΧΟ');
   if(yr) rows=rows.filter(x=>x.scout_year===yr);
   if(!rows.length)return {k:'none'};
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const act=rows.filter(x=>!x.end_date||x.end_date>=today);
   if(act.length){
     const e=act.find(x=>/Εντολή/.test(x.warrant_type));
@@ -4201,7 +4203,7 @@ const validTxt=m=>!m?'':(m%12===0
   : m+' μήνες');
 function addDays(iso,n){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return isoLocal(d); }
 const motFreeTill=v=>{const y=+((v||{}).year)||0; return y>=1990?(y+3)+'-12-31':null;};
-const motFree=(v,onDate)=>{const u=motFreeTill(v); return !!u&&String(onDate||new Date().toISOString().slice(0,10))<=u;};
+const motFree=(v,onDate)=>{const u=motFreeTill(v); return !!u&&String(onDate||todayISO())<=u;};
 function certAuto(t){ return !!t && (t.date_basis==='κυκλοφορία' || (t.date_basis!=='λήξη' && !!t.validity_months)); }
 function certExpiry(t, issued){
   if(!t||!issued) return {exp:null};
@@ -4438,7 +4440,7 @@ function wireCerts(p,after){
     n91Check(c,p,document.querySelector('.pcn91box[data-id="'+b.dataset.id+'"]'))});
   document.querySelectorAll('.pcok').forEach(b=>b.onclick=async()=>{
     if(!await uiAsk('Επιβεβαιώνεις ότι είδες το πιστοποιητικό; Από εδώ και πέρα μετράει για τις δράσεις.'))return;
-    const today=new Date().toISOString().slice(0,10);
+    const today=todayISO();
     const {error}=await sb.from('person_certificates')
       .update({confirmed_on:today, confirmed_by:ME.person_id}).eq('id',b.dataset.id);
     if(error)return toast('Σφάλμα: '+error.message);
@@ -5306,7 +5308,7 @@ async function n91Check(c, p, box){
   const lab=d=>{const seg=d.before.split('\n'); let ln=seg.pop(); if(!ln.trim())ln=seg.pop()||''; return OCR_ISS.test(ln.trim())};
   const ds=ocrDates(r.text).filter(d=>cut<0||d.at<cut);
   const iss=(ds.find(lab)||(ds.length===1?ds[0]:null)||{}).iso||null;
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   if(!iss)L.push('⚠ '+esc(t('Δεν βρήκα με σιγουριά την «Ημερ. Έκδοσης» — δες την στο χαρτί.')));
   else if(iss>today)L.push('⚠ '+esc(t('Η ημερομηνία έκδοσης είναι στο μέλλον'))+': <b>'+esc(fdate(iss))+'</b>');
   else if(c.issued_on&&c.issued_on!==iss)L.push('⚠ '+esc(t('Έκδοση'))+': '+esc(t('το χαρτί γράφει'))+' <b>'+esc(fdate(iss))+'</b>, '+esc(t('η καταχώρηση'))+' <b>'+esc(fdate(c.issued_on))+'</b> — '+esc(t('διόρθωσέ την με το ✎ πριν επιβεβαιώσεις')));
@@ -5352,7 +5354,7 @@ function trData(sec){
     if(a===none)return 1; if(b===none)return -1;
     return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'el')});
   const stOf={}; D.att.forEach(a=>stOf[a.session_id+'|'+a.person_id]=a.status);
-  const pres={has:k=>{ const v=stOf[k]; if(v===dv('Παρών')||v===ATT_EV)return true; if(v)return false;
+  const pres={has:k=>{ const v=stOf[k]; if(attPres(v))return true; if(v)return false;
     const [sid,pid]=k.split('|'), se=ses.find(x=>x.id===sid); return !!(se&&paOnDay(pid,se.session_date)); }};
   const shown=(names.length>1?names:[]).slice(0,8), used=new Set(), block=new Set();
   const own=shown.map(g=>{const c=sgCol((D.sg||[]).find(x=>x.section===sec&&x.scout_year===YEAR&&x.name===g)||{name:g});
@@ -6017,7 +6019,7 @@ function hkadePrint(people){
   const w=window.open('','_blank'); if(!w)return toast('Ο φυλλομετρητής μπλόκαρε το παράθυρο');
   const reqs=kaReqList();
   const stages=[...new Map(reqs.map(r=>[r.stage_label,r.stage_label])).keys()];
-  const today=fdate(new Date().toISOString().slice(0,10));
+  const today=fdate(todayISO());
   const sheet=p=>{
     const entry=(D.my||[]).find(y=>y.person_id===p.id&&y.section==='Κοινότητα');
     const done=reqs.filter(r=>!r.parent_id&&reqDone(p.id,r.id)).length, tot=reqs.filter(r=>!r.parent_id).length;
@@ -6287,7 +6289,7 @@ V.synod=()=>{
         <b>ή Ανιχνευτής</b> που εκλέγουν τα μέλη.</div>
       <div id="synBox" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
         <div class="grow">
-          <label style="max-width:150px">Ημερομηνία<input type="date" id="syD" value="${new Date().toISOString().slice(0,10)}"></label>
+          <label style="max-width:150px">Ημερομηνία<input type="date" id="syD" value="${todayISO()}"></label>
           <label style="max-width:150px">Είδος<select id="syK">
             <option>Τακτική</option><option>Έκτακτη</option><option>Ειδική</option></select>
             <span class="dim" style="font-size:11px">Τακτική = η μηνιαία</span></label>
@@ -7820,7 +7822,7 @@ async function esUrl(ev, kid, parent){
   return ev.form_url + (ev.form_url.includes('?')?'&':'?') + 't=' + encodeURIComponent(tok);
 }
 function signupOpen(ev){
-  const t=typeof todayCY==='function'?todayCY():new Date().toISOString().slice(0,10);
+  const t=typeof todayCY==='function'?todayCY():todayISO();
   if(!ev.form_url)return false;
   if(ev.signup_opens && ev.signup_opens>t)return false;
   if(ev.signup_closes && ev.signup_closes<t)return false;
@@ -7902,7 +7904,7 @@ function kidActRow(e,ks,today){
         </div>`
 }
 function kidActWire(ks,root){
-  const meP=meRec(), today=new Date().toISOString().slice(0,10);
+  const meP=meRec(), today=todayISO();
   (root||document).querySelectorAll('[data-sign]').forEach(b=>b.onclick=async()=>{
     const e=(D.ev||[]).find(x=>x.id===b.dataset.sign);
     const k=(ks.find(x=>x.kid.id===b.dataset.k)||{}).kid;
@@ -7919,7 +7921,7 @@ function kidActWire(ks,root){
 
 V.kidprog=()=>{
   const ks=myKids(); if(!ks.length)return $('view').innerHTML=noKids();
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const secs=[...new Set(ks.map(({kid:k})=>secOf(k)).filter(Boolean))];
   const ss=D.ss.filter(s=>secs.includes(s.section)&&(s.session_date||'')>=today)
     .sort((a,b)=>(a.session_date||'').localeCompare(b.session_date||'')).slice(0,12);
@@ -8331,7 +8333,7 @@ const PUSH_KINDS=()=>[
   {k:'forma', t:t('Φόρμα ή έντυπο που λείπει')},
   ...(meRec()&&isLed(meRec())?[{k:'lixi', t:t('Λήξεις πιστοποιητικών και Ν.91')}]:[]),
   ...(meRec()&&isLed(meRec())?[{k:'parousies', t:t('Παρουσίες που δεν περάστηκαν (19:00, για Αρχηγό/Υπαρχηγούς τμήματος)')}]:[]),
-  ...(ME&&(ME.role==='admin'||ME.platform_admin)?[{k:'xarti', t:t('Χαρτιά που ανέβηκαν και περιμένουν επιβεβαίωση')}]:[]),
+  ...(ME&&isAdminUI()?[{k:'xarti', t:t('Χαρτιά που ανέβηκαν και περιμένουν επιβεβαίωση')}]:[]),
   {k:'anakoinosi', t:t('Ανακοινώσεις του Συστήματος')}];
 const pushOk=()=>typeof navigator!=='undefined'&&'serviceWorker' in navigator&&typeof window!=='undefined'&&'PushManager' in window&&'Notification' in window;
 const pushIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -8485,7 +8487,7 @@ async function docAttach(pid, docId, code, after){
      &&!await uiAsk(`Το «${req.label}» το έχουμε ήδη με άλλο αρχείο.\n\nΝα το αντικαταστήσει αυτό;`,{ok:'Αντικατάσταση'}))return;
   const rec={person_id:pid, req_code:code,
     scout_year:edYear(req),
-    received_on:new Date().toISOString().slice(0,10),
+    received_on:todayISO(),
     document_id:docId, notes:'Συνδέθηκε από τον γονέα'};
   const {data,error}=await sb.from('enrollment_docs')
     .upsert(rec,{onConflict:'person_id,req_code,scout_year'}).select().single();
@@ -8509,7 +8511,7 @@ V.mykids=()=>{
     <h3>Δεν βρέθηκαν παιδιά</h3><p>${(VIEWAS&&VIEWAS.role==='parent')
       ? 'Αυτό το άτομο δεν έχει συνδεδεμένα παιδιά.'
       : t('Ο λογαριασμός σας δεν είναι συνδεδεμένος με μέλος του Συστήματος. Αν νομίζετε ότι είναι λάθος, γράψτε μας στο')+' <b>as@76.life</b>.'}</p></div>`;
-  const today=typeof todayCY==='function'?todayCY():new Date().toISOString().slice(0,10);
+  const today=typeof todayCY==='function'?todayCY():todayISO();
   const lensP=(VIEWAS&&VIEWAS.role==='parent'&&VIEWAS.pid)?D.bh.find(b=>b.id===VIEWAS.pid):null;
   const me=lensP||meRec();
   const reqs=(D.dr||[]).filter(r=>r.active!==false&&(r.applies_to||dv('Μέλος'))===dv('Μέλος')).sort((a,b)=>(a.seq||0)-(b.seq||0));
@@ -8986,7 +8988,7 @@ function parentUpload(pid, only){
     const edRow=async(kid,a,docId,page)=>{
       const rq=(D.dr||[]).find(r=>r.code===a.code); if(!rq)return;
       const {data,error}=await sb.from('enrollment_docs').upsert({person_id:kid,req_code:a.code,
-        scout_year:edYear(rq),received_on:new Date().toISOString().slice(0,10),
+        scout_year:edYear(rq),received_on:todayISO(),
         document_id:docId,page:page,notes:'Ανέβηκε από τον γονέα'},
         {onConflict:'person_id,req_code,scout_year'}).select().single();
       if(error)throw error;
@@ -9414,7 +9416,7 @@ function accessBody(){
 
     <div class="sec"><h3>Αυξημένα δικαιώματα</h3><span class="n">πάνω από τον ρόλο</span></div>
     <div class="card pad">
-      ${(()=>{const g=(D.gr||[]).filter(x=>!x.revoked_at&&x.valid_to>=new Date().toISOString().slice(0,10));
+      ${(()=>{const g=(D.gr||[]).filter(x=>!x.revoked_at&&x.valid_to>=todayISO());
         if(!g.length)return '<div class="dim" style="font-size:12.5px">Κανείς — ο καθένας έχει ό,τι του δίνει ο ρόλος του. <button class="btn sm" data-go="access" data-vtabgo="grants" style="margin-left:8px">Δώσε παραχώρηση</button></div>';
         return g.map(x=>{const p=D.bh.find(b=>b.id===x.person_id);
           return `<div style="padding:5px 0;border-bottom:1px solid var(--line)">
@@ -9794,7 +9796,7 @@ function mysysBody(){
         ${secs.filter(sc=>sc.policy_note).map(sc=>`<div><b>${esc(sc.section)}:</b> ${esc(sc.policy_note)}</div>`).join('')}</div>`:''}
     </div>
 
-    ${(ME.role==='admin'||ME.platform_admin)?(()=>{ const pi=parentInfo();
+    ${isAdminUI()?(()=>{ const pi=parentInfo();
       const ms=secs.filter(sc=>sc.active!==false&&sc.has_members);
       return `<div class="sec"><h3>${t('Για τους γονείς')}</h3></div>
     <div class="card pad" style="margin-bottom:14px">
@@ -9910,7 +9912,7 @@ V.transfers=()=>{
           <option value="επιστροφή">Επιστροφή</option></select></label>
         <label>Προς<select id="trTo"><option value="">—</option>
           ${(D.kl||[]).map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></label>
-        <label>Ισχύει από<input type="date" id="trOn" value="${new Date().toISOString().slice(0,10)}"></label>
+        <label>Ισχύει από<input type="date" id="trOn" value="${todayISO()}"></label>
       </div>
       <div class="grow"><label style="flex:3">Λόγος<input id="trR" placeholder="π.χ. μετακόμιση οικογένειας"></label></div>
       <button class="btn" id="trAdd">Καταχώρηση αιτήματος</button>
@@ -9948,8 +9950,8 @@ V.transfers=()=>{
   };
   document.querySelectorAll('[data-trs]').forEach(b=>b.onclick=async()=>{
     const st=b.dataset.to, upd={status:st};
-    if(st==='αποδεσμεύτηκε'){upd.released_by=ME.person_id||null;upd.released_on=new Date().toISOString().slice(0,10)}
-    if(st==='εγκρίθηκε'){upd.approved_by=ME.person_id||null;upd.approved_on=new Date().toISOString().slice(0,10)}
+    if(st==='αποδεσμεύτηκε'){upd.released_by=ME.person_id||null;upd.released_on=todayISO()}
+    if(st==='εγκρίθηκε'){upd.approved_by=ME.person_id||null;upd.approved_on=todayISO()}
     const {error}=await sb.from('transfers').update(upd).eq('id',b.dataset.trs);
     if(error)return toast('Σφάλμα: '+error.message);
     await loadAll(); stay();
@@ -10353,7 +10355,7 @@ V.audit=()=>{
 let AUQ='';
 
 function expiryItems(){
-  const out=[], today=new Date().toISOString().slice(0,10);
+  const out=[], today=todayISO();
   const add=(d,kind,who,what,todo,go,extra)=>{if(d)out.push({d,kind,who,what,todo,go,...(extra||{})})};
 
   D.bh.filter(p=>p.status==='Ενεργός').forEach(p=>{
@@ -10404,7 +10406,7 @@ function expiryItems(){
 let EXPQ='';
 function expiryBody(){
   const items=expiryItems();
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const plus=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
   const q=nameKey(EXPQ);
   const hit=x=>!q||nameKey((x.who?nm(x.who):'')+' '+x.kind+' '+x.what).includes(q);
@@ -12192,7 +12194,7 @@ function fwKids(mine){
   const box=$('fwKids'); if(!box||!mine||typeof myKids!=='function')return;
   let ks=myKids(), selfMode=false;
   if(!ks.length){ const me=meRec(); if(mine&&self16(me)){ ks=[{kid:me}]; selfMode=true } else return; }
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const ev=kidEvents(ks,today).ev.filter(e=>e.form_url);
   box.innerHTML=`<div class="card pad" style="margin-top:14px"><b>${selfMode?'Οι δηλώσεις σου':'Δηλώσεις για '+(ks.length===1?gp('το παιδί σου',t('το παιδί σας')):gp('τα παιδιά σου',t('τα παιδιά σας')))}</b>
     ${ev.length?`<div style="margin-top:9px">${ev.map(e=>kidActRow(e,ks,today)).join('')}</div>`
@@ -12790,7 +12792,7 @@ const CAPS=[
 const capT=k=>(CAPS.find(c=>c.k===k)||{}).t||k;
 function grantsBody(){
   const gs=(D.gr||[]).slice().sort((a,b)=>(a.valid_to<b.valid_to?-1:1));
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const live=g=>!g.revoked_at&&g.valid_to>=today&&g.valid_from<=today;
   const per=id=>D.bh.find(b=>b.id===id);
   const secs=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'];
@@ -13510,7 +13512,7 @@ function staffBoard(years){
     ? '<i class="edot" style="background:#8e44ad" title="Έφορος"></i>'
     : leaderDot(p, sec||secOf(p)||p.section, SY);
   const fa=p=>{const c=(D.pc||[]).find(x=>x.person_id===p.id&&/ΠΡΩΤΕΣ|ΒΟΗΘ/i.test(x.type_code||'')&&x.confirmed_on
-      &&(!x.expires_on||x.expires_on>=new Date().toISOString().slice(0,10)));
+      &&(!x.expires_on||x.expires_on>=todayISO()));
     return c?'<span class="facross" title="Ενεργές Α΄ Βοήθειες">✚</span>':''};
 
   const hatOf=p=>{const h=hatOfYear(p,SY)||(D.ph||[]).find(x=>x.person_id===p.id&&!x.valid_to&&x.role_code);
@@ -13894,7 +13896,7 @@ function staffImport(){
     });
     saveDraft();
     savePend(pend.map(x=>({name:x.name, sec:x.sec, role:x.role,
-      sug:x.sug?nm(x.sug):null, at:new Date().toISOString().slice(0,10)})));
+      sug:x.sug?nm(x.sug):null, at:todayISO()})));
     drw.classList.remove('on');
     toast(use.length+' στο πρόχειρο'+(pend.length?' · '+pend.length+' εκκρεμούν':'')
       +(promo?' · '+promo+' αλλάζουν ιδιότητα':''));
@@ -14158,7 +14160,7 @@ function staffDraft(years){
       person_id:p.id, scout_year:SY, section:validSection(DRAFT[p.id].section),
       appointment:(DRAFT[p.id].role||'Βαθμοφόρος')+' '+(SECFULL[DRAFT[p.id].section]||''),
       role:DRAFT[p.id].role||null, warrant_type:'Ανάθεση Καθηκόντων', source:'e76-draft',
-      start_date:new Date().toISOString().slice(0,10)}));
+      start_date:todayISO()}));
     const hold=led.filter(p=>!place(p)&&p.status==='Ενεργός');
     if(!rows.length&&!hold.length)return toast('Καμία αλλαγή');
     const planRows=led.filter(p=>validSection(place(p))).map(p=>{
@@ -14181,7 +14183,7 @@ function staffDraft(years){
     for(const h of hold){
       const {error:e4}=await sb.from('badgeholders')
         .update({status:'Σε αναστολή', status_reason:'Δεν τοποθετήθηκε στο επιτελείο '+SY,
-                 status_since:new Date().toISOString().slice(0,10)}).eq('id',h.id);
+                 status_since:todayISO()}).eq('id',h.id);
       if(!e4){h.status='Σε αναστολή'; held++;}
     }
     if(planRows.length){ const {error:e5}=await sb.rpc('structure_lock_plan',{p_year:SY,p_rows:planRows,p_source:'Στήσιμο e76'});
@@ -14874,7 +14876,7 @@ function mePieces(){
       model:$('vD').value.trim()||null,seats:parseInt($('vS').value)||null,
       owner_id:p.id,created_by:p.id}).select('id').single();
     if(error){va.disabled=false;return vm('Σφάλμα: '+error.message)}
-    await sb.from('vehicle_links').insert({vehicle_id:v.id,person_id:p.id,relation:'Ιδιοκτήτης',valid_from:new Date().toISOString().slice(0,10)});
+    await sb.from('vehicle_links').insert({vehicle_id:v.id,person_id:p.id,relation:'Ιδιοκτήτης',valid_from:todayISO()});
     await loadAll(); stay();
   };
 
@@ -14936,7 +14938,7 @@ function mePieces(){
           .insert({plate,owner_id:p.id,created_by:p.id}).select().single();
         if(ne){vca.disabled=false;return vcm('Το όχημα δεν δημιουργήθηκε: '+ne.message)}
         await sb.from('vehicle_links').insert({vehicle_id:nv.id,person_id:p.id,
-          relation:'Ιδιοκτήτης',valid_from:new Date().toISOString().slice(0,10)});
+          relation:'Ιδιοκτήτης',valid_from:todayISO()});
         (D.veh=D.veh||[]).push(nv); vid=nv.id;
       }
     }
@@ -15604,7 +15606,7 @@ function kidProgCard(kid){
 V.myhome=()=>{
   const M=mePieces(); if(!M)return meGone();
   const p=M.p, sec=secOf(p), y=myOf(p)||{};
-  const today=typeof todayCY==='function'?todayCY():new Date().toISOString().slice(0,10);
+  const today=typeof todayCY==='function'?todayCY():todayISO();
   const row=(icn,cls,h,sub,btn)=>`<div class="ptd${cls?' '+cls:''}"><span class="ptdi">${ic(icn,16)}</span>
       <div style="flex:1;min-width:0"><div class="ptdh">${h}</div>${sub?`<div class="ptds">${sub}</div>`:''}</div>${btn||''}</div>`;
   const go=(r,lab)=>`<button class="btn sm" data-mgo="${r}">${esc(lab)}</button>`;
@@ -16591,7 +16593,6 @@ function legalOpen(code){
     const o=(D.legal||[]).find(x=>x.id===a.dataset.id);
     if(o)ov.querySelector('#lrWrap').innerHTML=render(o)});
 }
-const isAdminUI=()=>ME.role==='admin'||!!ME.platform_admin;
 
 function legalFooter(){
   const f=$('lfoot'); if(!f)return;
@@ -17205,7 +17206,7 @@ function certqBody(){
     saveCache(); toast('Η ημερομηνία αποθηκεύτηκε');
   });
   const accept=async(ids,btn)=>{
-    const today=new Date().toISOString().slice(0,10);
+    const today=todayISO();
     const patches=[]; const noDate=[];
     for(const id of ids){ const p=rowPatch(id);
       if(!p) return toast('Δεν βρέθηκε η εγγραφή');
@@ -17522,7 +17523,7 @@ async function eyxSaveTx(k){
 }
 const DH_COL={'κρίσιμο':'bad','προσοχή':'warn','πληροφορία':''};
 function dhEventRows(){
-  const today=new Date().toISOString().slice(0,10), out=[];
+  const today=todayISO(), out=[];
   (D.ev||[]).filter(e=>e.form_url&&!e.hidden&&(e.end_date||e.event_date||'')>=today).forEach(e=>{
     const when=fdate(e.event_date)+(e.signup_closes?' · δηλώσεις ως '+fdate(e.signup_closes):'');
     if(evStage(e)!=='published'&&(signupOpen(e)||!e.signup_closes||e.signup_closes>=today))
@@ -17855,7 +17856,7 @@ V.formcat=async()=>{
   if(error)return $('view').innerHTML=`<div class="uc"><h3>Δεν διαβάστηκε</h3><p>${esc(error.message)}</p></div>`;
   const rows=data||[];
   const cnt=await fcCounts(rows.map(r=>r.id));
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const live=r=>r.active!==false&&(!r.opens_on||r.opens_on<=today)&&(!r.closes_on||r.closes_on>=today);
 
   const ed=r=>`<tr><td colspan="5" style="background:var(--bg)">
@@ -18010,7 +18011,7 @@ V.formcat=async()=>{
 
 const IRV_TEL=v=>{const d=String(v||'').replace(/\D/g,'');return d.length>=8?d.slice(-8):''};
 function irvKnown(pid){
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const ids=[pid,...(D.cl||[]).filter(c=>c.member_id===pid&&!c.restricted
     &&(!c.valid_from||String(c.valid_from)<=today)&&(!c.valid_to||String(c.valid_to)>=today)).map(c=>c.carer_id)];
   const ps=ids.map(id=>(D.bh||[]).find(b=>b.id===id)).filter(Boolean);
@@ -18552,8 +18553,8 @@ function annKids(ev){
   return ks.filter(({kid:k})=>k&&kidForEv(ev,k)&&(typeof evInvOk!=='function'||evInvOk(ev,k.id,secOf(k))));
 }
 function annSignHTML(ev,a){
-  if(!ev){ if(!(a&&a.source==='feed'&&a.link_url&&(ME.role==='admin'||ME.platform_admin)))return '';
-    const td=new Date().toISOString().slice(0,10);
+  if(!ev){ if(!(a&&a.source==='feed'&&a.link_url&&isAdminUI()))return '';
+    const td=todayISO();
     const evs=(D.ev||[]).filter(e=>!e.hidden&&e.form_url&&String(e.end_date||e.event_date||'')>=td).sort((x,y)=>String(x.event_date).localeCompare(String(y.event_date)));
     if(!evs.length)return '';
     return `<div style="margin-top:12px;font-size:12.5px" class="dim">${esc(t('Δεν είναι δεμένη με δράση — οι γονείς δεν βλέπουν κουμπί δήλωσης.'))}
@@ -18561,7 +18562,7 @@ function annSignHTML(ev,a){
   if(!ev.form_url)return '';
   const ks=annKids(ev);
   if(!ks.length)return annWriter(ME.role)?`<div class="dim" style="margin-top:10px;font-size:12.5px">✓ ${esc(prefillOn()?t('Δεμένη με τη δράση: οι γονείς (και οι ανιχνευτές 16+) βλέπουν εδώ κουμπί δήλωσης, με τη φόρμα ήδη συμπληρωμένη.'):t('Δεμένη με τη δράση: οι γονείς (και οι ανιχνευτές 16+) βλέπουν εδώ κουμπί δήλωσης.'))}</div>`:'';
-  const today=new Date().toISOString().slice(0,10), h=kidActBtns(ev,ks,today); if(!h.trim())return '';
+  const today=todayISO(), h=kidActBtns(ev,ks,today); if(!h.trim())return '';
   return `<div style="margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px">
     <div style="font-size:13px;font-weight:600">${esc(t('Δήλωση συμμετοχής'))}${ev.signup_closes?` <span class="dim" style="font-weight:400">· ${esc(t('μέχρι'))} ${esc(fdate(ev.signup_closes))}</span>`:''}</div>
     <div class="dim" style="font-size:12px;margin:2px 0 7px">${esc(prefillOn()?t('Η φόρμα ανοίγει ήδη συμπληρωμένη με τα στοιχεία που έχουμε.'):t('Ανοίγει η φόρμα του Συστήματος — θα σας ζητήσει τον Αριθμό Μητρώου του παιδιού.'))}</div>
@@ -19422,7 +19423,7 @@ V.events=()=>{
   $('evQNew').onclick=()=>{const b=$('evQBox'); if(!b)return; b.style.display=b.style.display==='flex'?'none':'flex'; if(b.style.display==='flex')$('evQT').focus()};
   evQuickWire();
   document.querySelectorAll('[data-evnof]').forEach(b=>b.onclick=()=>{ b.disabled=true; evNofToggle(b.dataset.evnof); });    
-  $('evNew').onclick=()=>{const b=$('evBox');b.style.display=b.style.display==='flex'?'none':'flex';if(!$('evD').value)$('evD').value=new Date().toISOString().slice(0,10)};
+  $('evNew').onclick=()=>{const b=$('evBox');b.style.display=b.style.display==='flex'?'none':'flex';if(!$('evD').value)$('evD').value=todayISO()};
   const evGuess=()=>{const d=$('evD').value, d2=$('evD2').value||d; if(!d)return;
     const n=Math.round((Date.parse(d2)-Date.parse(d))/864e5); if(n<0)return;
     $('evTy').value=n===0?'Μονοήμερο':n===1?'Διήμερο':n===2?'Τριήμερο':'Κατασκήνωση'};
@@ -19473,7 +19474,7 @@ const efPersons=eid=>{ const rh=[...rhRows(eid),...guRows(eid)];
     .filter(x=>x.p).sort((a,b)=>sortByName(a.p,b.p)); };
 
 const RHX={};
-const rhNeed=e=>!!e&&!ME.platform_admin&&ME.role!=='admin'&&EF_HELP_SECS().includes(e.section||e.owner_section||'');
+const rhNeed=e=>!!e&&!isAdminUI()&&EF_HELP_SECS().includes(e.section||e.owner_section||'');
 async function rhLoad(e,force){
   if(!rhNeed(e))return null; if(RHX[e.id]&&!force)return RHX[e.id];
   const {data,error}=await sb.rpc('rover_helpers_of_event',{p_event:e.id});
@@ -20384,7 +20385,7 @@ function enrollBody(){
     if(cur){const {error}=await sb.from('enrollment_docs').delete().eq('id',cur.id);
       if(error)return toast('Σφάλμα: '+error.message);
       D.ed=(D.ed||[]).filter(x=>x.id!==cur.id);}
-    else{const rec={person_id:pid,req_code:code,scout_year:edYear(req),received_on:new Date().toISOString().slice(0,10)};
+    else{const rec={person_id:pid,req_code:code,scout_year:edYear(req),received_on:todayISO()};
       const {data,error}=await sb.from('enrollment_docs').insert(rec).select().single();
       if(error)return toast('Σφάλμα: '+error.message); (D.ed=D.ed||[]).push(data);}
     saveCache(); stay();});
@@ -20407,9 +20408,7 @@ async function getIdentity(id, purpose){
   return (data&&data[0])||{};
 }
 const dobOf=p=>((D.sen||[]).find(s=>s.person_id===p.id)||{}).dob||p._dob||null;    
-const ageOf=p=>{const d=dobOf(p); if(!d)return null;
-  const b=new Date(d), n=new Date(); let a=n.getFullYear()-b.getFullYear();
-  const m=n.getMonth()-b.getMonth(); if(m<0||(m===0&&n.getDate()<b.getDate()))a--; return a};
+const ageOf=p=>{const d=dobOf(p); if(!d)return null; return ageYears(new Date(d))};
 const adultRef={fn:p=>{const a=ageOf(p); return a!==null&&a>=18}}; const isAdult=p=>adultRef.fn(p);
 const tmpl=(code,signer)=>(D.ft||[]).filter(t=>t.code===code&&t.active!==false&&(!signer||t.signer===signer))
   .sort((a,b)=>b.version-a.version)[0]||null;
@@ -20449,7 +20448,7 @@ function deskSheet(kids){
   w.document.close(); setTimeout(()=>w.print(),400);
 }
 const senRef={fn:p=>(D.sen||[]).find(s=>s.person_id===p.id)||{}}; const senOf=p=>senRef.fn(p);
-const efcAdmin=()=>ME.role==='admin'||!!ME.platform_admin;
+const efcAdmin=()=>isAdminUI();
 const efcHats=()=>(D.ph||[]).filter(h=>h.person_id===ME.person_id&&!h.valid_to);
 const efcIsAS=()=>efcHats().some(h=>h.role_code==='AS');
 const efcHeadSecs=()=>[...new Set(efcHats().filter(h=>/^(AAL|AOP|AKA|APD)$/.test(h.role_code)&&h.scope_value).map(h=>h.scope_value))];
@@ -20462,7 +20461,7 @@ function efcCanOpen(pid, code, e){
   return hs.includes(secOf(p)) || (!!e && hs.includes(e.owner_section||e.section));
 }
 const efcDoc=id=>id?(D.doc||[]).find(d=>d.id===id)||null:null;
-const efcToday=()=>new Date().toISOString().slice(0,10);
+const efcToday=()=>todayISO();
 
 function efcVehicles(parts){
   const ids=new Set(parts.filter(x=>isLed(x.p)).map(x=>x.p.id)), td=efcToday();
@@ -20571,7 +20570,7 @@ function efcWire(e, parts, onDate){
   const all=$('efCertAll'); if(all) all.onclick=()=>efcBundle(e,parts,onDate);
 }
 const GUX={};
-const guNeed=e=>!!e&&!ME.platform_admin&&ME.role!=='admin';
+const guNeed=e=>!!e&&!isAdminUI();
 async function guLoad(e,force){
   if(!guNeed(e))return null; if(GUX[e.id]&&!force)return GUX[e.id];
   const {data,error}=await sb.rpc('event_guests_of_event',{p_event:e.id});
@@ -20641,7 +20640,7 @@ function efdMed(m){
 }
 async function efdMedMany(ids,purpose,onStep,eid){
   const out={}; let no=0, i=0;
-  const stub=eid&&!(ME.role==='admin'||ME.platform_admin)?ids.filter(id=>{const p=(D.bh||[]).find(b=>b.id===id); return p&&p._stub&&isLed(p)}):[];
+  const stub=eid&&!isAdminUI()?ids.filter(id=>{const p=(D.bh||[]).find(b=>b.id===id); return p&&p._stub&&isLed(p)}):[];
   if(stub.length){ const {data,error}=await sb.rpc('event_staff_medical',{p_event:eid,p_purpose:purpose});
     if(error)no+=stub.length; else stub.forEach(id=>{ out[id]=(data||[]).find(m=>m.person_id===id)||{}; });
     ids=ids.filter(id=>!stub.includes(id)); }
@@ -20735,7 +20734,7 @@ async function efdUnmFill(e,id){
   b.innerHTML=`<div style="margin-top:8px;padding:8px 11px;border-radius:10px;background:var(--warnbg);color:var(--warn);font-size:12.5px;line-height:1.45">⚠ ${
     data===1?t('1 υποβολή της φόρμας δεν αντιστοιχίστηκε με μέλος του e76 — δεν μπαίνει στη λίστα «Μόνο δηλωμένοι».')
             :data+' '+t('υποβολές της φόρμας δεν αντιστοιχίστηκαν με μέλος του e76 — δεν μπαίνουν στη λίστα «Μόνο δηλωμένοι».')} ${
-    (ME.role==='admin'||!!ME.platform_admin)?(data===1?t('Αντιστοίχισέ την από τις υποβολές της φόρμας.'):t('Αντιστοίχισέ τες από τις υποβολές της φόρμας.'))
+    isAdminUI()?(data===1?t('Αντιστοίχισέ την από τις υποβολές της φόρμας.'):t('Αντιστοίχισέ τες από τις υποβολές της φόρμας.'))
       :(data===1?t('Ενημέρωσε τον Α.Σ. να την αντιστοιχίσει.'):t('Ενημέρωσε τον Α.Σ. να τις αντιστοιχίσει.'))}</div>`;
 }
 function efdSignExport(){
@@ -21382,7 +21381,7 @@ async function dlParLoad(eid,G,extra){
   for(let i=0;i<ids.length;i+=150){ const {data}=await sb.from('badgeholders').select('id,father_name,mother_name').in('id',ids.slice(i,i+150));
     (data||[]).forEach(x=>G.par[x.id]=x); }
 }
-const dlCanEdit=e=>!!ME.platform_admin||ME.role==='admin'||(ME.role==='section_head'&&!!ME.scope&&ME.scope===(e.owner_section||e.section));
+const dlCanEdit=e=>isAdminUI()||(ME.role==='section_head'&&!!ME.scope&&ME.scope===(e.owner_section||e.section));
 function dlDays(e){const a=[]; if(!e||!e.event_date)return a; let t=Date.parse(e.event_date+'T12:00:00Z');
   const end=Date.parse((e.end_date||e.event_date)+'T12:00:00Z'); while(t<=end&&a.length<40){a.push(new Date(t).toISOString().slice(0,10)); t+=864e5} return a}
 const dlNights=e=>Math.max(0,dlDays(e).length-1);
@@ -21416,7 +21415,7 @@ const dlxOn=e=>!!DLX&&!!e&&DLX.eid===e.id;
 const dlStaff=e=>dlxOn(e)?DLX.rows.filter(x=>x.pa&&isLed(x.p)):efPersons(e.id).filter(x=>x.p&&isLed(x.p)&&efdLive(x.pa));
 const dlStaffAll=e=>[...dlStaff(e),...dlHelpers(e)].sort(dlStaffCmp(e));
 async function stExport(e,purpose,g){
-  if(ME.role==='admin'||ME.platform_admin)return null;
+  if(isAdminUI())return null;
   const {data,error}=await sb.rpc('event_staff_export',{p_event:e.id,p_purpose:purpose});
   if(error){ toast(t('Στοιχεία επιτελείου')+': '+error.message); return null }
   (data||[]).forEach(z=>{ const p=(D.bh||[]).find(b=>b.id===z.person_id); if(!p)return;
@@ -21431,7 +21430,7 @@ const dlEligSecs=e=>{ const secs=new Set(evSecs(e)); (D.emo||[]).forEach(o=>{ if
 const dlEligible=e=>{ if(evLeadersOnly(e))return [];
   const secs=dlEligSecs(e);
   return (D.bh||[]).filter(p=>isMem(p)&&p.status===dv('Ενεργός')&&!vaHidesPerson(p)&&secs.has(secOf(p))&&evInvOk(e,p.id,secOf(p))); };
-const dlEligMissing=e=>{ if(!e||evLeadersOnly(e)||ME.role==='admin'||ME.platform_admin||dlxOn(e))return [];    
+const dlEligMissing=e=>{ if(!e||evLeadersOnly(e)||isAdminUI()||dlxOn(e))return [];    
   return [...dlEligSecs(e)].filter(s=>!(D.bh||[]).some(p=>isMem(p)&&p.status===dv('Ενεργός')&&secOf(p)===s)); };
 const dlEligWarn=e=>{ const w=[]; if(!e||evLeadersOnly(e))return w;
   if(evInvEmpty(e))w.push(t('Η δράση είναι «Μόνο συγκεκριμένοι» χωρίς κανέναν καλεσμένο — 0 δικαιούνται και κανένας γονέας δεν τη βλέπει. Άνοιξέ τη στη Μόλα › «Ποιοι καλούνται».'));
@@ -21444,7 +21443,7 @@ const dlP=id=>id?(D.bh||[]).find(b=>b.id===id)||null:null;
 const dlIsFA=x=>x.pa.role==='Πρώτος Βοηθός'||x.pa.role2==='Πρώτος Βοηθός';
 const dlFaList=e=>{ const o=e.fa_order||[], ix=id=>{const i=o.indexOf(id); return i<0?999:i};
   return dlStaff(e).filter(dlIsFA).sort((a,b)=>ix(a.p.id)-ix(b.p.id)||sortByName(a.p,b.p)); };
-function dlAppt(p,day){ day=day||new Date().toISOString().slice(0,10);
+function dlAppt(p,day){ day=day||todayISO();
   const w=warCurrent(p.id,day)||(p._war?warPick(p._war,day):null);    
   return (w&&w.no)||dlEforia(p)||'ΕΚΚΡΕΜΕΙ'}
 const dlIsGE=p=>!!p&&!!p.is_commissioner&&[dv('ΓΕ'),dv('ΕΕΛ')].includes(p.commissioner_at);
@@ -21800,7 +21799,7 @@ function dlFaWire(e){
   const ad=$('dlFaAdd'); if(ad)ad.onchange=async()=>{ const x=dlStaff(e).find(y=>y.p.id===ad.value); if(!x)return;
     const before=ids(); if(await dlFaRole(x,true)){ saveCache(); sv([...before,x.p.id]); } else ad.value=''; };
 }
-const dlParCan=p=>ME.role==='admin'||!!ME.platform_admin||(!!ME.person_id&&p.id===ME.person_id);
+const dlParCan=p=>isAdminUI()||(!!ME.person_id&&p.id===ME.person_id);
 function dlParHTML(e,g){
   const miss=dlStaff(e).filter(x=>g.par&&g.par[x.p.id]&&!(g.par[x.p.id].father_name&&g.par[x.p.id].mother_name));
   if(!miss.length)return '';
@@ -23639,7 +23638,7 @@ function letterhead(title,sub){
       ${par?`<div class="lh-par">${esc(par.name)}</div>`:''}
       <div class="lh-name">${esc((k.name||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').normalize('NFC'))}</div>${ ''}
       ${title?`<div class="lh-title">${esc(title)}</div>`:''}
-      <div class="lh-sub">${esc(sub||('Προσκοπική περίοδος '+YEAR))} · ${fdate(new Date().toISOString().slice(0,10))}</div>
+      <div class="lh-sub">${esc(sub||('Προσκοπική περίοδος '+YEAR))} · ${fdate(todayISO())}</div>
     </div>
     <div class="lh-r">${[k.city,mb&&mb.address,k.email&&k.email!==(mb&&mb.address)?k.email:''].filter(Boolean).map(esc).join('<br>')}</div>
   </div>`;
@@ -25084,7 +25083,7 @@ let VEHPRE=null;
 function vehUpload(vid, kind){ VEHPRE={v:vid, k:kind||'ΑΣΦΑΛΕΙΑ_ΟΧΗΜΑΤΟΣ'}; if(ROUTE==='myveh')stay(); else route('myveh'); }
 function mineHTML(){
   const me=meRec(); if(!me)return '';
-  const today=new Date().toISOString().slice(0,10);
+  const today=todayISO();
   const plus=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
   const all=expiryItems().filter(x=>x.who&&x.who.id===me.id);
   const late=all.filter(x=>x.d!=='9999-12-31'&&x.d<today);
@@ -25521,7 +25520,7 @@ function contactRows(scope){
   const inEv=evid?new Set((D.pa||[]).filter(x=>x.event_id===evid).map(x=>x.person_id)):null;
   const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός'&&inYear(p)
      &&(evid?inEv.has(p.id):(sec==='all'||secOf(p)===sec))&&(!grp||(myOf(p)||{}).group_name===grp)).sort(sortByName);
-  const seen={}, out=[], today=new Date().toISOString().slice(0,10);
+  const seen={}, out=[], today=todayISO();
   kids.forEach(p=>{
     const g=gOf(p.registry_no)||{}, lw=String(p.latin_name||'').trim().split(/\s+/);
     const kf=L?(lw.length>1?lw.slice(0,-1).join(' '):latin(p.first_name)):p.first_name;
@@ -26830,7 +26829,7 @@ function hsWhenHTML(){
     <datalist id="hsLdr">${hsNames().map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>`;
 }
 const HEADCODE={'Αγέλη':'AAL','Ομάδα':'AOP','Κοινότητα':'AKA'};
-const canHistory=()=>ME.role==='admin'||!!ME.platform_admin
+const canHistory=()=>isAdminUI()
   ||myHats().some(h=>['AS','YAS'].includes(h.role_code)||h.role_code===HEADCODE[PSEC]);
 function histPassBody(){
   if(!canHistory()) return $('view').innerHTML=`<div class="uc"><h3>Το ιστορικό το περνούν ο Α.Σ. και ο Αρχηγός τμήματος</h3>
@@ -26963,19 +26962,19 @@ function personMatch(p,q){
   if(d.length>=5&&canSeeSensitive()&&ADTHIT&&ADTQ===d&&ADTHIT.has(p.id))return true;
   return false;
 }
-const canSeeSensitive=()=>ME.role==='admin'||ME.platform_admin;
+const canSeeSensitive=()=>isAdminUI();
 
 const SYN_CONVENE=['AS','YAS','AKA','YKA'];
 function myHats(){
   const fromD=(D.ph||[]).filter(h=>h.person_id===ME.person_id&&!h.valid_to);
   return fromD.length?fromD:((ME.hats||[]).filter(h=>!h.valid_to));
 }
-const canConveneSynod=()=>ME.role==='admin'||!!ME.platform_admin
+const canConveneSynod=()=>isAdminUI()
   ||myHats().some(h=>SYN_CONVENE.includes(h.role_code));
 const canWriteSynod=s=>canConveneSynod()
   ||!!(s&&ME.person_id&&(s.chair_id===ME.person_id
         ||s.secretary_id===ME.person_id||s.created_by===ME.person_id));
-const synFuture=s=>!!(s&&s.held_on)&&s.held_on>new Date().toISOString().slice(0,10);
+const synFuture=s=>!!(s&&s.held_on)&&s.held_on>todayISO();
 const synPast=s=>!!(s&&s.held_on)&&s.held_on<todayISO();
 const canArchiveSynod=s=>isAdminUI()
   ||myHats().some(h=>['AS','AKA'].includes(h.role_code))
@@ -27008,7 +27007,7 @@ function adtSoon(raw){
 
 let VAQ='', VASUB=null, VAROLE=null;
 V.viewas=()=>{
-  const canAll = ME.role==='admin'||ME.platform_admin;
+  const canAll = isAdminUI();
   const mysec  = scopeSec();
   const pool = D.bh.filter(p=>p.status==='Ενεργός'
       && (canAll || (mysec ? secOf(p)===mysec : inScope(p))))
@@ -27588,10 +27587,8 @@ V.wl2=()=>{
 };
 
 const wl2Age=d=>{ if(!d)return '';
-  const b=new Date(d+'T12:00:00'), t=new Date(); if(isNaN(b))return '';
-  let a=t.getFullYear()-b.getFullYear();
-  if(t.getMonth()<b.getMonth()||(t.getMonth()===b.getMonth()&&t.getDate()<b.getDate()))a--;
-  return a+' χρ.'; };
+  const b=new Date(d+'T12:00:00'); if(isNaN(b))return '';
+  return ageYears(b)+' χρ.'; };
 function wl2Info(id){
   const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
   const g=wl2G(r);
@@ -27655,7 +27652,7 @@ async function wl2SetClass(id, val){
   if(!val)return;
   const r=(D.wl||[]).find(x=>x.id===id); if(!r)return;
   const row={waitlist_id:id, class_year:curScoutYear(), school_class:val,
-             origin:'χέρι '+curScoutYear(), declared_on:new Date().toISOString().slice(0,10)};
+             origin:'χέρι '+curScoutYear(), declared_on:todayISO()};
   const {data,error}=await sb.from('waitlist_class').insert(row).select().single();
   if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
   (D.wlc=D.wlc||[]).push(data); saveCache();
@@ -27835,7 +27832,7 @@ async function wlRelSet(id, key, val){
                 rel_confirmed_by:r.rel_confirmed_by||null};
   const v={[key]:val||null};
   const def=WLREL.find(d=>d.k===key)||{};
-  if(val&&def.prio){ v.rel_confirmed_on=new Date().toISOString().slice(0,10);
+  if(val&&def.prio){ v.rel_confirmed_on=todayISO();
                      v.rel_confirmed_by=(meRec()||{}).id||null }
   const {error}=await sb.from('waitlist').update(v).eq('id',id);
   if(error)return toast('Δεν αποθηκεύτηκε: '+error.message);
@@ -27966,7 +27963,7 @@ async function wlPreset(id, key){
 }
 async function wlContact(id,kind,quiet){
   const me=(meRec()||{}).id||null;
-  const row={waitlist_id:id, kind, at:new Date().toISOString().slice(0,10),
+  const row={waitlist_id:id, kind, at:todayISO(),
              by_id:me, by_person:me};
   const {data,error}=await sb.from('waitlist_contact').insert(row).select().single();
   if(error)return toast('Δεν καταγράφηκε: '+error.message);
@@ -28098,7 +28095,7 @@ V.inbox=()=>{ const n=inboxCounts(); return tabView('inbox',[
   {k:'veh', t:'Χαρτιά οχημάτων', n:n.veh, i:'car', fn:()=>vpapersBody(), d:'ΜΟΤ, ασφάλειες, άδειες — ανά όχημα'},
   {k:'sch', t:'Δηλώσεις σχολών', n:n.sch, i:'award', fn:trainAppsBody, d:'ποιος δήλωσε σχολή και περιμένει εσένα'}]) };
 
-const ledfileFull=()=>ME.role==='admin'||!!ME.platform_admin
+const ledfileFull=()=>isAdminUI()
   ||myHats().some(h=>['AS','YAS'].includes(h.role_code));
 V.ledfile=()=>tabView('ledfile',[
   ...(ledfileFull()?[{k:'war', t:'Εντολές & Αναθέσεις', i:'book', fn:()=>warrantsBody(), d:'ποιος υπηρετεί πού και με ποιο χαρτί'}]:[]),
@@ -29385,7 +29382,7 @@ async function sesSet(yr, iso, sec, kind){
 function molaCats(){
   const MAINS=molaMains(), K=molaKl();
   const own=id=>id?((D.kl||[]).find(k=>k.id===id)||{}).short||'—':'— καθολική —';
-  const canAdd=!!(ME&&(ME.platform_admin||ME.role==='admin'));
+  const canAdd=!!(ME&&isAdminUI());
   const CNT={}; (D.ev||[]).filter(e=>e.scout_year===YEAR&&!e.hidden).forEach(e=>(e.tags||[]).forEach(t=>{
     const [m,s]=String(t).split(':'); CNT[m]=(CNT[m]||0)+1; CNT[m+':'+(s||'—')]=(CNT[m+':'+(s||'—')]||0)+1 }));
   const draw=()=>{
@@ -29575,7 +29572,7 @@ function molaJson(yr, keep){
 }
 
 function canWriteKl(id){
-  const K=molaKl(), adm=!!(ME&&(ME.platform_admin||ME.role==='admin'));
+  const K=molaKl(), adm=!!(ME&&isAdminUI());
   if(id==null) return adm;                        
   if(K.ge&&id===K.ge.id) return !!(ME&&ME.platform_admin);
   if(K.ep&&id===K.ep.id) return !!(ME&&ME.platform_admin);
