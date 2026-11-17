@@ -1338,7 +1338,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 00:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 00:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3195,6 +3195,7 @@ const ageYears=b=>{const n=new Date(); let a=n.getFullYear()-b.getFullYear();
   if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate()))a--; return a;};
 const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')
                   +'-'+String(d.getDate()).padStart(2,'0');
+const syEndISO=iso=>(+String(curScoutYear(iso?new Date(String(iso).slice(0,10)+'T12:00:00'):undefined)).slice(0,4)+1)+'-08-31';
 const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const NEW_LABEL='Νέο μέλος';
 const isNewMember=(pid,day)=>{day=day||todayISO(); return (D.plab||[]).some(l=>l.person_id===pid&&l.label===NEW_LABEL&&(!l.valid_from||l.valid_from<=day)&&(!l.valid_to||l.valid_to>=day))};
@@ -3815,13 +3816,14 @@ const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6',na:'#c
 const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντομα',expired:'Ν.91(Ι) έληξε',none:'χωρίς Ν.91(Ι)',na:'Ν.91(Ι) — δεν απαιτείται ακόμη (ανήλικος)'};
 CERTTXT.above=t('Ν.91(Ι) — εξαιρείται: η Εντολή Διοίκησης εκδίδεται από την Εφορεία (ΓΕ/ΕΕΛ)');
 CERTTXT.hidden=t('Ν.91(Ι) — το βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματος και ο Α.Σ.');
+const certTxt=cs=>cs.short?t('Ν.91(Ι) δεν καλύπτει τη χρονιά — λήγει')+' '+fdate(cs.exp):CERTTXT[cs.k]+(cs.k==='soon'&&cs.d!=null?' ('+pln(cs.d,'μέρα','μέρες')+')':'');
 const TRC=['#e74c3c','#f4c20d','#27ae60'];
 const TRTXT=['χωρίς εκπαίδευση','Προκαταρκτική','Βασική'];
 function leaderDot(p, sec, yr){
   const s2=sec||secOf(p)||p.section;
   const cs=certState(p.id), tl=trainLevel(p.id,s2), w=warrantOf(p.id,yr);
   const ring=RING[w.k]?`box-shadow:0 0 0 2px ${RING[w.k]};`:'';
-  const t=`${nm(p)} — ${CERTTXT[cs.k]}${cs.d!=null&&cs.k==='soon'?' ('+pln(cs.d,'μέρα','μέρες')+')':''}`
+  const t=`${nm(p)} — ${certTxt(cs)}`
     +` · ${TRTXT[tl]}${tl===1&&SEC_CODE[s2]?' (όχι '+SEC_CODE[s2]+')':''} · ${RINGTXT[w.k]}`;
   return `<span class="dot ldot" title="${esc(t)}" style="${ring}background:linear-gradient(90deg,${CERTC[cs.k]} 0 50%,${TRC[tl]} 50% 100%)"></span>`;
 }
@@ -3848,7 +3850,7 @@ function statusBar(p,mini){
     push(ec?'#27ae60':SB_EMPTY, ec?'επαφή έκτακτης ανάγκης ✓':'χωρίς επαφή έκτακτης ανάγκης');
   }else{
     const cs=certState(p.id); push(CERTC[cs.k]==='#c7ced6'?SB_EMPTY:CERTC[cs.k],
-      CERTTXT[cs.k]+(cs.k==='soon'&&cs.d!=null?` (${pln(cs.d,'μέρα','μέρες')})`:''));
+      certTxt(cs));
     const tl=trainLevel(p.id); push(tl===0?SB_EMPTY:TRC[tl], TRTXT[tl]);
     const w=warrantOf(p.id); push(RING[w.k]||SB_EMPTY, 'εντολή: '+RINGTXT[w.k]);
     push(inYear(p)?'#27ae60':coveredAbove(p)?'#8e44ad':SB_EMPTY, inYear(p)?'εγγεγραμμένος '+YEAR:coveredAbove(p)?t('εγγραφή από την Εφορεία')+' ('+p.commissioner_at+')':'χωρίς εγγραφή '+YEAR);    
@@ -4350,6 +4352,7 @@ function certState(id){
   if(!exp&&!ageMeets(id,'Ν91'))return {k:'na',d:null};
   if(!exp)return {k:'none',d:null};
   const d=Math.round((new Date(exp)-new Date())/864e5);
+  if(d>=0&&String(exp).slice(0,10)<syEndISO())return {k:'expired',short:true,d,exp};
   return {k:d<0?'expired':d<=(TH.certWarnDays||90)?'soon':'ok', d, exp};
 }
 function mailsHTML(p){
@@ -15701,6 +15704,7 @@ function myhomeLed(M,today,row,go){
   const todo=[], n9=certState(p.id);
   if(['expired','none','soon'].includes(n9.k))todo.push(row('shield',n9.k==='soon'?'warn':'bad',t('Πιστοποιητικό Ν.91(Ι)'),
     n9.k==='none'?t('Δεν το έχουμε καθόλου — χωρίς αυτό δεν εκδίδεται εντολή.')
+      :n9.short?t('λήγει {d}, πριν από το τέλος της προσκοπικής χρονιάς (31 Αυγούστου) — χωρίς ένα που την καλύπτει δεν εκδίδεται εντολή.',{d:fdate(n9.exp)})
       :when(n9.exp)+(n9.k==='expired'?' — '+t('χωρίς αυτό δεν εκδίδεται εντολή.'):''),go('mycerts',t('Τα πιστοποιητικά μου'))));
   const ct=c=>((D.ct||[]).find(x=>x.code===c)||{}).name||c, last={};
   (D.pc||[]).filter(x=>x.person_id===p.id&&x.type_code!==dv('Ν91')).forEach(x=>{ const k=x.type_code+'|'+(x.label||'');
@@ -16319,7 +16323,7 @@ function issuesBody(){
   const I=[
    {g:'Ασφάλεια & συμμόρφωση',items:[
     {t:'Βαθμοφόροι χωρίς Ν.91(Ι)',w:'Δεν επιτρέπεται να εργάζονται με παιδιά χωρίς αυτό.',s:'bad',l:led.filter(p=>certState(p.id).k==='none')},
-    {t:'Ν.91(Ι) που έληξε',w:'Χρειάζεται άμεση ανανέωση.',s:'bad',l:led.filter(p=>certState(p.id).k==='expired')},
+    {t:t('Ν.91(Ι) που έληξε ή δεν καλύπτει τη χρονιά'),w:t('Χρειάζεται άμεση ανανέωση — πρέπει να ισχύει ως τις 31 Αυγούστου.'),s:'bad',l:led.filter(p=>certState(p.id).k==='expired')},
     {t:'Ν.91(Ι) που λήγει σύντομα',w:`Λήγει εντός ${TH.certWarnDays||90} ημερών.`,s:'warn',l:led.filter(p=>certState(p.id).k==='soon')},
     {t:'Πιστοποιητικά προς επιβεβαίωση',w:'Χαρτιά που δεν τα έχει δει άνθρωπος — δεν μετρούν σε δράση.',s:'warn',goto:'certq',
      l:[...new Set((D.pc||[]).filter(c=>!c.confirmed_on).map(c=>c.person_id))].map(id=>D.bh.find(p=>p.id===id)).filter(Boolean)},
@@ -19573,7 +19577,8 @@ function certOn(pid, code, onDate){
     const lixei = t.date_basis==='λήξη' || certAuto(t);
     return lixei ? {k:'nodate', c} : {k:'ok', c};
   }
-  return {k:(c.expires_on>=onDate?'ok':'expired'), c};
+  const lim=(onDate&&code===dv('Ν91'))?syEndISO(onDate):onDate;    
+  return {k:(c.expires_on>=lim?'ok':'expired'), c};
 }
 
 function V_efolder(){
