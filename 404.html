@@ -1338,7 +1338,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-17 23:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 00:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4239,14 +4239,17 @@ function certExpiry(t, issued){
   }
   return {exp:e};
 }
-function certRuleTxt(t){
-  if(!t) return '';
-  if(t.date_basis==='κυκλοφορία') return 'ως την προθεσμία ανανέωσης της επόμενης χρονιάς (συνήθως Μάρτιος)';
-  if(!t.validity_months) return '';
-  const base=validTxt(t.validity_months)+(t.validity_days_adjust===-1?' μείον μία μέρα':'')+' μετά την έκδοση';
-  return t.validity_change_on&&t.validity_months_after
-    ? base+' — από '+fdate(t.validity_change_on)+' '+validTxt(t.validity_months_after)
-    : base;
+function certRuleTxt(ct){    
+  if(!ct) return '';
+  if(ct.date_basis==='κυκλοφορία') return 'ως την προθεσμία ανανέωσης της επόμενης χρονιάς (συνήθως Μάρτιος)';
+  if(!ct.validity_months) return '';
+  const base=validTxt(ct.validity_months)+(ct.validity_days_adjust===-1?' μείον μία μέρα':'')+' μετά την έκδοση';
+  if(ct.validity_change_on&&ct.validity_months_after){
+    const last=new Date(ct.validity_change_on+'T12:00:00'); last.setDate(last.getDate()-1);
+    return validTxt(ct.validity_months_after)+' '+t('μετά την έκδοση')+' · '+t('παλαιότερα: δεκτά και στον')+' '
+      +Math.round(ct.validity_months/12)+t('ο χρόνο τους, όχι πέρα από')+' '+fdate(isoLocal(last));
+  }
+  return base;
 }
 const PAPER_TBL={pc:'person_certificates',vi:'vehicle_insurance',vp:'vehicle_papers',doc:'documents'};
 function docLink(d){
@@ -17161,7 +17164,7 @@ function certqBody(){
                title="Μπορεί να είναι όψεις του ίδιου χαρτιού — ή διαφορετικά χαρτιά. Διάλεξε εσύ.">
                ${many.map(k=>g[k].length+' × '+esc(ctype(k).name)).join(' · ')}</span>`
             :''})()}
-        <button class="btn sm qmergesel" data-p="${p.id}" disabled
+        <button class="btn sm qmergesel" data-qp="${p.id}" disabled
           title="Διάλεξε δύο ή περισσότερα του ΙΔΙΟΥ τύπου και ένωσέ τα">⇄ Ένωσε τα επιλεγμένα</button>
         ${cs.length>1?`<button class="btn sm qcokall" data-ids="${cs.map(c=>c.id).join(',')}">Δέξου και τα ${cs.length}</button>`:''}
       </div>
@@ -17172,7 +17175,7 @@ function certqBody(){
           const cur = (exp ? (c.expires_on||h.expires_on) : (c.issued_on||h.issued_on)) || '';
           const fromOcr = cur && !(exp?c.expires_on:c.issued_on);
           return `<div style="border-top:1px solid var(--line);padding:9px 0;display:flex;gap:9px;align-items:center;flex-wrap:wrap">
-            <input type="checkbox" class="qpick" data-p="${p.id}" data-id="${c.id}"
+            <input type="checkbox" class="qpick" data-qp="${p.id}" data-id="${c.id}"
                    data-type="${esc(c.type_code)}" title="Διάλεξε για ένωση"
                    style="flex:none;width:16px;height:16px">
             <span style="flex:1 1 210px;min-width:180px">
@@ -17207,7 +17210,7 @@ function certqBody(){
                 title="${exp?'Γράψε την ημερομηνία λήξης που τυπώνει το χαρτί'
                             :'Γράψε την ημερομηνία έκδοσης· η λήξη υπολογίζεται'}"></span>
             <span style="display:flex;gap:5px">
-              ${c.type_code==='Ν91'&&d&&!String(d.path||'').startsWith('drive:')?`<button class="btn gh sm qn91" data-id="${c.id}" data-p="${p.id}" title="${esc(t('Διαβάζει το χαρτί στη συσκευή σου και συγκρίνει με την καρτέλα'))}">🔎</button>`:''}
+              ${c.type_code==='Ν91'&&d&&!String(d.path||'').startsWith('drive:')?`<button class="btn gh sm qn91" data-id="${c.id}" data-qp="${p.id}" title="${esc(t('Διαβάζει το χαρτί στη συσκευή σου και συγκρίνει με την καρτέλα'))}">🔎</button>`:''}
               <button class="btn p sm qcok" data-id="${c.id}">Επιβεβαίωση</button>
               <button class="btn gh sm qcdel" data-id="${c.id}" title="Λάθος καταχώρηση">✕</button></span>
           </div>`}).join('')}
@@ -17255,7 +17258,7 @@ function certqBody(){
     if(!await uiAsk('Επιβεβαιώνεις ότι είδες το πιστοποιητικό; Από εδώ και πέρα μετράει για τις δράσεις.'))return;
     accept([b.dataset.id],b)});
   document.querySelectorAll('.qn91').forEach(b=>b.onclick=()=>{
-    const c=(D.pc||[]).find(x=>x.id===b.dataset.id), pp=D.bh.find(x=>x.id===b.dataset.p);
+    const c=(D.pc||[]).find(x=>x.id===b.dataset.id), pp=D.bh.find(x=>x.id===b.dataset.qp);
     if(c&&pp)n91Check(c,pp,document.querySelector('.qn91box[data-id="'+b.dataset.id+'"]'))});
   document.querySelectorAll('.qcokall').forEach(b=>b.onclick=async ()=>{
     const ids=b.dataset.ids.split(',');
@@ -17264,7 +17267,7 @@ function certqBody(){
   const syncMerge=()=>{
     document.querySelectorAll('.qmergesel').forEach(btn=>{
       const on=[...document.querySelectorAll('.qpick')]
-        .filter(x=>x.checked&&x.dataset.p===btn.dataset.p);
+        .filter(x=>x.checked&&x.dataset.qp===btn.dataset.qp);    
       const types=new Set(on.map(x=>x.dataset.type));
       btn.disabled = on.length<2 || types.size>1;
       btn.textContent = on.length<2 ? '⇄ Ένωσε τα επιλεγμένα'
@@ -17277,7 +17280,7 @@ function certqBody(){
 
   document.querySelectorAll('.qmergesel').forEach(b=>b.onclick=async()=>{
     const on=[...document.querySelectorAll('.qpick')]
-      .filter(x=>x.checked&&x.dataset.p===b.dataset.p);
+      .filter(x=>x.checked&&x.dataset.qp===b.dataset.qp);
     const ids=on.map(x=>x.dataset.id);
     if(ids.length<2)return;
     const desc=ids.map(id=>{const c=(D.pc||[]).find(x=>x.id===id)||{};
@@ -27249,7 +27252,7 @@ function deskKidsBody(){
     return `<tr><td>${statusBar(p,true)}</td><td>${pn(p)}
         <div class="dim" style="font-size:11.5px">${esc(secOf(p)||'')}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}${a!==null?' · '+a+' ετών':''}</div></td>
       <td>${p.email?`<span style="font-size:12.5px">${esc(p.email)}</span>`
-             :`<input class="kmail" data-p="${p.id}" type="email" placeholder="email μέλους"
+             :`<input class="kmail" data-kp="${p.id}" type="email" placeholder="email μέλους"
                  style="font-size:12.5px;padding:4px 7px;max-width:200px">`}</td>
       <td style="white-space:nowrap">${
         has?'<span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">έχει λογαριασμό</span>'
@@ -27284,9 +27287,9 @@ function deskKidsBody(){
   document.querySelectorAll('[data-ksec]').forEach(b=>b.onclick=()=>{KIDSEC=b.dataset.ksec; route(ROUTE)});
   document.querySelectorAll('.kmail').forEach(i=>i.onchange=async()=>{
     const v=i.value.trim(); if(!v)return;
-    const {error}=await sb.from('badgeholders').update({email:v}).eq('id',i.dataset.p);
+    const {error}=await sb.from('badgeholders').update({email:v}).eq('id',i.dataset.kp);    
     if(error)return toast('Σφάλμα: '+error.message);
-    const p=D.bh.find(x=>x.id===i.dataset.p); if(p)p.email=v; saveCache();
+    const p=D.bh.find(x=>x.id===i.dataset.kp); if(p)p.email=v; saveCache();
     toast('Καταχωρήθηκε'); stay();});
   document.querySelectorAll('[data-kinv]').forEach(b=>b.onclick=async()=>{
     const p=D.bh.find(x=>x.id===b.dataset.kinv);
