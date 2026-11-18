@@ -69,8 +69,11 @@ self.addEventListener('notificationclick', e => {
   e.notification.close();
   const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => {
+    /* 18/11 (Andreas: «όταν το πατάς δεν σε πάει στη σελίδα που πρέπει»): στο iPhone το navigate() του ανοιχτού
+       παραθύρου δεν δουλεύει — έμενε όπου ήταν, με παλιά δεδομένα. Τώρα το παράθυρο παίρνει ΜΗΝΥΜΑ και πάει μόνο του
+       στην οθόνη, αφού ξαναφέρει τα δεδομένα (02-state-auth.js, «e76-nav»). Κλειστό παράθυρο → ανοίγει στο URL. */
     for (const w of ws) {
-      if (w.url.startsWith(self.registration.scope)) { w.focus(); return w.navigate ? w.navigate(url) : undefined; }
+      if (w.url.startsWith(self.registration.scope)) { w.postMessage({ type: 'e76-nav', url }); return w.focus(); }
     }
     return self.clients.openWindow(url);
   }));
