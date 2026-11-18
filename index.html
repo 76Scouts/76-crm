@@ -1338,7 +1338,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 00:49'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 10:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3785,6 +3785,7 @@ const pnm=p=>`<b class="pn" data-p="${p.id}">${esc(nm(p))}</b>${
 
 const SEC_CODE={'Αγέλη':'ΑΛ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Σύστημα':'ΑΣ','Δίκτυο':'Δ'};
 function trainLevel(id, sec){
+  if(coveredAbove((D.bh||[]).find(b=>b.id===id)))return 3;
   const t=(D.tr||[]).filter(x=>x.person_id===id);
   const code=SEC_CODE[sec]||null;
   const basics=t.filter(x=>trLevel(x)===2);
@@ -3818,8 +3819,9 @@ const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντ�
 CERTTXT.above=t('Ν.91(Ι) — εξαιρείται: η Εντολή Διοίκησης εκδίδεται από την Εφορεία (ΓΕ/ΕΕΛ)');
 CERTTXT.hidden=t('Ν.91(Ι) — το βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματος και ο Α.Σ.');
 const certTxt=cs=>cs.short?t('Ν.91(Ι) δεν καλύπτει τη χρονιά — λήγει')+' '+fdate(cs.exp):CERTTXT[cs.k]+(cs.k==='soon'&&cs.d!=null?' ('+pln(cs.d,'μέρα','μέρες')+')':'');
-const TRC=['#e74c3c','#f4c20d','#27ae60'];
+const TRC=['#e74c3c','#f4c20d','#27ae60','#8e44ad'];    
 const TRTXT=['χωρίς εκπαίδευση','Προκαταρκτική','Βασική'];
+TRTXT[3]=t('εκπαίδευση: καλύπτεται από την Εφορεία (ΓΕ/ΕΕΛ)');
 function leaderDot(p, sec, yr){
   const s2=sec||secOf(p)||p.section;
   const cs=certState(p.id), tl=trainLevel(p.id,s2), w=warrantOf(p.id,yr);
@@ -3876,6 +3878,7 @@ const LEGENDS=()=>({
     ...['ok','soon','expired'].map(k=>[CERTC[k],'2η: '+CERTTXT[k]]),
     [CERTC.hidden,t('2η, πολύ ανοιχτό γκρι: το Ν.91(Ι) δεν σου φαίνεται — το βλέπουν ο ίδιος, ο Αρχηγός Τμήματός του και ο Α.Σ.')],
     [TRC[1],'3η: '+TRTXT[1]],[TRC[2],'3η: '+TRTXT[2]],[SB_EMPTY,t('3η, γκρι: χωρίς εκπαίδευση')],
+    [CERTC.above,t('μωβ σε οποιαδήποτε θέση: Έφορος ΓΕ/ΕΕΛ — το κανονίζει η Εφορεία του (Ν.91(Ι), εκπαίδευση, εντολή)')],
     ...Object.keys(RING).filter(k=>RING[k]).map(k=>[RING[k],'4η: '+RINGTXT[k]]),
     ['#27ae60','5η: εγγεγραμμένος φέτος'],
     ['var(--line)','γκρι σε οποιαδήποτε θέση: λείπει']]},
@@ -3884,6 +3887,7 @@ const LEGENDS=()=>({
     ['#27ae60','αριστερό μισό: κατάσταση Ν.91(Ι)'],
     ['#f4c20d','δεξί μισό: εκπαιδευτικό επίπεδο'],
     [TRC[0],t('δεξί μισό κόκκινο: καμία εκπαίδευση')],
+    [CERTC.above,t('μωβ (μισό ή ολόκληρο, ή δακτύλιος): Έφορος ΓΕ/ΕΕΛ — το κανονίζει η Εφορεία του')],
     ['#22c55e','ο δακτύλιος γύρω: εντολή ή ανάθεση σε ισχύ'],
     ['var(--ink3)','χωρίς δακτύλιο: δεν έχει αιτηθεί']]},
 
@@ -3891,7 +3895,8 @@ const LEGENDS=()=>({
     [CERTC.ok,CERTTXT.ok],
     [CERTC.soon,'λήγει μέσα σε '+(TH.certWarnDays||90)+' μέρες'],
     [CERTC.expired,CERTTXT.expired],
-    [CERTC.none,CERTTXT.none]]},
+    [CERTC.none,CERTTXT.none],
+    [CERTC.above,t('Έφορος ΓΕ/ΕΕΛ — το Ν.91(Ι) το κρατά η Εφορεία του')]]},
 
   sections:{t:'Χρώματα κλάδων — κλειδωμένα πανελλαδικά', on:lgdSecs,
     n:'Το χρώμα κάθε κλάδου είναι κοινό σε όλα τα Συστήματα. Αλλάζεις ονομασία, τοτέμ και λογότυπο — όχι χρώμα.',
@@ -5082,6 +5087,7 @@ function showLegend(){
       ${row(half(CERTC.none,TRC[2],RING.entoli),'Χωρίς Ν.91(Ι)','δεν καταχωρήθηκε')}
       ${row(half(CERTC.ok,TRC[1],RING.entoli),'Βασική ΑΛΛΟΥ κλάδου','ή μόνο προπαίδευση — κίτρινο δεξιά')}
       ${row(half(CERTC.ok,TRC[0],RING.entoli),'Καμία εκπαίδευση','κόκκινο δεξιά')}
+      ${row(half(CERTC.above,TRC[3],RING.above),t('Έφορος ΓΕ/ΕΕΛ'),t('μωβ — Ν.91(Ι), εκπαίδευση και εντολή τα κανονίζει η Εφορεία του'))}
     </div>
     <div class="dsec"><h4>Ο δακτύλιος — η εντολή <b>της χρονιάς</b></h4>
       ${row(half(CERTC.ok,TRC[2],RING.entoli),'Εντολή Διοίκησης','πράσινος δακτύλιος')}
@@ -5112,6 +5118,7 @@ function showLegend(){
       ${row(bar('Κοινότητα',[E,TRC[2],RING.entoli,G]),'Χωρίς Ν.91(Ι)','δεν έχει καταχωρηθεί')}
       ${row(bar('Αγέλη',[CERTC.ok,TRC[1],RING.entoli,G]),'Μόνο Προκαταρκτική','κίτρινο στην 3η θέση')}
       ${row(bar('Αγέλη',[CERTC.ok,E,RING.entoli,G]),'Χωρίς εκπαίδευση','γκρίζο στην 3η θέση')}
+      ${row(bar('Ομάδα',[CERTC.above,TRC[3],RING.above,G]),t('Έφορος ΓΕ/ΕΕΛ'),t('μωβ στη 2η, 3η και 4η θέση — τα κανονίζει η Εφορεία του'))}
       ${row(bar('Ομάδα',[CERTC.hidden,TRC[2],RING.entoli,G]),t('Το Ν.91(Ι) δεν σου φαίνεται'),t('πολύ ανοιχτό γκρι στη 2η θέση — το βλέπουν μόνο ο ίδιος, ο Αρχηγός Τμήματός του και ο Α.Σ.'))}
     </div>
 
@@ -15929,7 +15936,9 @@ function wireSchools(after){
 function trainLevelBody(){
   const led=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName);
   const trOf=id=>(D.tr||[]).filter(t=>t.person_id===id).sort((a,b)=>(a.date||'')<(b.date||'')?1:-1);
-  const lvl=id=>{const n=Math.max(0,...trOf(id).map(trLevel));
+  const PUR='background:#8e44ad1f;border-color:transparent;color:#8e44ad', EFTXT=t('Εφορεία');    
+  const lvl=id=>{if(coveredAbove(D.bh.find(b=>b.id===id)))return {t:t('Εφορεία (ΓΕ/ΕΕΛ)'),c:'above',n:2,above:true};    
+    const n=Math.max(0,...trOf(id).map(trLevel));
     return n===2?{t:'Βασική',c:'ok',n:2}:n===1?{t:'Προκαταρκτική',c:'warn',n:1}:{t:'Καμία',c:'bad',n:0}};
   const cert=id=>{if(coveredAbove(D.bh.find(b=>b.id===id)))return true;    
     const c=D.cert.find(x=>x.person_id===id); if(!c||!c.sexoxarto_expiry)return false;
@@ -15947,13 +15956,13 @@ function trainLevelBody(){
     ${listBar('',true)}<div class="sec"><h3>Ανά βαθμοφόρο</h3><span class="n">${led.length}</span></div>
     <div class="card" style="overflow:auto"><table><thead><tr><th style="width:26px"></th><th>Ονοματεπώνυμο</th><th class="hide-s">Τμήμα</th><th>Επίπεδο</th><th>Δικαίωμα</th><th class="hide-s">Τελευταία εκπαίδευση</th></tr></thead><tbody>${
       led.map(p=>{const L=lvl(p.id),ok=cert(p.id),t=trOf(p.id)[0];
-        const right=L.n===2&&ok?'<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Εντολή</span>'
+        const right=L.above?`<span class="pill" style="${PUR}">${esc(EFTXT)}</span>`:L.n===2&&ok?'<span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">Εντολή</span>'
           :L.n>=1&&ok?'<span class="pill" style="background:var(--accbg);border-color:transparent;color:var(--acc)">Ανάθεση</span>'
           :!ok?'<span class="pill" style="background:var(--badbg);border-color:transparent;color:var(--bad)">Λείπει Ν.91(Ι)</span>'
           :'<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">Λείπει εκπαίδευση</span>';
         return `<tr><td>${statusBar(p)}</td><td>${pnm(p)}</td>
           <td class="hide-s dim">${esc(p.section||'—')}</td>
-          <td><span class="pill" style="background:var(--${L.c}bg);border-color:transparent;color:var(--${L.c})">${L.t}</span></td>
+          <td><span class="pill" style="${L.above?PUR:`background:var(--${L.c}bg);border-color:transparent;color:var(--${L.c})`}">${L.t}</span></td>
           <td>${right}</td>
           <td class="hide-s dim">${t?esc((t.type||t.code||'').slice(0,34))+(t.date?' · '+fdate(t.date):''):'—'}</td></tr>`}).join('')}</tbody></table></div>`
     ;
@@ -19764,6 +19773,8 @@ function venueEdit(vid, backEvent){
       ${venCapHTML(v)}
       <div style="font-size:12.5px;color:var(--ink2);margin:8px 0 2px"><b>Χρήσιμα τηλέφωνα</b> · όπου δεν εφαρμόζει γράψε «Δ/Ε»</div>
       <div class="grow">${DL.PHV.map(([k,l])=>f(k,l,'')+f('nm_'+k.slice(3),t('— ποιου είναι'),DL.PHN[k]||'')).join('')}</div>
+      ${(()=>{const q=v?DL.PHV.map(([k,l])=>{const fl=dlPhFlag(v[k],v['nm_'+k.slice(3)]);return fl?`<span>${esc(l)} ${esc(fphone(v[k]))} ${fl}</span>`:''}).filter(Boolean):[];
+        return q.length?`<div style="font-size:12.5px;margin:-2px 0 8px;display:flex;flex-wrap:wrap;gap:3px 14px">${q.join('')}</div>`:''})()}
       <div class="dim" style="font-size:12px;margin:-4px 0 8px">${t('Λεωφορεία: στον φάκελο της κάθε δράσης (αλλάζουν κάθε φορά). Επαρχιακός Έφορος: από το Οργανόγραμμα.')}</div>
       <label>Σημειώσεις<textarea id="vn_notes" rows="3" placeholder="νερό, ρεύμα, πρόσβαση ασθενοφόρου, τι να προσέχεις">${esc(v&&v.notes||'')}</textarea></label>
       <div style="margin-top:11px;display:flex;gap:8px">
@@ -21721,9 +21732,14 @@ function dlVHTML(e,g){
         ${all.map(v=>`<option value="${v.id}">${esc(v.name)}${v.area?' — '+esc(v.area):''}</option>`).join('')}</select></label>
       <label style="max-width:150px">&nbsp;<button class="btn sm" id="dlVnew">+ Νέος χώρος</button></label></div>`));
 }
+const DL_PH_DOUBT={'25421420':()=>t('δεν ταιριάζει με τον κατάλογο τηλεφώνων του Τμήματος Δασών (έλεγχος 16/11)')};
+const dlPhFlag=(ph,n)=>{ if(!ph||ph===DL_NA)return '';
+  const why=DL_PH_DOUBT[String(ph).replace(/\D/g,'')];
+  if(why)return `<span class="phq" title="${esc(why())}" style="color:var(--warn);font-weight:600">❓ ${esc(t('ύποπτο'))}</span>`;
+  return n?'':`<span class="phq" title="${esc(t('Δεν ξέρουμε ποιου είναι — γράψε το στα Στοιχεία χώρου, «— ποιου είναι»'))}" style="color:var(--warn);font-weight:600">❓ ${esc(t('ποιανού; — λείπει όνομα'))}</span>`; };
 function dlVPhRow(V){
   const it=[...DL.PHV.map(([k,l])=>[l,V[k],V['nm_'+k.slice(3)]]),[t('Επαρχιακού Εφόρου'),dlEparx(),dlEparxNm()]];
-  return `<div style="font-size:12px;margin-top:4px;display:flex;flex-wrap:wrap;gap:3px 12px">${it.map(([l,ph,n])=>`<span><span class="dim">${esc(l)}:</span> ${ph?esc(ph===DL_NA?ph:fphone(ph)):'—'}${ph&&ph!==DL_NA?(n?' · '+esc(n):` · <span style="color:var(--warn)">${esc(t('λείπει όνομα'))}</span>`):''}</span>`).join('')}</div>`;
+  return `<div style="font-size:12px;margin-top:4px;display:flex;flex-wrap:wrap;gap:3px 12px">${it.map(([l,ph,n])=>`<span><span class="dim">${esc(l)}:</span> ${ph?esc(ph===DL_NA?ph:fphone(ph)):'—'}${ph&&ph!==DL_NA?(n?' · '+esc(n):'')+(dlPhFlag(ph,n)?' · '+dlPhFlag(ph,n):''):''}</span>`).join('')}</div>`;
 }
 const EL_TYPO=[[/^([Υυ])π(?:έυθ[ηυ]|εύθη|ευθη|έυθυ)νο(ς|ι|υ|ν)$/,dv('$1πεύθυνο$2')],[/^([Δδ])ιευθηντ(.*)$/,dv('$1ιευθυντ$2')]];
 function elSpell(s){ const out=[];
