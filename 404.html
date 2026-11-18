@@ -1338,7 +1338,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 13:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 13:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3342,6 +3342,58 @@ const evOpenFor=(e,sec)=>(D.emo||[]).some(o=>o.event_id===e.id&&o.section===sec)
 const drw=$('drw');
 drw.querySelector('.bg').onclick=()=>drw.classList.remove('on');
 document.addEventListener('keydown',e=>{if(e.key==='Escape')drw.classList.remove('on')});
+const DRW_FOC='a[href],button,input,select,textarea,summary,[tabindex]:not([tabindex="-1"])';
+let DRW_ON=false, DRW_FROM=null, DRW_PTR=null, DRW_SKIP=0;
+document.addEventListener('pointerdown',e=>{ if(!drw.contains(e.target))DRW_PTR={el:e.target.closest('[data-p],'+DRW_FOC)||e.target,t:Date.now()}; },true);
+function drwTitle(){
+  const p=$('drwp'), h=p.querySelector('.dhead')||p;
+  return p.querySelector('[data-dtitle]')||[...h.querySelectorAll('h1,h2,h3,[style*="font-weight:600"],[style*="font-weight:700"]')]
+    .find(x=>x.textContent.trim()&&!x.closest('button,a,label,select'))||null;
+}
+function drwFocus(swap){
+  const tt=drwTitle();
+  if(tt){ if(!tt.id)tt.id='drwT'; drw.setAttribute('aria-labelledby',tt.id); tt.setAttribute('tabindex','-1'); }
+  else drw.removeAttribute('aria-labelledby');
+  const a=document.activeElement;
+  if(!swap||!a||a===document.body||!drw.contains(a))try{ (tt||$('drwp')).focus({preventScroll:true}) }catch(e){}
+}
+function drwBackTo(){
+  let el=DRW_FROM;
+  if(el&&!el.isConnected&&el.dataset&&el.dataset.p)el=document.querySelector('[data-p="'+el.dataset.p.replace(/["\\]/g,'')+'"]');
+  if(!el||!el.isConnected)return null;
+  if(!el.matches(DRW_FOC))el.setAttribute('tabindex','-1');
+  return el;
+}
+$('drwp').setAttribute('tabindex','-1');
+if(typeof MutationObserver==='function')new MutationObserver(()=>{    
+  const on=drw.classList.contains('on'); if(on===DRW_ON)return; DRW_ON=on;
+  if(on){
+    const a=document.activeElement;
+    DRW_FROM=(a&&a!==document.body&&!drw.contains(a))?a:(DRW_PTR&&Date.now()-DRW_PTR.t<4000?DRW_PTR.el:null);
+    drwFocus(false);
+    try{ if(!(history.state&&history.state.drw))history.pushState(Object.assign({},history.state,{drw:1}),'') }catch(e){}
+  }else{
+    if(history.state&&history.state.drw){ DRW_SKIP++; history.back(); }
+    const el=drwBackTo(); if(el)try{ el.focus({preventScroll:true}) }catch(e){}
+    DRW_FROM=null;
+  }
+}).observe(drw,{attributes:true,attributeFilter:['class']});
+if(typeof MutationObserver==='function')new MutationObserver(()=>{ if(DRW_ON)drwFocus(true); }).observe($('drwp'),{childList:true});
+window.addEventListener('popstate',()=>{
+  if(DRW_SKIP){ DRW_SKIP--; return; }
+  const st=history.state&&history.state.drw;
+  if(drw.classList.contains('on')&&!st){ drw.classList.remove('on'); return; }
+  if(!drw.classList.contains('on')&&st){ DRW_SKIP++; history.back(); }    
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Tab'||!drw.classList.contains('on'))return;
+  const a=document.activeElement; if(a&&a!==document.body&&!drw.contains(a))return;    
+  const f=[...drw.querySelectorAll(DRW_FOC)].filter(x=>!x.disabled&&x.getClientRects().length);
+  if(!f.length){ e.preventDefault(); return; }
+  const i=f.indexOf(a);
+  if(e.shiftKey&&i<=0){ e.preventDefault(); f[f.length-1].focus(); }
+  else if(!e.shiftKey&&(i===f.length-1||!drw.contains(a))){ e.preventDefault(); f[0].focus(); }
+});
 
 function gsHits(raw){
   const q=nameKey(raw), L=latKey(raw), d=digits(raw), out=[];
@@ -3566,7 +3618,7 @@ async function openProfile(id){
   const dexp=c.sexoxarto_expiry?Math.round((new Date(c.sexoxarto_expiry)-new Date())/864e5):null;
   $('drwp').innerHTML=`
     <div class="dhead">${avatar(p,44,true)}
-      <div style="flex:1;min-width:0">${statusBar(p)}<br><div style="font-size:17px;font-weight:600;letter-spacing:-.01em">${pn(p)}</div>
+      <div style="flex:1;min-width:0">${statusBar(p)}<br><div data-dtitle style="font-size:17px;font-weight:600;letter-spacing:-.01em">${pn(p)}</div>
         <div class="dim" style="font-size:12.5px">${esc(sec||'')}${y.group_name?' · '+esc(y.group_name):''}${p.registry_no?' · Α.Μ. '+esc(p.registry_no):''}</div></div>
       <button class="btn gh sm" id="dFiles" title="Αρχεία του προσώπου">${ic('book',15)}</button>
       <button class="btn gh sm" id="dArch" title="${p.status==='Αρχειοθετημένος'?'Επαναφορά στους ενεργούς':'Αρχειοθέτηση'}">${ic('down',15)}</button>
