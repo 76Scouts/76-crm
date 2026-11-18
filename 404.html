@@ -228,7 +228,7 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
   #vaband .vaw{font-size:14px;font-weight:700;letter-spacing:.02em}
   #vaband .vas{opacity:.85}
   #vaband button{background:#fff;color:#b3261e;border:0;font-weight:700}
-  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:12px}
   .grow{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
   .grow label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2);flex:1;min-width:150px}
   .grow select,.grow input{padding:7px 8px;font-size:13px}
@@ -873,6 +873,16 @@ tr.argrow td{background:var(--bg2)}
 .pdocr.warn{color:var(--bad,#c0392b);background:var(--warnbg,#fdecea);border-radius:6px;padding:4px 6px;font-weight:600}
 .pdcutb.pdcutwarn{border-color:var(--bad,#c0392b);color:var(--bad,#c0392b);font-weight:700;animation:pdpulse 1.6s ease-in-out 3}
 @keyframes pdpulse{50%{box-shadow:0 0 0 4px rgba(231,76,60,.25)}}
+@media(max-width:640px){
+  .btn:not(td .btn,th .btn),.pill:not(td .pill,th .pill),
+  .card table:not(.mola):not(.grid-tbl) td .pill{max-width:100%;white-space:normal;flex-shrink:0;overflow-wrap:anywhere}
+  div:has(>#tabAll),[data-licrow]>.kv{flex-wrap:wrap}
+  div:has(>#annENew),.sec,.onode{flex-wrap:wrap}
+  .osub{white-space:normal}
+  .kv>span[style*="min-width:128px"]{min-width:96px!important}
+}
+.ppick{min-width:min(170px,100%)}
+.grow label:has(>.ppick){min-width:170px}
 </style>
 </head>
 <body>
@@ -1394,7 +1404,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 20:46'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 22:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -9700,12 +9710,17 @@ function devScanPage(){
   const out=[], W=document.documentElement.clientWidth;
   if(document.documentElement.scrollWidth>W+1)out.push(t('σελίδα φαρδύτερη από την οθόνη')+' ('+document.documentElement.scrollWidth+'>'+W+')');
   const lbl=e=>(e.tagName.toLowerCase()+(e.type?'['+e.type+']':'')+(e.id?'#'+e.id:e.className?'.'+String(e.className).split(' ')[0]:'')).slice(0,40);
+  const shown=e=>e.getClientRects().length&&!(e.closest('details:not([open])')&&!e.closest('summary'))&&(!e.checkVisibility||e.checkVisibility());    
+  if(document.documentElement.scrollWidth>W+1){ const c=[];    
+    const clip=e=>{ for(let a=e.parentElement;a&&a.id!=='view';a=a.parentElement){ if(getComputedStyle(a).overflowX!=='visible')return true } return false };
+    document.querySelectorAll('#view *').forEach(e=>{ const r=e.getBoundingClientRect(); if(r.width&&r.right>W+1&&!e.closest('svg')&&![...e.children].some(k=>k.getBoundingClientRect().right>W+1)&&!clip(e))c.push(e) });
+    c.slice(0,3).forEach(e=>out.push('  ↳ '+lbl(e)+' «'+String(e.textContent||e.value||'').trim().slice(0,40)+'»')); }
   document.querySelectorAll('#view input:not([type=hidden]),#view select,#view textarea,#view button').forEach(e=>{
-    if(!e.getClientRects().length)return; const r=e.getBoundingClientRect(); if(!r.width)return;
+    if(!shown(e))return; const r=e.getBoundingClientRect(); if(!r.width)return;
     const c=e.closest('.card,.tile,.dsec'); if(!c)return; const sc=e.closest('[style*="overflow"],table,.subtabs'); if(sc&&c.contains(sc))return;
     const cr=c.getBoundingClientRect(); if(r.right>cr.right+1||r.left<cr.left-1)out.push(t('έξω από την κάρτα')+': '+lbl(e)+' '+Math.round(Math.max(r.right-cr.right,cr.left-r.left))+'px');
   });
-  const f=[...document.querySelectorAll('#view input:not([type=checkbox]):not([type=radio]):not([type=hidden]),#view select,#view textarea')].filter(e=>e.getClientRects().length);
+  const f=[...document.querySelectorAll('#view input:not([type=checkbox]):not([type=radio]):not([type=hidden]),#view select,#view textarea')].filter(shown);
   for(let i=0;i<f.length;i++)for(let j=i+1;j<f.length;j++){ const a=f[i].getBoundingClientRect(), b=f[j].getBoundingClientRect();
     if(a.width&&b.width&&a.left<b.right-2&&b.left<a.right-2&&a.top<b.bottom-2&&b.top<a.bottom-2)out.push(t('πεδία το ένα πάνω στο άλλο')+': '+lbl(f[i])+' × '+lbl(f[j])); }
   return [...new Set(out)];
@@ -16172,20 +16187,19 @@ function trainWhoBody(){
 
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
-      <b>Ποιοι πάνε πού</b>
-      <div class="muted" style="margin-top:5px;font-size:13.5px">Η ίδια πληροφορία με τις «Δηλώσεις»,
-        ομαδοποιημένη <b>ανά σχολή</b> — αυτό στέλνεις στη Γ.Ε.</div></div>
+      <b>${t('Ποιοι πάνε πού')}</b>
+      <div class="muted" style="margin-top:5px;font-size:13.5px">${t('Η ίδια πληροφορία με τις «Δηλώσεις», ομαδοποιημένη')} <b>${t('ανά σχολή')}</b> — ${t('αυτό στέλνεις στη Γ.Ε.')}</div></div>
 
-    <div class="tiles"
-      <div class="tile" style="cursor:default"><div class="k">Σχολές με δηλώσεις</div>
-        <div class="v">${groups.length}</div><div class="s">από ${ups.length} της χρονιάς</div></div>
-      <div class="tile" style="cursor:default"><div class="k">Δηλώσεις</div>
-        <div class="v">${apps.length}</div><div class="s">σύνολο</div></div>
+    <div class="tiles">
+      <div class="tile" style="cursor:default"><div class="k">${t('Σχολές με δηλώσεις')}</div>
+        <div class="v">${groups.length}</div><div class="s">${t('από {n} της χρονιάς',{n:ups.length})}</div></div>
+      <div class="tile" style="cursor:default"><div class="k">${t('Δηλώσεις')}</div>
+        <div class="v">${apps.length}</div><div class="s">${t('σύνολο')}</div></div>
       <div class="tile ${apps.filter(x=>x.a.status==='δηλώθηκε').length?'warn':''}" style="cursor:default">
-        <div class="k">Δεν στάλθηκαν ακόμη</div>
-        <div class="v">${apps.filter(x=>x.a.status==='δηλώθηκε').length}</div><div class="s">περιμένουν εσένα</div></div>
-      <div class="tile ok" style="cursor:default"><div class="k">Την πέρασαν</div>
-        <div class="v">${apps.filter(x=>x.a.status==='την πέρασε').length}</div><div class="s">στο μητρώο</div></div>
+        <div class="k">${t('Δεν στάλθηκαν ακόμη')}</div>
+        <div class="v">${apps.filter(x=>x.a.status==='δηλώθηκε').length}</div><div class="s">${t('περιμένουν εσένα')}</div></div>
+      <div class="tile ok" style="cursor:default"><div class="k">${t('Την πέρασαν')}</div>
+        <div class="v">${apps.filter(x=>x.a.status==='την πέρασε').length}</div><div class="s">${t('στο μητρώο')}</div></div>
     </div>
 
     ${groups.map(({e,rows})=>`
@@ -16199,10 +16213,10 @@ function trainWhoBody(){
             return `<span class="pill"${SA_COL[a.status]?` style="background:var(--${SA_COL[a.status]}bg);color:var(--${SA_COL[a.status]});border-color:transparent"`:''}>
               ${sdot(secOf(p))}<span class="pn" data-p="${p.id}">${pn(p)}</span>
               <span class="dim" style="opacity:.8">${esc(a.status)}</span>
-              ${ok===false?'<span title="Δεν πληροί την προϋπόθεση">⚠</span>':''}</span>`}).join('')}</div>
-      </div>`).join('')||'<div class="uc"><h3>Καμία δήλωση ακόμη</h3><p>Μόλις δηλώσει κάποιος, θα εμφανιστεί εδώ ανά σχολή.</p></div>'}
+              ${ok===false?`<span title="${t('Δεν πληροί την προϋπόθεση')}">⚠</span>`:''}</span>`}).join('')}</div>
+      </div>`).join('')||`<div class="uc"><h3>${t('Καμία δήλωση ακόμη')}</h3><p>${t('Μόλις δηλώσει κάποιος, θα εμφανιστεί εδώ ανά σχολή.')}</p></div>`}
 
-    ${xoris.length?`<div class="sec"><h3>Χωρίς καμία δήλωση</h3><span class="n">${xoris.length}</span></div>
+    ${xoris.length?`<div class="sec"><h3>${t('Χωρίς καμία δήλωση')}</h3><span class="n">${xoris.length}</span></div>
       <div class="card pad"><div style="display:flex;flex-wrap:wrap;gap:7px">${xoris.map(e=>
         `<span class="pill">${esc(e.title)} <span class="dim">${e.event_date?fdate(e.event_date):'—'}</span></span>`).join('')}</div>
         <div class="dim" style="font-size:12px;margin-top:7px">Καμία σχολή δεν είναι υποχρεωτική — αλλά αν κάποια
