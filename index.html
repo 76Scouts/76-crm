@@ -1382,7 +1382,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 15:29'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 15:54'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -10527,8 +10527,11 @@ function expiryItems(){
         'Ζήτησέ το','certs');
       (ab?[]:(D.sh||[])).filter(s=>s.person_id===p.id&&s.warrant_type==='Εντολή Διοίκησης'&&s.end_date)
         .sort((a,b)=>(b.end_date||'').localeCompare(a.end_date||''))
-        .slice(0,1).forEach(s=>add(s.end_date,'Εντολή',p,'Εντολή Διοίκησης'+(s.appointment?' · '+s.appointment:''),
-          'Αίτηση ανανέωσης','warrants'));
+        .slice(0,1)
+        .forEach(s=>{ const nw=(D.sh||[]).find(h=>h.person_id===p.id&&h.warrant_type===dv('Εντολή Διοίκησης')&&!h.end_date&&String(h.start_date||h.request_date||'')>s.end_date);
+          const r=nw||s;
+          add(nw?(nw.start_date||nw.request_date):s.end_date,'Εντολή',p,'Εντολή Διοίκησης'+(r.appointment?' · '+r.appointment:''),
+            nw?t('Περιμένει επιβεβαίωση από το ΣΠΚ')+(nw.appointment_no?' · '+t('αρ.')+' '+nw.appointment_no:''):'Αίτηση ανανέωσης','warrants',nw?{pend:true}:null); });
       (D.pc||[]).filter(x=>x.person_id===p.id&&x.expires_on&&x.type_code!=='Ν91')
         .forEach(x=>add(x.expires_on,'Πιστοποιητικό',p,
           ((D.ct||[]).find(t=>t.code===x.type_code)||{}).name||x.type_code,'Ανανέωση','certs'));
@@ -10572,7 +10575,8 @@ function expiryBody(){
   const hit=x=>!q||nameKey((x.who?nm(x.who):'')+' '+x.kind+' '+x.what).includes(q);
 
   const none = items.filter(x=>x.d==='9999-12-31'&&hit(x));
-  const real = items.filter(x=>x.d!=='9999-12-31'&&hit(x));
+  const pend = items.filter(x=>x.pend&&hit(x));    
+  const real = items.filter(x=>x.d!=='9999-12-31'&&!x.pend&&hit(x));
   const past = real.filter(x=>x.d<today);
   const b30  = real.filter(x=>x.d>=today&&x.d<=plus(30));
   const b90  = real.filter(x=>x.d>plus(30)&&x.d<=plus(90));
@@ -10627,6 +10631,7 @@ function expiryBody(){
     </div>
 
     ${block('Έχουν λήξει',past,'bad')}
+    ${block(t('Αιτήθηκαν — περιμένουν το ΣΠΚ'),pend,'acc')}
     ${block('Μέσα στις επόμενες 30 μέρες',b30,'warn')}
     ${block('Στο τρίμηνο',b90,'')}
     ${none.length?`<div class="sec"><h3>Δεν έχουν καταχωρηθεί ποτέ</h3><span class="n">${none.length}</span></div>
