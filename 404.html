@@ -172,6 +172,11 @@ tbody tr:hover td{background:var(--bg)}
 input,select{font:inherit;padding:7px 10px;border:1px solid var(--ctl);border-radius:var(--rs);background:var(--card);color:var(--ink);width:100%}
 input[type=checkbox],input[type=radio]{width:auto;flex:0 0 auto;padding:0;margin:2px 0 0;accent-color:var(--acc)}
 input:focus,select:focus{outline:2px solid var(--accln);outline-offset:-1px;border-color:var(--acc)}
+@supports (-webkit-touch-callout:none){
+  input[type=date],input[type=time],input[type=datetime-local],input[type=month]{
+    -webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;min-height:40px;line-height:1.3}
+  input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0}
+}
 input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .ppick{position:relative;display:block;min-width:170px}
 .ppick .ppq{padding-right:30px}
@@ -1389,7 +1394,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 16:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 20:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1702,6 +1707,16 @@ function idleCheck(){
     LAST_ACT=Date.now(); return idleReset();
   }
   LAST_ACT=Date.now();
+}
+if(typeof navigator!=='undefined'&&navigator.serviceWorker&&navigator.serviceWorker.addEventListener){
+  navigator.serviceWorker.addEventListener('message',e=>{ const d=e.data||{};
+    if(d.type!=='e76-nav'||typeof LOADED==='undefined'||!LOADED)return;
+    LAST_ACT=Date.now(); let seg='';
+    try{ seg=decodeURIComponent(new URL(d.url,location.href).pathname.split('/').pop()||''); }catch(x){}
+    const go=()=>{ try{
+      const m=seg&&!MOD[seg]?routeAliasRaw(seg):null; if(m&&typeof m[1]==='string')SUBTAB[m[0]]=m[1];
+      route(seg&&(MOD[seg]||routeAlias(seg))?seg:homeRoute()); }catch(x){} };
+    go(); if(navigator.onLine){ try{ Promise.resolve(loadAll()).then(go).catch(()=>{}); }catch(x){} } });
 }
 function idleReset(){
   const home=homeRoute();
