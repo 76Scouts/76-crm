@@ -1394,7 +1394,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 20:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-18 20:37'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -9682,18 +9682,63 @@ function devBody(){
       </tbody></table></div>
 
     <div class="card pad">
-      <button class="btn sm" id="dvReload">Ανανέωση</button>
-      <button class="btn sm" id="dvCache">Καθαρισμός τοπικής μνήμης</button>
+      <button class="btn sm" id="dvReload">${t('Ανανέωση')}</button>
+      <button class="btn sm" id="dvCache">${t('Καθαρισμός τοπικής μνήμης')}</button>
+      <button class="btn sm" id="dvScan">${t('Έλεγχος οθονών σε αυτή τη συσκευή')}</button>
       <span class="dim" id="dvMsg" style="margin-left:10px;font-size:12.5px"></span>
       <div class="dim" style="font-size:12px;margin-top:8px">
-        Οι λειτουργικές εκκρεμότητες του Συστήματος (πιστοποιητικά Ν.91, διπλοεγγραφές, εγγραφές)
-        <b>δεν εμφανίζονται εδώ</b> — είναι δουλειά του Α.Σ. Άλλαξε ιδιότητα για να τις δεις.</div>
+        ${t('Οι λειτουργικές εκκρεμότητες του Συστήματος (πιστοποιητικά Ν.91, διπλοεγγραφές, εγγραφές)')}
+        <b>${t('δεν εμφανίζονται εδώ')}</b> — ${t('είναι δουλειά του Α.Σ. Άλλαξε ιδιότητα για να τις δεις.')}</div>
     </div>`;
   const rb=$('dvReload'); if(rb)rb.onclick=async()=>{$('dvMsg').textContent='…';await loadAll();route('dev')};
+  const sb2=$('dvScan'); if(sb2)sb2.onclick=()=>devScreenScan();
   const cb=$('dvCache'); if(cb)cb.onclick=()=>{try{localStorage.removeItem('e76:cache')}catch(e){}
     $('dvMsg').textContent='Καθαρίστηκε — κάνε ανανέωση'};
 };
 
+function devScanPage(){
+  const out=[], W=document.documentElement.clientWidth;
+  if(document.documentElement.scrollWidth>W+1)out.push(t('σελίδα φαρδύτερη από την οθόνη')+' ('+document.documentElement.scrollWidth+'>'+W+')');
+  const lbl=e=>(e.tagName.toLowerCase()+(e.type?'['+e.type+']':'')+(e.id?'#'+e.id:e.className?'.'+String(e.className).split(' ')[0]:'')).slice(0,40);
+  document.querySelectorAll('#view input:not([type=hidden]),#view select,#view textarea,#view button').forEach(e=>{
+    if(!e.getClientRects().length)return; const r=e.getBoundingClientRect(); if(!r.width)return;
+    const c=e.closest('.card,.tile,.dsec'); if(!c)return; const sc=e.closest('[style*="overflow"],table,.subtabs'); if(sc&&c.contains(sc))return;
+    const cr=c.getBoundingClientRect(); if(r.right>cr.right+1||r.left<cr.left-1)out.push(t('έξω από την κάρτα')+': '+lbl(e)+' '+Math.round(Math.max(r.right-cr.right,cr.left-r.left))+'px');
+  });
+  const f=[...document.querySelectorAll('#view input:not([type=checkbox]):not([type=radio]):not([type=hidden]),#view select,#view textarea')].filter(e=>e.getClientRects().length);
+  for(let i=0;i<f.length;i++)for(let j=i+1;j<f.length;j++){ const a=f[i].getBoundingClientRect(), b=f[j].getBoundingClientRect();
+    if(a.width&&b.width&&a.left<b.right-2&&b.left<a.right-2&&a.top<b.bottom-2&&b.top<a.bottom-2)out.push(t('πεδία το ένα πάνω στο άλλο')+': '+lbl(f[i])+' × '+lbl(f[j])); }
+  return [...new Set(out)];
+}
+async function devScreenScan(){
+  if(!PA||PA.k!=='dev')return toast(t('Μόνο στην ιδιότητα «Τεχνικός»'));
+  const me=PA, pers=PERSONAS.filter(p=>p.k!=='dev'), wait=ms=>new Promise(r=>setTimeout(r,ms)), res=[], ua=navigator.userAgent;
+  let n=0; const msg=x=>{ const m=$('dvMsg'); if(m)m.textContent=x; };
+  try{
+    for(const p of pers){
+      PA=p; renderNav();
+      for(const k of Object.keys(MOD)){
+        try{ route(k); }catch(e){ continue; } await wait(180); if(ROUTE!==k)continue;
+        const name=(MOD[k]&&MOD[k].t)||k; n++; msg(t('Έλεγχος')+' '+n+' · '+p.t+' · '+name);
+        devScanPage().forEach(x=>res.push(p.t+' › '+name+' — '+x));
+        const tabs=[...document.querySelectorAll('.subtabs .stab')];
+        for(let i=1;i<tabs.length;i++){ const b=document.querySelectorAll('.subtabs .stab')[i]; if(!b)break;
+          const tl=b.textContent.trim().replace(/\s*\d+$/,''); b.click(); await wait(180); n++;
+          devScanPage().forEach(x=>res.push(p.t+' › '+name+' › '+tl+' — '+x)); }
+      }
+    }
+  }finally{ PA=me; SUBTAB.mysys='sta'; renderNav(); route('mysys'); }
+  await wait(300);
+  const txt=[t('Έλεγχος οθονών')+' · '+BUILD+' · '+innerWidth+'×'+innerHeight+' · '+ua, n+' '+t('οθόνες/καρτέλες')+' · '+res.length+' '+t('ευρήματα'), '', ...[...new Set(res)]].join('\n');
+  const v=$('view'); if(!v)return;
+  const box=document.createElement('div'); box.className='card pad'; box.style.marginTop='14px';
+  box.innerHTML=`<b>${esc(t('Έλεγχος οθονών σε αυτή τη συσκευή'))}</b> <span class="dim">· ${n} ${esc(t('οθόνες/καρτέλες'))} · ${res.length} ${esc(t('ευρήματα'))}</span>
+    <textarea id="dvScanOut" readonly style="width:100%;min-height:220px;margin-top:8px;font:12px/1.4 ui-monospace,monospace">${esc(txt)}</textarea>
+    <button class="btn p sm" id="dvScanCp" style="margin-top:8px">${esc(t('Αντιγραφή'))}</button>`;
+  v.appendChild(box);
+  $('dvScanCp').onclick=()=>{ try{ navigator.clipboard.writeText(txt).then(()=>toast(t('Αντιγράφηκε — στείλ’ το στο Claude'))); }catch(e){ $('dvScanOut').select(); } };
+  box.scrollIntoView({behavior:'smooth'});
+}
 const ONEC_KIND='Ένας κηδεμόνας';
 const ONEC_WHY=['Δεν υπάρχει δεύτερος γονέας','Απώλεια γονέα','Δικαστικό διάταγμα','Ο δεύτερος γονέας δεν συμμετέχει'];
 const oneCarer=p=>!!p&&((D.onec||[]).includes(p.id)||(D.mf||[]).some(f=>f.person_id===p.id&&f.kind===ONEC_KIND));
@@ -14483,7 +14528,7 @@ function licenseBody(){
   <div class="sec"><h3>Υποχρεώσεις</h3><span class="n">${d.items.length-pend.length}/${d.items.length}</span></div>
   <div class="card" id="licItems">${d.items.map(licItemHTML).join('')}</div>
   ${adm?`<div style="margin:10px 0 4px;display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn p sm" id="licXlsx">${ic('down',14)} Αρχείο υποχρεώσεων ΓΕ (.xlsx) — επιτελείο + προγραμματισμός</button>
+    <button class="btn p sm" id="licXlsx" style="white-space:normal;text-align:left;max-width:100%">${ic('down',14)} Αρχείο υποχρεώσεων ΓΕ (.xlsx) — επιτελείο + προγραμματισμός</button>
     <label class="btn sm gh" style="cursor:pointer">Άλλο πρότυπο…<input type="file" id="licTpl" accept=".xlsx" style="display:none"></label></div>
     <div class="dim" style="font-size:12px">Γεμίζει το αρχείο «συν_υποχρεώσεις κλιμακίων» της ΓΕ από τη βάση: επιτελείο, προγραμματισμός, Επιτροπή.</div>`:''}
 
@@ -25780,7 +25825,8 @@ function contactRows(scope){
   const taken=new Set(out.map(r=>r.tel));
   const self=(p,src)=>{ const tel=telIntl(p.phone); if(!tel||taken.has(tel))return; taken.add(tel);
     const n=[p.first_name,p.last_name].filter(Boolean).join(' '), lat=String(p.latin_name||'').trim();
-    out.push({name:L?(lat||latin(n)):n, own:!!lat, tel, tel2:null, mail:p.email&&/@/.test(p.email)?p.email:'', rel:'', k:[], kids:[], prefix:pre2, src}); };
+    const sn=src==='led'?String(p.scout_name||'').trim():'';
+    out.push({name:L?(lat||latin(n)):n, own:!!lat, tel, tel2:null, mail:p.email&&/@/.test(p.email)?p.email:'', rel:'', k:[], kids:[], prefix:pre2, src, ttl:sn?pre2+' '+sn:''}); };
   const leds=(who==='led'||who==='all')?D.bh.filter(p=>isLed(p)&&p.status===dv('Ενεργός')
      &&(evid?inEv.has(p.id):(sec==='all'||ctLedIn(p,sec)))).sort(sortByName):[];
   leds.forEach(p=>self(p,'led'));
@@ -25791,7 +25837,7 @@ const ctLedIn=(p,s)=>secOf(p)===s||(!!LED_SEC_HATS[s]&&(D.ph||[]).some(h=>h.pers
 function ctGuardTels(p,today){ const g=gOf(p.registry_no)||{};
   return new Set([g.father_mobile,g.father_work_phone,g.mother_mobile,g.mother_work_phone]
     .concat((D.care_op||[]).filter(l=>l.member_id===p.id&&(!l.valid_to||l.valid_to>=today)).map(l=>l.phone)).map(telIntl).filter(Boolean)); }
-const ctTitle=r=>r.kids&&r.kids.length?r.prefix+' - '+r.kids.join(', '):r.prefix;
+const ctTitle=r=>r.ttl?r.ttl:r.kids&&r.kids.length?r.prefix+' - '+r.kids.join(', '):r.prefix;
 function ctKids(k){
   const out=k.filter(x=>!x.l).map(x=>x.f), grp=[];
   k.filter(x=>x.l).forEach(x=>{ const g=grp.find(G=>ctSameSur(G[0].l,x.l)); g?g.push(x):grp.push([x]); });
