@@ -1412,7 +1412,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-19 18:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-19 18:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1420,6 +1420,7 @@ let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}'
 const isFile=location.protocol==='file:';
 async function boot(){
   const h=location.hash||'', qs=new URLSearchParams(location.search);
+  if(/^[0-9a-f-]{36}$/i.test(qs.get('p')||'')){ try{ localStorage.setItem('e76:openp',JSON.stringify({id:qs.get('p'),at:Date.now()})) }catch(e){} }
   if(/type=recovery/.test(h)||qs.get('type')==='recovery')RECOVER=true;
   try{
     if(h.includes('access_token')){
@@ -1713,6 +1714,7 @@ async function start(){
     if(_cached&&_to===ROUTE&&ROUTE===_r0)stay(); else route(_to); }
   const me=meRec();
   if(me)$('whoami').innerHTML=`<b style="color:var(--sidein)">${pn(me)}</b><div style="font-size:10.5px">${esc(ledLabel(me,true))}</div>`;
+  deepOpen();    
   ntRebound();
 }
 
@@ -1757,7 +1759,16 @@ if(typeof document!=='undefined'&&document.addEventListener){
 if(typeof navigator!=='undefined'&&navigator.serviceWorker&&typeof location!=='undefined'&&location.protocol==='https:'){
   try{ window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }catch(e){}
 }
-
+function deepOpen(){ let o=null; try{ o=JSON.parse(localStorage.getItem('e76:openp')||'null'); localStorage.removeItem('e76:openp') }catch(e){}
+  try{ const u=new URL(location.href); if(u.searchParams.has('p')){ u.searchParams.delete('p'); history.replaceState(history.state,'',u.pathname+u.search) } }catch(e){}
+  if(!o||!o.id||Date.now()-(o.at||0)>30*60000)return;
+  if((D.bh||[]).some(b=>b.id===o.id))openProfile(o.id); else toast(t('Δεν έχεις πρόσβαση σε αυτή την καρτέλα'));
+}
+const pfLink=id=>location.origin+APPBASE+'?p='+encodeURIComponent(id);
+function pfLinkBtn(p){ const f=$('dFiles'); if(!f||$('dLink'))return;
+  f.insertAdjacentHTML('beforebegin',`<button class="btn gh sm" id="dLink" title="${esc(t('Αντιγραφή συνδέσμου προς αυτή την καρτέλα'))}" aria-label="${esc(t('Αντιγραφή συνδέσμου προς αυτή την καρτέλα'))}">🔗</button>`);
+  $('dLink').onclick=()=>{ const u=pfLink(p.id);
+    (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast(t('Ο σύνδεσμος αντιγράφηκε')),async()=>{ await uiNote(u) }); }; }
 const LANGS=['el','en'];
 let LANG=(()=>{ try{ const v=localStorage.getItem('e76:lang'); return LANGS.includes(v)?v:'el' }catch(e){ return 'el' } })();
 let TERMS={};
@@ -3902,7 +3913,7 @@ async function openProfile(id){
     }
     archiveFlow(p);};
   $('eCancel').onclick=()=>{$('dEditBox').style.display='none'};
-  pfLatinUI(p); $('eSave').onclick=async()=>{
+  pfLatinUI(p); pfLinkBtn(p); $('eSave').onclick=async()=>{
     const btn=$('eSave'); btn.disabled=true; btn.textContent='…';
     if(ME.role!=='admin'){
       const g=$('eG')?($('eG').value.trim()||null):undefined;
