@@ -1412,7 +1412,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-19 18:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-19 18:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1564,7 +1564,7 @@ async function mfaState(){
     const {data:f}=await sb.auth.mfa.listFactors();
     const verified=(f?.totp||[]).filter(x=>x.status==='verified');
     const {data:a}=await sb.auth.mfa.getAuthenticatorAssuranceLevel();
-    return {factors:verified, current:a?.currentLevel, next:a?.nextLevel};
+    return {factors:verified, current:a?.currentLevel, next:a?.nextLevel, amr:a?.currentAuthenticationMethods||[]};
   }catch(e){ return {factors:[], current:null, next:null}; }
 }
 
@@ -1618,67 +1618,110 @@ async function mfaGate(next){
   return true;
 }
 
+const MFA_DEADLINE='2026-12-31', MFA_REVERIFY_DAYS=182;
+let MFA_NAG=null;
+const mfaMust=()=>ME.role==='admin'||ME.role==='section_head'||!!ME.platform_admin||(!!ME.rec&&isLed(ME.rec));
+async function mfaDeadline(){ let c=null; try{ c=(await sb.auth.getUser()).data.user.created_at }catch(e){}
+  if(!c)return MFA_DEADLINE; const d=new Date(c); d.setMonth(d.getMonth()+2); const s=isoLocal(d);
+  return s>MFA_DEADLINE?s:MFA_DEADLINE; }
+async function mfaEnforce(){
+  const st=await mfaState();
+  const tm=(st.amr||[]).find(x=>x.method==='totp');
+  if(st.factors.length&&tm&&Date.now()/1000-tm.timestamp>MFA_REVERIFY_DAYS*86400){
+    await sb.auth.signOut({scope:'local'}); location.reload(); return false; }    
+  if(st.factors.length||!mfaMust())return true;
+  const dl=await mfaDeadline(), days=Math.ceil((Date.parse(dl+'T23:59:59')-Date.now())/864e5);
+  if(days>0){ MFA_NAG={dl,days}; setTimeout(mfaNagShow,1500); return true; }
+  mfaForceScreen(); return false;
+}
+function mfaNagShow(){ if(!MFA_NAG||$('mfaNag'))return; const a=$('app'); if(!a)return;
+  const d=document.createElement('div'); d.id='mfaNag';
+  d.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:150;background:var(--warnbg);color:var(--ink);border:1px solid var(--warn);border-radius:12px;padding:9px 12px;font-size:13px;display:flex;gap:9px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 24px);box-shadow:0 6px 20px rgba(0,0,0,.15)';
+  d.innerHTML=`<span>🔐 ${esc(t('Ενεργοποίησε τον δεύτερο παράγοντα (MFA) ως τις {d} — {n} μέρες ακόμη.',{d:fdate(MFA_NAG.dl),n:MFA_NAG.days}))}</span>
+    <button class="btn p sm" id="mfaNagGo">${esc(t('Ενεργοποίηση'))}</button><button class="btn gh sm" id="mfaNagX" aria-label="${esc(t('Κλείσιμο'))}">✕</button>`;
+  document.body.appendChild(d);
+  $('mfaNagX').onclick=()=>d.remove();
+  $('mfaNagGo').onclick=()=>{ d.remove(); $('drwp').innerHTML=`<div class="dhead"><div style="flex:1;font-size:17px;font-weight:600">${esc(t('Δεύτερος παράγοντας (MFA)'))}</div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div><div class="dsec"><div id="mfaPanel"></div></div>`;
+    $('drw').classList.add('on'); mfaPanel(); };
+}
+function mfaForceScreen(){
+  $('gate').style.display='none'; $('app').style.display='flex';
+  $('view').innerHTML=`<div class="card pad" style="max-width:520px;margin:20px auto">
+      <h3 style="margin:0 0 6px">🔐 ${esc(t('Χρειάζεται δεύτερος παράγοντας (MFA)'))}</h3>
+      <div class="dim" style="font-size:13px;line-height:1.55">${esc(t('Η προθεσμία πέρασε. Στήσ’ το τώρα — παίρνει ένα λεπτό — και συνεχίζεις κανονικά.'))}</div>
+      <div id="mfaPanel" style="margin-top:12px"></div>
+      <a href="#" id="mfaFOut" style="display:block;margin-top:12px;font-size:12.5px;color:var(--ink2)">${esc(t('Έξοδος'))}</a></div>`;
+  MFA_AFTER=()=>{ location.reload() };
+  mfaPanel();
+  $('mfaFOut').onclick=async e=>{ e.preventDefault(); await sb.auth.signOut(); location.reload() };
+}
+let MFA_AFTER=null;
+function mfaCard(){ const v=$('view'); if(!v||$('mfaCardBox'))return;
+  const c=document.createElement('div'); c.className='card pad'; c.id='mfaCardBox'; c.style.marginBottom='14px';
+  c.innerHTML=`<b>${esc(t('Δεύτερος παράγοντας (MFA)'))}</b><div id="mfaPanel" style="margin-top:8px"></div>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)"><button class="btn sm" id="mfaOthers">${esc(t('Αποσύνδεση από όλες τις άλλες συσκευές'))}</button>
+    <div class="dim" style="font-size:12px;margin-top:5px">${esc(t('Π.χ. αν χάσεις το κινητό: οι άλλες συσκευές θα χρειαστούν ξανά σύνδεση (και κωδικό).'))}</div></div>`;
+  if(v.lastElementChild)v.insertBefore(c,v.lastElementChild); else v.appendChild(c);
+  $('mfaOthers').onclick=async()=>{ if(!await uiAsk(t('Αποσύνδεση από όλες τις άλλες συσκευές σου; Αυτή εδώ μένει συνδεδεμένη.')))return;
+    const {error}=await sb.auth.signOut({scope:'others'}); toast(error?t('Δεν έγινε')+': '+error.message:t('Οι άλλες συσκευές αποσυνδέθηκαν')); };
+  mfaPanel();
+}
 async function mfaPanel(){
   const el=$('mfaPanel'); if(!el)return;
-  const st=await mfaState();
-
+  const st=await mfaState(), must=mfaMust();
   if(st.factors.length){
-    el.innerHTML=`<div class="kv"><span style="flex:1">Δεύτερος παράγοντας</span>
-        <span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">ενεργός</span></div>
-      <div class="dim" style="font-size:12px;margin-top:6px;line-height:1.55">
-        Στη σύνδεση θα ζητείται εξαψήφιος από την εφαρμογή σου. Οι ήδη ανοιχτές
-        συνεδρίες δεν επηρεάζονται.</div>
-      <button class="btn sm" id="mfaOff" style="margin-top:10px">Απενεργοποίηση</button>
-      <div id="mfaPmsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>`;
-    $('mfaOff').onclick=async()=>{
-      const m=$('mfaPmsg'); m.style.color='var(--ink2)'; m.textContent='…';
-      const {error}=await sb.auth.mfa.unenroll({factorId:st.factors[0].id});
-      if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
-      toast('Ο δεύτερος παράγοντας αφαιρέθηκε'); mfaPanel();
-    };
+    el.innerHTML=`<div class="kv"><span style="flex:1">${esc(t('Δεύτερος παράγοντας'))}</span>
+        <span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${esc(t('ενεργός'))}</span></div>
+      <div class="dim" style="font-size:12px;margin-top:6px;line-height:1.55">${esc(t('Ζητείται σε κάθε νέα σύνδεση και, σε αυτή τη συσκευή, ξανά κάθε 6 μήνες.'))}
+        ${esc(st.factors.length>1?t('Συσκευές: {n}.',{n:st.factors.length}):'')}</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" id="mfaAdd">${esc(t('Πρόσθεσε και δεύτερη συσκευή'))}</button>
+        ${must?'':`<button class="btn gh sm" id="mfaOff">${esc(t('Απενεργοποίηση'))}</button>`}</div>
+      <div id="mfaEnroll" style="display:none;margin-top:12px"></div><div id="mfaPmsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>`;
+    $('mfaAdd').onclick=()=>mfaEnrollStart(st.factors.length+1);
+    if($('mfaOff'))$('mfaOff').onclick=async()=>{ const m=$('mfaPmsg'); m.textContent='…';
+      for(const f of st.factors){ const {error}=await sb.auth.mfa.unenroll({factorId:f.id}); if(error){ m.style.color='var(--bad)'; m.textContent=error.message; return } }
+      toast(t('Ο δεύτερος παράγοντας αφαιρέθηκε')); mfaPanel(); };
     return;
   }
-
-  el.innerHTML=`<div class="kv"><span style="flex:1">Δεύτερος παράγοντας</span>
-      <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">ανενεργός</span></div>
-    <div class="dim" style="font-size:12px;margin-top:6px;line-height:1.55">
-      Ο λογαριασμός σου βλέπει ιατρικά, Α.Δ.Τ. και κηδεμονικά ανηλίκων.
-      Ένα συνθηματικό που θα διαρρεύσει κάπου αλλού δεν πρέπει να αρκεί.</div>
-    <button class="btn p sm" id="mfaOn" style="margin-top:10px">Ενεργοποίηση</button>
-    <div id="mfaEnroll" style="display:none;margin-top:12px"></div>
-    <div id="mfaPmsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>`;
-
-  $('mfaOn').onclick=async()=>{
-    const m=$('mfaPmsg'); m.style.color='var(--ink2)'; m.textContent='Δημιουργία…';
-    const {data,error}=await sb.auth.mfa.enroll({factorType:'totp', friendlyName:'e76 · '+(ME.email||'')});
-    if(error){m.style.color='var(--bad)';m.textContent=error.message;return}
-    m.textContent='';
-    const w=$('mfaEnroll'); w.style.display='';
-    w.innerHTML=`
-      <div style="font-size:12.5px;line-height:1.6;margin-bottom:9px">
-        <b>1.</b> Άνοιξε μια εφαρμογή αυθεντικοποίησης — Google Authenticator, Microsoft
-        Authenticator, ή τον διαχειριστή κωδικών σου.<br>
-        <b>2.</b> Σάρωσε τον κωδικό. <b>3.</b> Γράψε τον εξαψήφιο που θα δείξει.
-      </div>
-      <div style="background:#fff;padding:10px;border-radius:10px;display:inline-block">${data.totp.qr_code}</div>
-      <div class="dim" style="font-size:11.5px;margin:8px 0 4px">Αν δεν σαρώνεται, γράψε το με το χέρι:</div>
-      <code style="font-size:12px;word-break:break-all;display:block;margin-bottom:9px">${esc(data.totp.secret)}</code>
-      <input id="mfaVer" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
-        style="letter-spacing:.3em;text-align:center;font-size:18px;max-width:170px;margin-bottom:8px">
-      <div><button class="btn p sm" id="mfaVerGo">Επιβεβαίωση</button></div>`;
-    $('mfaVer').focus();
-    $('mfaVerGo').onclick=async()=>{
-      const code=$('mfaVer').value.trim();
-      if(!/^\d{6}$/.test(code)){m.style.color='var(--bad)';m.textContent='Έξι ψηφία.';return}
-      m.style.color='var(--ink2)'; m.textContent='Έλεγχος…';
-      const {data:ch,error:e1}=await sb.auth.mfa.challenge({factorId:data.id});
-      if(e1){m.style.color='var(--bad)';m.textContent=e1.message;return}
-      const {error:e2}=await sb.auth.mfa.verify({factorId:data.id, challengeId:ch.id, code});
-      if(e2){m.style.color='var(--bad)';
-        m.textContent='Λάθος κωδικός. Αλλάζει κάθε 30 δευτερόλεπτα — δοκίμασε τον επόμενο.';return}
-      toast('Ο δεύτερος παράγοντας ενεργοποιήθηκε'); mfaPanel();
-    };
+  el.innerHTML=`<div class="kv"><span style="flex:1">${esc(t('Δεύτερος παράγοντας'))}</span>
+      <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${esc(t('ανενεργός'))}</span></div>
+    <div class="dim" style="font-size:12px;margin-top:6px;line-height:1.55">${esc(must?t('Υποχρεωτικό για βαθμοφόρους: ο λογαριασμός σου ανοίγει ιατρικά και στοιχεία ανηλίκων — ένα συνθηματικό δεν αρκεί.'):t('Προαιρετικό — προστατεύει τον λογαριασμό σου αν διαρρεύσει το συνθηματικό.'))}</div>
+    <button class="btn p sm" id="mfaOn" style="margin-top:10px">${esc(t('Ενεργοποίηση'))}</button>
+    <div id="mfaEnroll" style="display:none;margin-top:12px"></div><div id="mfaPmsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>`;
+  $('mfaOn').onclick=()=>mfaEnrollStart(1);
+}
+async function mfaEnrollStart(n){
+  const m=$('mfaPmsg'); m.style.color='var(--ink2)'; m.textContent=t('Δημιουργία…');
+  try{ const {data:f}=await sb.auth.mfa.listFactors(); for(const x of (f?.all||[]).filter(x=>x.status!=='verified')) await sb.auth.mfa.unenroll({factorId:x.id}); }catch(e){}
+  const {data,error}=await sb.auth.mfa.enroll({factorType:'totp', issuer:'e76', friendlyName:'e76 · '+(ME.email||'')+(n>1?' · '+n:'')});
+  if(error){ m.style.color='var(--bad)'; m.textContent=error.message; return }
+  m.textContent=''; const w=$('mfaEnroll'); w.style.display='';
+  const mob=matchMedia('(pointer:coarse)').matches;
+  w.innerHTML=`<div style="font-size:12.5px;line-height:1.6;margin-bottom:9px">${esc(t('Οποιαδήποτε εφαρμογή κωδικών κάνει: Google ή Microsoft Authenticator, Κωδικοί του iPhone, Aegis, 2FAS, Authy, 1Password, Bitwarden…'))}</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+      <a class="btn ${mob?'p':''} sm" href="${esc(data.totp.uri)}">${esc(t('Άνοιγμα στην εφαρμογή κωδικών'))}</a>
+      <button class="btn sm" id="mfaCopy">${esc(t('Αντιγραφή κλειδιού'))}</button>
+      <button class="btn gh sm" id="mfaQrT">${esc(t('QR για σκανάρισμα'))}</button></div>
+    <div id="mfaQr" style="${mob?'display:none;':''}background:#fff;padding:10px;border-radius:10px;width:max-content;max-width:100%;margin-bottom:10px">${data.totp.qr_code.startsWith('data:')?`<img src="${esc(data.totp.qr_code)}" alt="QR" style="width:180px;height:180px">`:data.totp.qr_code}</div>
+    <div style="font-size:12.5px;margin-bottom:6px">${esc(t('Μετά γράψε τον εξαψήφιο που δείχνει η εφαρμογή:'))}</div>
+    <input id="mfaVer" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="letter-spacing:.3em;text-align:center;font-size:18px;max-width:170px;margin-bottom:8px">
+    <div><button class="btn p sm" id="mfaVerGo">${esc(t('Επιβεβαίωση'))}</button></div>`;
+  $('mfaQrT').onclick=()=>{ const q=$('mfaQr'); q.style.display=q.style.display==='none'?'':'none' };
+  $('mfaCopy').onclick=()=>{ (navigator.clipboard?navigator.clipboard.writeText(data.totp.secret):Promise.reject()).then(()=>toast(t('Το κλειδί αντιγράφηκε')),async()=>{ await uiNote(data.totp.secret) }) };
+  $('mfaVerGo').onclick=async()=>{
+    const code=$('mfaVer').value.trim();
+    if(!/^\d{6}$/.test(code)){ m.style.color='var(--bad)'; m.textContent=t('Έξι ψηφία.'); return }
+    m.style.color='var(--ink2)'; m.textContent=t('Έλεγχος…');
+    const {data:ch,error:e1}=await sb.auth.mfa.challenge({factorId:data.id});
+    if(e1){ m.style.color='var(--bad)'; m.textContent=e1.message; return }
+    const {error:e2}=await sb.auth.mfa.verify({factorId:data.id, challengeId:ch.id, code});
+    if(e2){ m.style.color='var(--bad)'; m.textContent=t('Λάθος κωδικός. Αλλάζει κάθε 30 δευτερόλεπτα — δοκίμασε τον επόμενο.'); return }
+    MFA_NAG=null; const nb=$('mfaNag'); if(nb)nb.remove();
+    toast(t('Ο δεύτερος παράγοντας ενεργοποιήθηκε'));
+    if(MFA_AFTER){ const f=MFA_AFTER; MFA_AFTER=null; f(); return } mfaPanel();
   };
+  $('mfaVer').onkeydown=e=>{ if(e.key==='Enter')$('mfaVerGo').click() };
 }
 
 async function start(){
@@ -1705,6 +1748,7 @@ async function start(){
   $('mbtn').innerHTML=ic('menu'); $('palbtn').innerHTML=ic('srch',16);
   $('legbtn').innerHTML=ic('info',16);
   if(await mustSetPassword()){ setPasswordScreen(); return; }
+  if(!(await mfaEnforce()))return;    
   const _cached=peekCache(); if(_cached)document.body.classList.add('stale');
   renderNav(); route(urlRoute()||hashRoute()||'dash'); banner();
   const _r0=ROUTE;
@@ -1768,7 +1812,14 @@ const pfLink=id=>location.origin+APPBASE+'?p='+encodeURIComponent(id);
 function pfLinkBtn(p){ const f=$('dFiles'); if(!f||$('dLink'))return;
   f.insertAdjacentHTML('beforebegin',`<button class="btn gh sm" id="dLink" title="${esc(t('Αντιγραφή συνδέσμου προς αυτή την καρτέλα'))}" aria-label="${esc(t('Αντιγραφή συνδέσμου προς αυτή την καρτέλα'))}">🔗</button>`);
   $('dLink').onclick=()=>{ const u=pfLink(p.id);
-    (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast(t('Ο σύνδεσμος αντιγράφηκε')),async()=>{ await uiNote(u) }); }; }
+    (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast(t('Ο σύνδεσμος αντιγράφηκε')),async()=>{ await uiNote(u) }); };
+  if((isAdminUI()||ME.platform_admin)&&p.id!==ME.person_id) Promise.resolve(sb.rpc('mfa_admin',{p_person:p.id})).then(({data})=>{
+    if(!(data>0)||$('dMfa')||!$('dLink'))return;
+    $('dLink').insertAdjacentHTML('afterend',`<button class="btn gh sm" id="dMfa" title="${esc(t('Μηδενισμός MFA (χάθηκε η συσκευή)'))}" aria-label="${esc(t('Μηδενισμός MFA (χάθηκε η συσκευή)'))}">🔐</button>`);
+    $('dMfa').onclick=async()=>{ if(!await uiAsk(t('Να σβηστεί ο δεύτερος παράγοντας (MFA) του/της {n}; Θα τον ξαναστήσει στην επόμενη είσοδο.',{n:nm(p)})))return;
+      const {error}=await sb.rpc('mfa_admin',{p_person:p.id,p_reset:true});
+      if(error)return toast(t('Δεν έγινε')+': '+error.message); toast(t('Το MFA μηδενίστηκε')); $('dMfa').remove(); };
+  }).catch(()=>{}); }
 const LANGS=['el','en'];
 let LANG=(()=>{ try{ const v=localStorage.getItem('e76:lang'); return LANGS.includes(v)?v:'el' }catch(e){ return 'el' } })();
 let TERMS={};
@@ -8474,6 +8525,7 @@ V.account=()=>{
   { const pc=document.createElement('div'); pc.className='card pad'; pc.id='pushCard'; pc.style.marginBottom='14px';
     const v=$('view'); if(v&&v.insertBefore&&v.lastElementChild)v.insertBefore(pc,v.lastElementChild); }
   pushCardFill();
+  mfaCard();    
   $('acOut').onclick=async()=>{ if(!await uiAsk('Αποσύνδεση;'))return;
     await pushForget(); await sb.auth.signOut(); location.reload()};
   $('acPw').onclick=async()=>{
