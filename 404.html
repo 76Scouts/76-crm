@@ -1412,7 +1412,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-19 18:01'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-19 18:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21729,7 +21729,7 @@ async function dlLoad(eid,force){
   await guLoad((D.ev||[]).find(x=>x.id===eid),force);    
   const ev0=(D.ev||[]).find(x=>x.id===eid);    
   if(ev0&&dlStaff(ev0).some(x=>!dlIsGE(x.p)&&!n91Visible(x.p.id))){ const {data,error}=await sb.rpc('event_n91_status',{p_event:eid});
-    if(!error&&Array.isArray(data)){ G.n91s={}; data.forEach(r=>{ G.n91s[r.person_id]={ok:!!r.ok}; }); } }
+    if(!error&&Array.isArray(data)){ G.n91s={}; data.forEach(r=>{ G.n91s[r.person_id]={ok:!!r.ok,w:r.warrant||null,st:r.n91_state||null,until:r.n91_until||null}; }); } }
   await dlParLoad(eid,G); return G;
 }
 async function dlParLoad(eid,G,extra){
@@ -21803,8 +21803,14 @@ function dlAppt(p,day){ day=day||todayISO();
   const w=warCurrent(p.id,day)||(p._war?warPick(p._war,day):null);    
   return (w&&w.no)||dlEforia(p)||'ΕΚΚΡΕΜΕΙ'}
 const dlIsGE=coveredAbove;
-const dlN91k=(e,pid,end)=>{ const k=certOn(pid,'Ν91',end).k; if(k!=='hidden')return k;
-  const s=((GEV[e.id]||{}).n91s||{})[pid]; return s?(s.ok?'ok':'none'):'hidden'; };
+const dlN91k=(e,pid,end)=>{ const s=((GEV[e.id]||{}).n91s||{})[pid];
+  const wc=warCurrent(pid,e.event_date); if((s&&s.w)||(wc&&!wc.draft))return 'ok';    
+  const k=certOn(pid,'Ν91',end).k; if(k!=='hidden')return k;
+  return s?(s.ok?'ok':'none'):'hidden'; };
+const dlN91Why=(e,x)=>{ const s=((GEV[e.id]||{}).n91s||{})[x.p.id], c=certOn(x.p.id,dv('Ν91'),e.end_date||e.event_date);
+  const st=s&&s.st?s.st:c.k, until=s&&s.until?s.until:(c.c&&c.c.expires_on)||null;
+  const why=st==='pending'?t('Ν91 περιμένει επιβεβαίωση'):until?t('Ν91 ως')+' '+fdate(until):t('δεν έχει ανεβάσει Ν91');
+  return nm(x.p)+' ('+why+')'; };
 function dlN91(e){ const end=e.end_date||e.event_date, staff=dlStaff(e), o={total:staff.length,ge:[],ok:[],hid:[],bad:[]};
   staff.forEach(x=>{ if(dlIsGE(x.p))return o.ge.push(x); const k=dlN91k(e,x.p.id,end); (k==='ok'?o.ok:k==='hidden'?o.hid:o.bad).push(x); });
   return o; }
@@ -21898,10 +21904,10 @@ function dlChecks(e,g){
   const N=dlN91(e), uiOn=!!(N.bad.length||N.hid.length);
   const NC=g.n91?{total:g.n91.total,ge:g.n91.ge,ok:g.n91.ok,rest:g.n91.rest}:{total:N.total,ge:N.ge.length,ok:N.ok.length,rest:N.bad.length+N.hid.length};
   if(uiOn||NC.rest){
-    const ui=!uiOn?'':[N.bad.length?pln(N.bad.length,'βαθμοφόρος','βαθμοφόροι')+' χωρίς Ν.91(Ι) σε ισχύ: '+N.bad.map(x=>nm(x.p)).join(', '):'',
+    const ui=!uiOn?'':[N.bad.length?pln(N.bad.length,'βαθμοφόρος','βαθμοφόροι')+' χωρίς Ν.91(Ι) σε ισχύ: '+N.bad.map(x=>dlN91Why(e,x)).join(', '):'',
       N.hid.length?N.hid.length+' '+t('δεν ελέγχθηκαν — την ισχύ τη βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματός του και ο Α.Σ.'):'',
       N.ge.length?N.ge.length+' '+t('εξαιρούνται — η Εντολή Διοίκησης εκδίδεται από την Εφορεία τους (ΓΕ/ΕΕΛ)'):''].filter(Boolean).join(' · ');
-    out.push({s:2,t:ui||dlN91Sheet(NC),bad:true,who:N.bad.map(x=>nm(x.p)).join(', '),sheet:NC.rest?dlN91Sheet(NC):null,whoSheet:dv('Α.Σ.'),noSheet:!NC.rest});
+    out.push({s:2,t:ui||dlN91Sheet(NC),bad:true,who:N.bad.map(x=>dlN91Why(e,x)).join(', '),sheet:NC.rest?dlN91Sheet(NC):null,whoSheet:dv('Α.Σ.'),noSheet:!NC.rest});
   }
   const home=dlHome(g), par=dlPar(e,g);
   [['arrive_time',home?t('Ώρα έναρξης'):'Ώρα προσέλευσης'],...(par?[]:[['depart_time','Ώρα αναχώρησης'],['return_time','Ώρα επιστροφής']]),['release_time','Ώρα αποδέσμευσης']]
