@@ -1530,7 +1530,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-20 01:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-20 01:48'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -23653,6 +23653,260 @@ async function bdWire(e){
   if(!BD[e.id]||!BD[e.id].dirty)await bdLoad(e.id);
   bdDraw(e);
 }
+const AP2=(function(){
+  'use strict';
+  const AP2={};
+
+  function r2(x){ return Math.round((+x||0)*100)/100; }
+  function norm(s){
+    return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/[^a-zα-ω0-9]+/gi,' ').trim();
+  }
+  function clone(x){ return JSON.parse(JSON.stringify(x)); }
+  AP2.util={r2:r2, norm:norm, clone:clone};
+
+  const TYPES={
+    'action.set':     ['key','title','tmima','dates','counts','dikaioma'],    
+    'account.add':    ['id','name','kind','holder','onHand'],                
+    'account.edit':   ['id'],
+    'account.void':   ['id'],
+    'source.add':     ['id','kind','label','amount','date','account','refundable'],
+    'source.edit':    ['id'],
+    'source.void':    ['id'],
+    'transfer.add':   ['id','from','to','amount','date','note'],
+    'transfer.edit':  ['id'],
+    'transfer.void':  ['id'],
+    'expense.add':    ['id','date','title','vendor','buyer','account','status','appCat'],  
+    'expense.edit':   ['id'],
+    'expense.void':   ['id'],
+    'receipt.add':    ['id','expense','amount','date','note','photos'],     
+    'receipt.edit':   ['id'],
+    'receipt.void':   ['id'],
+    'folder.set':     ['template'],              
+    'folder.map':     ['appCat','fcat'],         
+    'folder.override':['receipt','fcat'],        
+    'action.close':   [],
+    'action.reopen':  []
+  };
+  AP2.TYPES=TYPES;
+
+  function emptyState(){
+    return {
+      action:{key:'',title:'',tmima:'',dates:'',counts:{paidia:0,epiteleio:0,goneis:0},dikaioma:0,
+              closed:false,closedAt:null,closedBy:null},
+      accounts:{}, sources:{}, transfers:{}, expenses:{}, receipts:{},
+      folder:{template:null,catMap:{},override:{}},
+      order:{accounts:[],sources:[],transfers:[],expenses:[],receipts:[]},    
+      problems:[]           
+    };
+  }
+
+  const COLL={account:'accounts',source:'sources',transfer:'transfers',expense:'expenses',receipt:'receipts'};
+
+  function apply(st,ev){
+    const ty=ev&&ev.type, d=(ev&&ev.data)||{};
+    if(!TYPES[ty]) return t('άγνωστος τύπος «{x}»',{x:ty});
+    if(st.action.closed && ty!=='action.reopen') return t('κλειστή δράση');
+    const dot=ty.indexOf('.'), noun=ty.slice(0,dot), verb=ty.slice(dot+1), coll=COLL[noun];
+    if(ty==='action.set'){ Object.keys(d).forEach(k=>{ st.action[k]=clone(d[k]); }); return null; }
+    if(ty==='action.close'){ st.action.closed=true; st.action.closedAt=ev.ts; st.action.closedBy=ev.who||''; return null; }
+    if(ty==='action.reopen'){ st.action.closed=false; st.action.reopenedAt=ev.ts; return null; }
+    if(ty==='folder.set'){ st.folder.template=clone(d.template); return null; }
+    if(ty==='folder.map'){ if(d.fcat) st.folder.catMap[d.appCat]=d.fcat; else delete st.folder.catMap[d.appCat]; return null; }
+    if(ty==='folder.override'){ if(d.fcat) st.folder.override[d.receipt]=d.fcat; else delete st.folder.override[d.receipt]; return null; }
+    if(!coll||!d.id) return t('χωρίς id');
+    const bag=st[coll];
+    if(verb==='add'){
+      if(bag[d.id]) return t('διπλό id {x}',{x:d.id});
+      if(noun==='receipt' && !st.expenses[d.expense]) return t('απόδειξη χωρίς έξοδο');
+      const o=clone(d); o.voided=false; o.createdAt=ev.ts; o.createdBy=ev.who||'';
+      if('amount' in o) o.amount=r2(o.amount);
+      bag[d.id]=o; st.order[coll].push(d.id); return null;
+    }
+    if(!bag[d.id]) return t('δεν υπάρχει {x}',{x:d.id});
+    if(verb==='edit'){
+      Object.keys(d).forEach(k=>{ if(k!=='id') bag[d.id][k]=(k==='amount')?r2(d[k]):clone(d[k]); });
+      bag[d.id].editedAt=ev.ts; return null;
+    }
+    if(verb==='void'){ bag[d.id].voided=true; bag[d.id].voidedAt=ev.ts; bag[d.id].voidedBy=ev.who||''; return null; }
+    return t('άγνωστο ρήμα');
+  }
+
+  function replay(events){
+    const st=emptyState();
+    (events||[]).slice().sort((a,b)=>(a.ts<b.ts?-1:a.ts>b.ts?1:0)||((a.seq||0)-(b.seq||0)))
+      .forEach(ev=>{ const why=apply(st,ev); if(why) st.problems.push({id:ev.id,type:ev.type,why:why}); });
+    return st;
+  }
+  function live(bag,order){ return order.map(id=>bag[id]).filter(o=>o&&!o.voided); }
+  AP2.ledger={emptyState:emptyState, apply:apply, replay:replay, live:live};
+
+  function sources(st){ return live(st.sources,st.order.sources); }
+  function transfers(st){ return live(st.transfers,st.order.transfers); }
+  function expenses(st){ return live(st.expenses,st.order.expenses); }
+  function accounts(st){ return live(st.accounts,st.order.accounts); }
+  function receiptsOf(st,expId){ return live(st.receipts,st.order.receipts).filter(r=>r.expense===expId); }
+  function expenseAmount(st,e){ return r2(receiptsOf(st,e.id).reduce((s,r)=>s+r.amount,0)); }
+
+  function balance(st,accId){
+    let s=0;
+    sources(st).forEach(x=>{ if(x.account===accId) s+=x.amount; });
+    transfers(st).forEach(tr=>{ if(tr.to===accId) s+=tr.amount; if(tr.from===accId) s-=tr.amount; });
+    expenses(st).forEach(e=>{ if(e.account===accId && e.status!=='unsettled') s-=expenseAmount(st,e); });
+    return r2(s);
+  }
+  function balances(st){ return accounts(st).map(a=>({id:a.id,name:a.name,kind:a.kind,onHand:!!a.onHand,balance:balance(st,a.id)})); }
+
+  function totals(st){
+    const inc=r2(sources(st).reduce((s,x)=>s+x.amount,0));
+    let exp=0, unsettled=0;
+    expenses(st).forEach(e=>{ const a=expenseAmount(st,e); exp+=a; if(e.status==='unsettled') unsettled+=a; });
+    exp=r2(exp); unsettled=r2(unsettled);
+    const bal=r2(balances(st).reduce((s,b)=>s+b.balance,0));
+    const paidNoAcc=r2(expenses(st).filter(e=>e.status!=='unsettled'&&!e.account).reduce((s,e)=>s+expenseAmount(st,e),0));
+    const srcNoAcc=r2(sources(st).filter(x=>!x.account).reduce((s,x)=>s+x.amount,0));
+    const gap=r2((inc-srcNoAcc)-(exp-unsettled-paidNoAcc)-bal);
+    return {income:inc, expenses:exp, unsettled:unsettled, result:r2(inc-exp),
+            accountsTotal:bal, paidWithoutAccount:paidNoAcc, sourcesWithoutAccount:srcNoAcc,
+            gap:gap, balanced:Math.abs(gap)<0.005};
+  }
+
+  function owed(st){
+    const m={};
+    expenses(st).forEach(e=>{ if(e.status==='unsettled'){ const k=e.buyer||t('(άγνωστος)'); m[k]=r2((m[k]||0)+expenseAmount(st,e)); } });
+    return Object.keys(m).map(k=>({person:k,amount:m[k]}));
+  }
+
+  function settlement(st,mainAccId){
+    const b=balances(st), main=mainAccId||(b.filter(x=>x.kind==='bank')[0]||b[0]||{}).id, moves=[];
+    b.forEach(x=>{ if(x.id!==main && Math.abs(x.balance)>=0.01) moves.push(x.balance>0?{from:x.id,to:main,amount:x.balance}:{from:main,to:x.id,amount:r2(-x.balance)}); });
+    return {main:main, balances:b, moves:moves, owed:owed(st)};
+  }
+
+  function perPerson(st,days){
+    const c=st.action.counts||{}, n=(+c.paidia||0)+(+c.epiteleio||0)+(+c.goneis||0), tt=totals(st);
+    return {people:n, perPerson:n?r2(tt.expenses/n):null, perPersonDay:(n&&days)?r2(tt.expenses/n/days):null};
+  }
+  AP2.derive={sources:sources, transfers:transfers, expenses:expenses, accounts:accounts, receiptsOf:receiptsOf,
+              expenseAmount:expenseAmount, balance:balance, balances:balances, totals:totals, owed:owed,
+              settlement:settlement, perPerson:perPerson};
+
+  const DV=AP2.derive;
+  const TEMPLATES={
+    [dv('ΟΠ')]:{name:dv('ΟΠ'), cap:13, catchAll:dv('Άλλο'),
+      cats:[dv('Διατροφή'),dv('Διαμονή'),dv('Μεταφορικά'),dv('Υλικά Προγράμματος'),dv('Επισκευές'),dv('Υλικά Φαρμακείου'),dv('Αναμνηστικά'),
+            dv('Δημόσιες Σχέσεις κ.ά.'),dv('Απρόβλεπτα'),dv('Άλλο'),dv('Μεταφορές - Καύσιμα')]},
+    [dv('ΜΔΥ')]:{name:dv('ΜΔΥ'), cap:16, catchAll:dv('Απρόβλεπτα'),
+      cats:[dv('Διατροφή'),dv('Διαμονή'),dv('Αεροπορικά + Λεωφορεία Κύπρου'),dv('Μεταφορικά'),dv('Υλικά Προγράμματος'),dv('Υλικά Φαρμακείου'),
+            dv('Αναμνηστικά'),dv('Δημόσιες Σχέσεις κ.ά.'),dv('Απρόβλεπτα'),dv('Φαράγγι Σαμαριάς'),dv('Τουρ 23 & 24/07/2026'),
+            dv('Είσοδος Μονή Αρκαδίου'),dv('Είσοδος Μουσείο Ελεύθερνας'),dv('Είσοδος Σπηλιά Μελίδόνι'),dv('Εργαστήρι Μαχαιροπιοίας'),
+            dv('Είσοδος Μουσείο Κνωσσού')]}
+  };
+  const C_UNEXP=dv('Απρόβλεπτα'), C_OTHER=dv('Άλλο');
+
+  function tpl(st){
+    const tp=(st.folder&&st.folder.template)||TEMPLATES[dv('ΟΠ')];
+    const cats=(tp.cats||[]).slice(), cap=+tp.cap>0?+tp.cap:cats.length;
+    const catchAll=tp.catchAll&&cats.indexOf(tp.catchAll)>=0?tp.catchAll:(cats.indexOf(C_UNEXP)>=0?C_UNEXP:(cats.indexOf(C_OTHER)>=0?C_OTHER:cats[cats.length-1]));
+    const extra=Math.max(0,cats.length-cap), totRow=14+cap+extra;
+    return {name:tp.name||'', cats:cats, cap:cap, catchAll:catchAll, extra:extra, totRow:totRow, ypRow:totRow+1};
+  }
+  function has(T,n){ return T.cats.indexOf(n)>=0?n:null; }
+
+  function guess(appCat,T){
+    const n=norm(appCat); let i, tn;
+    for(i=0;i<T.cats.length;i++) if(n===norm(T.cats[i])) return T.cats[i];
+    for(i=0;i<T.cats.length;i++){ tn=norm(T.cats[i]); if(tn&&n&&(tn.indexOf(n)===0||n.indexOf(tn)===0)) return T.cats[i]; }
+    let c=null;
+    if(/διατροφ|σουπερ|φαγητ/.test(n)) c=dv('Διατροφή');
+    else if(/καυσιμ|βενζιν|πετρελαι|parking|παρκιν/.test(n)) c=has(T,dv('Μεταφορές - Καύσιμα'))||dv('Μεταφορικά');
+    else if(/μεταφορ|λεωφορ|πλοι|μετακιν|ταξι/.test(n)) c=dv('Μεταφορικά');
+    else if(/αναμνηστ/.test(n)) c=dv('Αναμνηστικά');
+    else if(/φαρμακ/.test(n)) c=dv('Υλικά Φαρμακείου');
+    else if(/διαμον|καταλυμ|ξενοδοχ/.test(n)) c=dv('Διαμονή');
+    else if(/δημοσι|σχεσ/.test(n)) c=dv('Δημόσιες Σχέσεις κ.ά.');
+    else if(/υλικ|εξοπλ/.test(n)) c=dv('Υλικά Προγράμματος');
+    return (c&&has(T,c))||T.catchAll;
+  }
+  function catDefault(st,appCat,T){ const m=st.folder.catMap[appCat]; return (m&&has(T,m))||guess(appCat,T); }
+  function fcatOf(st,rc,e,T){
+    const ov=st.folder.override[rc.id]; if(ov&&has(T,ov)) return ov;
+    const pn=norm(rc.note||'');
+    if(pn) for(let i=0;i<T.cats.length;i++){ const tn=norm(T.cats[i]); if(tn.length>=5&&pn.indexOf(tn)>=0) return T.cats[i]; }
+    return catDefault(st,e.appCat,T);
+  }
+
+  function receiptList(st){
+    const T=tpl(st), out=[];
+    DV.expenses(st).forEach((e,ei)=>{
+      DV.receiptsOf(st,e.id).forEach((rc,ri)=>{
+        const photos=(rc.photos||[]).filter(Boolean);
+        if(!rc.amount&&!photos.length) return;
+        out.push({id:rc.id, date:rc.date||e.date||'', ei:ei, ri:ri, fcat:fcatOf(st,rc,e,T), auto:catDefault(st,e.appCat,T),
+                  vendor:e.vendor||e.title||rc.note||'', note:rc.note||'', amount:rc.amount, photos:photos,
+                  expense:e.id, appCat:e.appCat, multi:DV.receiptsOf(st,e.id).length>1});
+      });
+    });
+    out.sort((a,b)=>{ const x=a.date||'9999', y=b.date||'9999'; return (x<y?-1:x>y?1:0)||(a.ei-b.ei)||(a.ri-b.ri); });
+    out.forEach((x,i)=>{ x.no=i+1; });
+    return out;
+  }
+
+  function incomeLines(st){
+    const m={}, order=[];
+    DV.sources(st).forEach(s=>{ const k=s.label||s.kind||''; if(!(k in m)){ m[k]=0; order.push(k); } m[k]+=s.amount; });
+    return order.map(k=>({label:k,amount:r2(m[k])})).filter(x=>Math.abs(x.amount)>=0.005);
+  }
+
+  function f2(x){ return r2(x).toFixed(2); }
+  function pad(g,w){ g.forEach(r=>{ while(r.length<w) r.push(''); }); return g; }
+
+  function synopsisGrid(st){
+    const T=tpl(st), A=st.action, c=A.counts||{}, g=[];
+    function set(r,col,v){ while(g.length<r) g.push([]); const row=g[r-1]; while(row.length<col) row.push(''); row[col-1]=v==null?'':v; }
+    set(2,2,dv('ΟΙΚΟΝΟΜΙΚΟΣ ΑΠΟΛΟΓΙΣΜΟΣ'));
+    set(4,2,dv('Δικαίωμα Συμμετοχής:')); set(4,3,+A.dikaioma||0);
+    set(5,2,dv('Συμμετείχαν'));
+    set(6,2,dv('Παιδιά:')); set(6,3,+c.paidia||0);
+    set(7,2,dv('Επιτελείο:')); set(7,3,+c.epiteleio||0);
+    set(8,2,dv('Γονείς  & Φίλοι:')); set(8,3,+c.goneis||0);
+    set(9,2,dv('Σύνολο:')); set(9,3,(+c.paidia||0)+(+c.epiteleio||0)+(+c.goneis||0));
+    set(11,2,dv('Έσοδα')); set(11,6,dv('Έξοδα'));
+    set(13,2,dv('Α/Α')); set(13,3,dv('Περιγραφή Εσόδων')); set(13,4,dv('Ποσό (€)'));
+    set(13,6,dv('Α/Α')); set(13,7,dv('Περιγραφή Εξόδων')); set(13,8,dv('Ποσό (€)'));
+    const inc=incomeLines(st); let incT=0;
+    inc.forEach((x,i)=>{ incT+=x.amount; if(14+i<T.totRow){ set(14+i,2,i+1); set(14+i,3,x.label); set(14+i,4,f2(x.amount)); } });
+    const by={}; T.cats.forEach(k=>{ by[k]=0; });
+    receiptList(st).forEach(x=>{ by[x.fcat]=(by[x.fcat]||0)+x.amount; });
+    let expT=0;
+    T.cats.forEach((k,i)=>{ set(14+i,6,i+1); set(14+i,7,k); set(14+i,8,f2(by[k])); expT+=by[k]; });
+    set(T.totRow,3,dv('Σύνολο Εσόδων')); set(T.totRow,4,f2(incT));
+    set(T.totRow,7,dv('Σύνολο Εξόδων')); set(T.totRow,8,f2(expT));
+    set(T.ypRow,7,dv('Υπόλοιπο')); set(T.ypRow,8,f2(incT-expT));
+    return pad(g,8);
+  }
+
+  function receiptsGrid(st){
+    const L=receiptList(st), sfx=dv('αβγδεζηθ'); let maxPh=1;
+    L.forEach(x=>{ if(x.photos.length>maxPh) maxPh=x.photos.length; });
+    const hdr=['',dv('Αρ. Απόδειξης'),dv('Κατηγορία Εξόδου'),dv('Προμηθευτής'),dv('Ποσό'),dv('Φωτό απόδειξης')];
+    for(let k=1;k<maxPh;k++) hdr.push(dv('Φωτό ')+(k+1)+' ('+sfx[k-1]+')');
+    const g=[[''],['',dv('ΑΠΟΔΕΙΞΕΙΣ')],hdr];
+    L.forEach(x=>{ const row=['',x.no,x.fcat,x.vendor,f2(x.amount)]; if(!x.photos.length) row.push(dv('⚠ ΧΩΡΙΣ ΑΠΟΔΕΙΞΗ')); x.photos.forEach(u=>row.push(u)); g.push(row); });
+    g.push(['']);
+    return pad(g,5+maxPh);
+  }
+
+  function budgetVsActual(st,baseline){
+    const T=tpl(st), by={}; receiptList(st).forEach(x=>{ by[x.fcat]=(by[x.fcat]||0)+x.amount; });
+    const n=(+st.action.counts.paidia||0)+(+st.action.counts.epiteleio||0)+(+st.action.counts.goneis||0);
+    return T.cats.map(k=>{ const b=r2((baseline||{})[k]||0), a=r2(by[k]||0); return {cat:k, budget:b, actual:a, diff:r2(a-b), perPerson:n?r2(a/n):null}; });
+  }
+
+  AP2.folder={TEMPLATES:TEMPLATES, tpl:tpl, guess:guess, catDefault:catDefault, fcatOf:fcatOf, receiptList:receiptList,
+              incomeLines:incomeLines, synopsisGrid:synopsisGrid, receiptsGrid:receiptsGrid, budgetVsActual:budgetVsActual};
+  return AP2;
+})();
 const DRA=Object.freeze({
   dlKids:(...a)=>dlKids(...a),             
   dlKidsFull:(...a)=>dlKidsFull(...a),     
