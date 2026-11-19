@@ -1408,7 +1408,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-19 16:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-19 16:50'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2167,9 +2167,10 @@ const NAV_LEADER_ALL=['dash','issues','trends','members','leaders','guardians',
 const NAV_LEADER=['dash','attend','trends','members','guardians','leaders','groups','events','cal',
   'progAL','progOP','progKA','synod',
   'me','mycerts','myschools','myveh'];
-const NAV_HEAD=[...NAV_LEADER_ALL,'efolder','access','viewas','inbox','intake','desk',
+const NAV_HEAD=[...NAV_LEADER_ALL,'efolder','access','grants','viewas',    
+ 'inbox','intake','desk',
   'handover','mails','year','outputs'];
-const NAV_DEV=['audit','access','roles','dataqa','outputs','mysys',
+const NAV_DEV=['audit','access','roles','grants','matrix','dataqa','outputs','mysys',    
   'members','leaders','dedupe','intake'];
 const PROG_OF={'Αγέλη':'progAL','Ομάδα':'progOP','Κοινότητα':'progKA'};
 function progDate(x){
@@ -13100,12 +13101,13 @@ const CAPS=[
 ];
 const capT=k=>(CAPS.find(c=>c.k===k)||{}).t||k;
 function grantsBody(){
-  const gs=(D.gr||[]).slice().sort((a,b)=>(a.valid_to<b.valid_to?-1:1));
+  const hs=oneSec();
+  const gs=(D.gr||[]).filter(g=>!hs||g.scope_value===hs).sort((a,b)=>(a.valid_to<b.valid_to?-1:1));
   const today=todayISO();
   const live=g=>!g.revoked_at&&g.valid_to>=today&&g.valid_from<=today;
   const per=id=>D.bh.find(b=>b.id===id);
   const secs=['Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα'];
-  const cands=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').sort(sortByName);
+  const cands=D.bh.filter(p=>isLed(p)&&p.status==='Ενεργός').filter(p=>!hs||(secOf(p)===hs&&p.id!==ME.person_id)).sort(sortByName);
   const row=g=>{const p=per(g.person_id), by=per(g.granted_by), ok=live(g);
     return `<tr style="${ok?'':'opacity:.5'}">
       <td>${p?pnm(p):'<span class="dim">—</span>'}<div class="dim" style="font-size:11.5px">${esc(p&&p.section||'')}</div></td>
@@ -13157,6 +13159,7 @@ function grantsBody(){
 
   const msg=t=>{const m=$('gMsg'); if(m)m.textContent=t};
   ppWire('gPer',cands);
+  if(hs){ [...$('gCap').options].forEach(o=>{ if(o.value==='admin')o.remove() }); [...$('gSec').options].forEach(o=>{ if(o.value!==hs)o.remove() }); }
   $('gAdd').onclick=async()=>{
     const pid=$('gPer').value, cap=$('gCap').value, sec=$('gSec').value,
           to=$('gTo').value, why=$('gWhy').value.trim(), rw=$('gRw').value==='1';
@@ -28596,7 +28599,7 @@ V.dataqa=()=>tabView('dataqa',[
   {k:'dedupe', t:'Διπλά πρόσωπα',   i:'users',  fn:()=>dedupeBody(), d:'πρόσωπα που μοιάζουν διπλά — κρίνονται μία φορά', nav:'dedupe'},
   {k:'amb',    t:'Ασαφείς απονομές',i:'award',  fn:ambBody,          d:'«Υπόσχεση» χωρίς τμήμα — ποια είναι Αγέλης, ποια Ομάδας', nav:'progfix'},
   {k:'sent',   t:t('Απεσταλμένα'), i:'mail', fn:sentBody, d:t('κάθε email που έστειλε το e76 — και όσα απέτυχαν'), nav:'progfix'},
-  {k:'fail',   t:'Αποτυχίες & σφάλματα', i:'alert', fn:failBody,   d:'ό,τι αρνήθηκε η βάση και ό,τι «έσκασε» στη συσκευή κάποιου — χωρίς τιμές', nav:'progfix'},
+  ...(PA&&PA.k==='dev'?[{k:'fail',   t:'Αποτυχίες & σφάλματα', i:'alert', fn:failBody,   d:'ό,τι αρνήθηκε η βάση και ό,τι «έσκασε» στη συσκευή κάποιου — χωρίς τιμές', nav:'dataqa'}]:[]),
   {k:'del',    t:'Διαγραφές',       i:'lock',   fn:deletionBody,     d:'αιτήματα διαγραφής, παγώματα και τι έγινε κάθε νύχτα', nav:'deletion'},
   {k:'sys',    t:'Φύλαξη & έλεγχοι', i:'shield', fn:sysBody,          d:'πόσο κρατιέται κάθε καταγραφή, ποιος βλέπει τι, πόσο γρήγορα ανοίγει', nav:'progfix'}]);
 
@@ -30480,11 +30483,11 @@ V.mysys=()=>{ const st={k:'sta', t:'Κατάσταση', i:'shield', fn:devBody,
 V.settings=()=>V.mysys(); V.dev=()=>V.mysys();
 V.access=()=>tabView('access',[
   {k:'roles', t:'Ρόλοι',         i:'shield', fn:accessBody,       d:'μόνιμη πρόσβαση ανά λογαριασμό', nav:'roles'},
-  {k:'grants',t:'Παραχωρήσεις',  i:'lock',   fn:grantsBody,       d:'προσωρινά, με ημερομηνία λήξης', nav:'roles'},
+  {k:'grants',t:'Παραχωρήσεις',  i:'lock',   fn:grantsBody,       d:'προσωρινά, με ημερομηνία λήξης', nav:'grants'},    
   {k:'labels',t:'Πρώτοι Βοηθοί',  i:'shield', fn:labelsBody,       d:'ποιος βλέπει ιατρικά ως Πρώτος Βοηθός — και για ποιο τμήμα', nav:'progfix'},
   {k:'matrix',t:'Πίνακας',       i:'lock',   fn:()=>matrixBody(), d:'ποιος διαβάζει και ποιος γράφει τι — από τις πολιτικές της βάσης', nav:'matrix'},
   {k:'viewas',t:'Δες ως',        i:'users',  fn:()=>viewasBody(), d:'άνοιξε την εφαρμογή όπως τη βλέπει άλλος — από τη βάση', nav:'viewas'},
-  ...(isAdminUI()?[{k:'deny', t:'Αρνήσεις', i:'lock', fn:()=>denialsBody(), d:'τι αρνήθηκε το e76 και σε ποιον'}]:[])]);
+  ...(PA&&PA.k==='dev'?[{k:'deny', t:'Αρνήσεις', i:'lock', fn:()=>denialsBody(), d:'τι αρνήθηκε το e76 και σε ποιον'}]:[])]);
 async function denialsBody(){
   $('view').innerHTML='<div class="dim pad">Φόρτωση…</div>';
   const {data,error}=await sb.from('access_denial').select('*').order('at',{ascending:false}).limit(300);
