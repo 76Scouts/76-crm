@@ -1163,7 +1163,11 @@ const p2=n=>String(n).padStart(2,'0');
 const fdate=d=>{if(!d)return'—';const x=new Date(d);return p2(x.getDate())+' '+MON[x.getMonth()]+' '+x.getFullYear();};
 const fshort=d=>{if(!d)return'—';const x=new Date(d);return x.getDate()+' '+MON[x.getMonth()];};
 const fgr=s=>{if(!s)return'';const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s).trim());return m?p2(m[1])+'/'+p2(m[2])+'/'+m[3]:s;};
-const fphone=p=>{if(!p)return'';const d=String(p).replace(/\D/g,'');return d.length===8?d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3'):p;};
+const FAKE_PH0=['99123456','99112233','99001122','99000076','99007600'];
+const fakePhList=()=>{ try{ const r=(D.st||[]).find(x=>x.k==='fake_phones'); if(r&&Array.isArray(r.v))return r.v.map(String) }catch(e){} return FAKE_PH0 };
+const fakePh=p=>{ const d=String(p||'').replace(/\D/g,'').slice(-8); return d.length===8&&(/^(\d)\1{7}$/.test(d)||fakePhList().includes(d)) };
+const realPh=p=>p&&!fakePh(p)?p:'';
+const fphone=p=>{if(!p)return'';const d=String(p).replace(/\D/g,'');const f=d.length===8?d.replace(/(\d{2})(\d{3})(\d{3})/,'$1 $2 $3'):p;return fakePh(p)?f+' · '+t('εικονικό'):f;};
 const SC=new Proxy({},{get:(_,k)=>(typeof k==='string'&&k in SECFALLBACK)?SECCOLOR[k]:undefined});
 const SECFALLBACK={'Αγέλη':'#ffd000','Ομάδα':'#b3924f','Κοινότητα':'#1f6fb4','Δίκτυο':'#7f52c4','Μικρή Αγέλη':'#7cc4ec','Σύστημα':'#48515f','Εφορεία':'#48515f','Γονείς':'#6b7280'};
 function onColor(c){
@@ -1404,7 +1408,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-19 11:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-19 13:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -14763,7 +14767,7 @@ function licStaffRows(){
     .sort((a,b)=>a.r.g-b.r.g||(a.p.last_name||'').localeCompare(b.p.last_name||'','el'))
     .map(({r,p})=>{const w=licWar(p.id)||{};
       return {name:p.last_name+' '+p.first_name, duty:LIC_DUTY[r.code]||roleShort(r.code)||r.code,
-              am:p.registry_no||'', war:w.status==='εγκρίθηκε'?(w.number||''):'', email:p.email||'', phone:fphone(p.phone||''),
+              am:p.registry_no||'', war:w.status==='εγκρίθηκε'?(w.number||''):'', email:p.email||'', phone:fphone(realPh(p.phone)),
               note:licNote(p, r.g>=9)}});
 }
 function licProgRows(keep){
@@ -16785,7 +16789,7 @@ function idAskWire(){
     if(p.email&&p.email!=='-'){
       const body=`Καλησπέρα,\n\nστα στοιχεία σας στο 76ο Σύστημα Προσκόπων Στροβόλου βρήκαμε δύο διαφορετικές τιμές για ${what}. Μπορείτε να μας ${x.field==='dob'?'την':x.field==='adt'?'τον':'το'} επιβεβαιώσετε απαντώντας σε αυτό το μήνυμα;\n\nΕυχαριστούμε,\n76ο Σύστημα Προσκόπων Στροβόλου`;
       location.href='mailto:'+encodeURIComponent(p.email)+'?subject='+encodeURIComponent('Επιβεβαίωση στοιχείων')+'&body='+encodeURIComponent(body);
-    } else { location.href='tel:'+String(p.phone).replace(/\s/g,''); }
+    } else if(!fakePh(p.phone)){ location.href='tel:'+String(p.phone).replace(/\s/g,''); }
   });
 }
 
@@ -19293,8 +19297,8 @@ function callsBody(){
     ].filter(Boolean).join('');
     const cl=r.cs.map((c,i)=>{
       const k=p.id+'|'+c.rel, lg=CALLLOG[k];
-      const tel=c.tel&&!/^0+$/.test(String(c.tel).replace(/\D/g,''))?c.tel:null;
-      const alt=c.alt&&!/^0+$/.test(String(c.alt).replace(/\D/g,''))?c.alt:null;
+      const tel=c.tel&&!/^0+$/.test(String(c.tel).replace(/\D/g,''))&&!fakePh(c.tel)?c.tel:null;
+      const alt=c.alt&&!/^0+$/.test(String(c.alt).replace(/\D/g,''))&&!fakePh(c.alt)?c.alt:null;
       return `<div class="crow${lg&&!lg.ok?' skip':''}" style="flex-wrap:wrap">
         <span class="cn">${i+1}</span>
         <div style="flex:1;min-width:0">
@@ -20518,7 +20522,7 @@ function matchPerson(line,pool){
   return bs>=45?{p:best,score:bs}:null;
 }
 let MESEC='all';
-const badTel=t=>!t||/^(0+|9+|1+)$/.test(String(t).replace(/\D/g,''));
+const badTel=t=>!t||/^(0+|9+|1+)$/.test(String(t).replace(/\D/g,''))||fakePh(t);
 V.mails=()=>{
   const kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός'
     &&(MESEC==='all'||secOf(p)===MESEC)).sort(sortByName);
@@ -23415,7 +23419,7 @@ function efdtPeople(e){
   const rows=typeof diarthrosiRows==='function'?diarthrosiRows('now'):[];
   const P=c=>{const r=rows.find(x=>x.code===c); return r?(D.bh||[]).find(b=>b.id===r.pid):null};
   const HC=EFDT_HEAD(), head=P(HC[efdSec(e)]||HC[e.section]||''), as=P('AS');
-  const card=p=>p?{name:[p.first_name,p.last_name].filter(Boolean).join(' '), tel:ctFmt(ctCallNo(p.id)||p.phone||''),
+  const card=p=>p?{name:[p.first_name,p.last_name].filter(Boolean).join(' '), tel:ctFmt(ctCallNo(p.id)||realPh(p.phone)),
     art:p.sex===dv('Κορίτσι/Γυναίκα')?dv('η'):dv('ο')}:{name:'',tel:'',art:dv('ο/η')};
   return {head:card(head), as:card(as)};
 }
@@ -23994,18 +23998,18 @@ async function enrollForms(kids){
       <div class="frow">${LN('Όνομα',p.first_name,1.3,1)}${LN('Επώνυμο',p.last_name,1.5,1)}${LN('Αρ. ταυτότητας',s.adt,1,1)}</div>
       <div class="frow">${LN('Ημερομηνία γέννησης',s.dob?fdate(s.dob):'',1.2,1)}${LN('Τόπος γέννησης',p.birthplace,1.2,1)}${LN('Υπηκοότητα',s.nationality,1,1)}${LN('Θρήσκευμα',s.religion,1,1)}</div>
       <div class="frow">${LN('Τάξη / γραμματειακές γνώσεις',gradeOf(p)||p.education_level,1.2,1)}${LN('Τμήμα',(secOf(p)||'')+(y.group_name?' · '+y.group_name:''),1.4)}${LN('Κινητό παιδιού',fphone(p.phone),1)}</div>
-      <div class="frow">${LN('Διεύθυνση σπιτιού',p.home_address,3,1)}${LN('Τηλ. οικίας',fphone(p.home_phone),1)}</div>
+      <div class="frow">${LN('Διεύθυνση σπιτιού',p.home_address,3,1)}${LN('Τηλ. οικίας',fphone(realPh(p.home_phone)),1)}</div>
       <div class="frow">${LN(secOf(p)==='Κοινότητα'?'Email παιδιού (υποχρεωτικό στην Κοινότητα)':'Email παιδιού (προαιρετικά)',p.email,3,secOf(p)==='Κοινότητα')}
         <div class="ff" style="flex:2"><span>Μέγεθος φανέλας</span>
           <div class="sz">${SIZES.map(x=>`<i class="${x===sz?'on':''}">${x}</i>`).join('')}</div></div></div>
 
       <div class="fsec">Ατομικά στοιχεία πατέρα / κηδεμόνα</div>
       <div class="frow">${LN('Ονοματεπώνυμο',g.father_name,2,1)}${LN('Αρ. ταυτότητας',g.father_adt,1)}${LN('Ημ. γέννησης',g.father_dob?fdate(g.father_dob):'',1)}${LN('Επάγγελμα',g.father_occupation,1.4)}</div>
-      <div class="frow">${LN('Κινητό',fphone(g.father_mobile),1)}${LN('Τηλ. εργασίας',fphone(g.father_work_phone),1)}${LN('Email',g.father_email,2.4,1)}</div>
+      <div class="frow">${LN('Κινητό',fphone(realPh(g.father_mobile)),1)}${LN('Τηλ. εργασίας',fphone(realPh(g.father_work_phone)),1)}${LN('Email',g.father_email,2.4,1)}</div>
 
       <div class="fsec">Ατομικά στοιχεία μητέρας / κηδεμόνα</div>
       <div class="frow">${LN('Ονοματεπώνυμο',g.mother_name,2,1)}${LN('Αρ. ταυτότητας',g.mother_adt,1)}${LN('Ημ. γέννησης',g.mother_dob?fdate(g.mother_dob):'',1)}${LN('Επάγγελμα',g.mother_occupation,1.4)}</div>
-      <div class="frow">${LN('Κινητό',fphone(g.mother_mobile),1)}${LN('Τηλ. εργασίας',fphone(g.mother_work_phone),1)}${LN('Email',g.mother_email,2.4,1)}</div>
+      <div class="frow">${LN('Κινητό',fphone(realPh(g.mother_mobile)),1)}${LN('Τηλ. εργασίας',fphone(realPh(g.mother_work_phone)),1)}${LN('Email',g.mother_email,2.4,1)}</div>
 
       <div class="fsec">Υγεία <span class="fn">— δηλώστε γραπτώς κάθε ιατρικό θέμα</span></div>
       <div class="frow">${LN('Ομάδα αίματος',m.blood_type,.8)}${LN('Αλλεργίες',m.allergies,2)}${LN('Αγωγή / παθήσεις',(m.medication||'')+(m.conditions?' · '+m.conditions:''),2.4)}</div>
@@ -24272,8 +24276,8 @@ async function partForms(eid){
       <div class="frow">${ln('Ονοματεπώνυμο',nm(p),2)}${ln('Α.Μ.',p.registry_no)}${ln('Τμήμα',(secOf(p)||'')+(y.group_name?' · '+y.group_name:''),1.4)}</div>
       <div class="frow">${ln('Τάξη',gradeOf(p))}${ln('Ημ. γέννησης',p.dob?fdate(p.dob):'')}${ln('Διεύθυνση',p.home_address,2.4)}</div>
       <div class="fsec">Γονείς / κηδεμόνες <span class="fn">— διόρθωσε ό,τι έχει αλλάξει</span></div>
-      <div class="frow">${ln('Πατέρας'+(pri==='Πατέρας'?' ★':''),g.father_name,1.6)}${ln('Κινητό',fphone(g.father_mobile))}${ln('Email',g.father_email,1.8)}</div>
-      <div class="frow">${ln('Μητέρα'+(pri==='Μητέρα'?' ★':''),g.mother_name,1.6)}${ln('Κινητό',fphone(g.mother_mobile))}${ln('Email',g.mother_email,1.8)}</div>
+      <div class="frow">${ln('Πατέρας'+(pri==='Πατέρας'?' ★':''),g.father_name,1.6)}${ln('Κινητό',fphone(realPh(g.father_mobile)))}${ln('Email',g.father_email,1.8)}</div>
+      <div class="frow">${ln('Μητέρα'+(pri==='Μητέρα'?' ★':''),g.mother_name,1.6)}${ln('Κινητό',fphone(realPh(g.mother_mobile)))}${ln('Email',g.mother_email,1.8)}</div>
       <div class="frow">${ln('Επιπλέον επαφή για τη δράση (όνομα & σχέση)','',2)}${ln('Τηλέφωνο','',1)}</div>
       <div class="fsec">Υγεία</div>
       <div class="frow">${ln('Ομάδα αίματος',m.blood_type)}${ln('Αλλεργίες',m.allergies,2)}${ln('Αγωγή',m.medication,2)}</div>
@@ -25813,7 +25817,7 @@ function leadFA(pid){
 }
 
 const telIntl=t=>{const d=String(t||'').replace(/\D/g,'');
-  if(!d||/^0+$/.test(d))return null;
+  if(!d||/^0+$/.test(d)||fakePh(d))return null;    
   if(d.length===8)return '+357'+d;
   if(d.length===11&&d.startsWith('357'))return '+'+d;
   return '+'+d;};
@@ -25957,7 +25961,7 @@ function contactExport(){
   };
   ['xwho','xsec','xgrp','xpre','xpreS','xlang'].forEach(id=>$(id).addEventListener('input',upd));
   ['xwho','xsec','xgrp','xlang'].forEach(id=>$(id).addEventListener('change',upd));
-  upd(); ctLatNote();
+  upd(); ctLatNote(); ctFakeNote();
   const fn=e=>{const {sc}=upd(); const lbl=sc.sec.startsWith('ev:')?((D.ev||[]).find(x=>x.id===sc.sec.slice(3))||{}).title||'drasi':(sc.sec==='all'?'ola':sc.sec);
     const wl={par:'',led:'-vathmoforoi',mem:'-meli',all:'-oloi'}[sc.who]||'';
     return `76-epafes${wl}-${lbl}${sc.grp?'-'+sc.grp:''}-${YEAR}.${e}`.replace(/[\s\/]+/g,'_')};
@@ -26026,7 +26030,7 @@ function guardiansBody(){
     const mails=[],tels=[];
     $('gtb').innerHTML=kids.map(p=>{const gu=gOf(p.registry_no)||{};
       [[gu.father_email,gu.father_nocomms],[gu.mother_email,gu.mother_nocomms]].forEach(([m,nc])=>{if(!nc&&m&&/@/.test(m)&&!mails.includes(m))mails.push(m)});
-      [[gu.father_mobile,gu.father_nocomms],[gu.mother_mobile,gu.mother_nocomms]].forEach(([tl,nc])=>{if(!nc&&tl&&!tels.includes(tl))tels.push(tl)});
+      [[gu.father_mobile,gu.father_nocomms],[gu.mother_mobile,gu.mother_nocomms]].forEach(([tl,nc])=>{if(!nc&&tl&&!fakePh(tl)&&!tels.includes(tl))tels.push(tl)});
       const cell=(n,m,tl,nc)=>n?`<div>${esc(n)}</div><div class="dim" style="font-size:12px">${nc?esc(t('χωρίς επικοινωνία')):`${tl?`<a href="tel:${esc(tl)}">${fphone(tl)}</a>`:''}${m?' · '+esc(m):''}`}</div>`:'<span class="dim">—</span>';
       return `<tr><td>${pnm(p)}</td><td class="hide-s dim">${esc((myOf(p)||{}).group_name||'—')}</td>
         <td>${cell(gu.father_name,gu.father_email,gu.father_mobile,gu.father_nocomms)}</td><td>${cell(gu.mother_name,gu.mother_email,gu.mother_mobile,gu.mother_nocomms)}</td>
@@ -26080,7 +26084,7 @@ function ctStub(pid){
 function ctFmt(n){
   const s=String(n||'');
   if(/^\+30\d{10}$/.test(s))return s.replace(/^\+30(\d{3})(\d{3})(\d{4})$/,'+30 $1 $2 $3');
-  return s.startsWith('+')?s:fphone(s);
+  return s.startsWith('+')&&!fakePh(s)?s:fphone(s);
 }
 function phonesOf(pid){
   const rows=(D.phn||[]).filter(x=>x.person_id===pid).sort((a,b)=>(a.seq||0)-(b.seq||0));
@@ -26358,17 +26362,17 @@ const ctToday=()=>isoLocal(new Date());
 const ecLive=e=>!e.expires_on||e.expires_on>=ctToday();
 const ecIsEvent=e=>!!e.event_id||e.source==='δράση';
 const ctD=d=>d?new Date(String(d).slice(0,10)+'T12:00:00').toLocaleDateString('el-GR',{day:'2-digit',month:'long',year:'numeric'}):'';
-const ctCallNos=id=>phonesOf(id).filter(y=>y.kind!=='μόνο Viber').map(y=>y.number);
+const ctCallNos=id=>phonesOf(id).filter(y=>y.kind!=='μόνο Viber'&&!fakePh(y.number)).map(y=>y.number);    
 const ctCallNo=id=>ctCallNos(id)[0]||'';
 function callListOf(p,eid){
   const kid=(p.kind||'')==='Μέλος';
   const ecs=(D.ecs||[]).filter(e=>e.person_id===p.id&&ecLive(e));
-  const ecLine=e=>({t:'e',id:e.id,n:e.phone||'',alt:e.alt_phone||'',name:e.name||'',rel:e.relation||'Επαφή',ord:e.priority||99,note:e.note||'',ev:e.event_id||null});
+  const ecLine=e=>({t:'e',id:e.id,n:realPh(e.phone),alt:realPh(e.alt_phone),name:e.name||'',rel:e.relation||'Επαφή',ord:e.priority||99,note:e.note||'',ev:e.event_id||null});
   const out=[];
-  if(!kid){const own=ctCallNo(p.id)||p.phone; if(own&&own!=='-')out.push({t:'self',n:own,name:nm(p),rel:'ο ίδιος',ord:0});}
+  if(!kid){const own=ctCallNo(p.id)||realPh(p.phone); if(own&&own!=='-')out.push({t:'self',n:own,name:nm(p),rel:'ο ίδιος',ord:0});}
   if(eid){const ev=ecs.filter(e=>e.event_id===eid).map(ecLine).sort((a,b)=>a.ord-b.ord); if(ev.length)return out.concat(ev);}
   const perm=ecs.filter(e=>!ecIsEvent(e)).map(ecLine);
-  const car=kid?carersOfPerson(p.id).filter(x=>!x.l.restricted).map(x=>({t:'c',id:x.l.id,pid:x.p.id,n:ctCallNo(x.p.id)||x.p.phone||'',
+  const car=kid?carersOfPerson(p.id).filter(x=>!x.l.restricted).map(x=>({t:'c',id:x.l.id,pid:x.p.id,n:ctCallNo(x.p.id)||realPh(x.p.phone),
     alt:ctCallNos(x.p.id)[1]||'',mail:x.p.email||'',name:nm(x.p),rel:x.l.relation||'Κηδεμόνας',ord:x.l.call_order||99,op:!!x.p._op,comms:x.l.receives_comms})):[];
   return out.concat(car.concat(perm).sort((a,b)=>a.ord-b.ord||(a.t==='c'?-1:1)));
 }
@@ -26430,6 +26434,38 @@ function ctEcForm(owner,ec){
   };
   const n=$('ecfN'); if(n)n.focus();
 }
+const fakeUsers=()=>{ const L=fakePhList(), m={}; L.forEach(n=>m[n]=[]);
+  D.bh.forEach(p=>[p.phone,p.home_phone,p.work_phone].forEach(x=>{ const d=String(x||'').replace(/\D/g,'').slice(-8); if(m[d]&&!m[d].includes(p))m[d].push(p) }));
+  (D.phn||[]).forEach(r=>{ const d=String(r.number||'').replace(/\D/g,'').slice(-8), p=D.bh.find(b=>b.id===r.person_id); if(m[d]&&p&&!m[d].includes(p))m[d].push(p) });
+  return m; };
+function ctFakeNote(){
+  if(ME.role!=='admin')return; const n=Object.values(fakeUsers()).reduce((a,x)=>a+x.length,0);
+  $('xprev').parentElement.insertAdjacentHTML('beforeend',`<div style="margin-top:9px;font-size:12.5px">${esc(t('{n} πρόσωπα έχουν εικονικό τηλέφωνο (μόνο για το e-Scouts) — δεν μπαίνουν στις επαφές.',{n}))} <button class="btn sm" id="xFake">${esc(t('Εικονικά τηλέφωνα'))}</button></div>`);
+  $('xFake').onclick=fakeReview;
+}
+function fakeReview(){
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:600">${esc(t('Εικονικά τηλέφωνα'))}</div>
+      <div class="dim" style="font-size:12.5px">${esc(t('Ψεύτικοι αριθμοί που μπήκαν μόνο επειδή το e-Scouts θέλει κινητό. Δεν καλούνται, δεν εξάγονται, δεν τυπώνονται.'))}</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec"><div style="display:flex;gap:6px;flex-wrap:wrap"><input id="fpN" inputmode="numeric" autocomplete="off" placeholder="99123456" aria-label="${esc(t('Αριθμός'))}" style="flex:1 1 140px;min-width:0">
+      <button class="btn sm p" id="fpAdd">${esc(t('Πρόσθεσε'))}</button></div></div>
+    <div class="dsec" id="fpL"></div>`;
+  const save=async L=>{ const v=[...new Set(L)].sort(); const {error}=await sb.from('app_settings').upsert({k:'fake_phones',v,updated_at:new Date().toISOString()},{onConflict:'k'});
+    if(error){ toast(t('Δεν αποθηκεύτηκε')+': '+error.message); return false }
+    const r=(D.st||[]).find(y=>y.k==='fake_phones'); if(r)r.v=v; else (D.st=D.st||[]).push({k:'fake_phones',v}); saveCache(); return true; };
+  const draw=()=>{ const m=fakeUsers();
+    $('fpL').innerHTML=Object.keys(m).sort().map(n=>`<div class="kv" style="flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);padding:7px 0">
+        <span style="flex:1;min-width:0"><b>${esc(fphone(n))}</b><br><span class="dim" style="font-size:11.5px">${m[n].length?m[n].map(p=>esc(nm(p))).join(', '):esc(t('κανένας αυτή τη στιγμή'))}</span></span>
+        <button class="btn gh sm" data-fpx="${n}" aria-label="${esc(t('Δεν είναι εικονικό'))}" title="${esc(t('Δεν είναι εικονικό'))}">✕</button></div>`).join('')
+      ||`<div class="dim">${esc(t('Κανένα.'))}</div>`;
+    $('fpL').querySelectorAll('[data-fpx]').forEach(b=>b.onclick=async()=>{ b.disabled=true; if(await save(fakePhList().filter(x=>x!==b.dataset.fpx)))draw(); else b.disabled=false; }); };
+  $('fpAdd').onclick=async()=>{ const d=$('fpN').value.replace(/\D/g,'').slice(-8); if(d.length!==8)return toast(t('Γράψε 8 ψηφία'));
+    if(await save(fakePhList().concat(d))){ $('fpN').value=''; draw(); } };
+  $('fpN').onkeydown=e=>{ if(e.key==='Enter')$('fpAdd').click() };
+  draw(); $('drw').classList.add('on');
+}
+document.addEventListener('click',e=>{ const a=e.target&&e.target.closest&&e.target.closest('a[href^="tel:"]');
+  if(a&&fakePh(decodeURIComponent(a.getAttribute('href').slice(4)))){ e.preventDefault(); e.stopPropagation(); toast(t('Εικονικός αριθμός — μπήκε μόνο για το e-Scouts. Δεν υπάρχει πραγματικό τηλέφωνο.')) } },true);
 const DLG_VERB=[
   [/^(ΟΡΙΣΤΙΚΗ|Οριστική|Οριστικό)/,             'Οριστική διαγραφή', 1],
   [/^Διαγραφή/,                                  'Διαγραφή', 1],
