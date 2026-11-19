@@ -1404,7 +1404,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-19 10:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-19 11:26'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3890,7 +3890,7 @@ async function openProfile(id){
       }
       return openProfile(p.id);
     }
-    const bh={phone:$('eP').value.trim()||null,email:$('eE').value.trim()||null}; if($('eL'))bh.latin_name=$('eL').value.trim()||null;
+    const bh={phone:$('eP').value.trim()||null,email:$('eE').value.trim()||null}; if($('eL')){ const v=$('eL').value.trim()||null; if(v!==(p.latin_name||null))bh.latin_src='ok'; bh.latin_name=v; }
     if(!isMem&&$('eA'))bh.appointment=$('eA').value.trim()||null;
     Object.assign(p,bh);
     const myv=isMem&&$('eG')?{group_name:$('eG').value.trim()||null,
@@ -3910,7 +3910,7 @@ async function openProfile(id){
 }
 function pfLatinUI(p){
   const st=[...document.querySelectorAll('#drwp .dsec h4')].find(h=>h.textContent===t('Στοιχεία'));
-  if(st)st.insertAdjacentHTML('afterend',`<div class="kv"><b>${esc(t('Λατινικά'))}</b><span>${p.latin_name?esc(p.latin_name)
+  if(st)st.insertAdjacentHTML('afterend',`<div class="kv"><b>${esc(t('Λατινικά'))}</b><span>${p.latin_name?esc(p.latin_name)+(p.latin_src==='ok'?'':` <span class="dim">· ${esc(t('δεν έχει επιβεβαιωθεί'))}</span>`)
     :`<span class="dim">${esc(latin(nm(p),[p.email]))} · ${esc(t('πρόταση, δεν έχει αποθηκευτεί'))}</span>`}</span></div>`);
   const g=$('dEditBox')&&$('dEditBox').querySelector('div');
   if(g&&ME.role==='admin')g.insertAdjacentHTML('afterbegin',`<label style="font-size:12px;color:var(--ink3)">${esc(t('Όνομα με λατινικά (όπως στο διαβατήριο)'))}
@@ -25957,7 +25957,7 @@ function contactExport(){
   };
   ['xwho','xsec','xgrp','xpre','xpreS','xlang'].forEach(id=>$(id).addEventListener('input',upd));
   ['xwho','xsec','xgrp','xlang'].forEach(id=>$(id).addEventListener('change',upd));
-  upd();
+  upd(); ctLatNote();
   const fn=e=>{const {sc}=upd(); const lbl=sc.sec.startsWith('ev:')?((D.ev||[]).find(x=>x.id===sc.sec.slice(3))||{}).title||'drasi':(sc.sec==='all'?'ola':sc.sec);
     const wl={par:'',led:'-vathmoforoi',mem:'-meli',all:'-oloi'}[sc.who]||'';
     return `76-epafes${wl}-${lbl}${sc.grp?'-'+sc.grp:''}-${YEAR}.${e}`.replace(/[\s\/]+/g,'_')};
@@ -25969,6 +25969,41 @@ function contactExport(){
   drw.classList.add('on');
 }
 
+const latPend=()=>D.bh.filter(p=>p.status===dv('Ενεργός')&&/[Ͱ-Ͽ]/.test((p.first_name||'')+(p.last_name||''))&&p.latin_src!=='ok');
+function ctLatNote(){
+  if(ME.role!=='admin')return; const n=latPend().length; if(!n)return;
+  $('xprev').parentElement.insertAdjacentHTML('beforeend',`<div style="margin-top:9px;font-size:12.5px">${esc(t('{n} λατινικά ονόματα δεν έχουν επιβεβαιωθεί.',{n}))} <button class="btn sm" id="xLat">${esc(t('Έλεγχος λατινικών'))}</button></div>`);
+  $('xLat').onclick=latReview;
+}
+function latReview(){
+  const KL={rule:t('μόνο κανόνας'),email:t('επώνυμο από email')}, kinds=[...new Set(latPend().map(p=>p.kind).filter(Boolean))];
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:600">${esc(t('Λατινικά προς επιβεβαίωση'))}</div>
+      <div class="dim" style="font-size:12.5px" id="lrN"></div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec"><div class="grow" style="margin:0">
+      <label>${esc(t('Ποιοι'))}<select id="lrK"><option value="">${esc(t('Όλοι'))}</option>${kinds.map(k=>`<option value="${esc(k)}">${esc(dv(k))}</option>`).join('')}</select></label>
+      <label>${esc(t('Πηγή'))}<select id="lrS"><option value="">${esc(t('Όλα τα ανεπιβεβαίωτα'))}</option><option value="rule">${esc(KL.rule)}</option><option value="email">${esc(KL.email)}</option></select></label>
+      <label>${esc(t('Αναζήτηση'))}<input id="lrQ" autocomplete="off"></label></div>
+      <div class="dim" style="font-size:12px;margin-top:6px">${esc(t('Γράψε το όνομα όπως στο διαβατήριο και πάτα ✓. Το ✓ χωρίς αλλαγή σημαίνει «σωστό».'))}</div></div>
+    <div class="dsec" id="lrL"></div>`;
+  const draw=()=>{ const k=$('lrK').value, s=$('lrS').value, q=nameKey($('lrQ').value.trim()), all=latPend();
+    const L=all.filter(p=>(!k||p.kind===k)&&(!s||(p.latin_src||'rule')===s)&&(!q||nameKey(nm(p)+' '+(p.latin_name||'')).includes(q))).sort(sortByName);
+    $('lrN').textContent=t('{n} ανεπιβεβαίωτα',{n:all.length});
+    $('lrL').innerHTML=L.slice(0,150).map(p=>`<div class="kv" data-lr="${p.id}" style="flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);padding:7px 0">
+        <span style="flex:1 1 100%;min-width:0"><b>${esc(nm(p))}</b><br><span class="dim" style="font-size:11.5px">${esc(dv(p.kind||''))}${secOf(p)?' · '+esc(secOf(p)):''} · ${esc(KL[p.latin_src]||KL.rule)}</span></span>
+        <input value="${esc(p.latin_name||latin(nm(p),[p.email]))}" aria-label="${esc(t('Λατινικά'))}" autocomplete="off" spellcheck="false" style="flex:1 1 120px;min-width:0">
+        <button class="btn sm p" aria-label="${esc(t('Σωστό'))}">✓</button></div>`).join('')
+      +(L.length>150?`<div class="dim" style="padding:8px 0;font-size:12px">${esc(t('…και {n} ακόμη — στένεψε με την αναζήτηση.',{n:L.length-150}))}</div>`:'')
+      ||`<div class="dim">${esc(t('Κανένα.'))}</div>`;
+    $('lrL').querySelectorAll('[data-lr]').forEach(row=>{ const b=row.querySelector('button'), inp=row.querySelector('input');
+      b.onclick=async()=>{ const v=inp.value.trim().replace(/\s+/g,' '); if(!v)return toast(t('Γράψε το όνομα'));
+        b.disabled=true; const {error}=await sb.from('badgeholders').update({latin_name:v,latin_src:'ok'}).eq('id',row.dataset.lr);
+        if(error){ b.disabled=false; return toast(t('Δεν αποθηκεύτηκε')+': '+error.message) }
+        const p=D.bh.find(x=>x.id===row.dataset.lr); if(p){ p.latin_name=v; p.latin_src='ok' } saveCache();
+        row.remove(); $('lrN').textContent=t('{n} ανεπιβεβαίωτα',{n:latPend().length}); };
+      inp.onkeydown=e=>{ if(e.key==='Enter')b.click() }; }); };
+  ['lrK','lrS'].forEach(i=>$(i).onchange=draw); $('lrQ').oninput=draw; draw(); $('drw').classList.add('on');
+}
 function guardiansBody(){
   const secs=oneSec()?[oneSec()]:['Αγέλη','Ομάδα','Κοινότητα'];    
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
