@@ -1404,7 +1404,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-18 22:16'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-19 10:17'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3198,8 +3198,8 @@ const gOfRef={fn:r=>{
   const M=M0||cs.find(x=>x!==F)||null;
   const rF=carerRestricted(F), rM=carerRestricted(M);
   const g={registry_no:r,
-    father_name:F?nm(F.p):'', father_mobile:F&&!rF?F.p.phone:'', father_email:F&&!rF?F.p.email:'',
-    mother_name:M?nm(M.p):'', mother_mobile:M&&!rM?M.p.phone:'', mother_email:M&&!rM?M.p.email:'',
+    father_name:F?nm(F.p):'', father_mobile:F&&!rF?F.p.phone:'', father_email:F&&!rF?F.p.email:'', father_latin:F?F.p.latin_name||'':'',
+    mother_name:M?nm(M.p):'', mother_mobile:M&&!rM?M.p.phone:'', mother_email:M&&!rM?M.p.email:'', mother_latin:M?M.p.latin_name||'':'',    
     father_restricted:rF, mother_restricted:rM, father_nocomms:carerNoComms(F), mother_nocomms:carerNoComms(M),
     address:(F&&!rF&&F.p.home_address)||(M&&!rM&&M.p.home_address)||'',
     primary:primaryCarer(kid),
@@ -3420,6 +3420,35 @@ function progTopic(sec,iso){
   return e?e.title:'';
 }
 const evOpenFor=(e,sec)=>(D.emo||[]).some(o=>o.event_id===e.id&&o.section===sec);
+const GR2LA=[
+ [/^χατζ[ηι]/y,'hadji','chatzi','hatzi','chadji','hadj'],[/^χατζ/y,'hadj','chatz','hatz'],
+ [/ιαδη[ς]?$/y,'iades','iadis'],[/ιδη[ς]?$/y,'ides','idis','idi'],[/κλεους$/y,'cleous','kleous'],[/ειου$/y,'iou','eiou'],
+ [/δημητρ/y,'demetr','dimitr'],[/νικοδημ/y,'nicodem','nikodim'],[/δημ/y,'dem','dim'],[/^αν[τδ]ρ/y,'andr','antr'],
+ [/^γκ/y,'g','gk'],[/^μπ/y,'b','mb'],[/^ντ/y,'d','nt'],[/^γι(?=[αεοουω])/y,'yi','gi','y'],
+ [/(?<![αεη]υ)(?<=[αεηιουω])γ(?=[ιηυ])/y,'y','g'],[/κλη(?=[ςσ]$)/y,'cli','kli','cle'],[/κωνσταντ/y,'constant','konstant','kostant'],
+ [/νικολ/y,'nicol','nikol'],[/^ηρακλ/y,'heracl','iracl','eracl'],[/βασιλ/y,'vassil','vasil'],[/^μιχαηλ/y,'michael','michail','michel'],
+ [/^ηλ/y,'el','il'],[/γι(?=[αεοουω])/y,'gi','yi'],[/γεωργ/y,'georg','yeorg','yiorg'],
+ [/ου/y,'ou','u'],[/μπ/y,'mb','mp','b'],[/ντ/y,'nt','nd','d'],[/γγ/y,'ng','gg'],[/γκ/y,'ng','gk','g'],[/γξ/y,'nx'],[/γχ/y,'nch'],
+ [/αυ(?=[αεηιουωβγδζλμνρ])/y,'av','au'],[/αυ/y,'af','au'],[/ευ(?=[αεηιουωβγδζλμνρ])/y,'ev','eu'],[/ευ/y,'ef','eu'],
+ [/ηυ(?=[αεηιουωβγδζλμνρ])/y,'iv'],[/ηυ/y,'if'],
+ [/αι/y,'ai','e'],[/ει/y,'ei','i'],[/οι/y,'oi','i'],[/φ/y,'f','ph'],[/χ/y,'ch','h'],[/θ/y,'th'],[/ψ/y,'ps'],[/ξ/y,'x','ks'],
+ [/κ/y,'k','c'],[/υ/y,'y','i'],[/η/y,'i','e'],[/β/y,'v','b'],[/σσ/y,'ss','s'],[/[σς]/y,'s'],[/τζ/y,'tz','dz','j'],
+ [/α/y,'a'],[/ε/y,'e'],[/ι/y,'i'],[/ο/y,'o'],[/ω/y,'o'],[/γ/y,'g','y'],[/δ/y,'d'],[/ζ/y,'z'],[/λ/y,'l'],[/μ/y,'m'],[/ν/y,'n'],
+ [/π/y,'p'],[/ρ/y,'r'],[/τ/y,'t']];
+const latSegs=w=>{ w=w.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); const out=[]; let i=0;
+  while(i<w.length){ let s=null; for(const r of GR2LA){ r[0].lastIndex=i; const m=r[0].exec(w); if(m&&m[0].length){ s=[m[0].length,r.slice(1)]; break } }
+    if(!s)s=[1,[w[i]]]; out.push(s[1]); i+=s[0]; }
+  return out; };
+const latInMail=(sg,l)=>{ let best=''; for(let st=0;st<l.length;st++){ const go=(k,p,a)=>{ if(k===sg.length){ if(a.length>best.length)best=a; return }
+    for(const x of sg[k])if(l.startsWith(x,p))go(k+1,p+x.length,a+x); }; go(0,st,''); } return best.length>=4?best:''; };
+function latin(s,mails){
+  if(!s)return '';
+  const ls=(mails||[]).filter(Boolean).map(m=>String(m).split('@')[0].toLowerCase().replace(/[^a-z]/g,''));
+  return String(s).replace(/[Ͱ-Ͽἀ-῿]+/g,w=>{ const sg=latSegs(w);
+    let o=''; for(const l of ls){ o=w.length>=4?latInMail(sg,l):''; if(o)break }
+    if(!o)o=sg.map(v=>v[0]).join('');
+    return w[0]!==w[0].toLowerCase()?o.charAt(0).toUpperCase()+o.slice(1):o; });
+}
 const drw=$('drw');
 drw.querySelector('.bg').onclick=()=>drw.classList.remove('on');
 document.addEventListener('keydown',e=>{if(e.key==='Escape')drw.classList.remove('on')});
@@ -3849,7 +3878,7 @@ async function openProfile(id){
     }
     archiveFlow(p);};
   $('eCancel').onclick=()=>{$('dEditBox').style.display='none'};
-  $('eSave').onclick=async()=>{
+  pfLatinUI(p); $('eSave').onclick=async()=>{
     const btn=$('eSave'); btn.disabled=true; btn.textContent='…';
     if(ME.role!=='admin'){
       const g=$('eG')?($('eG').value.trim()||null):undefined;
@@ -3860,7 +3889,7 @@ async function openProfile(id){
       }
       return openProfile(p.id);
     }
-    const bh={phone:$('eP').value.trim()||null,email:$('eE').value.trim()||null};
+    const bh={phone:$('eP').value.trim()||null,email:$('eE').value.trim()||null}; if($('eL'))bh.latin_name=$('eL').value.trim()||null;
     if(!isMem&&$('eA'))bh.appointment=$('eA').value.trim()||null;
     Object.assign(p,bh);
     const myv=isMem&&$('eG')?{group_name:$('eG').value.trim()||null,
@@ -3877,6 +3906,14 @@ async function openProfile(id){
     }
     saveCache(); openProfile(p.id); stay();
   };
+}
+function pfLatinUI(p){
+  const st=[...document.querySelectorAll('#drwp .dsec h4')].find(h=>h.textContent===t('Στοιχεία'));
+  if(st)st.insertAdjacentHTML('afterend',`<div class="kv"><b>${esc(t('Λατινικά'))}</b><span>${p.latin_name?esc(p.latin_name)
+    :`<span class="dim">${esc(latin(nm(p),[p.email]))} · ${esc(t('πρόταση, δεν έχει αποθηκευτεί'))}</span>`}</span></div>`);
+  const g=$('dEditBox')&&$('dEditBox').querySelector('div');
+  if(g&&ME.role==='admin')g.insertAdjacentHTML('afterbegin',`<label style="font-size:12px;color:var(--ink3)">${esc(t('Όνομα με λατινικά (όπως στο διαβατήριο)'))}
+    <input id="eL" value="${esc(p.latin_name||'')}" placeholder="${esc(latin(nm(p),[p.email]))}" autocomplete="off" spellcheck="false"></label>`);
 }
 function histHTML(p){
   const sh=(D.sh||[]).filter(x=>x.person_id===p.id).sort((a,b)=>(b.start_date||'')<(a.start_date||'')?-1:1);
@@ -25774,32 +25811,6 @@ function leadFA(pid){
   return {h, y, x};
 }
 
-const GR2LA={'α':'a','ά':'a','β':'v','γ':'g','δ':'d','ε':'e','έ':'e','ζ':'z','η':'i','ή':'i','θ':'th','ι':'i','ί':'i','ϊ':'i','ΐ':'i','κ':'k','λ':'l','μ':'m','ν':'n','ξ':'x','ο':'o','ό':'o','π':'p','ρ':'r','σ':'s','ς':'s','τ':'t','υ':'y','ύ':'y','ϋ':'y','ΰ':'y','φ':'f','χ':'ch','ψ':'ps','ω':'o','ώ':'o'};
-function latin(s){
-  if(!s)return '';
-  const cap=(b,x)=>b===b.toUpperCase()?x.toUpperCase():b[0]===b[0].toUpperCase()?x.charAt(0).toUpperCase()+x.slice(1):x;
-  let t=String(s)
-    .replace(/(^|[\s\-'])(Μπ|ΜΠ|μπ)/g,(m,a,b)=>a+(b[0]===b[0].toUpperCase()?'B':'b'))
-    .replace(/(^|[\s\-'])(Ντ|ΝΤ|ντ)/g,(m,a,b)=>a+(b[0]===b[0].toUpperCase()?'D':'d'))
-    .replace(/(^|[\s\-'])(Γκ|ΓΚ|γκ)/g,(m,a,b)=>a+(b[0]===b[0].toUpperCase()?'G':'g'))
-    .replace(/μπ/gi,m=>m[0]===m[0].toUpperCase()?'Mp':'mp')
-    .replace(/ντ/gi,m=>m[0]===m[0].toUpperCase()?'Nt':'nt')
-    .replace(/γκ/gi,m=>m[0]===m[0].toUpperCase()?'Gk':'gk')
-    .replace(/γγ/gi,m=>cap(m,'ng')).replace(/γξ/gi,m=>cap(m,'nx')).replace(/γχ/gi,m=>cap(m,'nch'))
-    .replace(/([αεηάέήΑΕΗΆΈΉ])([υύΥΎ])(.?)/g,(m,a,u,n)=>{
-      const v=/[αεηιουωάέήίόύώϊϋΐΰβγδζλμνρ]/i.test(n);
-      return GR2LA[a.toLowerCase()].replace(/^./,c=>a===a.toLowerCase()?c:c.toUpperCase())+(u===u.toLowerCase()?(v?'v':'f'):(v?'V':'F'))+n;})
-    .replace(/ου/gi,m=>m[0]===m[0].toUpperCase()?'Ou':'ou')
-    .replace(/ού/gi,m=>m[0]===m[0].toUpperCase()?'Ou':'ou')
-    .replace(/αι/gi,m=>m[0]===m[0].toUpperCase()?'Ai':'ai')
-    .replace(/ει/gi,m=>m[0]===m[0].toUpperCase()?'Ei':'ei')
-    .replace(/οι/gi,m=>m[0]===m[0].toUpperCase()?'Oi':'oi');
-  let o='';
-  for(const ch of t){const lo=ch.toLowerCase(), m=GR2LA[lo];
-    if(m===undefined){o+=ch;continue}
-    o+= ch===lo ? m : (m.charAt(0).toUpperCase()+m.slice(1));}
-  return o;
-}
 const telIntl=t=>{const d=String(t||'').replace(/\D/g,'');
   if(!d||/^0+$/.test(d))return null;
   if(d.length===8)return '+357'+d;
@@ -25819,10 +25830,10 @@ function contactRows(scope){
   kids.forEach(p=>{ if(who!=='par'&&who!=='all')return;
     const g=gOf(p.registry_no)||{}, lw=String(p.latin_name||'').trim().split(/\s+/);
     const kf=L?(lw.length>1?lw.slice(0,-1).join(' '):latin(p.first_name)):p.first_name;
-    const kl=L?(lw.length>1?lw[lw.length-1]:latin(p.last_name)):p.last_name;
+    const kl=L?(lw.length>1?lw[lw.length-1]:latin(p.last_name,[g.father_email,g.mother_email])):p.last_name;    
     const add=(n,lat,mob,wrk,mail,rel,nc)=>{
       const tel=telIntl(mob)||telIntl(wrk); if(!n||!tel||nc)return;    
-      const name=L?(lat||latin(n)):n, kid={f:kf, l:ctSameSur(String(name).trim().split(/\s+/).pop(),kl)?'':kl};
+      const name=L?(lat||latin(n,[mail])):n, kid={f:kf, l:ctSameSur(String(name).trim().split(/\s+/).pop(),kl)?'':kl};
       const key=tel+'|'+n; if(seen[key]){ if(!seen[key].k.some(x=>x.f===kid.f&&x.l===kid.l))seen[key].k.push(kid); return; }
       const rec={name, own:!!lat, tel, tel2:(telIntl(mob)&&telIntl(wrk))?telIntl(wrk):null,
         mail:mail&&/@/.test(mail)?mail:'', rel:rel||'', k:[kid], prefix};
@@ -25840,7 +25851,7 @@ function contactRows(scope){
   const self=(p,src)=>{ const tel=telIntl(p.phone); if(!tel||taken.has(tel))return; taken.add(tel);
     const n=[p.first_name,p.last_name].filter(Boolean).join(' '), lat=String(p.latin_name||'').trim();
     const sn=src==='led'?String(p.scout_name||'').trim():'';
-    out.push({name:L?(lat||latin(n)):n, own:!!lat, tel, tel2:null, mail:p.email&&/@/.test(p.email)?p.email:'', rel:'', k:[], kids:[], prefix:pre2, src, ttl:sn?pre2+' '+sn:''}); };
+    out.push({name:L?(lat||latin(n,[p.email])):n, own:!!lat, tel, tel2:null, mail:p.email&&/@/.test(p.email)?p.email:'', rel:'', k:[], kids:[], prefix:pre2, src, ttl:sn?pre2+' '+sn:''}); };
   const leds=(who==='led'||who==='all')?D.bh.filter(p=>isLed(p)&&p.status===dv('Ενεργός')
      &&(evid?inEv.has(p.id):(sec==='all'||ctLedIn(p,sec)))).sort(sortByName):[];
   leds.forEach(p=>self(p,'led'));
