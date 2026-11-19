@@ -1474,7 +1474,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-19 19:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-19 19:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1646,6 +1646,7 @@ function mfaChallengeScreen(factorId, onDone){
     <div id="mfaMsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>
     <a href="#" id="mfaOut" style="display:block;text-align:center;margin-top:10px;font-size:12.5px;color:var(--ink2)">Έξοδος</a>`;
   ($('gate').querySelector('.gcard')||$('gate').querySelector('.gbox')).appendChild(box);
+  $('mfaCode').setAttribute('autocomplete','one-time-code');    
   $('mfaCode').focus();
 
   const go=async()=>{
@@ -1753,6 +1754,30 @@ async function mfaPanel(){
     <div id="mfaEnroll" style="display:none;margin-top:12px"></div><div id="mfaPmsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>`;
   $('mfaOn').onclick=()=>mfaEnrollStart(1);
 }
+function mfaSetupButtons(uri, mob, ios, andr){
+  const canShare=!!navigator.share;
+  let top='';
+  if(ios){
+    top=`<div style="display:grid;gap:7px;margin-bottom:8px">
+      <a class="btn p" style="justify-content:center" href="${esc(uri)}">${esc(t('Προσθήκη στους Κωδικούς του iPhone'))}</a>
+      ${canShare?`<button class="btn" style="justify-content:center" id="mfaShare">${esc(t('Κοινοποίηση σε Authenticator (Άλλη Εφαρμογή)'))}</button>`:''}</div>
+    <details style="font-size:12.5px;line-height:1.55;margin-bottom:10px"><summary style="cursor:pointer;color:var(--ink2)">${esc(t('Πώς γίνεται στους Κωδικούς'))}</summary>
+      <ol style="margin:6px 0 0;padding-left:20px">
+        <li>${esc(t('Πάτα «Προσθήκη στους Κωδικούς του iPhone» — ανοίγουν οι Κωδικοί.'))}</li>
+        <li>${esc(t('Διάλεξε τον λογαριασμό του e76 — ή φτιάξε νέο αν δεν υπάρχει — και πάτα «Προσθήκη».'))}</li>
+        <li>${esc(t('Ο εξαψήφιος φαίνεται στο «Κωδικός επαλήθευσης» και αλλάζει κάθε 30 δευτερόλεπτα· πάτα τον για αντιγραφή.'))}</li>
+        <li>${esc(t('Γύρνα εδώ, γράψε τον παρακάτω και πάτα «Επιβεβαίωση».'))}</li>
+      </ol>
+      <div class="dim" style="margin-top:6px">${esc(t('Στις επόμενες εισόδους το Safari προτείνει μόνο του τον εξαψήφιο πάνω από το πληκτρολόγιο.'))}</div>
+      <div class="dim" style="margin-top:4px">${esc(t('Άλλη εφαρμογή που δεν εμφανίζεται στην κοινοποίηση (π.χ. Google ή Microsoft Authenticator): «Αντιγραφή κλειδιού» και επικόλληση στην εφαρμογή.'))}</div>
+    </details>`;
+  }else if(andr||mob){
+    top=`<div style="display:grid;margin-bottom:8px"><a class="btn p" style="justify-content:center" href="${esc(uri)}">${esc(t('Άνοιγμα στην εφαρμογή κωδικών'))}</a></div>`;
+  }
+  return top+`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn sm" id="mfaCopy">${esc(t('Αντιγραφή κλειδιού'))}</button>
+      <button class="btn gh sm" id="mfaQrT">${esc(t('QR για σκανάρισμα'))}</button></div>`;
+}
 async function mfaEnrollStart(n){
   const m=$('mfaPmsg'); m.style.color='var(--ink2)'; m.textContent=t('Δημιουργία…');
   try{ const {data:f}=await sb.auth.mfa.listFactors(); for(const x of (f?.all||[]).filter(x=>x.status!=='verified')) await sb.auth.mfa.unenroll({factorId:x.id}); }catch(e){}
@@ -1761,17 +1786,18 @@ async function mfaEnrollStart(n){
   m.textContent=''; const w=$('mfaEnroll'); w.style.display='';
   const mob=matchMedia('(pointer:coarse)').matches;
   const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const andr=/Android/i.test(navigator.userAgent);
   w.innerHTML=`<div style="font-size:12.5px;line-height:1.6;margin-bottom:9px">${esc(t('Οποιαδήποτε εφαρμογή κωδικών κάνει: Google ή Microsoft Authenticator, Κωδικοί του iPhone, Aegis, 2FAS, Authy, 1Password, Bitwarden…'))}</div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
-      <a class="btn ${mob?'p':''} sm" href="${esc(data.totp.uri)}">${esc(t('Άνοιγμα στην εφαρμογή κωδικών'))}</a>
-      <button class="btn sm" id="mfaCopy">${esc(t('Αντιγραφή κλειδιού'))}</button>
-      <button class="btn gh sm" id="mfaQrT">${esc(t('QR για σκανάρισμα'))}</button></div>
-    ${ios?`<div class="dim" style="font-size:12px;line-height:1.5;margin:-4px 0 10px">${esc(t('Στο iPhone ανοίγουν οι «Κωδικοί». Για άλλη εφαρμογή (Google ή Microsoft Authenticator κ.ά.): «Αντιγραφή κλειδιού» και επικόλληση στην εφαρμογή.'))}</div>`:''}
+    ${mfaSetupButtons(data.totp.uri, mob, ios, andr)}
     <div id="mfaQr" style="${mob?'display:none;':''}background:#fff;padding:10px;border-radius:10px;width:max-content;max-width:100%;margin-bottom:10px">${data.totp.qr_code.startsWith('data:')?`<img src="${esc(data.totp.qr_code)}" alt="QR" style="width:180px;height:180px">`:data.totp.qr_code}</div>
     <div style="font-size:12.5px;margin-bottom:6px">${esc(t('Μετά γράψε τον εξαψήφιο που δείχνει η εφαρμογή:'))}</div>
     <input id="mfaVer" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="letter-spacing:.3em;text-align:center;font-size:18px;max-width:170px;margin-bottom:8px">
     <div><button class="btn p sm" id="mfaVerGo">${esc(t('Επιβεβαίωση'))}</button></div>`;
   $('mfaQrT').onclick=()=>{ const q=$('mfaQr'); q.style.display=q.style.display==='none'?'':'none' };
+  const sh=$('mfaShare'); if(sh)sh.onclick=async()=>{
+    try{ await navigator.share({title:'e76', url:data.totp.uri}) }
+    catch(err){ if(err&&err.name==='AbortError')return;
+      try{ await navigator.share({title:'e76', text:data.totp.uri}) }catch(e2){ if(!(e2&&e2.name==='AbortError'))$('mfaCopy').click() } } };
   $('mfaCopy').onclick=()=>{ (navigator.clipboard?navigator.clipboard.writeText(data.totp.secret):Promise.reject()).then(()=>toast(t('Το κλειδί αντιγράφηκε')),async()=>{ await uiNote(data.totp.secret) }) };
   $('mfaVerGo').onclick=async()=>{
     const code=$('mfaVer').value.trim();
