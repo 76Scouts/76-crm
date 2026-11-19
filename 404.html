@@ -1474,7 +1474,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-19 19:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-20 00:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1738,7 +1738,7 @@ async function mfaPanel(){
         <span class="pill" style="background:var(--okbg);color:var(--ok);border-color:transparent">${esc(t('ενεργός'))}</span></div>
       <div class="dim" style="font-size:12px;margin-top:6px;line-height:1.55">${esc(t('Ζητείται σε κάθε νέα σύνδεση και, σε αυτή τη συσκευή, ξανά κάθε 6 μήνες.'))}
         ${esc(st.factors.length>1?t('Συσκευές: {n}.',{n:st.factors.length}):'')}</div>
-      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" id="mfaAdd">${esc(t('Πρόσθεσε και δεύτερη συσκευή'))}</button>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" id="mfaAdd">${esc(st.factors.length>1?t('Πρόσθεσε επιπλέον συσκευή'):t('Πρόσθεσε και δεύτερη συσκευή'))}</button>
         ${must?'':`<button class="btn gh sm" id="mfaOff">${esc(t('Απενεργοποίηση'))}</button>`}</div>
       <div id="mfaEnroll" style="display:none;margin-top:12px"></div><div id="mfaPmsg" class="dim" style="font-size:12.5px;margin-top:8px"></div>`;
     $('mfaAdd').onclick=()=>mfaEnrollStart(st.factors.length+1);
@@ -1755,21 +1755,25 @@ async function mfaPanel(){
   $('mfaOn').onclick=()=>mfaEnrollStart(1);
 }
 function mfaSetupButtons(uri, mob, ios, andr){
+  const acct=`<div style="font-size:12.5px;line-height:1.5;margin:0 0 10px;padding:8px 10px;border:1px solid var(--line2);border-radius:10px">
+      <span class="dim">${esc(t('Αν η εφαρμογή ζητήσει «Όνομα λογαριασμού», γράψε το email σου:'))}</span>
+      <b style="display:block;word-break:break-all;margin-top:2px">${esc(ME.email||'')}</b>
+      <span class="dim">${esc(t('Είναι μόνο ετικέτα για να το ξεχωρίζεις — δεν ελέγχεται.'))}</span></div>`;
   if(ios){
-    return `<div style="display:grid;gap:7px;margin-bottom:8px">
+    return acct+`<div style="display:grid;gap:7px;margin-bottom:8px">
       <button class="btn p" style="justify-content:center;flex-direction:column;gap:1px;line-height:1.25;padding-block:9px" id="mfaCopy"><span>${esc(t('Αντιγραφή κλειδιού ρύθμισης'))}</span><span style="font-size:.85em;opacity:.9">${esc(t('για Google ή Microsoft Authenticator κ.ά.'))}</span></button>
       <a class="btn" style="justify-content:center" href="${esc(uri)}">${esc(t('Προσθήκη στους Κωδικούς του iPhone'))}</a></div>
     <details style="font-size:12.5px;line-height:1.55;margin-bottom:6px"><summary style="cursor:pointer;color:var(--ink2)">${esc(t('Πώς γίνεται με Google ή Microsoft Authenticator'))}</summary>
       <ol style="margin:6px 0 0;padding-left:20px">
         <li>${esc(t('Πάτα «Αντιγραφή κλειδιού ρύθμισης».'))}</li>
         <li>${esc(t('Google Authenticator: «+» → «Εισαγωγή κλειδιού ρύθμισης». Microsoft Authenticator: «+» → «Άλλος λογαριασμός» → «Εισαγωγή κωδικού με μη αυτόματο τρόπο».'))}</li>
-        <li>${esc(t('Όνομα λογαριασμού: e76. Επικόλλησε το κλειδί και άφησε «Βάσει χρόνου».'))}</li>
+        <li>${esc(t('Όνομα λογαριασμού: το email σου (γραμμένο πιο πάνω) — είναι μόνο ετικέτα. Επικόλλησε το κλειδί και άφησε «Βάσει χρόνου».'))}</li>
         <li>${esc(t('Γύρνα εδώ, γράψε τον εξαψήφιο που δείχνει η εφαρμογή και πάτα «Επιβεβαίωση».'))}</li>
       </ol></details>
     <details style="font-size:12.5px;line-height:1.55;margin-bottom:10px"><summary style="cursor:pointer;color:var(--ink2)">${esc(t('Πώς γίνεται στους Κωδικούς'))}</summary>
       <ol style="margin:6px 0 0;padding-left:20px">
         <li>${esc(t('Πάτα «Προσθήκη στους Κωδικούς του iPhone» — ανοίγουν οι Κωδικοί.'))}</li>
-        <li>${esc(t('Διάλεξε τον λογαριασμό του e76 — ή φτιάξε νέο αν δεν υπάρχει — και πάτα «Προσθήκη».'))}</li>
+        <li>${esc(t('Διάλεξε τον λογαριασμό του e.76.life που έχει ήδη το συνθηματικό σου. Αν δεν υπάρχει, φτιάξε νέο με ιστότοπο e.76.life και όνομα χρήστη το email σου — αλλιώς το Safari δεν θα σου προτείνει τον κωδικό στην είσοδο.'))}</li>
         <li>${esc(t('Ο εξαψήφιος φαίνεται στο «Κωδικός επαλήθευσης» και αλλάζει κάθε 30 δευτερόλεπτα· πάτα τον για αντιγραφή.'))}</li>
         <li>${esc(t('Γύρνα εδώ, γράψε τον παρακάτω και πάτα «Επιβεβαίωση».'))}</li>
       </ol>
@@ -1779,7 +1783,7 @@ function mfaSetupButtons(uri, mob, ios, andr){
     <div style="margin-bottom:10px"><button class="btn gh sm" id="mfaQrT">${esc(t('QR για σκανάρισμα'))}</button></div>`;
   }
   const top=(andr||mob)?`<div style="display:grid;margin-bottom:8px"><a class="btn p" style="justify-content:center" href="${esc(uri)}">${esc(t('Άνοιγμα στην εφαρμογή κωδικών'))}</a></div>`:'';
-  return top+`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
+  return acct+top+`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px">
       <button class="btn sm" id="mfaCopy">${esc(t('Αντιγραφή κλειδιού'))}</button>
       <button class="btn gh sm" id="mfaQrT">${esc(t('QR για σκανάρισμα'))}</button></div>`;
 }
