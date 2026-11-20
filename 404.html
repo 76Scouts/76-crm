@@ -1530,7 +1530,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-20 13:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-20 14:25'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22587,7 +22587,7 @@ async function dlBuildIn(e,buf,o,g,SRV){
   await stExport(e,dv('Δελτίο Δράσης ΣΠΚ')+' · '+(e.title||''),g);    
   }
   const gx={...g,n91:SRV.n91,ph:SRV.ph,reg:SRV.reg,fa:SRV.fa,mo:SRV.mo};    
-  const withMed=all.length&&await uiAsk('Να μπουν και τα διατροφικά στη στήλη «Διατροφικές ιδιαιτερότητες»;\n\nΘα καταγραφεί ανάγνωση ιατρικών για '+pln(all.length,'άτομο','άτομα')+' (σκοπός: Δελτίο Δράσης ΣΠΚ).',{ok:'Ναι, με διατροφικά',cancel:'Χωρίς'});
+  const withMed=all.length&&!(o&&o.only)&&await uiAsk('Να μπουν και τα διατροφικά στη στήλη «Διατροφικές ιδιαιτερότητες»;\n\nΘα καταγραφεί ανάγνωση ιατρικών για '+pln(all.length,'άτομο','άτομα')+' (σκοπός: Δελτίο Δράσης ΣΠΚ).',{ok:'Ναι, με διατροφικά',cancel:'Χωρίς'});
   let med=null;
   if(withMed){ toast('Διαβάζω τα διατροφικά…'); const r=await efdMedMany(all.map(x=>x.p.id),'Δελτίο Δράσης ΣΠΚ · '+(e.title||''),null,e.id); med=r.med;
     if(r.no)toast(pln(r.no,'άτομο','άτομα')+' χωρίς πρόσβαση στα ιατρικά — η στήλη μένει κενή γι’ αυτά'); }
@@ -22597,6 +22597,7 @@ async function dlBuildIn(e,buf,o,g,SRV){
   if(o&&o.rec&&!withMed)d.noDiet=true;    
   d.certs=await dlCertImgs(e);
   d.budget=await OIK.bdForSheet(e,g.full);    
+  d.apol=await OIK.apForSheet(e);    
   const r=await dlFill(buf,d,o);
   if(g.full)dlEligWarn(e).reverse().forEach(w=>r.rep.unshift('⚠ '+w));
   SRV.err.forEach(m=>r.rep.unshift('⚠ '+m+' — '+t('αυτό το μέρος γράφτηκε με ό,τι βλέπεις εσύ και μπορεί να διαφέρει από του Α.Σ. Δοκίμασε ξανά.')));
@@ -22988,6 +22989,7 @@ async function dlFill(buf,d,o){
   const A=await dlSh(B,'A'); if(A)dlFillArx(A,d,rep);
   const K=await dlSh(B,'K'); if(K)dlFillPending(K,d);
   if(d.budget){ const P=await B.sheet(dv('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); if(P)OIK.dlFillBudget(P,d.budget,rep); else rep.push(t('Λείπει το φύλλο ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')); }
+  if(d.apol)await OIK.dlFillApol(B,d.apol,rep);    
   const recAll=B.rec?B.rec.slice():null, own=recAll?xlOwn(recAll):null;    
   if(o&&o.rec){ const certs=d.certs&&d.certs.length?await dlCertSlots(B,d.certs,rep):null; return {B,rec:B.recDone?B.recDone():[],rep,certs,own,recAll}; }
   const hook=d.certs&&d.certs.length?await dlCertsPlan(B,d.certs,rep):null;
@@ -23269,7 +23271,8 @@ async function gsFinal(e,x,fin){
   await gsSync(e,x,{final:fin});
 }
 const GS_AREAS=[['genika',t('ΓΕΝΙΚΑ')],['staff',t('ΣΥΜΜΕΤΟΧΕΣ — επιτελείο')],['kids',t('ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι')],
-  ['budget',t('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')],['certs',t('ΠΙΣΤΟΠΟΙΗΤΙΚΑ')],['pending',t('ΑΡΧΗΓΟΥ / ΕΚΚΡΕΜΟΤΗΤΕΣ')]];
+  ['budget',t('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')],['certs',t('ΠΙΣΤΟΠΟΙΗΤΙΚΑ')],['pending',t('ΑΡΧΗΓΟΥ / ΕΚΚΡΕΜΟΤΗΤΕΣ')],
+  ['apol',t('ΟΙΚΟΝΟΜΙΚΟΣ ΑΠΟΛΟΓΙΣΜΟΣ')]];    
 const gsHash=v=>{ const s=typeof v==='number'?String(Math.round(v*1e6)/1e6):XL.norm(v); let h=0x811c9dc5;
   for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; } return h.toString(36); };
 const gsMemKey=c=>c.sh+'|'+c.c;
@@ -23292,6 +23295,7 @@ async function gsAreaOf(R){
   return c=>{ if(!c||c.img||c.rm)return 'certs'; const sh=c.sh||'';
     if(DL_SH.Y.includes(sh))return (c.dim?c.dim[0]:c.r)>=kr?'kids':'staff';
     if(/ΠΙΣΤΟΠ|PISTOP/.test(sh))return 'certs';
+    if(/ΑΠΟΛΟΓΙΣΜ|ΑΠΟΔΕΙΞ|APOLOGISMOS|BUDGET-RECEIPTS/.test(sh))return 'apol';
     if(/ΠΡΟΫΠΟΛΟΓΙΣΜ/.test(sh))return 'budget';
     if(DL_SH.A.includes(sh)||DL_SH.K.includes(sh))return 'pending';
     return 'genika'; }; }
@@ -23312,7 +23316,7 @@ async function gsSync(e,x,opt){
   try{
     const p=await gsCall({op:'pull',event_id:e.id}); if(!p.ok){ done(); return toast(t('Δεν διαβάστηκε το αρχείο')+': '+p.why) }
     x.textContent=t('Συγκρίνω…');
-    R=await dlBuild(e,Uint8Array.from(atob(p.xlsx_b64),c=>c.charCodeAt(0)).buffer,{live:true,rec:true,...(opt&&opt.final!==undefined?{final:opt.final}:{})});
+    R=await dlBuild(e,Uint8Array.from(atob(p.xlsx_b64),c=>c.charCodeAt(0)).buffer,{live:true,rec:true,...(opt&&opt.final!==undefined?{final:opt.final}:{}),...(opt&&opt.only?{only:opt.only}:{})});
     let live=null; if(R.certs){ const L=await gsCall({op:'imglist',event_id:e.id,sheet:R.certs.name}); if(L.ok&&Array.isArray(L.items))live=L.items; }
     I=R.certs?await gsImgPlan(R.B,R.certs,live):null;
   }catch(err){ done(); return toast(t('Δεν έγινε')+': '+(err.message||err)) }
@@ -23323,11 +23327,12 @@ async function gsSync(e,x,opt){
   ch.forEach(c=>{ c.area=areaOf(c.v[0]); });
   let ch2=ch.filter(c=>!hand.has(c.area));
   const cnt={}, hc={}; ch.forEach(c=>{ cnt[c.area]=(cnt[c.area]||0)+1; if(c.hand)hc[c.area]=(hc[c.area]||0)+1; });
-  const avail=GS_AREAS.filter(([k])=>cnt[k]);
+  const avail=GS_AREAS.filter(([k])=>cnt[k]), only=opt&&opt.only?new Set(opt.only):null;    
+  if(only&&!avail.some(([k])=>only.has(k))){ done(); return toast(t('Το Δελτίο έχει ήδη ό,τι γράφει ο απολογισμός — δεν άλλαξε τίποτα.')); }
   if(avail.length>1||avail.some(([k])=>hand.has(k)||hc[k])){
     const ap=await uiChooseMulti(t('Ποια φύλλα να ενημερωθούν από το e76;')+'\n\n'+t('Ό,τι ξετσεκάρεις μένει όπως είναι στο αρχείο.')
         +(avail.some(([k])=>hand.has(k))?'\n'+t('Τα «με το χέρι» είναι ξετσεκαρισμένα — τα γεμίζετε εσείς.'):''),
-      avail.map(([k,l])=>({v:k,on:!hand.has(k),t:l+' · '+cnt[k]+' '+t('αλλαγές')+(hc[k]?' · '+t('από αυτές {n} με το χέρι',{n:hc[k]}):'')+(hand.has(k)?' · ✋ '+t('όλο με το χέρι'):'')})),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
+      avail.map(([k,l])=>({v:k,on:!hand.has(k)&&(!only||only.has(k)),t:l+' · '+cnt[k]+' '+t('αλλαγές')+(hc[k]?' · '+t('από αυτές {n} με το χέρι',{n:hc[k]}):'')+(hand.has(k)?' · ✋ '+t('όλο με το χέρι'):'')})),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
     if(!ap){ done(); return; }
     const on=new Set(ap); ch2=ch.filter(c=>on.has(c.area));
     if(!ch2.length){ done(); return toast(t('Δεν διάλεξες κανένα φύλλο — δεν άλλαξε τίποτα.')); }
@@ -24047,13 +24052,14 @@ async function apWire(e){ await apLoad(e); apRender(e); }
 async function apBudget(e){
   try{ if(DRA.GS&&!DRA.GS[e.id]) await DRA.gsLoad(e.id) }catch(x){}
   const s=(BD[e.id]&&BD[e.id].dirty)?BD[e.id]:await bdLoad(e.id);
-  if(!s||!s.row) return {lines:[],cats:{}};
+  if(!s||!s.row) return {lines:[],cats:{},inc:{}};
   const X=bdCtx(e), C=X.final?X.dec:X.full;
   const lines=[], cats={};
   bdGroups(C,s.d,'exoda').forEach(g=>{ if(g.sum>0) cats[g.cat]=g.sum;
     g.items.filter(l=>!l.auto&&bdR(l.poso)>0).forEach(l=>lines.push({pid:'b:'+l.id, cat:g.cat, label:String(l.ait||'').trim()||g.cat,
       what:l.sup||'', day:l.when||'', est:bdR(l.poso)})); });
-  return {lines, cats};
+  const inc={}; bdGroups(C,s.d,'esoda').forEach(g=>{ if(g.sum) inc[g.cat]=g.sum; });
+  return {lines, cats, inc, kids:(C.kids||[]).length, staff:(C.staff||[]).length, days:(C.days||[]).length};
 }
 async function apLoad(e){
   const eid=e.id;
@@ -24188,9 +24194,9 @@ function apRender(e){
   if(!X.bud) X.bud={lines:[],cats:{}}; if(!X.staff) X.staff=[]; if(!X.cats) X.cats=[]; if(!X.mgrs) X.mgrs=[]; if(!X.staffP) X.staffP=[];
   if(!X.see){ box.innerHTML=`<div class="card pad dim">${esc(t('Τον απολογισμό τον βλέπουν ο Αρχηγός δράσης, ο Αρχηγός τμήματος, ο Α.Σ. και το επιτελείο της δράσης.'))}</div>`; return; }
   const S=X.st, ro=!X.edit||S.action.closed, pend=AP2.derive.subs(S).filter(s=>s.status==='pending').length;
-  const subs=[['over',t('Επισκόπηση')],['exp',t('Έξοδα')],['sub',t('Υποβολές')+(pend?' ('+pend+')':'')],['plan',t('Προβλέψεις')],['sum',t('Σύνοψη')],
+  const subs=[['over',t('Επισκόπηση')],['exp',t('Έξοδα')],['sub',t('Υποβολές')+(pend?' ('+pend+')':'')],['plan',t('Προβλέψεις')],['sum',t('Σύνοψη')],['fak',t('Φάκελος')],
     ['wal',t('Πορτοφόλια & μεταφορές')],['src',t('Πηγές')],['log',t('Ιστορικό & κάδος')]];
-  const V={exp:apExpHTML, sub:apSubHTML, plan:apPlanHTML, sum:apSumHTML, wal:apWalHTML, src:apSrcHTML, log:apLogHTML};
+  const V={exp:apExpHTML, sub:apSubHTML, plan:apPlanHTML, sum:apSumHTML, fak:apFakHTML, wal:apWalHTML, src:apSrcHTML, log:apLogHTML};
   const body=(V[APSUB]||apOverHTML)(e,X,ro);
   box.innerHTML=`${S.action.closed?`<div class="card pad" style="margin-bottom:10px;border-color:var(--warn)">🔒 ${esc(t('Ο απολογισμός έκλεισε — μόνο ανάγνωση.'))}</div>`:''}
     ${X.edit&&!X.boss&&X.mgrs.includes(apMeId())?`<div class="dim" style="font-size:12.5px;margin-bottom:8px">💼 ${esc(t('Είσαι οικονομικός διαχειριστής αυτής της δράσης — διαχειρίζεσαι τον απολογισμό (όχι το Δελτίο).'))}</div>`:''}
@@ -24208,7 +24214,7 @@ function apRender(e){
   const sl=$('apSubLink'); if(sl) sl.onclick=()=>{ const u=apLink(e.id);
     (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>apToast(t('Ο σύνδεσμος αντιγράφηκε — στείλ’ τον στο επιτελείο της δράσης')),async()=>{ await uiNote(u) }); };
   if(!ro) box.querySelectorAll('[data-appay]').forEach(b=>b.onclick=x=>{ x.stopPropagation(); apPay(e,X,b.dataset.appay.split(',')) });
-  const W={exp:apExpWire, sub:apSubWire, plan:apPlanWire, sum:apSumWire, wal:apWalWire, src:apSrcWire, log:apLogWire};
+  const W={exp:apExpWire, sub:apSubWire, plan:apPlanWire, sum:apSumWire, fak:apFakWire, wal:apWalWire, src:apSrcWire, log:apLogWire};
   (W[APSUB]||apOverWire)(e,X,ro);
 }
 
@@ -24749,6 +24755,198 @@ function apLogWire(e,X,ro){
   if(ro) return;
   document.querySelectorAll('[data-aprs]').forEach(b=>b.onclick=()=>{ const [n,id]=b.dataset.aprs.split('|'); apSend(e,[n==='mark'?['plan.mark',{pid:id, hidden:false}]:[n+'.edit',{id, voided:false}]]) });
 }
+const AP_SH={A:[dv('ΑΠΟΛΟΓΙΣΜΟΣ ΣΥΝΟΨΗ'),'APOLOGISMOS-SYNOPSI'],R:[dv('ΑΠΟΔΕΙΞΕΙΣ'),'BUDGET-RECEIPTS'],P:[dv('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ'),'BUDGET']};
+async function apSh(B,k){ for(const n of AP_SH[k]){ const S=await B.sheet(n); if(S) return S; } return null; }
+function apIncKey(x){ const n=AP2.util.norm(x);
+  if(/εκδρομ|συμμετοχ/.test(n)) return 'part';
+  if(/ε π [σς]|επ[σς]|ενισχυσ/.test(n)) return 'eps';    
+  if(/ταμει/.test(n)) return 'tam';
+  if(/δωρε|χορηγ/.test(n)) return 'dor';
+  if(/εκδηλωσ/.test(n)) return 'ekd';
+  return 'other'; }
+const AP_INCL=()=>({part:t('Συμμετοχές'),eps:t('Ενίσχυση Ε.Π.Σ.'),tam:t('Ταμείο Τμήματος'),dor:t('Δωρεές / χορηγίες'),ekd:t('Εκδηλώσεις'),other:t('Άλλα έσοδα')});
+function apSpkT(cats){ const L=[...new Set((cats||[]).filter(Boolean))];
+  return {name:dv('ΣΠΚ'), cats:L, cap:L.length, catchAll:L.includes(dv('Άλλο'))?dv('Άλλο'):L.includes(dv('Απρόβλεπτα'))?dv('Απρόβλεπτα'):L[L.length-1]}; }
+function apWithT(st,T){ return Object.assign({},st,{folder:Object.assign({},st.folder,{template:T})}); }
+const apUrl=p=>{ const id=String(p||'').replace(/^drive:/,''); return /^https?:/.test(p)?p:'https://drive.google.com/file/d/'+id+'/view'; };
+async function apForSheet(e){
+  const {data,error}=await sb.from('event_ledger').select('id,cid,at,by_person,type,data').eq('event_id',e.id).order('id',{ascending:true}).limit(5000);
+  if(error) return {err:t('Οικονομικός απολογισμός')+': '+error.message};    
+  if(!(data||[]).length) return null;
+  const st=AP2.ledger.replay(data.map(r=>({id:r.cid, seq:r.id, ts:r.at, who:r.by_person||'', type:r.type, data:r.data||{}})));
+  if(!AP2.derive.expenses(st).length&&!AP2.derive.sources(st).length) return null;
+  let kids=null, staff=null; try{ const X=bdCtx(e); kids=(X.dec.kids||[]).length; staff=(X.dec.staff||[]).length; }catch(x){}
+  return {st, kids, staff};
+}
+async function dlFillApol(B,ap,rep){
+  if(!ap) return;
+  if(ap.err){ rep.push('⚠ '+ap.err); return; }
+  const A=await apSh(B,'A'), R=await apSh(B,'R'), P=await apSh(B,'P'), st=ap.st, Dv=AP2.derive, r2=AP2.util.r2, N=AP2.util.norm;
+  if(!A&&!R){ rep.push(t('Λείπουν τα φύλλα ΑΠΟΛΟΓΙΣΜΟΣ ΣΥΝΟΨΗ / ΑΠΟΔΕΙΞΕΙΣ — παλιό πρότυπο;')); return; }
+  let labels=[], fee=null;
+  if(P){ const h=P.find(dv('ΑΙΤΙΟΛΟΓΙΑ'),{col:'C'}), end=P.find(dv('Σύνολο Εσόδων'),{col:'C'});
+    if(h&&end) for(let r=h.r+1;r<end.r;r++){ const v=P.v(r,7); if(v!=null&&String(v).trim()&&!P.isF(r,7)) labels.push(String(v).trim()); }
+    const dk=P.find(dv('Δικαίωμα Συμμετοχής:'),{col:'B'}); if(dk){ const v=+P.v(dk.r,dk.c+1); if(!isNaN(v)) fee=v; } }
+  if(!labels.length) labels=BD_X();
+  const L=AP2.folder.receiptList(apWithT(st,apSpkT(labels)));
+  if(R){ const h=R.find(dv('Αρ. Απόδειξης'),{col:'B'});
+    if(!h) rep.push(t('ΑΠΟΔΕΙΞΕΙΣ: δεν βρέθηκε η επικεφαλίδα «Αρ. Απόδειξης»'));
+    else { let last=h.r; for(const r of R.rows.keys()) if(r>h.r&&(R.isF(r,2)||R.v(r,2)!=null)&&r>last) last=r;
+      const cap=last-h.r;
+      if(R.v(h.r,6)==null) R.set(h.r,6,dv('Φωτογραφία'));
+      L.slice(0,cap).forEach((x,i)=>{ const r=h.r+1+i;
+        R.set(r,3,x.fcat); R.set(r,4,x.vendor||null); R.set(r,5,r2(x.amount));
+        R.set(r,6,x.photos.length?x.photos.map(apUrl).join('\n'):dv('⚠ ΧΩΡΙΣ ΑΠΟΔΕΙΞΗ')); });
+      for(let r=h.r+1+Math.min(L.length,cap);r<=last;r++) [3,4,5,6].forEach(c=>{ if(R.v(r,c)!=null&&!R.isF(r,c)) R.set(r,c,null); });
+      if(L.length>cap) rep.push(t('ΑΠΟΔΕΙΞΕΙΣ: χωρούν {a}, είναι {b} — πρόσθεσε γραμμές στο φύλλο',{a:cap,b:L.length}));
+      const moved=[...new Set(L.filter(x=>x.appCat&&N(x.appCat)!==N(x.fcat)).map(x=>'«'+x.appCat+'» → «'+x.fcat+'»'))];
+      if(moved.length) rep.push(t('ΑΠΟΔΕΙΞΕΙΣ: κατηγορίες που δεν είναι στον ΠΡΟΫΠΟΛΟΓΙΣΜΟ')+': '+moved.join(', '));
+      const nop=L.filter(x=>!x.photos.length).length; if(nop) rep.push(t('ΑΠΟΔΕΙΞΕΙΣ: {n} χωρίς φωτογραφία',{n:nop})); } }
+  if(A){ const kp=A.find(dv('Παιδιά:'),{col:'B'}), ks=A.find(dv('Επιτελείο:'),{col:'B'});
+    if(kp&&ap.kids!=null) A.set(kp.r,3,ap.kids); if(ks&&ap.staff!=null) A.set(ks.r,3,ap.staff);
+    if(fee==null){ const dk=A.find(dv('Δικαίωμα Συμμετοχής:'),{col:'B'}); if(dk){ const v=+A.v(dk.r,dk.c+1); if(!isNaN(v)) fee=v; } }
+    const h=A.find(dv('Περιγραφή Εσόδων'),{col:'C'}), end=A.find(dv('Σύνολο Εσόδων'),{col:'C'});
+    if(!h||!end){ rep.push(t('ΑΠΟΛΟΓΙΣΜΟΣ ΣΥΝΟΨΗ: δεν βρέθηκε ο πίνακας εσόδων')); return; }
+    const all=Dv.sources(st), refd=r2(all.filter(x=>x.refundable).reduce((a,x)=>a+x.amount,0)), S=all.filter(x=>!x.refundable);
+    const sum={part:0,eps:0,tam:0,dor:0}, ekd=new Map(), other=new Map(), pre=[];    
+    S.forEach(x=>{ const k=apIncKey((x.kind||'')+' '+(x.label||'')), l=x.label||x.kind||t('Άλλα έσοδα');
+      if(k in sum) sum[k]=r2(sum[k]+x.amount); else { const m=k==='ekd'?ekd:other; m.set(l,r2((m.get(l)||0)+x.amount)); } });
+    const row={}, ekdR=[], freeR=[];
+    for(let r=h.r+1;r<end.r;r++){ const lab=N(A.v(r,3)||''), b=String(A.v(r,2)==null?'':A.v(r,2)).trim();
+      if(/^[α-ε]\.?$/.test(b)){ ekdR.push(r); continue; }
+      if(/^συμμετοχ/.test(lab)) row.part=r; else if(/ενισχυσ|ε π [σς]/.test(lab)) row.eps=r; else if(/^ταμει/.test(lab)) row.tam=r;
+      else if(/^δωρε/.test(lab)) row.dor=r; else if(/^εκδηλωσ/.test(lab)) row.ekdH=r;
+      else if(typeof A.v(r,2)==='number') freeR.push(r); }
+    ['eps','tam','dor'].forEach(k=>{ if(row[k]) A.set(row[k],4,sum[k]); else if(sum[k]) other.set(AP_INCL()[k],sum[k]); });
+    if(row.part){ if(A.isF(row.part,4)){ const f=r2((fee||0)*(ap.kids||0)), d=r2(sum.part-f);
+        if(Math.abs(d)>=0.005) pre.push([t('Συμμετοχές — διαφορά από «Δικαίωμα × Παιδιά» (επιτελείο, εκπτώσεις κ.ά.)'),d]); }
+      else A.set(row.part,4,sum.part); }
+    else if(sum.part) pre.push([AP_INCL().part,sum.part]);
+    const ek=[...ekd.entries()];
+    ekdR.forEach((r,i)=>{ const x=ek[i]; A.set(r,3,x?x[0]:null); A.set(r,4,x?x[1]:0); });
+    ek.slice(ekdR.length).forEach(([l,v])=>other.set(l,v));
+    const ot=[...pre,...other.entries()];
+    if(ot.length>freeR.length&&freeR.length){ const keep=ot.slice(0,freeR.length-1), rest=ot.slice(freeR.length-1);
+      keep.push([t('Άλλα έσοδα')+' ('+rest.map(x=>x[0]).join(', ')+')',r2(rest.reduce((a,x)=>a+x[1],0))]); ot.length=0; ot.push(...keep); }
+    freeR.forEach((r,i)=>{ const x=ot[i]; A.set(r,3,x?x[0]:null); A.set(r,4,x?x[1]:0); });
+    if(!freeR.length&&ot.length) rep.push(t('ΑΠΟΛΟΓΙΣΜΟΣ ΣΥΝΟΨΗ: δεν υπάρχουν ελεύθερες γραμμές εσόδων για')+': '+ot.map(x=>x[0]).join(', '));
+    if(refd) rep.push(t('ΑΠΟΛΟΓΙΣΜΟΣ ΣΥΝΟΨΗ: {x} δεν μπήκαν στα έσοδα — επιστρέφονται',{x:apE(refd)})); }
+}
+
+function apFakData(X){
+  const S=X.st, Dv=AP2.derive, r2=AP2.util.r2, T=apSpkT([...BD_X(), ...Object.keys(X.bud.cats||{})]);
+  const L=AP2.folder.receiptList(apWithT(S,T));
+  const inc={}, incB={}; Dv.sources(S).filter(x=>!x.refundable).forEach(x=>{ const k=apIncKey((x.kind||'')+' '+(x.label||'')); inc[k]=r2((inc[k]||0)+x.amount); });
+  Object.entries(X.bud.inc||{}).forEach(([c,v])=>{ const k=apIncKey(c); incB[k]=r2((incB[k]||0)+v); });
+  const exp={}; L.forEach(x=>{ exp[x.fcat]=r2((exp[x.fcat]||0)+x.amount); });
+  return {T, L, inc, incB, exp, expB:X.bud.cats||{}};
+}
+function apFakHTML(e,X,ro){
+  const S=X.st, D0=apFakData(X), r2=AP2.util.r2, TT=AP2.derive.totals(S), boss=!ro, G=DRA.GS[e.id], live=!!(G&&G.row&&G.row.file_id);
+  const ch=d=>apChip(r2(d));
+  const row=(l,b,a,good)=>`<div class="kv" style="padding:6px 14px;gap:8px;align-items:center"><span style="flex:1;min-width:0">${esc(l)}</span>
+      <span class="dim" style="font-size:12px;white-space:nowrap">${b!=null?esc(t('προϋπ. {x}',{x:apE(b)})):esc(t('εκτός προϋπ.'))}</span><strong style="white-space:nowrap">${esc(apE(a))}</strong>${b!=null?ch(good?a-b:b-a):''}</div>`;
+  const ik=['part','eps','tam','dor','ekd','other'].filter(k=>D0.inc[k]||D0.incB[k]), I=AP_INCL();
+  const ek=[...new Set([...Object.keys(D0.expB).filter(k=>D0.expB[k]>0), ...Object.keys(D0.exp)])];
+  const iA=r2(ik.reduce((a,k)=>a+(D0.inc[k]||0),0)), iB=r2(ik.reduce((a,k)=>a+(D0.incB[k]||0),0));
+  const eA=r2(ek.reduce((a,k)=>a+(D0.exp[k]||0),0)), eB=r2(ek.reduce((a,k)=>a+(D0.expB[k]||0),0));
+  const n=(X.bud.kids||0)+(X.bud.staff||0), dd=X.bud.days||0;
+  const cats=D0.T.cats;
+  return `<div class="card pad" style="margin-bottom:12px"><strong>📄 ${esc(t('Δελτίο Δράσης: ΑΠΟΛΟΓΙΣΜΟΣ ΣΥΝΟΨΗ και ΑΠΟΔΕΙΞΕΙΣ'))}</strong>
+      <div class="dim" style="font-size:12.5px;margin:4px 0 8px">${esc(t('Το e76 γράφει τα δύο φύλλα στο ζωντανό Δελτίο: μία γραμμή ανά απόδειξη με την κατηγορία του προϋπολογισμού και σύνδεσμο φωτογραφίας, και τα έσοδα από τις πηγές. Ό,τι άλλαξε κάποιος με το χέρι στο αρχείο μένει ξετσεκαρισμένο.'))}</div>
+      ${live&&DRA.gsCan(e)?`<button class="btn p sm" id="apDl">📄 ${esc(t('Ενημέρωση Δελτίου (μόνο απολογισμός)'))}</button>`
+        :`<div class="dim" style="font-size:12.5px">${esc(live?t('Το Δελτίο το ενημερώνουν ο Αρχηγός της δράσης και ο Α.Σ.'):t('Η δράση δεν έχει ακόμη ζωντανό Δελτίο.'))}</div>`}</div>
+    <div class="card" style="margin-bottom:12px"><div class="pad"><strong>${esc(t('Σύγκριση με τον προϋπολογισμό'))}</strong></div>
+      <div class="pad dim" style="padding-top:0;padding-bottom:4px;font-size:12.5px;font-weight:700">${esc(t('Έσοδα'))}</div>
+      ${ik.length?ik.map(k=>row(I[k],D0.incB[k]!=null?D0.incB[k]:null,D0.inc[k]||0,true)).join(''):`<div class="pad dim" style="padding-top:0">—</div>`}
+      <div class="pad dim" style="padding-top:8px;padding-bottom:4px;font-size:12.5px;font-weight:700">${esc(t('Έξοδα (κατηγορίες του φύλλου)'))}</div>
+      ${ek.length?ek.map(k=>row(k,D0.expB[k]>0?D0.expB[k]:null,D0.exp[k]||0,false)).join(''):`<div class="pad dim" style="padding-top:0">—</div>`}
+      <div class="pad" style="border-top:1px solid var(--line);font-size:13px;display:grid;gap:3px">
+        <div>${esc(t('Έσοδα {a} (προϋπ. {b}) · Έξοδα {c} (προϋπ. {d})',{a:apE(iA),b:apE(iB),c:apE(eA),d:apE(eB)}))}</div>
+        <div style="font-weight:800">${esc(t('Αποτέλεσμα {a} (προϋπ. {b})',{a:apE(r2(iA-eA)),b:apE(r2(iB-eB))}))}</div>
+        ${TT.refundable?`<div class="dim">${esc(t('Δεν μετρούν: {x} που επιστρέφονται.',{x:apE(TT.refundable)}))}</div>`:''}
+        ${n?`<div class="dim">${esc(t('Κόστος ανά άτομο {a} ({n} άτομα){b}',{a:apE(r2(eA/n)),n,b:dd?' · '+t('ανά άτομο-μέρα {x}',{x:apE(r2(eA/n/dd))}):''}))}</div>`:''}</div></div>
+    <div class="card"><div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><strong style="flex:1">${esc(t('Αποδείξεις με τη σειρά του φακέλου ({n})',{n:D0.L.length}))}</strong>
+        ${D0.L.length?`<button class="btn sm" id="apZip">⬇ ${esc(t('ZIP'))}</button><button class="btn sm" id="apPdf">⬇ ${esc(t('PDF'))}</button>`:''}</div>
+      ${D0.L.length?D0.L.map(x=>`<div class="kv" style="padding:6px 14px;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="flex:0 0 34px;font-weight:800">${x.no}</span>
+        <span style="flex:1;min-width:150px">${esc(x.vendor||'—')}<span class="dim" style="display:block;font-size:12px">${esc(x.date?fshort(x.date):'—')}${x.appCat?' · '+esc(x.appCat):''}</span></span>
+        ${boss?`<select data-apfo="${esc(x.id)}" style="max-width:170px" aria-label="${esc(t('Κατηγορία στο φύλλο'))}">${cats.map(c=>`<option value="${esc(c)}"${c===x.fcat?' selected':''}>${esc(c)}</option>`).join('')}</select>`
+          :`<span class="pill">${esc(x.fcat)}</span>`}
+        ${x.photos.length?x.photos.map((p,i)=>`<button class="btn sm gh" data-apph="${esc(p)}" aria-label="${esc(t('Φωτογραφία {n}',{n:i+1}))}">📷</button>`).join(''):`<span title="${esc(t('χωρίς φωτογραφία'))}">⚠</span>`}
+        <strong style="white-space:nowrap">${esc(apE(x.amount))}</strong></div>`).join('')
+      :`<div class="pad dim" style="padding-top:0">${esc(t('Καμία απόδειξη ακόμη.'))}</div>`}</div>`;
+}
+function apFakWire(e,X,ro){
+  const dl=$('apDl'); if(dl) dl.onclick=()=>DRA.gsSync(e,dl,{only:['apol']});
+  const z=$('apZip'); if(z) z.onclick=()=>apZip(e,X,z);
+  const pd=$('apPdf'); if(pd) pd.onclick=()=>apPdf(e,X,pd);
+  if(ro) return;
+  document.querySelectorAll('[data-apfo]').forEach(s=>s.onchange=()=>{ const D0=apFakData(X), x=D0.L.find(q=>q.id===s.dataset.apfo); if(!x) return;
+    apSend(e,[['folder.override',{receipt:x.id, fcat:s.value===x.auto?null:s.value}]]); });
+}
+const apSafe=s=>String(s||'').replace(/[\\/:*?"<>|\n\r\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,60);
+const apAmt=x=>AP2.util.r2(x).toFixed(2).replace('.',',');
+const apFileName=(x,k,ext)=>String(x.no).padStart(3,'0')+(k?dv('αβγδεζηθ')[k-1]||String(k):'')+'-'+(apSafe(x.vendor)||dv('Απόδειξη'))+'-'+apAmt(x.amount)+ext;
+async function apFetch(e,ref){
+  const id=String(ref||'').replace(/^drive:/,''); if(!/^[A-Za-z0-9_-]{10,100}$/.test(id)) return null;
+  const {data,error}=await sb.functions.invoke('action-sheet',{body:{op:'rcpt_get', event_id:e.id, file_id:id}});
+  if(error||!data||!data.ok) return null;
+  return {mime:data.mime||'image/jpeg', bytes:Uint8Array.from(atob(data.b64),c=>c.charCodeAt(0))};
+}
+const apJs=src=>new Promise((ok,no)=>{ if(document.querySelector(`script[src="${src}"]`)) return ok();
+  const s=document.createElement('script'); s.src=src; sriTag(s); s.onload=ok; s.onerror=()=>no(new Error(t('δεν φορτώθηκε')+' '+src)); document.head.appendChild(s); });
+const AP_EXT={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','application/pdf':'.pdf'};
+function apSaveBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },4000); }
+const apBase=e=>apSafe(e.title||dv('Δράση'))+' — '+dv('Αποδείξεις');
+async function apZip(e,X,b){
+  const L=apFakData(X).L, old=b.textContent, bad=[]; b.disabled=true;
+  try{ await apJs('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'); }catch(x){ b.disabled=false; await uiNote(t('Δεν φόρτωσε η βιβλιοθήκη — έλεγξε τη σύνδεση')); return; }
+  const Z=new JSZip(), rows=[[dv('Α/Α'),dv('Ημερομηνία'),dv('Κατηγορία Εξόδου'),dv('Προμηθευτής'),dv('Ποσό'),dv('Αρχεία')]];
+  let i=0, n=L.reduce((a,x)=>a+x.photos.length,0);
+  for(const x of L){ const names=[];
+    for(const [k,p] of x.photos.entries()){ i++; b.textContent=t('Αρχείο {a}/{b}…',{a:i,b:n});
+      const f=await apFetch(e,p); if(!f){ bad.push(x.no); continue; } const nm=apFileName(x,k,AP_EXT[f.mime]||'.jpg'); Z.file(nm,f.bytes); names.push(nm); }
+    rows.push([x.no,x.date||'',x.fcat,x.vendor||'',apAmt(x.amount),names.join(' · ')||dv('⚠ ΧΩΡΙΣ ΑΠΟΔΕΙΞΗ')]); }
+  Z.file('00-'+dv('ΑΠΟΔΕΙΞΕΙΣ')+'.csv','﻿'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n'));
+  b.textContent=t('Συμπίεση…');
+  apSaveBlob(await Z.generateAsync({type:'blob'}),apBase(e)+'.zip');
+  b.disabled=false; b.textContent=old;
+  if(bad.length) await uiNote(t('Δεν κατέβηκαν αρχεία των αποδείξεων {x} — έλεγξε αν υπάρχουν ακόμη στον φάκελο «Αποδείξεις» του Drive.',{x:[...new Set(bad)].join(', ')}));
+}
+async function apPdf(e,X,b){
+  const L=apFakData(X).L, old=b.textContent, bad=[]; b.disabled=true;
+  try{ await apJs('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); }catch(x){ b.disabled=false; await uiNote(t('Δεν φόρτωσε η βιβλιοθήκη — έλεγξε τη σύνδεση')); return; }
+  const doc=await window.PDFLib.PDFDocument.create(), PW=595.28, PH=841.89, W=1240, H=1754;    
+  const page=async c=>{ const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.82)); const im=await doc.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+    doc.addPage([PW,PH]).drawImage(im,{x:0,y:0,width:PW,height:PH}); };
+  const blank=()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,W,H); x.fillStyle='#111'; return [c,x]; };
+  const font=(x,px,bold)=>{ x.font=(bold?'700 ':'400 ')+px+'px Commissioner, Arial, sans-serif'; };
+  const per=38; for(let s0=0;s0<Math.max(1,L.length);s0+=per){ const [c,x]=blank(); font(x,44,true); x.fillText((e.title||'')+' — '+dv('ΑΠΟΔΕΙΞΕΙΣ'),80,110);
+    font(x,26); L.slice(s0,s0+per).forEach((q,i)=>{ const y=180+i*38; x.fillText(String(q.no),80,y); x.fillText(q.date?fshort(q.date):'',150,y);
+      x.fillText(String(q.fcat).slice(0,26),360,y); x.fillText(String(q.vendor||'').slice(0,30),720,y); x.textAlign='right'; x.fillText(apE(q.amount),1160,y); x.textAlign='left'; });
+    if(s0+per>=L.length){ font(x,28,true); x.textAlign='right'; x.fillText(t('Σύνολο {x}',{x:apE(L.reduce((a,q)=>a+q.amount,0))}),1160,180+Math.min(per,L.length-s0)*38+30); x.textAlign='left'; }
+    await page(c); }
+  const head=(x,q,k)=>{ x.fillStyle='#1C61AC'; x.fillRect(0,0,W,90); x.fillStyle='#fff'; font(x,34,true);
+    x.fillText(q.no+(k?dv('αβγδεζηθ')[k-1]||'':'')+' · '+q.fcat+' · '+(q.vendor||'')+' · '+apE(q.amount)+(q.date?' · '+fshort(q.date):''),40,58); x.fillStyle='#111'; };
+  const fit=(x,src,w,h)=>{ const s1=Math.min((W-80)/w,(H-140)/h,2.5); x.drawImage(src,(W-w*s1)/2,110,w*s1,h*s1); };
+  let i=0; const n=L.reduce((a,q)=>a+q.photos.length,0);
+  for(const q of L) for(const [k,p] of q.photos.entries()){ i++; b.textContent=t('Αρχείο {a}/{b}…',{a:i,b:n});
+    const f=await apFetch(e,p); if(!f){ bad.push(q.no); continue; }
+    try{
+      if(/pdf/.test(f.mime)){ await apJs('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        const Lb=window.pdfjsLib; Lb.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const d=await Lb.getDocument({data:f.bytes}).promise;
+        for(let pg=1;pg<=Math.min(3,d.numPages);pg++){ const P=await d.getPage(pg), v0=P.getViewport({scale:1}), vp=P.getViewport({scale:Math.min(2,1400/Math.max(v0.width,v0.height))});
+          const cc=document.createElement('canvas'); cc.width=Math.round(vp.width); cc.height=Math.round(vp.height); await P.render({canvasContext:cc.getContext('2d'),viewport:vp}).promise;
+          const [c,x]=blank(); fit(x,cc,cc.width,cc.height); head(x,q,k); await page(c); } }
+      else { const bm=await createImageBitmap(new Blob([f.bytes],{type:f.mime})); const [c,x]=blank(); fit(x,bm,bm.width,bm.height); head(x,q,k); await page(c); }
+    }catch(err){ bad.push(q.no); } }
+  apSaveBlob(new Blob([await doc.save()],{type:'application/pdf'}),apBase(e)+'.pdf');
+  b.disabled=false; b.textContent=old;
+  if(bad.length) await uiNote(t('Δεν μπήκαν στο PDF οι αποδείξεις {x} — έλεγξε αν υπάρχουν ακόμη στον φάκελο «Αποδείξεις» του Drive.',{x:[...new Set(bad)].join(', ')}));
+}
+
 const DRA=Object.freeze({
   dlKids:(...a)=>dlKids(...a),             
   dlKidsFull:(...a)=>dlKidsFull(...a),     
@@ -24762,6 +24960,7 @@ const DRA=Object.freeze({
   get GS(){ return GS; },                  
   gsCan:(...a)=>gsCan(...a),               
   gsLoad:(...a)=>gsLoad(...a),             
+  gsSync:(...a)=>gsSync(...a),             
   get XL(){ return XL; },                  
   get EFID(){ return EFID; },              
   certOn:(...a)=>certOn(...a),             
@@ -24773,6 +24972,8 @@ const OIK=Object.freeze({
   apHTML:(...a)=>apHTML(...a),             
   apWire:(...a)=>apWire(...a),             
   apRebound:(...a)=>apRebound(...a),       
+  apForSheet:(...a)=>apForSheet(...a),     
+  dlFillApol:(...a)=>dlFillApol(...a),     
   dlFillBudget:(...a)=>dlFillBudget(...a), 
 });
 const efdtNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ς/g,dv('σ')).replace(/\s+/g,' ').trim();
