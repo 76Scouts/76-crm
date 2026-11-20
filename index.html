@@ -1530,7 +1530,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-20 12:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-20 13:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -24014,6 +24014,8 @@ function apToast(m){ try{ const d=document.createElement('div'); d.setAttribute(
   document.body.appendChild(d); setTimeout(()=>d.remove(),2200); }catch(x){} }
 function apNm(id){ const p=(D.bh||[]).find(x=>x.id===id); return p?((p.first_name||'')+' '+(p.last_name||'')).trim():'' }
 function apMe(){ const r=ME&&ME.rec; return r?((r.first_name||'')+' '+(r.last_name||'')).trim():'' }
+const apMeId=()=>(ME&&ME.person_id)||'';
+const apMine=(S,id)=>{ const a=S.accounts[id]; return !!(a&&a.holder&&a.holder===apMeId()) };
 
 try{ const q=new URLSearchParams(location.search).get('apod');
   if(/^[0-9a-f-]{36}$/i.test(q||'')){ localStorage.setItem('e76:apod',JSON.stringify({id:q,at:Date.now()}));
@@ -24044,14 +24046,18 @@ async function apBudget(e){
 }
 async function apLoad(e){
   const eid=e.id;
-  const [a,b,c]=await Promise.all([
+  const [a,b,c,m,bo]=await Promise.all([
     sb.from('event_ledger').select('id,cid,at,by_person,type,data').eq('event_id',eid).order('id',{ascending:true}).limit(5000),
-    sb.rpc('apol_can_edit',{p_event:eid}), sb.rpc('apol_can_see',{p_event:eid})]);
+    sb.rpc('apol_can_edit',{p_event:eid}), sb.rpc('apol_can_see',{p_event:eid}),
+    sb.from('event_apol_managers').select('person_id,added_at').eq('event_id',eid), sb.rpc('budget_can_edit',{p_event:eid})]);
   let bud={lines:[],cats:{}}; try{ bud=await apBudget(e) }catch(x){}
-  let staff=[]; try{ staff=[...new Set([...DRA.dlStaff(e),...DRA.dlHelpers(e)].map(x=>x&&x.p?((x.p.first_name||'')+' '+(x.p.last_name||'')).trim():'').filter(Boolean))] }catch(x){}
+  let staffP=[]; try{ const seen=new Set(); [...DRA.dlStaff(e),...DRA.dlHelpers(e)].forEach(x=>{ const p=x&&x.p; if(p&&p.id&&!seen.has(p.id)){ seen.add(p.id);
+    staffP.push({id:p.id, name:((p.first_name||'')+' '+(p.last_name||'')).trim()}); } }); }catch(x){}
+  const staff=[...new Set(staffP.map(x=>x.name).filter(Boolean))];
   const ev=(a.data||[]).map(r=>({id:r.cid, seq:r.id, ts:r.at, who:r.by_person||'', type:r.type, data:r.data||{}}));
   const cats=[...new Set([...Object.keys(bud.cats), ...BD_X()])];
-  return APX[eid]={ev, st:AP2.ledger.replay(ev), edit:b.data===true, see:b.data===true||c.data===true, cats, bud, staff, err:a.error||null};
+  return APX[eid]={ev, st:AP2.ledger.replay(ev), edit:b.data===true, see:b.data===true||c.data===true, boss:bo.data===true,
+    mgrs:(m.data||[]).map(r=>r.person_id), cats, bud, staff, staffP, err:a.error||null};
 }
 
 async function apSend(e,items){
@@ -24166,7 +24172,7 @@ async function apPay(e,X,ids){
 
 function apRender(e){
   const box=$('apBox'), X=APX[e.id]; if(!box||!X)return;
-  if(!X.bud) X.bud={lines:[],cats:{}}; if(!X.staff) X.staff=[]; if(!X.cats) X.cats=[];
+  if(!X.bud) X.bud={lines:[],cats:{}}; if(!X.staff) X.staff=[]; if(!X.cats) X.cats=[]; if(!X.mgrs) X.mgrs=[]; if(!X.staffP) X.staffP=[];
   if(!X.see){ box.innerHTML=`<div class="card pad dim">${esc(t('Τον απολογισμό τον βλέπουν ο Αρχηγός δράσης, ο Αρχηγός τμήματος, ο Α.Σ. και το επιτελείο της δράσης.'))}</div>`; return; }
   const S=X.st, ro=!X.edit||S.action.closed, pend=AP2.derive.subs(S).filter(s=>s.status==='pending').length;
   const subs=[['over',t('Επισκόπηση')],['exp',t('Έξοδα')],['sub',t('Υποβολές')+(pend?' ('+pend+')':'')],['plan',t('Σχεδιασμός')],['sum',t('Σύνοψη')],
@@ -24174,6 +24180,7 @@ function apRender(e){
   const V={exp:apExpHTML, sub:apSubHTML, plan:apPlanHTML, sum:apSumHTML, wal:apWalHTML, src:apSrcHTML, log:apLogHTML};
   const body=(V[APSUB]||apOverHTML)(e,X,ro);
   box.innerHTML=`${S.action.closed?`<div class="card pad" style="margin-bottom:10px;border-color:var(--warn)">🔒 ${esc(t('Ο απολογισμός έκλεισε — μόνο ανάγνωση.'))}</div>`:''}
+    ${X.edit&&!X.boss&&X.mgrs.includes(apMeId())?`<div class="dim" style="font-size:12.5px;margin-bottom:8px">💼 ${esc(t('Είσαι οικονομικός διαχειριστής αυτής της δράσης — διαχειρίζεσαι τον απολογισμό (όχι το Δελτίο).'))}</div>`:''}
     ${!X.edit&&!S.action.closed?`<div class="dim" style="font-size:12.5px;margin-bottom:8px">${esc(t('Βλέπεις τον απολογισμό και υποβάλλεις αποδείξεις· εγκρίνουν ο Αρχηγός δράσης, ο Αρχηγός τμήματος και ο Α.Σ.'))}</div>`:''}
     ${!S.action.closed&&!(APFORM&&APFORM.k==='sub')?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn${X.edit?'':' p'} sm" id="apSubNew">📤 ${esc(t('Υπόβαλε απόδειξη'))}</button>
       ${X.edit?`<button class="btn gh sm" id="apSubLink" title="${esc(t('Για το επιτελείο της δράσης — ανοίγει την υποβολή μετά τη σύνδεση'))}">🔗 ${esc(t('Σύνδεσμος υποβολής'))}</button>`:''}</div>`:''}
@@ -24215,17 +24222,44 @@ function apOverHTML(e,X,ro){
       ${nophoto?`<button class="kv" data-apgo="exp" style="padding:6px 16px;width:100%;border:0;background:none;text-align:left;cursor:pointer">⚠ ${esc(nophoto===1?t('1 έξοδο χωρίς φωτογραφία απόδειξης'):t('{n} έξοδα χωρίς φωτογραφία απόδειξης',{n:nophoto}))}</button>`:''}
       ${tasks?`<button class="kv" data-apgo="plan" style="padding:6px 16px;width:100%;border:0;background:none;text-align:left;cursor:pointer">☐ ${esc(tasks===1?t('1 εκκρεμότητα'):t('{n} εκκρεμότητες',{n:tasks}))}</button>`:''}
       ${!any?`<div class="pad dim" style="padding-top:0">${esc(t('Τίποτα.'))}</div>`:''}</div>
-    <div class="card"><div class="pad"><strong>${esc(t('Πορτοφόλια'))}</strong></div>
-      ${bal.length?bal.map(b=>`<div class="kv" style="padding:6px 16px"><span style="flex:1">${esc(b.name||'—')}${b.kind==='bank'?` <span class="pill">${esc(t('τράπεζα'))}</span>`:''}</span><strong${b.balance<0?' style="color:var(--bad)"':''}>${esc(apE(b.balance))}</strong></div>`).join('')
-        :`<div class="pad dim" style="padding-top:0">${esc(t('Δεν υπάρχει ακόμη πορτοφόλι.'))}</div>`}</div>`;
+    <div class="card" style="margin-bottom:12px"><div class="pad"><strong>${esc(t('Πορτοφόλια'))}</strong></div>
+      ${bal.length?bal.map(b=>`<div class="kv" style="padding:6px 16px"><span style="flex:1">${esc(b.name||'—')}${b.kind==='bank'?` <span class="pill">${esc(t('τράπεζα'))}</span>`:''}${apHolder(S,b.id)}</span><strong${b.balance<0?' style="color:var(--bad)"':''}>${esc(apE(b.balance))}</strong></div>`).join('')
+        :`<div class="pad dim" style="padding-top:0">${esc(t('Δεν υπάρχει ακόμη πορτοφόλι.'))}</div>`}</div>
+    ${apMgrHTML(X)}`;
+}
+const apHolder=(S,id)=>{ const a=S.accounts[id]; return a&&a.holder&&apNm(a.holder)?` <span class="dim" style="font-size:12px">· ${esc(apNm(a.holder))}</span>`:'' };
+function apMgrHTML(X){
+  if(!X.boss&&!X.mgrs.length) return '';
+  const S=X.st, has=new Set(X.mgrs), lead=b=>b&&b.kind&&![dv('Μέλος'),dv('Γονέας')].includes(String(b.kind));
+  const st=X.staffP.filter(p=>!has.has(p.id)&&lead((D.bh||[]).find(b=>b.id===p.id)||{kind:dv('Βαθμοφόρος')}));
+  const others=(D.bh||[]).filter(b=>lead(b)&&!has.has(b.id)&&!st.some(p=>p.id===b.id))
+    .map(b=>({id:b.id,name:((b.first_name||'')+' '+(b.last_name||'')).trim()})).sort((a,b)=>a.name.localeCompare(b.name,'el'));
+  return `<div class="card"><div class="pad"><strong>💼 ${esc(t('Οικονομικοί Διαχειριστές'))}</strong>
+      <div class="dim" style="font-size:12.5px;margin-top:2px">${esc(t('Διαχειρίζονται όλο τον απολογισμό (εγκρίσεις, αλλαγές, πορτοφόλια) — όχι το Δελτίο· δεν τον κλείνουν.'))}</div></div>
+    ${X.mgrs.length?X.mgrs.map(id=>`<div class="kv" style="padding:6px 16px;gap:8px;align-items:center"><span style="flex:1">${esc(apNm(id)||'—')}</span>
+      ${X.boss&&!S.action.closed?`<button class="btn sm gh" data-apmgx="${esc(id)}" aria-label="${esc(t('Αφαίρεση'))}">✕</button>`:''}</div>`).join('')
+      :`<div class="pad dim" style="padding-top:0">${esc(t('Κανένας ακόμη.'))}</div>`}
+    ${X.boss&&!S.action.closed?`<div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;padding-top:0"><select id="apMgSel" style="flex:1;min-width:180px" aria-label="${esc(t('Οικονομικός Διαχειριστής'))}">
+        <option value="">${esc(t('— διάλεξε βαθμοφόρο —'))}</option>
+        ${st.length?`<optgroup label="${esc(t('Επιτελείο της δράσης'))}">${st.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</optgroup>`:''}
+        ${others.length?`<optgroup label="${esc(t('Άλλοι βαθμοφόροι'))}">${others.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</optgroup>`:''}</select>
+      <button class="btn sm p" id="apMgAdd">+ ${esc(t('Ορισμός'))}</button></div>`:''}</div>`;
+}
+async function apMgrSet(e,id,on){
+  const {error}=await sb.rpc('apol_manager_set',{p_event:e.id, p_person:id, p_on:on});
+  if(error){ await uiNote(t('Δεν έγινε: {x}',{x:error.message||''})); return; }
+  await apLoad(e); apRender(e); apToast(on?t('Ορίστηκε οικονομικός διαχειριστής'):t('Αφαιρέθηκε'));
 }
 function apOverWire(e,X,ro){
+  const ma=$('apMgAdd'); if(ma) ma.onclick=()=>{ const v=$('apMgSel').value; if(v) apMgrSet(e,v,true) };
+  document.querySelectorAll('[data-apmgx]').forEach(b=>b.onclick=async()=>{ if(await uiAsk(t('Να αφαιρεθεί ο/η {n} από τους οικονομικούς διαχειριστές;',{n:apNm(b.dataset.apmgx)||''}),{ok:t('Αφαίρεση')})) apMgrSet(e,b.dataset.apmgx,false) });
   const b=document.querySelector('[data-apbank]');
   if(b) b.onclick=()=>apSend(e,[['account.add',{id:apId('w'), name:AP_BANK(), kind:'bank', holder:'', onHand:false}]]);
 }
 
-function apWalOpts(S,sel){ return AP2.derive.accounts(S).map(a=>`<option value="${esc(a.id)}"${a.id===sel?' selected':''}>${esc(a.name||'—')}</option>`).join('') }
-const apDefWal=S=>(AP2.derive.accounts(S).find(a=>a.kind!=='bank')||AP2.derive.accounts(S)[0]||{}).id||'';
+function apWalOpts(S,sel){ return AP2.derive.accounts(S).slice().sort((a,b)=>Number(apMine(S,b.id))-Number(apMine(S,a.id)))
+  .map(a=>`<option value="${esc(a.id)}"${a.id===sel?' selected':''}>${esc((a.name||'—')+(apMine(S,a.id)?' · '+t('δικό μου'):''))}</option>`).join('') }
+const apDefWal=S=>(AP2.derive.accounts(S).find(a=>apMine(S,a.id))||AP2.derive.accounts(S).find(a=>a.kind!=='bank')||AP2.derive.accounts(S)[0]||{}).id||'';
 function apDraft(X,F){
   const S=X.st, Dv=AP2.derive;
   if(F.id){ const x=S.expenses[F.id];
@@ -24251,7 +24285,7 @@ function apProvBox(X){
     <div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px 8px;margin-top:4px">
     ${L.length?L.map(p=>{ const c=cov.find(x=>x.pid===p.pid), o=other[p.pid]||0, rem=Math.round((p.est-o)*100)/100;
       return `<label style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:13px;font-weight:400"><input type="checkbox" data-apcov="${esc(p.pid)}"${c?' checked':''} style="width:auto">
-        <span style="flex:1">${esc(apDay(p.day))} · ${esc(p.label)}${p.what?` <small class="dim">${esc(p.what)}</small>`:''}${o>0?` <small style="color:var(--warn)">${esc(t('μένει {x}',{x:apE(rem)}))}</small>`:''}</span>
+        <span style="flex:1">${p.day?esc(apDay(p.day))+' · ':''}${esc(p.label)}${p.what?` <small class="dim">${esc(p.what)}</small>`:''}${o>0?` <small style="color:var(--warn)">${esc(t('μένει {x}',{x:apE(rem)}))}</small>`:''}</span>
         <span class="dim" style="font-size:11.5px;white-space:nowrap">${esc(t('εκτ. {x}',{x:apE(p.est)}))}</span>
         ${c?`<input data-apcova="${esc(p.pid)}" inputmode="decimal" value="${esc(String(c.a||0).replace('.',','))}" style="width:78px" title="${esc(t('πόσα από αυτό το έξοδο'))}">`:''}</label>`; }).join('')
       :`<div class="dim" style="font-size:12.5px;padding:4px 0">${esc(t('Όλα τα provisions έχουν καλυφθεί.'))}</div>`}</div></div>`;
@@ -24440,7 +24474,7 @@ function apPlanHTML(e,X,ro){
       <div style="display:flex;gap:8px;margin-top:10px"><button class="btn p" id="apPS">${esc(t('Αποθήκευση'))}</button><button class="btn gh" id="apPX">${esc(t('Άκυρο'))}</button></div></div>`:'';
   const row=p=>`<div class="kv" style="padding:7px 14px;gap:8px;align-items:center;flex-wrap:wrap">
       <input type="checkbox" data-apsel="${esc(p.pid)}"${APSEL.has(p.pid)?' checked':''} aria-label="${esc(t('Θα το αγοράσω'))}" style="width:auto">
-      <span style="flex:1;min-width:160px">${esc(apDay(p.day))} · <strong>${esc(p.label)}</strong>
+      <span style="flex:1;min-width:160px">${p.day?esc(apDay(p.day))+' · ':''}<strong>${esc(p.label)}</strong>
         <span class="dim" style="display:block;font-size:12px">${[p.what, p.cat, p.kind==='budget'?t('από τον προϋπολογισμό'):p.kind==='food'?t('τροφοδοσία'):'',
           p.alloc>0?t('καλυμμένο {a} · μένει {b}',{a:apE(p.alloc),b:apE(p.rem)}):''].filter(Boolean).map(esc).join(' · ')}</span></span>
       ${ro?`<strong>${esc(apE(p.est))}</strong>`:`<input data-apest="${esc(p.pid)}" data-apk="${esc(p.kind)}" inputmode="decimal" value="${esc(String(p.est).replace('.',','))}" style="width:86px" aria-label="${esc(t('Εκτίμηση €'))}">
@@ -24460,7 +24494,7 @@ function apPlanHTML(e,X,ro){
         ${ro?'':`<div style="margin-top:8px"><button class="btn p sm" id="apGrp">💳 ${esc(t('Πληρώθηκαν μαζί (μία ή πολλές αποδείξεις)'))}</button></div>`}`
         :`<span class="dim">${esc(t('Τσέκαρε τι θα αγοράσεις για να δεις κόστος και τι θα σου μείνει.'))}</span>`}</div></div>
     ${done.length?`<div class="card" style="margin-bottom:12px"><button class="pad" id="apDoneT" style="border:0;background:none;width:100%;text-align:left;cursor:pointer;font-weight:700">✓ ${esc(t('Ολοκληρωμένα ({n})',{n:done.length}))} ${APDONE?'▲':'▾'}</button>
-      ${APDONE?done.map(p=>`<div class="kv dim" style="padding:4px 14px;gap:8px;font-size:12.5px"><span style="flex:1">${esc(apDay(p.day))} · ${esc(p.label)}${p.alloc>0?' · '+esc(t('καλύφθηκε {x}',{x:apE(p.alloc)})):''}</span>
+      ${APDONE?done.map(p=>`<div class="kv dim" style="padding:4px 14px;gap:8px;font-size:12.5px"><span style="flex:1">${p.day?esc(apDay(p.day))+' · ':''}${esc(p.label)}${p.alloc>0?' · '+esc(t('καλύφθηκε {x}',{x:apE(p.alloc)})):''}</span>
         ${!ro&&p.done?`<button class="btn sm gh" data-apredo="${esc(p.pid)}" data-apk="${esc(p.kind)}">↺ ${esc(t('ξανά στο πλάνο'))}</button>`:''}</div>`).join(''):''}</div>`:''}
     <div class="card"><div class="pad" style="display:flex;gap:8px;align-items:center"><strong style="flex:1">${esc(t('Εκκρεμότητες'))}</strong>${ro?'':`<button class="btn sm" id="apTN">+ ${esc(t('Εκκρεμότητα'))}</button>`}</div>
       ${tk.length?tk.map(x=>`<div class="kv" style="padding:6px 14px;gap:6px;align-items:center;flex-wrap:wrap">
@@ -24547,7 +24581,7 @@ function apSumHTML(e,X,ro){
       :`<div class="pad dim">${esc(t('Τίποτα ακόμη.'))}</div>`; }
   else if(APSUM==='prov'){ const P=Dv.plans(S,X.bud.lines).sort(apPlanSort); let tb=0, ta=0;
     body=P.length?P.map(p=>{ if(p.alloc>0){ tb+=p.est; ta+=p.alloc; }
-      return r(`${esc(apDay(p.day))} · ${esc(p.label)}`,esc(t('εκτ. {x}',{x:apE(p.est)})),p.alloc>0?esc(apE(p.alloc)):`<span class="dim" style="font-weight:400;font-size:12px">${esc(t('— μη συνδεδεμένο'))}</span>`,p.alloc>0?apChip(Math.round((p.est-p.alloc)*100)/100):''); }).join('')
+      return r(`${p.day?esc(apDay(p.day))+' · ':''}${esc(p.label)}`,esc(t('εκτ. {x}',{x:apE(p.est)})),p.alloc>0?esc(apE(p.alloc)):`<span class="dim" style="font-weight:400;font-size:12px">${esc(t('— μη συνδεδεμένο'))}</span>`,p.alloc>0?apChip(Math.round((p.est-p.alloc)*100)/100):''); }).join('')
       +tot(t('± provisions (συνδεδεμένα)'),Math.round((tb-ta)*100)/100):`<div class="pad dim">${esc(t('Κανένα provision.'))}</div>`; }
   else if(APSUM==='day'){ const G=Dv.planGroups(Dv.plans(S,X.bud.lines),'day').sort((a,b)=>String(a.k).localeCompare(String(b.k))); let tb=0, ta=0;
     body=G.length?G.map(g=>{ if(g.alloc>0){ tb+=g.linkedEst; ta+=g.alloc; }
@@ -24565,8 +24599,9 @@ function apSumHTML(e,X,ro){
 function apSumWire(e,X,ro){ document.querySelectorAll('[data-apsum]').forEach(b=>b.onclick=()=>{ APSUM=b.dataset.apsum; apRender(e) }); }
 
 function apWalHTML(e,X,ro){
-  const S=X.st, Dv=AP2.derive, bal=Dv.balances(S), acc={}; Dv.accounts(S).forEach(a=>acc[a.id]=a.name);
-  const hasBank=bal.some(b=>b.kind==='bank'), tr=Dv.transfers(S).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const S=X.st, Dv=AP2.derive, all=Dv.balances(S), acc={}; Dv.accounts(S).forEach(a=>acc[a.id]=a.name);
+  const anyMine=all.some(b=>apMine(S,b.id)), mine=APF.mine&&anyMine, bal=mine?all.filter(b=>apMine(S,b.id)):all;
+  const hasBank=all.some(b=>b.kind==='bank'), tr=Dv.transfers(S).filter(x=>!mine||apMine(S,x.from)||apMine(S,x.to)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const form=!ro&&APFORM&&APFORM.k==='tr'?`<div class="card pad" style="margin-bottom:12px"><strong>${esc(t('Μεταφορά'))}</strong>
       <div class="grid2" style="margin-top:8px">
         <label>${esc(t('Από'))}<select id="apTF">${apWalOpts(S)}</select></label><label>${esc(t('Προς'))}<select id="apTT">${apWalOpts(S)}</select></label>
@@ -24576,9 +24611,10 @@ function apWalHTML(e,X,ro){
   return `${ro?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       ${hasBank?'':`<button class="btn sm" data-apbank>+ ${esc(AP_BANK())}</button>`}
       <button class="btn sm" id="apWN">+ ${esc(t('Πορτοφόλι'))}</button>
-      ${bal.length>1&&!form?`<button class="btn p sm" id="apTNw">⇄ ${esc(t('Μεταφορά'))}</button>`:''}</div>`}${form}
+      ${all.length>1&&!form?`<button class="btn p sm" id="apTNw">⇄ ${esc(t('Μεταφορά'))}</button>`:''}</div>`}${form}
+    ${anyMine?`<label class="chipf" style="margin-bottom:8px"><input type="checkbox" id="apMine"${mine?' checked':''}> ${esc(t('Μόνο τα δικά μου'))}</label>`:''}
     <div class="card" style="margin-bottom:12px">${bal.length?bal.map(b=>`<div class="kv" style="padding:8px 14px;gap:8px;align-items:center">
-        <span style="flex:1">${esc(b.name||'—')}${b.kind==='bank'?` <span class="pill">${esc(t('τράπεζα'))}</span>`:''}</span>
+        <span style="flex:1">${esc(b.name||'—')}${b.kind==='bank'?` <span class="pill">${esc(t('τράπεζα'))}</span>`:''}${apHolder(S,b.id)}</span>
         <strong${b.balance<0?' style="color:var(--bad)"':''}>${esc(apE(b.balance))}</strong>
         ${ro?'':`<button class="btn sm gh" data-apwr="${esc(b.id)}" aria-label="${esc(t('Μετονομασία'))}">✎</button><button class="btn sm gh" data-apwd="${esc(b.id)}" aria-label="${esc(t('Στον κάδο'))}">🗑</button>`}</div>`).join('')
       :`<div class="pad dim">${esc(t('Δεν υπάρχει ακόμη πορτοφόλι.'))}</div>`}</div>
@@ -24589,10 +24625,11 @@ function apWalHTML(e,X,ro){
       :`<div class="pad dim" style="padding-top:0">${esc(t('Καμία μεταφορά.'))}</div>`}</div>`;
 }
 function apWalWire(e,X,ro){
+  const mi=$('apMine'); if(mi) mi.onchange=()=>{ APF.mine=mi.checked; apRender(e) };
   if(ro) return;
   apOverWire(e,X,ro);
   const wn=$('apWN'); if(wn) wn.onclick=async()=>{ const n=await uiText(t('Όνομα πορτοφολιού (π.χ. «Revolut Ανδρέα», «Μετρητά Γρηγόρη»)'),'');
-    if(n&&n.trim()) apSend(e,[['account.add',{id:apId('w'), name:n.trim(), kind:'personal', holder:'', onHand:false}]]) };
+    if(n&&n.trim()) apSend(e,[['account.add',{id:apId('w'), name:n.trim(), kind:'personal', holder:apMeId(), onHand:false}]]) };
   const tn=$('apTNw'); if(tn) tn.onclick=()=>{ APFORM={k:'tr'}; apRender(e) };
   document.querySelectorAll('[data-apwr]').forEach(b=>b.onclick=async()=>{ const a=X.st.accounts[b.dataset.apwr]; const n=await uiText(t('Νέο όνομα'),a.name||'');
     if(n&&n.trim()&&n.trim()!==a.name) apSend(e,[['account.edit',{id:a.id, name:n.trim()}]]) });
