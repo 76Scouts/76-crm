@@ -1530,7 +1530,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-20 16:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-20 17:57'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3669,6 +3669,7 @@ const GR2LA=[
  [/ιαδη[ς]?$/y,'iades','iadis'],[/ιδη[ς]?$/y,'ides','idis','idi'],[/κλεους$/y,'cleous','kleous'],[/ειου$/y,'iou','eiou'],
  [/δημητρ/y,'demetr','dimitr'],[/νικοδημ/y,'nicodem','nikodim'],[/δημ/y,'dem','dim'],[/^αν[τδ]ρ/y,'andr','antr'],
  [/^γι[ωο]ργ/y,'giorg','yiorg','georg'],    
+ [/^γι(?=(?:αννη[ςσ]|αννο[ςσ]|αννακη[ςσ]|αγκο[ςσ]|αννα|αν)$)/y,'gi','yi'],    
  [/^γκ/y,'g','gk'],[/^μπ/y,'b','mb'],[/^ντ/y,'d','nt'],[/^γι(?=[αεοουω])/y,'yi','gi','y'],
  [/(?<![αεη]υ)(?<=[αεηιουω])γ(?=[ιηυ])/y,'y','g'],[/κλη(?=[ςσ]$)/y,'cli','kli','cle'],[/κωνσταντ/y,'constant','konstant','kostant'],
  [/νικολ/y,'nicol','nikol'],[/^ηρακλ/y,'heracl','iracl','eracl'],[/βασιλ/y,'vassil','vasil'],[/^μιχαηλ/y,'michael','michail','michel'],
@@ -17936,9 +17937,35 @@ function n91mBody(){
     ${N91M_KINDS.map(x=>`<div class="card pad" style="margin-bottom:12px">
       <div class="kv"><b style="flex:1;font-size:14px">${x.t()}</b><button class="btn sm" data-n91chk="${x.k}">${t('Ποιοι θα το πάρουν')}</button></div>
       <div class="dim" style="font-size:12.5px;margin-top:3px">${x.d()}</div>
-      <div id="n91Out_${x.k}" style="margin-top:9px;font-size:13px"></div></div>`).join('')}`;
+      <div id="n91Out_${x.k}" style="margin-top:9px;font-size:13px"></div></div>`).join('')}
+    <div class="card pad" style="margin-bottom:12px">
+      <div class="kv"><b style="flex:1;font-size:14px">${t('Έφοροι ΓΕ/ΕΕΛ — μία φορά')}</b><button class="btn sm" id="n91EfChk">${t('Ποιοι θα το πάρουν')}</button></div>
+      <div class="dim" style="font-size:12.5px;margin-top:3px">${t('Όσοι Έφοροι πήραν «έληξε» στις 6 Νοεμβρίου και δεν έχουν ακόμη έγκυρο Ν91: «ανέβασέ το / βγάλ’ το / στείλ’ το».')}</div>
+      <div id="n91EfOut" style="margin-top:9px;font-size:13px"></div></div>`;
   document.querySelectorAll('[data-n91chk]').forEach(b=>b.onclick=()=>n91mCheck(b.dataset.n91chk,b));
   n91RuleCard();
+  const ef=$('n91EfChk'); if(ef)ef.onclick=()=>n91mEforoi(ef);
+}
+async function n91mEforoi(btn){
+  const out=$('n91EfOut'); if(!out)return; btn.disabled=true; out.innerHTML=`<span class="dim">${t('Έλεγχος…')}</span>`;
+  const j=await n91mCall({kind:'eforoi',preview:true}); btn.disabled=false;
+  if(j.error||!j.ok)return out.innerHTML=`<span style="color:var(--bad)">${esc(j.error||'—')}</span>`;
+  const names=j.names||[];
+  if(!names.length)return out.innerHTML=`<span class="dim">${t('Δεν έμεινε κανείς να το πάρει.')}</span>`;
+  out.innerHTML=`<div><b>${names.length}</b> ${t('θα το πάρουν')}: ${names.map(esc).join(' · ')}</div>
+    <div style="margin-top:6px;font-size:12.5px"><span class="dim">${t('Θέμα:')}</span> <b>${esc(j.subject||'')}</b></div>
+    ${j.html?`<iframe id="n91EfPv" sandbox="" title="${esc(t('Προεπισκόπηση email'))}" style="width:100%;max-width:560px;height:430px;border:1px solid var(--line);border-radius:10px;margin-top:6px;background:#fff"></iframe>`:''}
+    <div style="margin-top:8px"><button class="btn sm p" id="n91EfGo">${t('Αποστολή σε')} ${names.length}</button></div>`;
+  const f=$('n91EfPv'); if(f)f.srcdoc=j.html||'';
+  const go=$('n91EfGo');
+  go.onclick=async()=>{
+    if(!go.dataset.sure){ go.dataset.sure='1'; go.textContent=t('Σίγουρα; Φεύγουν {n} email τώρα',{n:names.length}); return }
+    go.disabled=true;
+    const r=await n91mCall({kind:'eforoi',send:true});
+    out.innerHTML=r.error?`<span style="color:var(--bad)">${esc(r.error)}</span>`
+      :`<div style="color:var(--ok)">${t('Στάλθηκαν')} <b>${r.sent||0}</b>.</div>`
+        +((r.failed||[]).length?`<div style="color:var(--bad);margin-top:4px">${t('Δεν στάλθηκαν:')} ${r.failed.map(x=>esc(x.name)+' ('+esc(x.why)+')').join(' · ')}</div>`:'');
+  };
 }
 const N91_RULES=[
   {k:dv('λήξη'), t:()=>t('Λήξη'), d:()=>t('Ισχύει ως την τελευταία 31 Αυγούστου πριν λήξει το χαρτί.')},
