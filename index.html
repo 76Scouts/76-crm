@@ -1530,7 +1530,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-20 15:15'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-20 16:58'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -17930,7 +17930,7 @@ const N91M_KINDS=[
   {k:'upcoming', t:()=>t('Λήγει πριν τις εντολές 2027-28'), d:()=>t('Λήγει στο τέλος της 2026-27 ή νωρίς στην 2027-28.')}];
 const N91M_CASE={expired:()=>t('έληξε'), none:()=>t('δεν υπάρχει'), upcoming:()=>t('λήγει')};
 function n91mBody(){
-  $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
+  $('view').innerHTML=`<div class="card pad" id="n91Rule" style="margin-bottom:14px"></div><div class="card pad" style="margin-bottom:14px">
       <b>${t('Υπενθύμιση Ν91 — Πιστοποιητικό Μη Διάπραξης Σεξουαλικών Αδικημάτων')}</b>
       <div class="muted" style="margin-top:5px;font-size:13px;line-height:1.6">${t('Email στον ίδιο τον βαθμοφόρο, με την ημερομηνία του. Εγκύκλιος ΓΕ 2026/304: φέτος ισχύει 3 χρόνια, από 2027-28 2 χρόνια. Όποιος το πήρε για αυτή τη χρονιά δεν το ξαναπαίρνει. Τίποτα δεν φεύγει χωρίς το δεύτερο πάτημα της «Αποστολής».')}</div></div>
     ${N91M_KINDS.map(x=>`<div class="card pad" style="margin-bottom:12px">
@@ -17938,6 +17938,48 @@ function n91mBody(){
       <div class="dim" style="font-size:12.5px;margin-top:3px">${x.d()}</div>
       <div id="n91Out_${x.k}" style="margin-top:9px;font-size:13px"></div></div>`).join('')}`;
   document.querySelectorAll('[data-n91chk]').forEach(b=>b.onclick=()=>n91mCheck(b.dataset.n91chk,b));
+  n91RuleCard();
+}
+const N91_RULES=[
+  {k:dv('λήξη'), t:()=>t('Λήξη'), d:()=>t('Ισχύει ως την τελευταία 31 Αυγούστου πριν λήξει το χαρτί.')},
+  {k:dv('καλοκαίρι'), t:()=>t('Καλοκαίρι'), d:()=>t('Όπως η «Λήξη» — αλλά όποιος το βγάλει Ιούνιο–Αύγουστο, ενώ το προηγούμενο ισχύει ως τις 31 Αυγούστου, παίρνει τις 2 επόμενες προσκοπικές χρονιές.')}];
+async function n91RuleCard(){
+  const box=$('n91Rule'); if(!box)return;
+  const {data,error}=await sb.from('app_settings').select('v').eq('k','n91_rule').maybeSingle();
+  if(error)return box.innerHTML=`<span style="color:var(--bad)">${t('Δεν διαβάστηκε ο κανόνας.')}</span>`;
+  const cur=(data&&typeof data.v==='string'&&data.v)||dv('λήξη');
+  const asOk=ME.role==='admin'&&myHats().some(h=>h.role_code==='AS');
+  box.innerHTML=`<b>${t('Κανόνας ισχύος Ν91')}</b>
+    <div class="muted" style="font-size:13px;margin:4px 0 8px">${t('Με αυτόν υπολογίζεται ως πότε ισχύει το Ν91 κάθε βαθμοφόρου — στην εφαρμογή, στον έλεγχο των δράσεων και στο email της υπενθύμισης.')}</div>
+    ${N91_RULES.map(r=>`<label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:13.5px">
+      <input type="radio" name="n91rule" value="${esc(r.k)}" ${r.k===cur?'checked':''} ${asOk?'':'disabled'} style="margin-top:3px">
+      <span><b>${r.t()}</b>${r.k===cur?` <span class="pill">${t('ισχύει')}</span>`:''}<br><span class="dim" style="font-size:12.5px">${r.d()}</span></span></label>`).join('')}
+    ${asOk?`<div style="margin-top:8px"><button class="btn sm" id="n91RulePv" disabled>${t('Δες τι αλλάζει')}</button></div>`
+      :`<div class="dim" style="font-size:12.5px;margin-top:6px">${t('Τον κανόνα τον αλλάζει μόνο ο Αρχηγός Συστήματος.')}</div>`}
+    <div id="n91RuleOut" style="margin-top:8px;font-size:13px"></div>`;
+  if(!asOk)return;
+  const pick=()=>(box.querySelector('input[name="n91rule"]:checked')||{}).value||cur, pv=$('n91RulePv'), out=$('n91RuleOut');
+  box.querySelectorAll('input[name="n91rule"]').forEach(i=>i.onchange=()=>{ pv.disabled=pick()===cur; out.innerHTML='' });
+  pv.onclick=async()=>{
+    const rule=pick(); pv.disabled=true; out.innerHTML=`<span class="dim">${t('Έλεγχος…')}</span>`;
+    const {data:j,error:e}=await sb.rpc('n91_rule_preview',{p_rule:rule}); pv.disabled=false;
+    if(e||!j)return out.innerHTML=`<span style="color:var(--bad)">${esc(e?e.message:'—')}</span>`;
+    const rows=j.rows||[];
+    out.innerHTML=`<div>${t('Αλλάζει η ισχύς σε')} <b>${j.changed||0}</b> ${t('από')} ${j.total||0}${j.to_valid?` · <span style="color:var(--ok)">${j.to_valid} ${t('γίνονται έγκυροι για φέτος')}</span>`:''}${j.to_invalid?` · <span style="color:var(--bad)">${j.to_invalid} ${t('παύουν να ισχύουν φέτος')}</span>`:''}</div>
+      ${rows.length?`<div style="margin-top:6px;font-size:12.5px;line-height:1.7">${rows.map(r=>`${esc(r.name)}: ${r.old?fdate(r.old):'—'} → <b>${r.new?fdate(r.new):'—'}</b>`).join('<br>')}</div>`:''}
+      <div style="margin-top:8px"><button class="btn sm p" id="n91RuleGo">${t('Εφάρμοσε τον κανόνα')} «${(N91_RULES.find(r=>r.k===rule)||{t:()=>esc(rule)}).t()}»</button></div>`;
+    const go=$('n91RuleGo');
+    go.onclick=async()=>{
+      if(!go.dataset.sure){ go.dataset.sure='1'; go.textContent=t('Σίγουρα; Αλλάζει για όλους τώρα'); return }
+      go.disabled=true;
+      const {data:k,error:e2}=await sb.rpc('n91_rule_set',{p_rule:rule});
+      if(e2||!k||!k.ok){ go.disabled=false; return out.insertAdjacentHTML('beforeend',`<div style="color:var(--bad);margin-top:6px">${esc(e2?e2.message:'—')}</div>`) }
+      const {data:c}=await sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000);
+      if(c)D.cert=c;
+      await n91RuleCard();
+      const o=$('n91RuleOut'); if(o)o.innerHTML=`<span style="color:var(--ok)">${t('Ο κανόνας του Ν91 άλλαξε — ξαναϋπολογίστηκαν οι ημερομηνίες ισχύος ({n} άλλαξαν).',{n:k.changed||0})}</span>`;
+    };
+  };
 }
 async function n91mCheck(kind,btn){
   const out=$('n91Out_'+kind); if(!out)return; if(btn)btn.disabled=true; out.innerHTML=`<span class="dim">${t('Έλεγχος…')}</span>`;
