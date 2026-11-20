@@ -1530,7 +1530,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-20 12:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-20 12:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -23239,8 +23239,9 @@ async function gsImgPlan(B,P,live){
   const stale=pics.filter(q=>!slots.has(key(q.r,q.c))&&(q.name+q.descr).indexOf(DL_CERT_TAG)>=0);
   return {sheet:P.name,add,stale};
 }
-async function gsSyncChoices(R,I){
-  const ch=[], by={};
+async function gsSyncChoices(R,I,isHand){
+  isHand=isHand||(()=>false);
+  const ch=[], by={}, HL=' — ✋ '+t('αλλαγή με το χέρι');
   R.rec.forEach(c=>(by[c.sh]=by[c.sh]||[]).push(c));
   for(const [sh,list] of Object.entries(by)){
     const S=await R.B.sheet(sh);
@@ -23248,13 +23249,15 @@ async function gsSyncChoices(R,I){
       list.forEach(c=>{ if(c.dim){ const h=S.v(c.dim[0]+1,2);
           ch.push({v:[c],on:true,t:sh+' '+t('γραμμές')+' '+c.dim[0]+'–'+c.dim[1]+(typeof h==='string'?' · '+h.trim():'')+': '+(c.v?t('απόκρυψη'):t('εμφάνιση'))}); return; }
         let lab=''; for(let k=c.c-1;k>=1&&!lab;k--){ const v=S.v(c.r,k); if(typeof v==='string'&&v.trim())lab=v.trim().slice(0,40); }
-        ch.push({v:[c],on:true,t:sh+' '+XL.ref(c.r,c.c)+(lab?' · '+lab:'')+': '+(xlSame(c.old,c.v)?gsShow(c.v)+' — '+t('μορφή')+' '+(c.kind==='time'?t('ωω:λλ'):t('ηη/μμ/εεεε')):gsShow(c.old)+' → '+gsShow(c.v))}); });
+        const hd=isHand(c);
+        ch.push({v:[c],on:!hd,hand:hd,t:(hd?'✋ ':'')+sh+' '+XL.ref(c.r,c.c)+(lab?' · '+lab:'')+': '+(xlSame(c.old,c.v)?gsShow(c.v)+' — '+t('μορφή')+' '+(c.kind==='time'?t('ωω:λλ'):t('ηη/μμ/εεεε')):gsShow(c.old)+' → '+gsShow(c.v))+(hd?HL:'')}); });
     }else if(DL_SH.Y.includes(sh)){
       const nc=(S.findAll(dv('Ονοματεπώνυμο'))[0]||{}).c, rows={};
       list.forEach(c=>(rows[c.r]=rows[c.r]||[]).push(c));
-      Object.entries(rows).forEach(([r,cs])=>{ const n=cs.find(c=>c.c===nc);
-        ch.push({v:cs,on:true,t:sh+' '+t('γραμμή')+' '+r+': '+(n?gsShow(n.old)+' → '+gsShow(n.v):gsShow(nc?S.v(+r,nc):''))+' · '+cs.length+' '+t('κελιά')}); });
-    }else ch.push({v:list,on:true,t:sh+': '+list.length+' '+t('κελιά')});
+      Object.entries(rows).forEach(([r,all])=>{ const nm=gsShow(nc?S.v(+r,nc):'');
+        [all.filter(c=>!isHand(c)),all.filter(c=>isHand(c))].forEach((cs,k)=>{ if(!cs.length)return; const n=cs.find(c=>c.c===nc);
+          ch.push({v:cs,on:!k,hand:!!k,t:(k?'✋ ':'')+sh+' '+t('γραμμή')+' '+r+': '+(n?gsShow(n.old)+' → '+gsShow(n.v):nm)+' · '+cs.length+' '+t('κελιά')+(k?HL:'')}); }); });
+    }else [list.filter(c=>!isHand(c)),list.filter(c=>isHand(c))].forEach((cs,k)=>{ if(cs.length)ch.push({v:cs,on:!k,hand:!!k,t:(k?'✋ ':'')+sh+': '+cs.length+' '+t('κελιά')+(k?HL:'')}); });
   }
   if(I){ I.add.forEach(a=>ch.push({v:[{img:a}],on:true,t:I.sheet+' · '+t('εικόνα')+' '+DL_CERT_T[a.p.cat]+' — '+a.p.label+(a.old?' ('+t('αντικατάσταση')+')':'')}));
     I.stale.forEach(q=>ch.push({v:[{rm:q}],on:true,t:I.sheet+' · '+t('αφαίρεση εικόνας')+' '+XL.ref(q.r,q.c)+(q.descr?' — '+q.descr.replace(DL_CERT_TAG,''):'')})); }
@@ -23265,8 +23268,24 @@ async function gsFinal(e,x,fin){
     :t('Πίσω σε όλη τη δύναμη;')+'\n\n'+t('Στις ΣΥΜΜΕΤΟΧΕΣ θα μπουν ξανά όλοι όσοι δικαιούνται να δηλώσουν.'),{ok:fin?t('Συνέχεια'):t('Ναι'),cancel:t('Άκυρο')}))return;
   await gsSync(e,x,{final:fin});
 }
-const GS_AREAS=[['genika',t('Γενικά')],['staff',t('Συμμετοχές — Επιτελείο')],['kids',t('Συμμετοχές — Ανήλικοι')],
-  ['budget',t('Προϋπολογισμός')],['certs',t('Πιστοποιητικά')],['pending',t('Εκκρεμότητες (ΑΡΧΗΓΟΥ)')]];
+const GS_AREAS=[['genika',t('ΓΕΝΙΚΑ')],['staff',t('ΣΥΜΜΕΤΟΧΕΣ — επιτελείο')],['kids',t('ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι')],
+  ['budget',t('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ')],['certs',t('ΠΙΣΤΟΠΟΙΗΤΙΚΑ')],['pending',t('ΑΡΧΗΓΟΥ / ΕΚΚΡΕΜΟΤΗΤΕΣ')]];
+const gsHash=v=>{ const s=typeof v==='number'?String(Math.round(v*1e6)/1e6):XL.norm(v); let h=0x811c9dc5;
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; } return h.toString(36); };
+const gsMemKey=c=>c.sh+'|'+c.c;
+const gsEmpty=v=>v==null||String(v).trim()==='';
+function gsIsHand(mem,c){ if(!c||c.dim||c.img||c.rm||!c.sh||gsEmpty(c.old))return false;
+  const L=mem[gsMemKey(c)]; return !!(L&&L.length)&&!L.includes(gsHash(c.old)); }
+async function gsMemSave(e,R,wrote,skip){
+  const s=GS[e.id]; if(!s||!s.row||!R||!R.recAll)return;
+  const mem=JSON.parse(JSON.stringify(s.row.written||{})), W=new Set(wrote||[]);
+  R.recAll.forEach(c=>{ if(!c||!c.sh||c.dim||!('v' in c)||gsEmpty(c.v)||skip(c))return;
+    if(!W.has(c)&&!xlSame(c.old,c.v))return;       
+    const k=gsMemKey(c), L=mem[k]||(mem[k]=[]), h=gsHash(c.v);
+    if(!L.includes(h)){ L.push(h); if(L.length>2000)L.splice(0,L.length-2000); } });
+  const {error}=await sb.rpc('event_sheet_written',{p_event:e.id,p_written:mem});
+  if(!error)s.row.written=mem;
+}
 const gsHand=e=>new Set(((GS[e.id]||{}).row||{}).hand_areas||[]);
 async function gsAreaOf(R){
   const S=await dlSh(R.B,'Y'), H=S?S.findAll(dv('Ονοματεπώνυμο')):[], kr=H[1]?H[1].r:1e9;    
@@ -23297,25 +23316,27 @@ async function gsSync(e,x,opt){
     let live=null; if(R.certs){ const L=await gsCall({op:'imglist',event_id:e.id,sheet:R.certs.name}); if(L.ok&&Array.isArray(L.items))live=L.items; }
     I=R.certs?await gsImgPlan(R.B,R.certs,live):null;
   }catch(err){ done(); return toast(t('Δεν έγινε')+': '+(err.message||err)) }
-  const ch=await gsSyncChoices(R,I);
-  const areaOf=await gsAreaOf(R), hand=gsHand(e);
+  const mem=((GS[e.id]||{}).row||{}).written||{};
+  const ch=await gsSyncChoices(R,I,c=>gsIsHand(mem,c));
+  const areaOf=await gsAreaOf(R), hand=gsHand(e), skip=c=>hand.has(areaOf(c));
   const own=R.recAll?xlOwn(R.recAll.filter(c=>!hand.has(areaOf(c)))):R.own;    
   ch.forEach(c=>{ c.area=areaOf(c.v[0]); });
   let ch2=ch.filter(c=>!hand.has(c.area));
-  const cnt={}; ch.forEach(c=>{ cnt[c.area]=(cnt[c.area]||0)+1; });
+  const cnt={}, hc={}; ch.forEach(c=>{ cnt[c.area]=(cnt[c.area]||0)+1; if(c.hand)hc[c.area]=(hc[c.area]||0)+1; });
   const avail=GS_AREAS.filter(([k])=>cnt[k]);
-  if(avail.length>1||avail.some(([k])=>hand.has(k))){
-    const ap=await uiChooseMulti(t('Ποια τμήματα να ενημερωθούν από το e76;')+'\n\n'+t('Ό,τι ξετσεκάρεις μένει όπως είναι στο αρχείο.')
+  if(avail.length>1||avail.some(([k])=>hand.has(k)||hc[k])){
+    const ap=await uiChooseMulti(t('Ποια φύλλα να ενημερωθούν από το e76;')+'\n\n'+t('Ό,τι ξετσεκάρεις μένει όπως είναι στο αρχείο.')
         +(avail.some(([k])=>hand.has(k))?'\n'+t('Τα «με το χέρι» είναι ξετσεκαρισμένα — τα γεμίζετε εσείς.'):''),
-      avail.map(([k,l])=>({v:k,on:!hand.has(k),t:l+' · '+cnt[k]+' '+t('αλλαγές')+(hand.has(k)?' · ✋ '+t('με το χέρι'):'')})),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
+      avail.map(([k,l])=>({v:k,on:!hand.has(k),t:l+' · '+cnt[k]+' '+t('αλλαγές')+(hc[k]?' · '+t('από αυτές {n} με το χέρι',{n:hc[k]}):'')+(hand.has(k)?' · ✋ '+t('όλο με το χέρι'):'')})),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
     if(!ap){ done(); return; }
     const on=new Set(ap); ch2=ch.filter(c=>on.has(c.area));
-    if(!ch2.length){ done(); return toast(t('Δεν διάλεξες κανένα τμήμα — δεν άλλαξε τίποτα.')); }
+    if(!ch2.length){ done(); return toast(t('Δεν διάλεξες κανένα φύλλο — δεν άλλαξε τίποτα.')); }
   }
-  if(!ch2.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own}); if(r.ok)await gsFinalSet(e,opt); done();
+  if(!ch2.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own}); if(r.ok){ await gsFinalSet(e,opt); await gsMemSave(e,R,[],skip); } done();
     const sh=gsShareTxt(r.share), tx=t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'');
     if(sh)await uiNote(tx+'\n\n'+sh); else toast(tx); return; }
   const pick=await uiChooseMulti(t('Τι θα ξαναγραφτεί από το e76;')+'\n\n'+t('Μόνο κελιά που γράφει το e76 και ΑΛΛΑΞΑΝ. Ξετσέκαρε ό,τι θέλεις να μείνει όπως το έγραψε κάποιος στο αρχείο.')
+    +(ch2.some(c=>c.hand)?'\n'+t('✋ = το άλλαξε κάποιος με το χέρι στο αρχείο — μένει ξετσεκαρισμένο· τσέκαρέ το μόνο αν θέλεις να το ξαναγράψει το e76.'):'')
     +(R.rep.length?'\n\n'+R.rep.map(s=>'• '+s).join('\n'):''),ch2,{ok:t('Ενημέρωση'),cancel:t('Άκυρο')});
   if(!pick||!pick.length){ done(); return; }
   const all=pick.flat(), cells=all.filter(c=>c.sh&&!c.dim).map(c=>({sh:c.sh,a1:XL.ref(c.r,c.c),v:c.v,...(c.kind?{fmt:c.kind}:{})})), dims=all.filter(c=>c.dim).map(c=>({sh:c.sh,r1:c.dim[0],r2:c.dim[1],hidden:!!c.v})), adds=all.filter(c=>c.img).map(c=>c.img);
@@ -23324,6 +23345,7 @@ async function gsSync(e,x,opt){
     x.textContent=t('Γράφω…');
     const r=await gsCall({op:'sync',event_id:e.id,cells,dims,own}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
     await gsFinalSet(e,opt);
+    await gsMemSave(e,R,all,skip);
     if(rm.length){ const q=await gsCall({op:'img',event_id:e.id,sheet:I.sheet,remove:rm}); if(!q.ok)bad.push(q.why); }
     for(const [i,a] of adds.entries()){ if(bad.length)break;
       x.textContent=t('Εικόνα')+' '+(i+1)+'/'+adds.length+'…';
