@@ -1531,7 +1531,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-21 13:54'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-21 14:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2220,7 +2220,7 @@ async function loadAll(){
     sb.from('care_links').select('member_id').limit(0),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
     sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,arxigos_id,eidos_spk,tmima_spk,arrive_time,depart_time,return_time,release_time,transport,march_days,sail_days,sea_other,partners,dd_holder_id,sfh_id,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,signup_extended_to,signup_extended_announced,signup_closed_at,form_url,signup_opens,signup_closes,signup_note,signup_notify,signup_remind,invitees,gcal,prog_kind,stage,planned_reqs,est_count,info_url,fa_order,staff_order,parents_transport,no_folder').order('event_date').limit(3000),
-    sb.from('participations').select('id,person_id,event_id,status,role,role2,days,is_staff,paid,channel,declared_at,declared_by,qf_entry,corrected_at,as_ok_at').limit(20000),    
+    sb.from('participations').select('id,person_id,event_id,status,role,role2,days,is_staff,paid,channel,declared_at,declared_by,qf_entry,qf_form,corrected_at,as_ok_at').limit(20000),    
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
     sb.from('trainings').select('person_id,type,code,date,section,body').limit(5000),
@@ -26632,12 +26632,12 @@ const SEMAP={
   blood:['Ομ. Αίματος','Ομάδα Αίματος'],
   cond:['Παθήσεις'], meds:['Φάρμακα'],
   alM:['Αλλεργίες - Φάρμακα'], alF:['Αλλεργίες - Τροφές'], alO:['Αλλεργίες - Άλλο'],
-  other:['Άλλα Ιατρικά'], diet:['Διαιτητικές'], psych:['Ψυχικές'],
+  other:['Άλλα Ιατρικά'], diet:['Διαιτητικές'], psych:['Ψυχικές',dv('Ψυχικής Υγείας')],    
   shirt:['Μέγεθος Φανέλας'], pt:['Part-Time'], note:['Σημείωση'],
   amount:['Ποσό (€)','Ποσό'], pstat:['Payments Status'], ordn:['orderNumber'],
   appl:['Αιτητής'], amail:['Email Αιτητή'], atel:['Τηλέφωνο Αιτητή'], dt:['Date']
 };
-const SE_META={entry:['Entry ID','Entry Id','ID'], form:['Form ID','Form Id']};
+const SE_META={entry:['Entry ID','Entry Id','ID']};
 function seCols(hdr){
   const H=hdr.map(x=>String(x||'').trim());
   const find=names=>{for(const n of names){const i=H.findIndex(h=>h===n);if(i>=0)return i}
@@ -26668,7 +26668,7 @@ function seParse(rows){
       contacts:c.ct.map(x=>({relation:g(r,x.rel)||'Κηδεμόνας',name:(g(r,x.first)+' '+g(r,x.last)).trim(),phone:g(r,x.tel),mail:g(r,x.mail)}))
         .filter(x=>x.name&&x.phone),
       amount:g(r,c.amount), pstat:g(r,c.pstat), ordn:g(r,c.ordn), pt:g(r,c.pt),
-      shirt:g(r,c.shirt), note:g(r,c.note), dt:g(r,c.dt), entry:g(r,c.entry), form:g(r,c.form)});
+      shirt:g(r,c.shirt), note:g(r,c.note), dt:g(r,c.dt), entry:g(r,c.entry)});
   }
   return {cols:c, rows:out, unmapped:hdr.filter((h,i)=>h&&!Object.values(c).flat().includes(i)).length};
 }
@@ -26682,7 +26682,7 @@ function seNicIso(y,mo,d,h,mi){
   return Number.isFinite(u)&&wall(u)===want?new Date(u).toISOString():null;    
 }
 const SE_MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-function seQfWhen(raw,exportDay){
+function seQfWhen(raw){
   const s=String(raw||'').trim().replace(/\s+/g,' ');
   if(!s)return {iso:null,why:t('χωρίς ημερομηνία στο CSV')};
   const TM='(\\d{1,2}):(\\d{2})(?::\\d{2})?\\s*([AaPp]\\.?[Mm]\\.?)?';
@@ -26692,18 +26692,15 @@ function seQfWhen(raw,exportDay){
   else if((m=s.match(new RegExp('^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T]'+TM+')?$')))){ y=+m[1]; mo=+m[2]; d=+m[3]; if(m[4]!=null)x=hm(m[4],m[5],m[6]); }
   else if((m=s.match(new RegExp('^([A-Za-z]{3})[a-z]*\\.? (\\d{1,2}),? (\\d{4})(?:,? (?:at )?'+TM+')?$')))){ mo=SE_MON[m[1].toLowerCase()]; d=+m[2]; y=+m[3]; if(m[4]!=null)x=hm(m[4],m[5],m[6]); }
   else if((m=s.match(new RegExp('^'+TM+'$')))){
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(exportDay||''))return {iso:null,why:t('μόνο ώρα — λείπει η «Ημερομηνία εξαγωγής»')};
-    y=+exportDay.slice(0,4); mo=+exportDay.slice(5,7); d=+exportDay.slice(8,10); x=hm(m[1],m[2],m[3]); }
+    return {iso:null,why:t('μόνο ώρα, χωρίς ημερομηνία')}; }
   else return {iso:null,why:t('άγνωστη μορφή ημερομηνίας')};
   const iso=x&&mo?seNicIso(y,mo,d,x[0],x[1]):null;
   return iso?{iso,why:null}:{iso:null,why:t('άκυρη ημερομηνία (ημέρα/μήνας/έτος)')};
 }
-const seDay=ms=>{ try{ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Nicosia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms)) }catch(x){ return '' } };
 function seOptsHTML(){
   return `<div style="margin:4px 0 8px;font-size:12.5px">
-    <label style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">${t('Ημερομηνία εξαγωγής')}<input type="date" id="seXd" style="max-width:160px"></label>
-    <div class="dim" style="font-size:11.5px">${t('Μόνο για καταχωρήσεις που στο CSV έχουν μόνο ώρα (της ίδιας μέρας). Συμπληρώνεται από την ημερομηνία του αρχείου — έλεγξέ τη. Κενή = αυτές μένουν χωρίς ημερομηνία.')}</div>
-    <label style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:6px">${t('Αριθμός φόρμας Quform (αν τον ξέρεις)')}<input id="seQf" inputmode="numeric" style="max-width:100px"></label>
+    <label style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:6px">${t('Αριθμός φόρμας Quform')}<input id="seQf" inputmode="numeric" style="max-width:100px"></label>
+    <div class="dim" style="font-size:11.5px">${t('Το CSV δεν τον γράφει· φαίνεται στη λίστα φορμών του Quform (π.χ. 127). Προαιρετικό.')}</div>
     <label style="display:flex;gap:7px;align-items:center;margin-top:6px"><input type="checkbox" id="seFill" style="width:auto">${t('Μόνο συμπλήρωση ημερομηνιών δήλωσης που λείπουν — καμία νέα συμμετοχή, χωρίς ιατρικά και επαφές')}</label></div>`;
 }
 function seDatesHTML(ok,cols){
@@ -26718,18 +26715,20 @@ function seImport(eid,pool,after){
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Εισαγωγή από Smartespot</div>
       <div class="dim" style="font-size:12.5px">${esc(e.title||'')}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
-    <div class="dsec"><div class="dim" style="font-size:12.5px;margin-bottom:8px">Από το Quform: <b>Entries → Export → CSV</b>. Ανέβασέ το εδώ ή κόλλησέ το.</div>
+    <div class="dsec"><div class="dim" style="font-size:12.5px;margin-bottom:8px">${t('Από το Quform: Tools → Export entries')} (<code>admin.php?page=quform.tools&amp;sp=export.entries</code>). ${t('Τίκαρε τις στήλες — καμία δεν είναι προεπιλεγμένη, αλλιώς βγαίνει άδειο αρχείο: Επίθετο, Όνομα, Entry ID, Date και ό,τι άλλο θες να περάσει. Ανέβασέ το εδώ ή κόλλησέ το.')}</div>
       <input type="file" id="seF" accept=".csv,text/csv" style="margin-bottom:8px">
-      <textarea id="seT" rows="4" style="width:100%;font-size:11.5px" placeholder="…ή επικόλληση του CSV"></textarea>
-      <button class="btn p sm" id="seGo" style="margin-top:9px">Ανάλυση</button></div>
+      <textarea id="seT" rows="4" style="width:100%;font-size:11.5px" placeholder="${esc(t('…ή επικόλληση του CSV'))}"></textarea>
+      <button class="btn p sm" id="seGo" style="margin-top:9px">${t('Ανάλυση')}</button></div>
     <div class="dsec" id="seRes" style="border:0"></div>`;
   drw.classList.add('on');
   { const g=$('seGo'); if(g&&g.insertAdjacentHTML)g.insertAdjacentHTML('beforebegin',seOptsHTML()); }    
+  { const q=$('seQf'), k=(D.pa||[]).find(x=>x.event_id===eid&&x.qf_form); if(q&&k&&!q.value)q.value=k.qf_form; }    
   const run=txt=>{
-    let P; try{P=seParse(parseCSV(txt))}catch(err){return toast('Δεν διαβάστηκε: '+err.message)}
+    let RW; try{RW=parseCSV(txt)}catch(err){return toast(t('Δεν διαβάστηκε:')+' '+err.message)}
+    if(!RW.length||RW[0].filter(x=>String(x||'').trim()).length<2)return toast(t('Το αρχείο είναι άδειο ή χωρίς στήλες — στο Quform τίκαρε τις στήλες πριν την εξαγωγή (καμία δεν είναι προεπιλεγμένη).'));
+    let P; try{P=seParse(RW)}catch(err){return toast(t('Δεν διαβάστηκε:')+' '+err.message)}
     if(!P.rows.length)return toast('Καμία γραμμή');
-    const xd=(($('seXd')||{}).value)||'';
-    const res=P.rows.map(r=>({...r,m:matchPerson(r.last+' '+r.first,pool),w:seQfWhen(r.dt,xd)}));    
+    const res=P.rows.map(r=>({...r,m:matchPerson(r.last+' '+r.first,pool),w:seQfWhen(r.dt)}));    
     const ok=res.filter(r=>r.m), no=res.filter(r=>!r.m);
     const withMed=ok.filter(r=>Object.values(r.med).some(Boolean)).length;
     const withCt=ok.reduce((a,r)=>a+r.contacts.length,0);
@@ -26754,7 +26753,7 @@ function seImport(eid,pool,after){
       if(!pick.length)return toast('Τίποτα επιλεγμένο');
       const fill=!!(($('seFill')||{}).checked), qfF=String((($('seQf')||{}).value)||'').trim();
       const rows=pick.map(r=>({person_id:r.m.p.id, declared_at:r.w.iso||null, order_no:r.ordn||null,
-        qf_entry:/^\d{1,10}$/.test(r.entry||'')?+r.entry:null, qf_form:/^\d{1,6}$/.test(r.form||'')?+r.form:(/^\d{1,6}$/.test(qfF)?+qfF:null),
+        qf_entry:/^\d{1,10}$/.test(r.entry||'')?+r.entry:null, qf_form:/^\d{1,6}$/.test(qfF)?+qfF:null,
         notes:[r.amount?'Ποσό '+r.amount+'€':'',r.pstat,r.ordn?'#'+r.ordn:'',/ναι/i.test(r.pt)?'Part-time':'',r.shirt?'Φανέλα '+r.shirt:''].filter(Boolean).join(' · ')||null}));
       const {data:R,error:rerr}=await sb.rpc('participations_quform_import',{p_event:eid,p_rows:rows,p_fill_only:fill});
       if(rerr)return toast('Σφάλμα: '+rerr.message);
@@ -26790,7 +26789,7 @@ function seImport(eid,pool,after){
     };
   };
   $('seGo').onclick=()=>{const t=$('seT').value.trim(); if(t)return run(t); toast('Διάλεξε αρχείο ή κόλλησε CSV')};
-  $('seF').onchange=ev=>{const f=ev.target.files[0]; if(!f)return; const xd=$('seXd'); if(xd&&!xd.value&&f.lastModified)xd.value=seDay(f.lastModified); const rd=new FileReader(); rd.onload=()=>run(String(rd.result)); rd.readAsText(f,'utf-8')};
+  $('seF').onchange=ev=>{const f=ev.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>run(String(rd.result)); rd.readAsText(f,'utf-8')};
 }
 
 function pasteParts(eid,pool,after){
@@ -26875,7 +26874,7 @@ function sePool(e,had){
 let SE_PICK_Q='';
 function seImportPick(){
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:12px"><b>${t('Από εξαγωγή φόρμας δράσης')}</b>
-      <div class="dim" style="font-size:12.5px;margin-top:4px">${t('Διάλεξε τη δράση και ανέβασε (ή κόλλησε) το CSV της φόρμας της — Quform: Entries → Export → CSV. Είναι η ίδια εισαγωγή με το κουμπί «Smartespot» στις Συμμετοχές της δράσης.')}</div>
+      <div class="dim" style="font-size:12.5px;margin-top:4px">${t('Διάλεξε τη δράση και ανέβασε (ή κόλλησε) το CSV της φόρμας της — Quform: Tools → Export entries (τίκαρε τις στήλες πρώτα). Είναι η ίδια εισαγωγή με το κουμπί «Smartespot» στις Συμμετοχές της δράσης.')}</div>
       <input id="sePickQ" value="${esc(SE_PICK_Q)}" placeholder="${esc(t('Αναζήτηση δράσης…'))}" style="margin-top:9px;max-width:340px"></div>
     <div id="sePickL"></div>`;
   const q=$('sePickQ'); if(q)q.oninput=()=>{SE_PICK_Q=q.value; sePickList()};
