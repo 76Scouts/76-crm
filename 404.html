@@ -1337,6 +1337,11 @@ const ic=(n,s=17)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="no
   const m=document.querySelector('meta[name=viewport]');
   if(ios&&m&&!/maximum-scale/.test(m.content))m.content+=',maximum-scale=1';
 }catch(e){} })();
+
+const DENY_RX=/row-level security|permission denied|42501|δεν επιτρέπεται|δεν έχεις δικαίωμα|δεν υπογράφεις|μόνο ο Α\.Σ\.|μόνο ο διαχειριστής/i;
+function denyLog(m){ try{ if(typeof sb==='undefined'||!ME||!ME.person_id)return; if(!DENY_RX.test(String(m||'')))return;
+  sb.rpc('log_denial',{p_screen:String((typeof ROUTE!=='undefined'&&ROUTE)||''), p_detail:String(m).slice(0,300)}).then(()=>{},()=>{}); }catch(e){} }
+function toast(m){denyLog(m);const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--side);color:#fff;padding:10px 16px;border-radius:22px;font-size:13.5px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.28)';document.body.appendChild(d);setTimeout(()=>d.remove(),2300)}
 const NAV=[
  {g:'Επισκόπηση', d:'Πού βρισκόμαστε αυτή τη στιγμή', items:[
    {id:'dash',t:'Πίνακας',i:'grid',s:'live'},
@@ -1531,7 +1536,9 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-21 14:18'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const V={};
+
+const BUILD='2026-11-21 16:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2676,6 +2683,18 @@ const M76=(()=>{
   return {person,fromText,match,sim,canon,phon,ratio};
 })();
 
+const SECCFG=()=>(D.sc||[]).filter(s=>s.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
+const SECS_FALLBACK=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
+const SECTION_ENUM=['Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα','Εφορεία','Γονείς'];
+const validSection=x=>SECTION_ENUM.includes(x)?x:null;
+const SECS_B=SECS_FALLBACK;    
+const MEMSECS=()=>{const c0=SECCFG().filter(s=>s.has_members).map(s=>s.section);
+  const c=c0.length?c0:['Αγέλη','Ομάδα','Κοινότητα'];
+  const o=(typeof oneSec==='function')?oneSec():null;
+  return o&&c.includes(o)?[o]:c};
+
+const SEC_AB2={'Αγέλη':'ΑΛ','Μικρή Αγέλη':'ΜΑ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Δίκτυο':'Δ','Σύστημα':'ΣΥΣ'};
+const SECFULL={'Αγέλη':'Αγέλης Λυκοπούλων','Ομάδα':'Ομάδας Προσκόπων','Κοινότητα':'Κοινότητας Ανιχνευτών','Δίκτυο':'Δικτύου','Σύστημα':'Συστήματος'};
 let VIEWAS=null;
 function mePid(){ return (VIEWAS&&VIEWAS.pid) || ME.person_id || null }
 const PIPQ=new URLSearchParams(location.search);
@@ -5869,7 +5888,26 @@ async function n91Check(c, p, box){
   L.push('👁 <b>'+esc(t('Το αποτέλεσμα το κοιτάς εσύ'))+'</b>: '+esc(t('«δεν περιλαμβάνεται» — το «περιλαμβάνεται» πρέπει να είναι διαγραμμένο.')));
   say(L.map(x=>`<div>${x}</div>`).join('')+`<div class="dim" style="font-size:11px;margin-top:3px">${esc(t('Διαβάστηκε στη συσκευή σου'))} (${esc(r.how)}). ${esc(t('Τίποτα δεν άλλαξε — επιβεβαιώνεις εσύ.'))}</div>`);
 }
-const V={};
+const XL={};
+XL.esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+XL.unesc=s=>String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+  .replace(/&#x([0-9a-f]+);/gi,(m,n)=>String.fromCodePoint(parseInt(n,16))).replace(/&#(\d+);/g,(m,n)=>String.fromCodePoint(+n)).replace(/&amp;/g,'&');
+XL.cn=c=>{let n=0;for(const ch of c)n=n*26+ch.charCodeAt(0)-64;return n};
+XL.cs=n=>{let s='';while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=(n-1-m)/26}return s};
+XL.ref=(r,c)=>XL.cs(c)+r;
+XL.attr=(a,k)=>{const m=new RegExp('\\b'+k+'="([^"]*)"').exec(a||'');return m?m[1]:null};
+XL.texts=x=>{let o='';const re=/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g;let m;while((m=re.exec(x)))o+=XL.unesc(m[1]);return o};
+XL.norm=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
+XL.ss=xml=>{const a=[];if(!xml)return a;const re=/<si>([\s\S]*?)<\/si>|<si\/>/g;let m;
+  while((m=re.exec(xml)))a.push(m[1]?XL.texts(m[1].replace(/<rPh\b[\s\S]*?<\/rPh>/g,'')):'');return a};
+XL.serial=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(iso||'');if(!m)return null;
+  return (Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/864e5};
+XL.tfrac=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(t||'');return m?(+m[1]*60+ +m[2])/1440:null};
+XL.shiftF=(f,dr,dc)=>f.replace(/('[^']*'|"[^"]*")|(?<![A-Za-z_\d$.])(\$?)([A-Z]{1,3})(\$?)(\d{1,7})(?![\w(!])/g,
+  (m,q,c$,col,r$,row)=>{ if(q)return m;
+    const c2=c$?col:XL.cs(XL.cn(col)+dc), r2=r$?row:String(+row+dr);
+    if(!c$&&XL.cn(col)+dc<1||!r$&&+row+dr<1)return '#REF!';
+    return c$+c2+r$+r2 });
 
 const TR_UNIT={[dv('Αγέλη')]:dv('εξάδα'),[dv('Ομάδα')]:dv('ενωμοτία'),[dv('Κοινότητα')]:dv('όμιλος')};
 const SG_NAMECOL=[[[dv('κιτριν')],'#e3b100',[4]],[[dv('κοκκιν')],'#d93a3a',[8]],[[dv('πορτοκαλ')],'#f07a1a',[2]],
@@ -5992,10 +6030,6 @@ V.trends=()=>{
   if(!window.__trRz){ window.__trRz=1; let tm; window.addEventListener('resize',()=>{clearTimeout(tm); tm=setTimeout(()=>{ if(document.querySelector('.trv .trw'))draw(); },150)}); }
 };
 
-const SECCFG=()=>(D.sc||[]).filter(s=>s.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
-const SECS_FALLBACK=['Σύστημα','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο'];
-const SECTION_ENUM=['Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα','Δίκτυο','Σύστημα','Εφορεία','Γονείς'];
-const validSection=x=>SECTION_ENUM.includes(x)?x:null;
 function MOVE_TARGETS(){
   const cfg=(D.sc||[]).filter(x=>x.active!==false)
     .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(x=>x.section);
@@ -6012,11 +6046,6 @@ function secsBoard(){
     if(d&&d.section&&!out.includes(d.section))out.push(d.section)});
   return out;
 }
-const SECS_B=SECS_FALLBACK;    
-const MEMSECS=()=>{const c0=SECCFG().filter(s=>s.has_members).map(s=>s.section);
-  const c=c0.length?c0:['Αγέλη','Ομάδα','Κοινότητα'];
-  const o=(typeof oneSec==='function')?oneSec():null;
-  return o&&c.includes(o)?[o]:c};
 const PAPER_ONLY=new Set(['ΕΔ','Ε.Δ.','ΑΝΑΘΕΣΗ','Ανάθεση','ΕΝΤΟΛΗ','Εντολή']);
 const HAT_FAM=[
   {t:'Αρχηγός τμήματος', map:{'Αγέλη':'AAL','Ομάδα':'AOP','Κοινότητα':'AKA','Δίκτυο':'APD'}},
@@ -6086,7 +6115,6 @@ const POS_B=[['Αρχηγός','Αρχηγός'],['Υπαρχηγός','Υπαρ
   ['Δίκτυο','Δίκτυο — μόνο γραμμένος'],['ΑΣ','Αρχηγός Συστήματος'],['Έφορος','Έφορος']];
 const NET_B=[['','—'],['ενεργό','ενεργό δίκτυο (-Δ)'],['γραμμένο','μόνο γραμμένος']];
 const isParked=r=>r==='Δίκτυο';
-const SEC_AB2={'Αγέλη':'ΑΛ','Μικρή Αγέλη':'ΜΑ','Ομάδα':'ΟΠ','Κοινότητα':'ΚΑ','Δίκτυο':'Δ','Σύστημα':'ΣΥΣ'};
 const AREA_NAME={GR:'Ελλάδα',UK:'Ηνωμένο Βασίλειο',NL:'Ολλανδία',CZ:'Τσεχία',
   FI:'Φινλανδία',CH:'Ελβετία','CY-NIC':'Λευκωσία','CY-LIM':'Λεμεσός','GR-ATH':'Αθήνα'};
 const areaLabel=a=>a?(AREA_NAME[a]?AREA_NAME[a]+' ('+a+')':a):'— χωρίς περιοχή —';
@@ -6110,7 +6138,6 @@ function posCode(pos, sec, net){
     : pos==='Αρχηγός'?('Α'+A) : pos==='Υπαρχηγός'?('Υ'+A) : ('Β'+A);
   return net==='ενεργό' ? base+'-Δ' : base;
 }
-const SECFULL={'Αγέλη':'Αγέλης Λυκοπούλων','Ομάδα':'Ομάδας Προσκόπων','Κοινότητα':'Κοινότητας Ανιχνευτών','Δίκτυο':'Δικτύου','Σύστημα':'Συστήματος'};
 const nextY=y=>{const m=/^(\d{4})-(\d{2})$/.exec(y||'');if(!m)return null;const a=+m[1]+1;return a+'-'+String(a+1).slice(2)};
 let SY=null, SYFROM=null, DRAFT={};
 let DRAGON=false; try{DRAGON=!!localStorage.getItem('e76:dragon')}catch(e){}
@@ -23197,26 +23224,6 @@ function dlExport(e,pick){
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(f)go(await f.arrayBuffer(),f.name); };
   inp.click();
 }
-const XL={};
-XL.esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-XL.unesc=s=>String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")
-  .replace(/&#x([0-9a-f]+);/gi,(m,n)=>String.fromCodePoint(parseInt(n,16))).replace(/&#(\d+);/g,(m,n)=>String.fromCodePoint(+n)).replace(/&amp;/g,'&');
-XL.cn=c=>{let n=0;for(const ch of c)n=n*26+ch.charCodeAt(0)-64;return n};
-XL.cs=n=>{let s='';while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=(n-1-m)/26}return s};
-XL.ref=(r,c)=>XL.cs(c)+r;
-XL.attr=(a,k)=>{const m=new RegExp('\\b'+k+'="([^"]*)"').exec(a||'');return m?m[1]:null};
-XL.texts=x=>{let o='';const re=/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g;let m;while((m=re.exec(x)))o+=XL.unesc(m[1]);return o};
-XL.norm=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
-XL.ss=xml=>{const a=[];if(!xml)return a;const re=/<si>([\s\S]*?)<\/si>|<si\/>/g;let m;
-  while((m=re.exec(xml)))a.push(m[1]?XL.texts(m[1].replace(/<rPh\b[\s\S]*?<\/rPh>/g,'')):'');return a};
-XL.serial=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(iso||'');if(!m)return null;
-  return (Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/864e5};
-XL.tfrac=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(t||'');return m?(+m[1]*60+ +m[2])/1440:null};
-XL.shiftF=(f,dr,dc)=>f.replace(/('[^']*'|"[^"]*")|(?<![A-Za-z_\d$.])(\$?)([A-Z]{1,3})(\$?)(\d{1,7})(?![\w(!])/g,
-  (m,q,c$,col,r$,row)=>{ if(q)return m;
-    const c2=c$?col:XL.cs(XL.cn(col)+dc), r2=r$?row:String(+row+dr);
-    if(!c$&&XL.cn(col)+dc<1||!r$&&+row+dr<1)return '#REF!';
-    return c$+c2+r$+r2 });
 
 function xlSheet(xml,ss,isDate){
   const i0=xml.indexOf('<sheetData'); const sc=/<sheetData\s*\/>/.exec(xml);
@@ -23647,6 +23654,10 @@ async function gsLoad(eid){
   const old=GS[eid]||{};
   return GS[eid]={row:a.data||null, log:b.data||[], loc:old.loc||null, err:a.error||b.error||null};
 }
+async function gsReady(eid){ if(!GS[eid]) await gsLoad(eid); return GS[eid]; }             
+const gsKidsFinal=eid=>{ const r=GS[eid]&&GS[eid].row; return !!(r&&r.kids_final); };           
+const gsHasLive=eid=>{ const r=GS[eid]&&GS[eid].row; return !!(r&&r.file_id); };              
+const gsSyncApol=(e,x)=>gsSync(e,x,{only:['apol']});                                       
 
 function gsHTML(e){
   const s=GS[e.id], card=b=>`<div class="card pad" style="margin-bottom:13px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -24034,7 +24045,7 @@ const bdEpex=e=>{ const s=BD[e.id]; return s&&s.d&&s.d.epex!=null?bdN(s.d.epex):
 const bdDik=e=>{ const s=BD[e.id]; return s&&s.d&&s.d.dik!=null?bdN(s.d.dik):null };
 function bdCtx(e,epex,dik){
   epex=epex==null?bdEpex(e):bdN(epex); dik=dik===undefined?bdDik(e):dik;
-  const G=DRA.GS, gsr=G&&G[e.id]&&G[e.id].row, final=!!(gsr&&gsr.kids_final);
+  const final=DRA.gsKidsFinal(e.id);
   const staff=[...DRA.dlStaff(e),...DRA.dlHelpers(e)], days=DRA.dlDays(e), nights=e.nights||Math.max(0,days.length-1);
   const fee=bdHasForm(e)?Math.max(0,bdR(bdN(e.fee)-epex)):Math.max(0,bdR(dik||0));
   const one=kids=>({fee, gross:bdN(e.fee), epex, kids, staff, vathm:DRA.dlStaff(e).length, days, nights});
@@ -24061,7 +24072,7 @@ function dlFillBudget(S,b,rep){
   const h=S.find(dv('ΑΙΤΙΟΛΟΓΙΑ'),{col:'C'}), end=S.find(dv('Σύνολο Εσόδων'),{col:'C'});
   if(!h||!end){ rep.push(t('ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ: δεν βρέθηκε ο πίνακας')); return; }
   const side=(cL,cV,fixed,free,what,spill)=>{
-    const key=r=>{ const lab=DRA.XL.norm(S.v(r,cL)||''); return lab?Object.keys(fixed).find(c=>DRA.XL.norm(c)===lab):null };
+    const key=r=>{ const lab=XL.norm(S.v(r,cL)||''); return lab?Object.keys(fixed).find(c=>XL.norm(c)===lab):null };
     const fr=[]; let spillAt=null;
     for(let r=h.r+1;r<end.r;r++){ if(S.isF(r,cV)||S.isF(r,cL))continue; const k=key(r);
       if(k){ S.set(r,cV,fixed[k]); if(k===spill)spillAt=r; } else fr.push(r); }
@@ -24210,7 +24221,7 @@ async function bdSave(e){
   await bdLoad(e.id); bdDraw(e); toast(t('Αποθηκεύτηκε')+' · '+data.stage);
 }
 async function bdWire(e){
-  const G=DRA.GS; if(G&&!G[e.id])await DRA.gsLoad(e.id);         
+  await DRA.gsReady(e.id);                                         
   if(!BD[e.id]||!BD[e.id].dirty)await bdLoad(e.id);
   bdDraw(e);
 }
@@ -24618,7 +24629,7 @@ function apHTML(e){ return `<div id="apBox"><div class="card pad dim">${esc(t('�
 async function apWire(e){ await apLoad(e); apRender(e); }
 
 async function apBudget(e){
-  try{ if(DRA.GS&&!DRA.GS[e.id]) await DRA.gsLoad(e.id) }catch(x){}
+  try{ await DRA.gsReady(e.id) }catch(x){}
   const s=(BD[e.id]&&BD[e.id].dirty)?BD[e.id]:await bdLoad(e.id);
   if(!s||!s.row) return {lines:[],cats:{},inc:{}};
   const X=bdCtx(e), C=X.final?X.dec:X.full;
@@ -25416,7 +25427,7 @@ function apFakData(X){
   return {T, L, inc, incB, exp, expB:X.bud.cats||{}};
 }
 function apFakHTML(e,X,ro){
-  const S=X.st, D0=apFakData(X), r2=AP2.util.r2, TT=AP2.derive.totals(S), boss=!ro, G=DRA.GS[e.id], live=!!(G&&G.row&&G.row.file_id);
+  const S=X.st, D0=apFakData(X), r2=AP2.util.r2, TT=AP2.derive.totals(S), boss=!ro, live=DRA.gsHasLive(e.id);
   const ch=d=>apChip(r2(d));
   const row=(l,b,a,good)=>`<div class="kv" style="padding:6px 14px;gap:8px;align-items:center"><span style="flex:1;min-width:0">${esc(l)}</span>
       <span class="dim" style="font-size:12px;white-space:nowrap">${b!=null?esc(t('προϋπ. {x}',{x:apE(b)})):esc(t('εκτός προϋπ.'))}</span><strong style="white-space:nowrap">${esc(apE(a))}</strong>${b!=null?ch(good?a-b:b-a):''}</div>`;
@@ -25451,7 +25462,7 @@ function apFakHTML(e,X,ro){
       :`<div class="pad dim" style="padding-top:0">${esc(t('Καμία απόδειξη ακόμη.'))}</div>`}</div>`;
 }
 function apFakWire(e,X,ro){
-  const dl=$('apDl'); if(dl) dl.onclick=()=>DRA.gsSync(e,dl,{only:['apol']});
+  const dl=$('apDl'); if(dl) dl.onclick=()=>DRA.gsSyncApol(e,dl);
   if(ro) return;
   document.querySelectorAll('[data-apfo]').forEach(s=>s.onchange=()=>{ const D0=apFakData(X), x=D0.L.find(q=>q.id===s.dataset.apfo); if(!x) return;
     apSend(e,[['folder.override',{receipt:x.id, fcat:s.value===x.auto?null:s.value}]]); });
@@ -25500,7 +25511,7 @@ function apCloseHTML(e,X,ro){
       ${tile(t('Αποτέλεσμα'),(T.free>0?'+':'')+apE(T.free),T.free<0?'var(--bad)':T.free>0?'var(--ok)':'')}${tile(t('Ταμείο'),fund?apFundL(fund):'—')}</div>
     ${T.refundable?`<div class="dim" style="font-size:12.5px;margin:-4px 0 12px">${esc(t('Τα «Μπήκαν» δεν μετρούν {x} που επιστρέφονται.',{x:apE(T.refundable)}))}</div>`:''}`;
   if(A.closed){
-    const G=DRA.GS&&DRA.GS[e.id], live=!!(G&&G.row&&G.row.file_id);
+    const live=DRA.gsHasLive(e.id);
     return head+`<div class="card pad" style="margin-bottom:12px"><strong>${esc(t('Μετά το κλείσιμο'))}</strong>
       <ol style="margin:8px 0 0 18px;padding:0;font-size:13.5px;display:grid;gap:10px">
         <li>${esc(t('Γράψε τον απολογισμό στο Δελτίο: ΑΠΟΛΟΓΙΣΜΟΣ ΣΥΝΟΨΗ και ΑΠΟΔΕΙΞΕΙΣ. Ό,τι άλλαξε κάποιος με το χέρι στο αρχείο μένει· τα πορτοφόλια δεν γράφονται ποτέ.'))}
@@ -25558,7 +25569,7 @@ function apCloseHTML(e,X,ro){
 }
 function apCloseWire(e,X,ro){
   const S=X.st, Dv=AP2.derive, C=Dv.closeCheck(S,X.bud.lines), P=Dv.closePlan(S,C.main,apHol(S)), today=todayISO();
-  const dl=$('apClDl'); if(dl) dl.onclick=()=>DRA.gsSync(e,dl,{only:['apol']});
+  const dl=$('apClDl'); if(dl) dl.onclick=()=>DRA.gsSyncApol(e,dl);
   const sn=$('apClSnap'); if(sn) sn.onclick=()=>{ SUBTAB.efolder='venue'; route('efolder'); };
   const fs=$('apFundSel'), fb=$('apFundSet'); if(fb) fb.onclick=()=>{ const v=fs&&fs.value; if(v&&v!==S.action.fund) apSend(e,[['action.fund',{fund:v}]]); };
   const cf=$('apClFund'); if(cf) cf.onchange=()=>{ X.fundPick=cf.value; apRender(e); };
@@ -25884,11 +25895,11 @@ const DRA=Object.freeze({
   signupCan:(...a)=>signupCan(...a),       
   signupHTML:(...a)=>signupHTML(...a),     
   signupWire:(...a)=>signupWire(...a),     
-  get GS(){ return GS; },                  
   gsCan:(...a)=>gsCan(...a),               
-  gsLoad:(...a)=>gsLoad(...a),             
-  gsSync:(...a)=>gsSync(...a),             
-  get XL(){ return XL; },                  
+  gsReady:(...a)=>gsReady(...a),           
+  gsKidsFinal:(...a)=>gsKidsFinal(...a),   
+  gsHasLive:(...a)=>gsHasLive(...a),       
+  gsSyncApol:(...a)=>gsSyncApol(...a),     
   get EFID(){ return EFID; },              
   certOn:(...a)=>certOn(...a),             
 });
@@ -28683,10 +28694,6 @@ function guardiansBody(){
   ['gsec','ggrp','ggr'].forEach(id=>$(id).addEventListener('change',draw)); draw();
 };
 function cp(t,l){navigator.clipboard.writeText(t).then(()=>toast(`Αντιγράφηκαν τα ${l}`))}
-const DENY_RX=/row-level security|permission denied|42501|δεν επιτρέπεται|δεν έχεις δικαίωμα|δεν υπογράφεις|μόνο ο Α\.Σ\.|μόνο ο διαχειριστής/i;
-function denyLog(m){ try{ if(typeof sb==='undefined'||!ME||!ME.person_id)return; if(!DENY_RX.test(String(m||'')))return;
-  sb.rpc('log_denial',{p_screen:String((typeof ROUTE!=='undefined'&&ROUTE)||''), p_detail:String(m).slice(0,300)}).then(()=>{},()=>{}); }catch(e){} }
-function toast(m){denyLog(m);const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--side);color:#fff;padding:10px 16px;border-radius:22px;font-size:13.5px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.28)';document.body.appendChild(d);setTimeout(()=>d.remove(),2300)}
 
 const CT_KINDS=['κινητό','σταθερό','εργασία','μόνο Viber'];
 const CT_SECS=['Μικρή Αγέλη','Αγέλη','Ομάδα','Κοινότητα'];
