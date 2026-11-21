@@ -1538,7 +1538,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-21 16:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-21 20:13'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -24096,8 +24096,8 @@ async function bdSaveRpc(e){
     p_since:s.row?s.row.updated_at:null, p_note:bdNote(C,old,s.d)});
 }
 function bdHTML(e){
-  const s=BD[e.id]; if(!s)return `<div class="card pad dim" id="bdBox">${t('Φόρτωση…')}</div>`;
-  if(s.err)return `<div class="card pad" id="bdBox">${t('Δεν φόρτωσε')}: ${esc(s.err.message||'')}</div>`;
+  const s=BD[e.id]; if(!s)return `<div class="card pad dim" id="bdBox" data-ev="${esc(e.id)}">${t('Φόρτωση…')}</div>`;
+  if(s.err)return `<div class="card pad" id="bdBox" data-ev="${esc(e.id)}">${t('Δεν φόρτωσε')}: ${esc(s.err.message||'')}</div>`;
   const X=bdCtx(e), F=X.full, Dd=X.dec, d=s.d, ed=DRA.gsCan(e), TF=bdTotals(F,d), TD=bdTotals(Dd,d), ro=ed?'':' disabled';
   const two=(a,b)=>`<span class="bd-2"><b>${bdEur(a)}</b><span>${bdEur(b)}</span></span>`;
   const sel=(k,opts,v)=>`<select data-bd="${k}"${ro}>${opts.map(([a,b])=>`<option value="${a}"${a===v?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
@@ -24147,7 +24147,7 @@ function bdHTML(e){
   const bal=!ed||TN.bal===0?'':(!bdHasForm(e)&&newFee!=null?`<button class="btn sm" id="bdBalFee">⚖ ${t('Τίμημα')} → ${bdEur(newFee)}</button>`:'')+`<button class="btn sm" id="bdBal">⚖ ${TN.bal<0?t('Από Ταμείο Τμήματος')+' '+bdEur(-TN.bal):t('Προς Ταμείο (Άλλο)')+' '+bdEur(TN.bal)}</button>
       <span class="dim" style="font-size:12px">${t('ισοσκελίζει αυτό που είναι τώρα στο Δελτίο')}</span>`;
   const ew=DRA.dlEligWarn(e);
-  return `<div id="bdBox">${ew.map(w=>`<div class="card pad" style="border-left:3px solid var(--warn);margin-bottom:10px;font-size:13px">⚠ ${esc(w)}</div>`).join('')}
+  return `<div id="bdBox" data-ev="${esc(e.id)}">${ew.map(w=>`<div class="card pad" style="border-left:3px solid var(--warn);margin-bottom:10px;font-size:13px">⚠ ${esc(w)}</div>`).join('')}
   <div class="card pad" style="margin-bottom:13px">
     <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>${t('Προϋπολογισμός')}</b>
       <span class="pill">${X.final?t('Τελειοποίηση'):t('Σχεδιασμός')}</span><span class="sp"></span>
@@ -24180,7 +24180,7 @@ function bdHTML(e){
 }
 const hasMetaL=l=>!!(l.when||l.sup||l._meta);
 const bdLine=(s,id)=>s.d.lines.find(l=>l.id===id);
-function bdDraw(e){ const b=$('bdBox'); if(!b||DRA.EFID!==e.id)return; b.outerHTML=bdHTML(e); bdWireUI(e); }
+function bdDraw(e){ const b=$('bdBox'); if(!b||b.dataset.ev!==e.id)return; b.outerHTML=bdHTML(e); bdWireUI(e); }
 function bdTouch(e){ BD[e.id].dirty=true; bdDraw(e); }
 function bdWireUI(e){
   const s=BD[e.id], box=$('bdBox'); if(!box||!s||s.err)return;
@@ -25900,7 +25900,6 @@ const DRA=Object.freeze({
   gsKidsFinal:(...a)=>gsKidsFinal(...a),   
   gsHasLive:(...a)=>gsHasLive(...a),       
   gsSyncApol:(...a)=>gsSyncApol(...a),     
-  get EFID(){ return EFID; },              
   certOn:(...a)=>certOn(...a),             
 });
 const OIK=Object.freeze({
