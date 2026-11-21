@@ -1531,7 +1531,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-21 10:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-21 11:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -25019,8 +25019,7 @@ function apFakHTML(e,X,ro){
         <div style="font-weight:800">${esc(t('Αποτέλεσμα {a} (προϋπ. {b})',{a:apE(r2(iA-eA)),b:apE(r2(iB-eB))}))}</div>
         ${TT.refundable?`<div class="dim">${esc(t('Δεν μετρούν: {x} που επιστρέφονται.',{x:apE(TT.refundable)}))}</div>`:''}
         ${n?`<div class="dim">${esc(t('Κόστος ανά άτομο {a} ({n} άτομα){b}',{a:apE(r2(eA/n)),n,b:dd?' · '+t('ανά άτομο-μέρα {x}',{x:apE(r2(eA/n/dd))}):''}))}</div>`:''}</div></div>
-    <div class="card"><div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><strong style="flex:1">${esc(t('Αποδείξεις με τη σειρά του φακέλου ({n})',{n:D0.L.length}))}</strong>
-        ${D0.L.length?`<button class="btn sm" id="apZip">⬇ ${esc(t('ZIP'))}</button><button class="btn sm" id="apPdf">⬇ ${esc(t('PDF'))}</button>`:''}</div>
+    <div class="card"><div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><strong style="flex:1">${esc(t('Αποδείξεις με τη σειρά του φακέλου ({n})',{n:D0.L.length}))}</strong></div>
       ${D0.L.length?D0.L.map(x=>`<div class="kv" style="padding:6px 14px;gap:8px;align-items:center;flex-wrap:wrap">
         <span style="flex:0 0 34px;font-weight:800">${x.no}</span>
         <span style="flex:1;min-width:150px">${esc(x.vendor||'—')}<span class="dim" style="display:block;font-size:12px">${esc(x.date?fshort(x.date):'—')}${x.appCat?' · '+esc(x.appCat):''}</span></span>
@@ -25032,15 +25031,12 @@ function apFakHTML(e,X,ro){
 }
 function apFakWire(e,X,ro){
   const dl=$('apDl'); if(dl) dl.onclick=()=>DRA.gsSync(e,dl,{only:['apol']});
-  const z=$('apZip'); if(z) z.onclick=()=>apZip(e,X,z);
-  const pd=$('apPdf'); if(pd) pd.onclick=()=>apPdf(e,X,pd);
   if(ro) return;
   document.querySelectorAll('[data-apfo]').forEach(s=>s.onchange=()=>{ const D0=apFakData(X), x=D0.L.find(q=>q.id===s.dataset.apfo); if(!x) return;
     apSend(e,[['folder.override',{receipt:x.id, fcat:s.value===x.auto?null:s.value}]]); });
 }
 const apSafe=s=>String(s||'').replace(/[\\/:*?"<>|\n\r\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,60);
 const apAmt=x=>AP2.util.r2(x).toFixed(2).replace('.',',');
-const apFileName=(x,k,ext)=>String(x.no).padStart(3,'0')+(k?dv('αβγδεζηθ')[k-1]||String(k):'')+'-'+(apSafe(x.vendor)||dv('Απόδειξη'))+'-'+apAmt(x.amount)+ext;
 async function apFetch(e,ref){
   const id=String(ref||'').replace(/^drive:/,''); if(!/^[A-Za-z0-9_-]{10,100}$/.test(id)) return null;
   const {data,error}=await sb.functions.invoke('action-sheet',{body:{op:'rcpt_get', event_id:e.id, file_id:id}});
@@ -25051,54 +25047,6 @@ const apJs=src=>new Promise((ok,no)=>{ if(document.querySelector(`script[src="${
   const s=document.createElement('script'); s.src=src; sriTag(s); s.onload=ok; s.onerror=()=>no(new Error(t('δεν φορτώθηκε')+' '+src)); document.head.appendChild(s); });
 const AP_EXT={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','application/pdf':'.pdf'};
 function apSaveBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },4000); }
-const apBase=e=>apSafe(e.title||dv('Δράση'))+' — '+dv('Αποδείξεις');
-async function apZip(e,X,b){
-  const L=apFakData(X).L, old=b.textContent, bad=[]; b.disabled=true;
-  try{ await apJs('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'); }catch(x){ b.disabled=false; await uiNote(t('Δεν φόρτωσε η βιβλιοθήκη — έλεγξε τη σύνδεση')); return; }
-  const Z=new JSZip(), rows=[[dv('Α/Α'),dv('Ημερομηνία'),dv('Κατηγορία Εξόδου'),dv('Προμηθευτής'),dv('Ποσό'),dv('Αρχεία')]];
-  let i=0, n=L.reduce((a,x)=>a+x.photos.length,0);
-  for(const x of L){ const names=[];
-    for(const [k,p] of x.photos.entries()){ i++; b.textContent=t('Αρχείο {a}/{b}…',{a:i,b:n});
-      const f=await apFetch(e,p); if(!f){ bad.push(x.no); continue; } const nm=apFileName(x,k,AP_EXT[f.mime]||'.jpg'); Z.file(nm,f.bytes); names.push(nm); }
-    rows.push([x.no,x.date||'',x.fcat,x.vendor||'',apAmt(x.amount),names.join(' · ')||dv('⚠ ΧΩΡΙΣ ΑΠΟΔΕΙΞΗ')]); }
-  Z.file('00-'+dv('ΑΠΟΔΕΙΞΕΙΣ')+'.csv','﻿'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n'));
-  b.textContent=t('Συμπίεση…');
-  apSaveBlob(await Z.generateAsync({type:'blob'}),apBase(e)+'.zip');
-  b.disabled=false; b.textContent=old;
-  if(bad.length) await uiNote(t('Δεν κατέβηκαν αρχεία των αποδείξεων {x} — έλεγξε αν υπάρχουν ακόμη στον φάκελο «Αποδείξεις» του Drive.',{x:[...new Set(bad)].join(', ')}));
-}
-async function apPdf(e,X,b){
-  const L=apFakData(X).L, old=b.textContent, bad=[]; b.disabled=true;
-  try{ await apJs('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); }catch(x){ b.disabled=false; await uiNote(t('Δεν φόρτωσε η βιβλιοθήκη — έλεγξε τη σύνδεση')); return; }
-  const doc=await window.PDFLib.PDFDocument.create(), PW=595.28, PH=841.89, W=1240, H=1754;    
-  const page=async c=>{ const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.82)); const im=await doc.embedJpg(new Uint8Array(await blob.arrayBuffer()));
-    doc.addPage([PW,PH]).drawImage(im,{x:0,y:0,width:PW,height:PH}); };
-  const blank=()=>{ const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,W,H); x.fillStyle='#111'; return [c,x]; };
-  const font=(x,px,bold)=>{ x.font=(bold?'700 ':'400 ')+px+'px Commissioner, Arial, sans-serif'; };
-  const per=38; for(let s0=0;s0<Math.max(1,L.length);s0+=per){ const [c,x]=blank(); font(x,44,true); x.fillText((e.title||'')+' — '+dv('ΑΠΟΔΕΙΞΕΙΣ'),80,110);
-    font(x,26); L.slice(s0,s0+per).forEach((q,i)=>{ const y=180+i*38; x.fillText(String(q.no),80,y); x.fillText(q.date?fshort(q.date):'',150,y);
-      x.fillText(String(q.fcat).slice(0,26),360,y); x.fillText(String(q.vendor||'').slice(0,30),720,y); x.textAlign='right'; x.fillText(apE(q.amount),1160,y); x.textAlign='left'; });
-    if(s0+per>=L.length){ font(x,28,true); x.textAlign='right'; x.fillText(t('Σύνολο {x}',{x:apE(L.reduce((a,q)=>a+q.amount,0))}),1160,180+Math.min(per,L.length-s0)*38+30); x.textAlign='left'; }
-    await page(c); }
-  const head=(x,q,k)=>{ x.fillStyle='#1C61AC'; x.fillRect(0,0,W,90); x.fillStyle='#fff'; font(x,34,true);
-    x.fillText(q.no+(k?dv('αβγδεζηθ')[k-1]||'':'')+' · '+q.fcat+' · '+(q.vendor||'')+' · '+apE(q.amount)+(q.date?' · '+fshort(q.date):''),40,58); x.fillStyle='#111'; };
-  const fit=(x,src,w,h)=>{ const s1=Math.min((W-80)/w,(H-140)/h,2.5); x.drawImage(src,(W-w*s1)/2,110,w*s1,h*s1); };
-  let i=0; const n=L.reduce((a,q)=>a+q.photos.length,0);
-  for(const q of L) for(const [k,p] of q.photos.entries()){ i++; b.textContent=t('Αρχείο {a}/{b}…',{a:i,b:n});
-    const f=await apFetch(e,p); if(!f){ bad.push(q.no); continue; }
-    try{
-      if(/pdf/.test(f.mime)){ await apJs('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
-        const Lb=window.pdfjsLib; Lb.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const d=await Lb.getDocument({data:f.bytes}).promise;
-        for(let pg=1;pg<=Math.min(3,d.numPages);pg++){ const P=await d.getPage(pg), v0=P.getViewport({scale:1}), vp=P.getViewport({scale:Math.min(2,1400/Math.max(v0.width,v0.height))});
-          const cc=document.createElement('canvas'); cc.width=Math.round(vp.width); cc.height=Math.round(vp.height); await P.render({canvasContext:cc.getContext('2d'),viewport:vp}).promise;
-          const [c,x]=blank(); fit(x,cc,cc.width,cc.height); head(x,q,k); await page(c); } }
-      else { const bm=await createImageBitmap(new Blob([f.bytes],{type:f.mime})); const [c,x]=blank(); fit(x,bm,bm.width,bm.height); head(x,q,k); await page(c); }
-    }catch(err){ bad.push(q.no); } }
-  apSaveBlob(new Blob([await doc.save()],{type:'application/pdf'}),apBase(e)+'.pdf');
-  b.disabled=false; b.textContent=old;
-  if(bad.length) await uiNote(t('Δεν μπήκαν στο PDF οι αποδείξεις {x} — έλεγξε αν υπάρχουν ακόμη στον φάκελο «Αποδείξεις» του Drive.',{x:[...new Set(bad)].join(', ')}));
-}
 
 
 const AP_FUND=()=>({system:t('Ταμείο Συστήματος'),section:t('Ταμείο Τμήματος'),later:t('Το αποφασίζει αργότερα ο Α.Σ.')});
@@ -25368,11 +25316,6 @@ function apXWire(e,X){ const b=$('apXBtn'); if(b) b.onclick=()=>apXGo(e,X,b); }
 
 const apXIso=d=>{ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||'')); return m?m[0]:''; };
 function apXDay(d){ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||'')); return m?(+m[3])+' '+MON[+m[2]-1]+' '+m[1]:'—'; }
-function apXRange(e){
-  const a=apXIso(e.event_date), b=apXIso(e.end_date);
-  if(!a) return '—'; if(!b||b===a) return apXDay(a);
-  return a.slice(0,7)===b.slice(0,7)?(+a.slice(8))+'–'+apXDay(b):apXDay(a)+' – '+apXDay(b);
-}
 function apXPayer(S,x){ const e=S.expenses[x.expense]||{};
   if(e.status==='unsettled') return e.buyer||'';
   if(e.status==='unpaid') return '';
@@ -25383,6 +25326,7 @@ function apXFile(x,k,ext){
   return [String(x.no).padStart(3,'0')+(k?(AP_XSFX()[k-1]||String(k)):''), apXIso(x.date)||'—', apSafe(x.cat)||'—', apAmt(x.amount)+' €', apSafe(x.payer)||'—'].join(' - ')+ext; }
 const apXName=(e,ext)=>dv('Απολογισμός')+' - '+(apSafe(e.title)||dv('Δράση'))+' - '+(apXIso(e.event_date)||todayISO())+ext;
 const apXTag=j=>t('Α/Α')+' '+j.x.no+(j.k?AP_XSFX()[j.k-1]||'':'');
+const apXLabel=j=>apXTag(j)+' · '+apXDay(j.x.date)+' · '+(j.x.cat||'—')+' · '+apE(j.x.amount);
 const apXTxt=s=>String(s==null?'':s).replace(/[\u0000-\u001f]+/g,' ').replace(/[\u{1F000}-\u{1FFFF}←-⇿☀-➿️‍]/gu,'');
 function apXFit(F,s,size,w){ s=apXTxt(s); if(F.widthOfTextAtSize(s,size)<=w) return s;
   while(s.length>1&&F.widthOfTextAtSize(s+'…',size)>w) s=s.slice(0,-1); return s+'…'; }
@@ -25423,45 +25367,29 @@ async function apXJpeg(f){
   if(/png/.test(f.mime)) return {png:true, bytes:f.bytes};
   return null;
 }
-
-const AP_XPW=595.28, AP_XPH=841.89, AP_XM=40;
-function apXSummary(G,e,X,rows,fails,notes){
-  const {doc,L,R,B}=G, rgb=L.rgb, PW=AP_XPW, PH=AP_XPH, M=AP_XM, ink=rgb(0,0,0), blue=rgb(0.11,0.38,0.67), soft=rgb(0.92,0.92,0.92);
-  const S=X.st, T=AP2.derive.totals(S), r2=AP2.util.r2, RH=15;
-  let pg=doc.addPage([PW,PH]), y=PH-M;
-  const txt=(s,x,yy,o)=>{ o=o||{}; pg.drawText(apXTxt(s),{x,y:yy,size:o.size||10,font:o.bold?B:R,color:o.color||ink}); };
-  const right=(s,xr,yy,o)=>{ o=o||{}; const F=o.bold?B:R; txt(s,xr-F.widthOfTextAtSize(apXTxt(s),o.size||10),yy,o); };
-  txt(t('Οικονομικός απολογισμός — φάκελος αποδείξεων'),M,y-4,{size:11,bold:true,color:blue}); y-=28;
-  txt(apXFit(B,e.title||'',18,PW-2*M),M,y,{size:18,bold:true}); y-=18;
-  txt(apXRange(e)+' · '+t('Εξαγωγή {d}',{d:apXDay(todayISO())})+(S.action.closed?' · '+t('Ο απολογισμός έχει κλείσει'):' · '+t('Ο απολογισμός είναι ανοιχτός')),M,y,{size:10}); y-=22;
-  const tw=(PW-2*M-20)/3;
-  [[t('Μπήκαν'),apE(r2(T.income-T.refundable))],[t('Ξοδέψαμε'),apE(T.expenses)],[t('Αποτέλεσμα'),(T.free>0?'+':'')+apE(T.free)]].forEach(([k,v],i)=>{
-    const x=M+i*(tw+10); pg.drawRectangle({x,y:y-42,width:tw,height:46,borderColor:ink,borderWidth:0.6});
-    txt(k,x+8,y-12,{size:9}); txt(v,x+8,y-33,{size:15,bold:true}); });
-  y-=60;
-  if(T.refundable){ txt(t('Τα «Μπήκαν» δεν μετρούν {x} που επιστρέφονται.',{x:apE(T.refundable)}),M,y,{size:9}); y-=16; }
-  y-=6;
-  const C=[[t('Α/Α'),30],[t('Ημερομηνία'),84],[t('Κατηγορία'),90],[t('Περιγραφή'),146],[t('Ποσό'),62],[t('Πλήρωσε'),103]];
-  const head=()=>{ pg.drawRectangle({x:M,y:y-4,width:PW-2*M,height:RH,color:soft}); let cx=M;
-    C.forEach(([l,w],j)=>{ j===4?right(l,cx+w-4,y,{bold:true,size:9}):txt(l,cx+3,y,{bold:true,size:9}); cx+=w; }); y-=RH; };
-  const need=(h,hd)=>{ if(y-h<M+24){ pg=doc.addPage([PW,PH]); y=PH-M; if(hd) head(); } };
-  head();
-  rows.forEach(x=>{ need(RH,true);
-    const cells=[String(x.no), apXDay(x.date), x.cat||'—', (x.vendor||'—')+(x.photos.length?'':' ('+t('χωρίς φωτογραφία')+')'), apE(x.amount), x.payer||(x.unpaid?t('απλήρωτο'):'—')];
-    let cx=M; C.forEach(([l,w],j)=>{ const s=apXFit(R,cells[j],9,w-7); j===4?right(s,cx+w-4,y,{size:9}):txt(s,cx+3,y,{size:9}); cx+=w; });
-    pg.drawLine({start:{x:M,y:y-4},end:{x:PW-M,y:y-4},thickness:0.3,color:ink}); y-=RH; });
-  need(RH*2,false);
-  right(t('Σύνολο αποδείξεων: {x}',{x:apE(r2(rows.reduce((a,x)=>a+x.amount,0)))}),PW-M-103-4,y-4,{bold:true,size:10}); y-=RH*2;
-  const para=(title,list)=>{ if(!list.length) return; need(RH*2,false); txt(title,M,y,{bold:true,size:10}); y-=RH;
-    list.forEach(s=>{ need(RH,false); txt(apXFit(R,'• '+s,9,PW-2*M-6),M+6,y,{size:9}); y-=13; }); y-=6; };
-  para(t('Δεν μπήκαν — δοκίμασε ξανά ή άνοιξέ τες από τον φάκελο «Αποδείξεις» του Drive'),fails);
-  para(t('Σημειώσεις'),notes);
+async function apXStamp(f,label){
+  try{ const bm=await createImageBitmap(new Blob([f.bytes],{type:f.mime}));
+    const s=Math.min(1,3000/Math.max(bm.width,bm.height)), w=Math.max(1,Math.round(bm.width*s)), h=Math.max(1,Math.round(bm.height*s));
+    const bh=Math.max(36,Math.round(w*0.055)), pad=Math.round(bh*0.35), c=document.createElement('canvas'); c.width=w; c.height=h+bh;
+    const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,w,h+bh); g.drawImage(bm,0,bh,w,h); if(bm.close) bm.close();
+    g.fillStyle='#1c61ab'; g.fillRect(0,0,w,bh);
+    let fs=Math.round(bh*0.5), s2=String(label);
+    const setF=()=>{ g.font='600 '+fs+'px system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif'; };
+    setF(); while(fs>10&&g.measureText(s2).width>w-2*pad){ fs--; setF(); }
+    while(s2.length>8&&g.measureText(s2).width>w-2*pad) s2=s2.slice(0,-2)+'…';
+    g.fillStyle='#fff'; g.textBaseline='middle'; g.fillText(s2,pad,Math.round(bh/2));
+    const png=/png/.test(f.mime), b=await new Promise(r=>c.toBlob(r,png?'image/png':'image/jpeg',0.9));
+    if(b) return {mime:png?'image/png':'image/jpeg', bytes:new Uint8Array(await b.arrayBuffer())};
+  }catch(_){}
+  return null;
 }
+
+const AP_XPW=595.28, AP_XPH=841.89;
 function apXFoot(G,e){ const ps=G.doc.getPages(), n=ps.length;
   ps.forEach((p,i)=>{ p.drawText(apXFit(G.R,'e76 · '+(e.title||'')+' · '+t('σελίδα {a} από {b}',{a:i+1,b:n}),8,p.getWidth()-60),{x:30,y:14,size:8,font:G.R,color:G.L.rgb(0.25,0.25,0.25)}); }); }
 function apXHead(G,pg,j){ const {L,R,B}=G, PW=pg.getWidth(), PH=pg.getHeight(), x=j.x, w=L.rgb(1,1,1);
   pg.drawRectangle({x:0,y:PH-52,width:PW,height:52,color:L.rgb(0.11,0.38,0.67)});
-  pg.drawText(apXFit(B,apXTag(j)+' · '+apXDay(x.date)+' · '+(x.cat||'—')+' · '+apE(x.amount),14,PW-60),{x:30,y:PH-25,size:14,font:B,color:w});
+  pg.drawText(apXFit(B,apXLabel(j),14,PW-60),{x:30,y:PH-25,size:14,font:B,color:w});
   const sub=[x.vendor||'', x.payer?t('Πλήρωσε: {p}',{p:x.payer}):''].filter(Boolean).join(' · ');
   if(sub) pg.drawText(apXFit(R,sub,10,PW-60),{x:30,y:PH-42,size:10,font:R,color:w}); }
 const apXBox=(w,h,cap)=>{ const aw=AP_XPW-60, ah=AP_XPH-64-30, s=Math.min(aw/w,ah/h,cap); return {x:(AP_XPW-w*s)/2, y:30+(ah-h*s)/2, width:w*s, height:h*s}; };
@@ -25479,8 +25407,8 @@ async function apXPdfPages(G,j){
 async function apXGo(e,X,b){
   const rows=apXRows(X); if(!rows.length){ await uiNote(t('Καμία απόδειξη ακόμη.')); return; }
   const kind=await uiChoose(t('Φάκελος αποδείξεων ({n}) — σε ποια μορφή;',{n:rows.length}),[
-    {v:'pdf',t:t('PDF — ένα αρχείο: σύνοψη και μία σελίδα ανά απόδειξη'),primary:true},
-    {v:'zip',t:t('ZIP — Σύνοψη και κάθε απόδειξη ως ξεχωριστό αρχείο')},{v:null,t:t('Άκυρο')}]);
+    {v:'pdf',t:t('PDF — όλες οι αποδείξεις σε ένα αρχείο, αριθμημένες'),primary:true},
+    {v:'zip',t:t('ZIP — αριθμημένες, κάθε απόδειξη ξεχωριστό αρχείο')},{v:null,t:t('Άκυρο')}]);
   if(!kind) return;
   const old=b.textContent; b.disabled=true; b.setAttribute('aria-busy','true');
   const say=s=>{ b.textContent=s; };
@@ -25497,34 +25425,28 @@ async function apXPdf(e,X,rows,say){
         if(!n) throw new Error('0'); if(n>10) notes.push(apXTag(j)+' — '+t('μπήκαν οι 10 πρώτες από {n} σελίδες — όλο το αρχείο επισυνάπτεται στο ZIP',{n})); }
       else { j.im=await apXJpeg(j.f); if(!j.im) throw new Error('img'); } }
     catch(_){ j.bad=true; fails.push(apXTag(j)+' — '+t('το αρχείο δεν μπαίνει στο PDF — επισυνάπτεται στο ZIP (βγάλε και το ZIP)')); } }
-  apXSummary(G,e,X,rows,fails,notes);
   for(const j of jobs){ if(!j.f||j.bad) continue;
     try{ if(j.src) await apXPdfPages(G,j); else await apXPhoto(G,j); }catch(_){ late.push(apXTag(j)); } }
+  if(!G.doc.getPageCount()) throw new Error(t('καμία απόδειξη δεν μπήκε στο PDF')+(fails.length?' — '+fails.join(' · '):''));
   apXFoot(G,e);
   say(t('Αποθήκευση…'));
   apSaveBlob(new Blob([await G.doc.save()],{type:'application/pdf'}),apXName(e,'.pdf'));
-  const bad=fails.length+late.length;
-  if(bad) await uiNote(t('Το PDF βγήκε, αλλά {n} αρχεία δεν μπήκαν — η σελίδα σύνοψης γράφει ποια.',{n:bad})+(late.length?' ('+late.join(', ')+')':''));
-}
-function apXCsv(e,X,rows,fails){
-  const T=AP2.derive.totals(X.st), r2=AP2.util.r2;
-  const L=[[e.title||'',apXRange(e)],[t('Μπήκαν'),apAmt(r2(T.income-T.refundable))],[t('Ξοδέψαμε'),apAmt(T.expenses)],[t('Αποτέλεσμα'),apAmt(T.free)],[],
-    [t('Α/Α'),t('Ημερομηνία'),t('Κατηγορία'),t('Περιγραφή'),t('Ποσό'),t('Πλήρωσε')]];
-  rows.forEach(x=>L.push([x.no,apXDay(x.date),x.cat,(x.vendor||'')+(x.photos.length?'':' ('+t('χωρίς φωτογραφία')+')'),apAmt(x.amount),x.payer||(x.unpaid?t('απλήρωτο'):'—')]));
-  if(fails.length){ L.push([]); L.push([t('Δεν μπήκαν')]); fails.forEach(s=>L.push([s])); }
-  return '﻿'+L.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const miss=[...fails,...notes,...late.map(s=>s+' — '+t('δεν μπήκε στο PDF'))];
+  if(miss.length) await uiNote(t('Το PDF βγήκε — προσοχή σε {n}:',{n:miss.length})+'\n\n• '+miss.join('\n• '));
 }
 async function apXZip(e,X,rows,say){
   say(t('Προετοιμασία…'));
   await apJs(AP_XLIB.zip); const JZ=await apXGlob('JSZip'); if(!JZ) throw new Error(t('Δεν φόρτωσε η βιβλιοθήκη ZIP'));
   const {jobs,fails}=await apXGet(e,rows,say), Z=new JZ();
-  jobs.forEach(j=>{ if(j.f) Z.file(apXFile(j.x,j.k,AP_EXT[j.f.mime]||'.jpg'),j.f.bytes); });
-  say(t('Σύνοψη…'));
-  let sum=null; try{ const G=await apXDoc(); G.doc.setTitle(dv('Σύνοψη')); apXSummary(G,e,X,rows,fails,[]); apXFoot(G,e); sum=await G.doc.save(); }catch(_){ sum=null; }
-  if(sum) Z.file(dv('Σύνοψη')+'.pdf',sum); else Z.file(dv('Σύνοψη')+'.csv',apXCsv(e,X,rows,fails));
+  const imgs=jobs.filter(j=>j.f&&!/pdf/.test(j.f.mime)).length, plain=[]; let si=0;
+  for(const j of jobs){ if(!j.f) continue; let f=j.f;
+    if(!/pdf/.test(f.mime)){ say(t('Αρίθμηση {i} από {n}…',{i:++si,n:imgs})); const st=await apXStamp(f,apXLabel(j)); if(st) f=st; else plain.push(apXTag(j)); }
+    Z.file(apXFile(j.x,j.k,AP_EXT[f.mime]||'.jpg'),f.bytes); }
+  if(!Object.keys(Z.files).length) throw new Error(t('καμία απόδειξη δεν κατέβηκε')+(fails.length?' — '+fails.join(' · '):''));
   say(t('Συμπίεση…'));
   apSaveBlob(await Z.generateAsync({type:'blob'}),apXName(e,'.zip'));
-  if(fails.length) await uiNote(t('Το ZIP βγήκε, αλλά {n} αρχεία δεν κατέβηκαν — η Σύνοψη γράφει ποια.',{n:fails.length}));
+  const miss=[...fails,...plain.map(s=>s+' — '+t('χωρίς τον αριθμό πάνω στη φωτογραφία (ο αριθμός είναι στο όνομα)'))];
+  if(miss.length) await uiNote(t('Το ZIP βγήκε — προσοχή σε {n}:',{n:miss.length})+'\n\n• '+miss.join('\n• '));
 }
 const DRA=Object.freeze({
   dlKids:(...a)=>dlKids(...a),             
