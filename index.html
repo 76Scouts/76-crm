@@ -1531,7 +1531,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-21 10:06'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-21 10:42'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1768,9 +1768,23 @@ function mfaNagShow(){ if(!MFA_NAG||$('mfaNag'))return; const a=$('app'); if(!a)
     <button class="btn p sm" id="mfaNagGo">${esc(t('Ενεργοποίηση'))}</button><button class="btn gh sm" id="mfaNagX" aria-label="${esc(t('Κλείσιμο'))}">✕</button>`;
   document.body.appendChild(d);
   $('mfaNagX').onclick=()=>d.remove();
-  $('mfaNagGo').onclick=()=>{ d.remove(); $('drwp').innerHTML=`<div class="dhead"><div style="flex:1;font-size:17px;font-weight:600">${esc(t('Δεύτερος παράγοντας (MFA)'))}</div>
+  $('mfaNagGo').onclick=()=>{ d.remove(); mfaOpen(); };
+}
+function mfaOpen(){
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1;font-size:17px;font-weight:600">${esc(t('Δεύτερος παράγοντας (MFA)'))}</div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div><div class="dsec"><div id="mfaPanel"></div></div>`;
-    $('drw').classList.add('on'); mfaPanel(); };
+  $('drw').classList.add('on'); mfaPanel();
+}
+function mfaHomeLine(){
+  if(!MFA_NAG)return '';
+  const when=MFA_NAG.days<=1?t('ως {d} — σήμερα η τελευταία μέρα',{d:fdate(MFA_NAG.dl)})
+                            :t('ως {d} · {n} μέρες ακόμη',{d:fdate(MFA_NAG.dl),n:MFA_NAG.days});
+  return `<div style="display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+      <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">🔐 MFA</span>
+      <b style="font-size:13.5px;flex:1;min-width:150px">${esc(t('Δεύτερος παράγοντας (MFA)'))}</b>
+      <span style="font-size:12.5px;color:var(--warn)">${esc(when)}</span>
+      <span class="dim" style="font-size:12px">${esc(t('Υποχρεωτικό για τους βαθμοφόρους — παίρνει ένα λεπτό.'))}</span>
+      <button class="btn sm p" data-mfaopen="1">${esc(t('Ενεργοποίηση'))}</button></div>`;
 }
 function mfaForceScreen(){
   $('gate').style.display='none'; $('app').style.display='flex';
@@ -1783,13 +1797,15 @@ function mfaForceScreen(){
   mfaPanel();
   $('mfaFOut').onclick=async e=>{ e.preventDefault(); await sb.auth.signOut(); location.reload() };
 }
-let MFA_AFTER=null;
+let MFA_AFTER=null, MFA_JUMPED=false;
 function mfaCard(){ const v=$('view'); if(!v||$('mfaCardBox'))return;
   const c=document.createElement('div'); c.className='card pad'; c.id='mfaCardBox'; c.style.marginBottom='14px';
   c.innerHTML=`<b>${esc(t('Δεύτερος παράγοντας (MFA)'))}</b><div id="mfaPanel" style="margin-top:8px"></div>
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)"><button class="btn sm" id="mfaOthers">${esc(t('Αποσύνδεση από όλες τις άλλες συσκευές'))}</button>
     <div class="dim" style="font-size:12px;margin-top:5px">${esc(t('Π.χ. αν χάσεις το κινητό: οι άλλες συσκευές θα χρειαστούν ξανά σύνδεση (και κωδικό).'))}</div></div>`;
   if(v.lastElementChild)v.insertBefore(c,v.lastElementChild); else v.appendChild(c);
+  if(MFA_NAG){ c.style.borderLeft='3px solid var(--warn)';
+    if(!MFA_JUMPED){ MFA_JUMPED=true; setTimeout(()=>{ try{ c.scrollIntoView({block:'center',behavior:'smooth'}) }catch(e){} },80); } }
   $('mfaOthers').onclick=async()=>{ if(!await uiAsk(t('Αποσύνδεση από όλες τις άλλες συσκευές σου; Αυτή εδώ μένει συνδεδεμένη.')))return;
     const {error}=await sb.auth.signOut({scope:'others'}); toast(error?t('Δεν έγινε')+': '+error.message:t('Οι άλλες συσκευές αποσυνδέθηκαν')); };
   mfaPanel();
@@ -8820,6 +8836,7 @@ const PUSH_KINDS=()=>[
   ...(meRec()&&isLed(meRec())?[{k:'lixi', t:t('Λήξεις πιστοποιητικών και Ν.91')}]:[]),
   ...(meRec()&&isLed(meRec())?[{k:'parousies', t:t('Παρουσίες που δεν περάστηκαν (19:00, για Αρχηγό/Υπαρχηγούς τμήματος)')}]:[]),
   ...(ME&&isAdminUI()?[{k:'xarti', t:t('Χαρτιά που ανέβηκαν και περιμένουν επιβεβαίωση')}]:[]),
+  ...(ME&&mfaMust()?[{k:'mfa', t:t('Υπενθύμιση για τον δεύτερο παράγοντα (MFA), όσο δεν έχει ενεργοποιηθεί')}]:[]),
   {k:'anakoinosi', t:t('Ανακοινώσεις του Συστήματος')}];
 const pushOk=()=>typeof navigator!=='undefined'&&'serviceWorker' in navigator&&typeof window!=='undefined'&&'PushManager' in window&&'Notification' in window;
 const pushIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -24335,6 +24352,7 @@ function apRender(e){
     ${!X.edit&&!S.action.closed?`<div class="dim" style="font-size:12.5px;margin-bottom:8px">${esc(X.staffMe===false?t('Βλέπεις τον απολογισμό — μόνο ανάγνωση.'):t('Βλέπεις τον απολογισμό και υποβάλλεις αποδείξεις· εγκρίνουν ο Αρχηγός δράσης, ο Αρχηγός τμήματος και ο Α.Σ.'))}</div>`:''}
     ${!S.action.closed&&!(APFORM&&APFORM.k==='sub')&&(X.edit||X.staffMe!==false)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn${X.edit?'':' p'} sm" id="apSubNew">📤 ${esc(t('Υπόβαλε απόδειξη'))}</button>
       ${X.edit?`<button class="btn gh sm" id="apSubLink" title="${esc(t('Για το επιτελείο της δράσης — ανοίγει την υποβολή μετά τη σύνδεση'))}">🔗 ${esc(t('Σύνδεσμος υποβολής'))}</button>`:''}</div>`:''}
+    ${apXBar(e,X)}
     <div class="ap-sub" role="tablist" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       ${subs.map(([k,l])=>`<button class="btn sm${APSUB===k?' p':' gh'}" role="tab" aria-selected="${APSUB===k}" data-apsub="${k}">${esc(l)}</button>`).join('')}</div>
     ${X.err?`<div class="card pad" style="color:var(--bad)">${esc(t('Δεν φορτώθηκε: {x}',{x:X.err.message||''}))}</div>`:''}
@@ -24347,6 +24365,7 @@ function apRender(e){
     (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>apToast(t('Ο σύνδεσμος αντιγράφηκε — στείλ’ τον στο επιτελείο της δράσης')),async()=>{ await uiNote(u) }); };
   if(!ro) box.querySelectorAll('[data-appay]').forEach(b=>b.onclick=x=>{ x.stopPropagation(); apPay(e,X,b.dataset.appay.split(',')) });
   const rp=$('apReopen'); if(rp) rp.onclick=()=>apReopen(e,X);
+  apXWire(e,X);    
   const W={exp:apExpWire, sub:apSubWire, plan:apPlanWire, sum:apSumWire, fak:apFakWire, wal:apWalWire, src:apSrcWire, close:apCloseWire, log:apLogWire};
   (W[APSUB]||apOverWire)(e,X,ro);
 }
@@ -24503,7 +24522,7 @@ function apExpHTML(e,X,ro){
       <span class="dim" style="align-self:center;font-size:12.5px">${esc(t('{n} έξοδα · {x}',{n:L.length,x:apE(L.reduce((s,o)=>s+o.amt,0))}))}</span></div>
     <div class="card">${L.length?L.map(o=>{ const ph=o.rs.flatMap(r=>r.photos||[]);
       return `<div class="kv ap-row" data-apx="${esc(o.x.id)}" style="padding:8px 14px;gap:10px;align-items:center;${ro?'':'cursor:pointer'}">
-        <span style="flex:1;min-width:0"><strong>${esc(o.x.title||o.x.vendor||t('(χωρίς περιγραφή)'))}</strong>
+        <span style="flex:1;min-width:0">${apNoBadge(S,o.x.id)}<strong>${esc(o.x.title||o.x.vendor||t('(χωρίς περιγραφή)'))}</strong>
           <span class="dim" style="font-size:12.5px;display:block">${esc(o.x.date?fshort(o.x.date):'—')} · ${esc(o.x.appCat||t('χωρίς κατηγορία'))} · ${esc(apStatusTxt(o.x,acc))}${(o.x.covers||[]).length?' · '+esc((o.x.covers.length===1?t('καλύπτει 1 πρόβλεψη'):t('καλύπτει {n} προβλέψεις',{n:o.x.covers.length}))):''}</span></span>
         ${ph.length?ph.map((p,i)=>`<button class="btn sm gh" data-apph="${esc(p)}" aria-label="${esc(t('Φωτογραφία {n}',{n:i+1}))}">📷</button>`).join(''):`<span title="${esc(t('χωρίς φωτογραφία'))}">⚠</span>`}
         <strong style="white-space:nowrap">${esc(apE(o.amt))}</strong>
@@ -25194,6 +25213,7 @@ function apCloseWire(e,X,ro){
 const APOD_BASE='https://e.76.life/76-apodeixi.html';
 const APLNK={};             
 let APLNK_NEW=null;         
+let APLNK_KIND='once';      
 
 function apSubName(s){ return apNm(s&&s.createdBy)||(s&&!s.createdBy&&s.ext&&s.ext.name)||'' }
 function apSubWho(s){
@@ -25202,8 +25222,20 @@ function apSubWho(s){
 }
 const apPayX=p=>p==='fund'?t('💳 Με χρήματα της δράσης'):'';
 const apLnkDay=x=>{ try{ return new Date(new Date(x).getTime()-1).toLocaleDateString('sv-SE',{timeZone:'Asia/Nicosia'}) }catch(e){ return String(x||'').slice(0,10) } };
+const apLnkOnce=r=>r&&r.max_uses!=null;
+const apLnkSpent=r=>apLnkOnce(r)&&(r.uses||0)>=r.max_uses;
+function apLnkKind(r){
+  const u=r.uses||0;
+  if(apLnkOnce(r)) return apLnkSpent(r)?t('μία χρήση · χρησιμοποιήθηκε'):t('μία χρήση · δεν χρησιμοποιήθηκε ακόμη');
+  return u===1?t('πολλές χρήσεις · 1 υποβολή'):t('πολλές χρήσεις · {n} υποβολές',{n:u});
+}
+const apLnkKindHint=once=>once
+  ?t('Μία απόδειξη (έως 4 φωτογραφίες) και ο σύνδεσμος κλείνει — για όποιον έχει μία απόδειξη ή δεν μπορεί να μπει με λογαριασμό.')
+  :t('Όσες αποδείξεις χρειαστεί ως τη λήξη — π.χ. ο μάγειρας όλης της δράσης.');
+const apLnkChip=x=>`<span style="display:inline-block;border:1px solid var(--line2);border-radius:999px;padding:0 8px;font-size:11.5px;color:var(--ink)">${esc(x)}</span>`;
 function apLnkState(r,closed){
   if(r.revoked_at) return {k:'x', l:t('ανακλήθηκε')};
+  if(apLnkSpent(r)) return {k:'u', l:''};    
   if(closed) return {k:'c', l:t('κλειστός απολογισμός')};
   if(new Date(r.expires_at)<=new Date()) return {k:'e', l:t('έληξε')};
   return {k:'ok', l:t('ενεργός ως {d}',{d:fshort(apLnkDay(r.expires_at))})};
@@ -25224,7 +25256,7 @@ function apLnkBody(e,X){
   let h='';
   if(nw){
     h+=`<div style="border:1px solid var(--ok);border-radius:12px;padding:10px 12px;margin-bottom:10px">
-      <strong>${esc(t('Σύνδεσμος για: {n}',{n:nw.label}))}</strong>
+      <strong>${esc(t('Σύνδεσμος για: {n}',{n:nw.label}))}</strong> ${apLnkChip(nw.once?t('μία χρήση'):t('πολλές χρήσεις'))}
       <div class="dim" style="font-size:12.5px;margin:2px 0 6px">⚠ ${esc(t('Φαίνεται ΜΟΝΟ τώρα — αντίγραψέ τον και στείλ’ τον στο πρόσωπο. Αν χαθεί, φτιάξε νέο και ανακάλεσε αυτόν.'))}</div>
       <label>${esc(t('Σύνδεσμος'))}<input id="apLnkUrl" readonly value="${esc(nw.url)}"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn sm p" id="apLnkCp">📋 ${esc(t('Αντιγραφή'))}</button></div>
@@ -25232,27 +25264,34 @@ function apLnkBody(e,X){
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn sm" id="apLnkCpT">📋 ${esc(t('Αντιγραφή μηνύματος'))}</button>
         <button class="btn sm gh" id="apLnkOk">${esc(t('Έγινε'))}</button></div></div>`;
   } else if(L.can&&!closed){
-    h+=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><label style="flex:1;min-width:200px">${esc(t('Όνομα του προσώπου *'))}<input id="apLnkL" maxlength="80" autocomplete="off" placeholder="${esc(t('π.χ. Μαρία — μαγείρισσα'))}"></label>
+    const once=APLNK_KIND!=='many';
+    h+=`<div role="group" aria-label="${esc(t('Είδος συνδέσμου'))}" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+        <button type="button" class="btn sm ${once?'p':'gh'}" data-aplk="once" aria-pressed="${once}">🧾 ${esc(t('Μίας χρήσης'))}</button>
+        <button type="button" class="btn sm ${once?'gh':'p'}" data-aplk="many" aria-pressed="${!once}">🔁 ${esc(t('Πολλών χρήσεων'))}</button></div>
+      <div class="dim" id="apLnkKh" style="font-size:12.5px;margin-bottom:8px">${esc(apLnkKindHint(once))}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end"><label style="flex:1;min-width:200px">${esc(t('Όνομα του προσώπου *'))}<input id="apLnkL" maxlength="80" autocomplete="off" placeholder="${esc(t('π.χ. Μαρία — μαγείρισσα'))}"></label>
       <button class="btn p sm" id="apLnkMk">${esc(t('Νέος σύνδεσμος'))}</button></div>
       <div class="dim" id="apLnkM" style="font-size:12.5px;margin-top:4px" role="status"></div>`;
   }
   const rows=L.rows||[];
-  h+=rows.length?`<div style="margin-top:10px">${rows.map(r=>{ const S=apLnkState(r,closed), live=S.k==='ok'||S.k==='e';
+  h+=rows.length?`<div style="margin-top:10px">${rows.map(r=>{ const S=apLnkState(r,closed), live=S.k==='ok'||S.k==='e', spent=S.k==='u';
     return `<div class="kv" style="padding:8px 0;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line)">
-      <span style="flex:1;min-width:180px"><strong>${esc(r.label||'—')}</strong> <span style="font-size:12.5px;color:${S.k==='ok'?'var(--ok)':S.k==='x'?'var(--bad)':'var(--warn)'}">${esc(S.l)}</span>
+      <span style="flex:1;min-width:180px"><strong>${esc(r.label||'—')}</strong> ${apLnkChip(apLnkKind(r))}${S.l?` <span style="font-size:12.5px;color:${S.k==='ok'?'var(--ok)':S.k==='x'?'var(--bad)':'var(--warn)'}">${esc(S.l)}</span>`:''}
         <span class="dim" style="display:block;font-size:12.5px">${esc(t('Τον έφτιαξε: {n} · {d}',{n:apNm(r.created_by)||'—', d:fshort(String(r.created_at||'').slice(0,10))}))} · ${esc(t('υποβολές: {u} · αρχεία: {f}',{u:r.uses||0, f:r.files||0}))}${r.last_used_at?' · '+esc(t('τελευταία: {d}',{d:fshort(String(r.last_used_at).slice(0,10))})):''}</span></span>
       ${L.can&&live&&!closed?`<button class="btn sm gh" data-aplr="${esc(r.id)}">↻ ${esc(t('Ανανέωση'))}</button>`:''}
-      ${L.can&&!r.revoked_at?`<button class="btn sm gh" data-aplx="${esc(r.id)}" style="color:var(--bad)">${esc(t('Ανάκληση'))}</button>`:''}</div>` }).join('')}</div>`
+      ${L.can&&!r.revoked_at&&!spent?`<button class="btn sm gh" data-aplx="${esc(r.id)}" style="color:var(--bad)">${esc(t('Ανάκληση'))}</button>`:''}</div>` }).join('')}</div>`
     :`<div class="dim" style="font-size:12.5px;margin-top:8px">${esc(t('Κανένας σύνδεσμος ακόμη.'))}</div>`;
   return h;
 }
 function apLnkMsg(e,nw){
-  return t('Καλησπέρα {n}! Για τις αγορές της δράσης «{d}» στείλτε εδώ τη φωτογραφία της απόδειξης (χωρίς λογαριασμό): {u}',{n:nw.label, d:e.title||'', u:nw.url})
+  if(nw.once) return t('Καλησπέρα {n}! Για τις αγορές της δράσης «{d}» στείλτε εδώ τη φωτογραφία της απόδειξης — μία απόδειξη, χωρίς λογαριασμό: {u}',{n:nw.label, d:e.title||'', u:nw.url})
+    +'\n'+t('Ο σύνδεσμος είναι προσωπικός και μίας χρήσης: κλείνει μόλις στείλετε την απόδειξη. Ισχύει ως {x}. Μη φωτογραφίζετε έγγραφα με ονόματα παιδιών.',{x:fshort(nw.until)});
+  return t('Καλησπέρα {n}! Για τις αγορές της δράσης «{d}» στείλτε εδώ όσες αποδείξεις χρειαστεί, μία-μία (χωρίς λογαριασμό): {u}',{n:nw.label, d:e.title||'', u:nw.url})
     +'\n'+t('Ο σύνδεσμος είναι προσωπικός — μην τον προωθήσετε. Ισχύει ως {x}. Μη φωτογραφίζετε έγγραφα με ονόματα παιδιών.',{x:fshort(nw.until)});
 }
 async function apLnkLoad(e){
   const [a,b]=await Promise.all([
-    sb.from('event_apol_links').select('id,label,created_at,created_by,expires_at,renewed_at,revoked_at,uses,files,last_used_at')
+    sb.from('event_apol_links').select('id,label,created_at,created_by,expires_at,renewed_at,revoked_at,uses,files,last_used_at,max_uses')
       .eq('event_id',e.id).order('created_at',{ascending:false}).limit(200),
     sb.rpc('apol_link_can',{p_event:e.id})]);
   APLNK[e.id]={rows:a.data||[], can:b.data===true, err:a.error||null};
@@ -25272,13 +25311,20 @@ function apLnkBind(e,X){
   if(mk) mk.onclick=async()=>{
     const m=$('apLnkM'), l=($('apLnkL').value||'').replace(/\s+/g,' ').trim();
     if(l.length<2){ m.style.color='var(--bad)'; m.textContent=t('Γράψε το όνομα του προσώπου.'); return; }
+    const once=APLNK_KIND!=='many';
     mk.disabled=true; m.style.color=''; m.textContent=t('Δημιουργία…');
-    const {data,error}=await sb.rpc('apol_link_create',{p_event:e.id, p_label:l});
+    const {data,error}=await sb.rpc('apol_link_create',{p_event:e.id, p_label:l, p_once:once});
     if(error||!data||!data.token){ mk.disabled=false; m.style.color='var(--bad)'; m.textContent=t('Δεν έγινε: {x}',{x:(error&&error.message)||''}); return; }
-    APLNK_NEW={eid:e.id, url:APOD_BASE+'#t='+data.token, label:data.label||l, until:apLnkDay(data.expires_at), at:Date.now()};
+    APLNK_NEW={eid:e.id, url:APOD_BASE+'#t='+data.token, label:data.label||l, until:apLnkDay(data.expires_at), at:Date.now(), once:data.once===true};
+    APLNK_KIND='once';
     try{ await apLnkLoad(e) }catch(x){}
     apLnkPaint(e,X);
   };
+  document.querySelectorAll('[data-aplk]').forEach(b=>b.onclick=()=>{
+    APLNK_KIND=b.dataset.aplk==='many'?'many':'once';
+    document.querySelectorAll('[data-aplk]').forEach(x=>{ const on=x.dataset.aplk===APLNK_KIND; x.classList.toggle('p',on); x.classList.toggle('gh',!on); x.setAttribute('aria-pressed',on?'true':'false') });
+    const kh=$('apLnkKh'); if(kh) kh.textContent=apLnkKindHint(APLNK_KIND==='once');
+  });
   const cp=$('apLnkCp'); if(cp) cp.onclick=()=>APLNK_NEW&&apLnkCopy(APLNK_NEW.url,'apLnkUrl');
   const ct=$('apLnkCpT'); if(ct) ct.onclick=()=>APLNK_NEW&&apLnkCopy(apLnkMsg(e,APLNK_NEW),'apLnkTxt');
   const ok=$('apLnkOk'); if(ok) ok.onclick=()=>{ APLNK_NEW=null; apLnkPaint(e,X) };
@@ -25298,6 +25344,187 @@ function apLnkBind(e,X){
     try{ await apLnkLoad(e) }catch(x){}
     apLnkPaint(e,X); apToast(t('Ο σύνδεσμος ανακλήθηκε — δεν δέχεται άλλες αποδείξεις'));
   });
+}
+const AP_XLIB={pdf:'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+  fk:'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js',
+  zip:'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'};
+const AP_XSFX=()=>dv('αβγδεζηθ');
+const apXCache=new WeakMap();    
+function apNoMap(S){
+  let m=apXCache.get(S); if(m) return m;
+  m=new Map(); AP2.folder.receiptList(S).forEach(x=>{ if(!m.has(x.expense)) m.set(x.expense,[]); m.get(x.expense).push(x.no); });
+  apXCache.set(S,m); return m;
+}
+function apNoTxt(nos){
+  if(!nos||!nos.length) return '';
+  const a=nos.slice().sort((p,q)=>p-q), run=a.every((v,i)=>!i||v===a[i-1]+1);
+  return '#'+(a.length===1?a[0]:run?a[0]+'–'+a[a.length-1]:a.join(' · #'));
+}
+function apNoBadge(S,expId){ const s=apNoTxt(apNoMap(S).get(expId));
+  return s?`<span class="pill" style="font-size:11px;padding:1px 6px;margin-right:6px" title="${esc(t('Α/Α στον φάκελο αποδείξεων'))}">${esc(s)}</span>`:''; }
+function apXBar(e,X){ if(!AP2.folder.receiptList(X.st).length) return '';
+  return `<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn gh sm" id="apXBtn" title="${esc(t('ZIP ή PDF με όλες τις αποδείξεις, αριθμημένες'))}">⬇ ${esc(t('Φάκελος αποδείξεων'))}</button></div>`; }
+function apXWire(e,X){ const b=$('apXBtn'); if(b) b.onclick=()=>apXGo(e,X,b); }
+
+const apXIso=d=>{ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||'')); return m?m[0]:''; };
+function apXDay(d){ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d||'')); return m?(+m[3])+' '+MON[+m[2]-1]+' '+m[1]:'—'; }
+function apXRange(e){
+  const a=apXIso(e.event_date), b=apXIso(e.end_date);
+  if(!a) return '—'; if(!b||b===a) return apXDay(a);
+  return a.slice(0,7)===b.slice(0,7)?(+a.slice(8))+'–'+apXDay(b):apXDay(a)+' – '+apXDay(b);
+}
+function apXPayer(S,x){ const e=S.expenses[x.expense]||{};
+  if(e.status==='unsettled') return e.buyer||'';
+  if(e.status==='unpaid') return '';
+  const a=e.account&&S.accounts[e.account]; return a&&!a.voided?(a.name||''):''; }
+function apXRows(X){ const S=X.st;
+  return apFakData(X).L.map(x=>Object.assign({},x,{cat:x.appCat||x.fcat||'', payer:apXPayer(S,x), unpaid:(S.expenses[x.expense]||{}).status==='unpaid'})); }
+function apXFile(x,k,ext){
+  return [String(x.no).padStart(3,'0')+(k?(AP_XSFX()[k-1]||String(k)):''), apXIso(x.date)||'—', apSafe(x.cat)||'—', apAmt(x.amount)+' €', apSafe(x.payer)||'—'].join(' - ')+ext; }
+const apXName=(e,ext)=>dv('Απολογισμός')+' - '+(apSafe(e.title)||dv('Δράση'))+' - '+(apXIso(e.event_date)||todayISO())+ext;
+const apXTag=j=>t('Α/Α')+' '+j.x.no+(j.k?AP_XSFX()[j.k-1]||'':'');
+const apXTxt=s=>String(s==null?'':s).replace(/[\u0000-\u001f]+/g,' ').replace(/[\u{1F000}-\u{1FFFF}←-⇿☀-➿️‍]/gu,'');
+function apXFit(F,s,size,w){ s=apXTxt(s); if(F.widthOfTextAtSize(s,size)<=w) return s;
+  while(s.length>1&&F.widthOfTextAtSize(s+'…',size)>w) s=s.slice(0,-1); return s+'…'; }
+
+const apXGlob=async k=>{ for(let i=0;i<80&&!window[k];i++) await new Promise(r=>setTimeout(r,100)); return window[k]; };
+const apXFont=async f=>{ const r=await fetch(location.origin+'/'+f); if(!r.ok) throw new Error(f); return new Uint8Array(await r.arrayBuffer()); };
+async function apXDoc(){
+  await Promise.all([apJs(AP_XLIB.pdf),apJs(AP_XLIB.fk)]);
+  const L=await apXGlob('PDFLib'), fk=await apXGlob('fontkit'); if(!L||!fk) throw new Error(t('Δεν φόρτωσε η βιβλιοθήκη PDF'));
+  const doc=await L.PDFDocument.create(); doc.registerFontkit(fk); doc.setCreator('e76'); doc.setProducer('e76');
+  const [fr,fb]=await Promise.all([apXFont('carlito-regular.ttf'),apXFont('carlito-bold.ttf')]);
+  return {L, doc, R:await doc.embedFont(fr,{subset:true}), B:await doc.embedFont(fb,{subset:true})};
+}
+async function apXFetchAll(e,jobs,tick){
+  const out=new Array(jobs.length); let next=0, done=0;
+  const one=async ref=>{ if(!/^drive:/.test(String(ref||''))&&/^https?:/.test(String(ref||''))) return null;
+    for(let k=0;k<2;k++){ try{ const f=await apFetch(e,ref); if(f) return f; }catch(_){} } return null; };
+  const worker=async()=>{ while(next<jobs.length){ const i=next++; out[i]=await one(jobs[i].ref); tick(++done,jobs.length); } };
+  await Promise.all([worker(),worker(),worker()]);    
+  return out;
+}
+async function apXGet(e,rows,say){
+  const jobs=[]; rows.forEach(x=>x.photos.forEach((ref,k)=>jobs.push({x,k,ref})));
+  say(t('Αποδείξεις {i} από {n}…',{i:0,n:jobs.length}));
+  const got=await apXFetchAll(e,jobs,(i,n)=>say(t('Αποδείξεις {i} από {n}…',{i,n})));
+  const fails=[];
+  jobs.forEach((j,i)=>{ j.f=got[i]; if(!j.f) fails.push(apXTag(j)+' — '+(/^https?:/.test(String(j.ref))?t('σύνδεσμος εκτός Drive'):t('δεν κατέβηκε από το Drive'))); });
+  return {jobs,fails};
+}
+async function apXJpeg(f){
+  try{ const bm=await createImageBitmap(new Blob([f.bytes],{type:f.mime}));
+    const s=Math.min(1,2000/Math.max(bm.width,bm.height)), c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(bm.width*s)); c.height=Math.max(1,Math.round(bm.height*s));
+    const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(bm,0,0,c.width,c.height); if(bm.close) bm.close();
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85)); if(b) return {png:false, bytes:new Uint8Array(await b.arrayBuffer())};
+  }catch(_){}
+  if(/jpe?g/.test(f.mime)) return {png:false, bytes:f.bytes};
+  if(/png/.test(f.mime)) return {png:true, bytes:f.bytes};
+  return null;
+}
+
+const AP_XPW=595.28, AP_XPH=841.89, AP_XM=40;
+function apXSummary(G,e,X,rows,fails,notes){
+  const {doc,L,R,B}=G, rgb=L.rgb, PW=AP_XPW, PH=AP_XPH, M=AP_XM, ink=rgb(0,0,0), blue=rgb(0.11,0.38,0.67), soft=rgb(0.92,0.92,0.92);
+  const S=X.st, T=AP2.derive.totals(S), r2=AP2.util.r2, RH=15;
+  let pg=doc.addPage([PW,PH]), y=PH-M;
+  const txt=(s,x,yy,o)=>{ o=o||{}; pg.drawText(apXTxt(s),{x,y:yy,size:o.size||10,font:o.bold?B:R,color:o.color||ink}); };
+  const right=(s,xr,yy,o)=>{ o=o||{}; const F=o.bold?B:R; txt(s,xr-F.widthOfTextAtSize(apXTxt(s),o.size||10),yy,o); };
+  txt(t('Οικονομικός απολογισμός — φάκελος αποδείξεων'),M,y-4,{size:11,bold:true,color:blue}); y-=28;
+  txt(apXFit(B,e.title||'',18,PW-2*M),M,y,{size:18,bold:true}); y-=18;
+  txt(apXRange(e)+' · '+t('Εξαγωγή {d}',{d:apXDay(todayISO())})+(S.action.closed?' · '+t('Ο απολογισμός έχει κλείσει'):' · '+t('Ο απολογισμός είναι ανοιχτός')),M,y,{size:10}); y-=22;
+  const tw=(PW-2*M-20)/3;
+  [[t('Μπήκαν'),apE(r2(T.income-T.refundable))],[t('Ξοδέψαμε'),apE(T.expenses)],[t('Αποτέλεσμα'),(T.free>0?'+':'')+apE(T.free)]].forEach(([k,v],i)=>{
+    const x=M+i*(tw+10); pg.drawRectangle({x,y:y-42,width:tw,height:46,borderColor:ink,borderWidth:0.6});
+    txt(k,x+8,y-12,{size:9}); txt(v,x+8,y-33,{size:15,bold:true}); });
+  y-=60;
+  if(T.refundable){ txt(t('Τα «Μπήκαν» δεν μετρούν {x} που επιστρέφονται.',{x:apE(T.refundable)}),M,y,{size:9}); y-=16; }
+  y-=6;
+  const C=[[t('Α/Α'),30],[t('Ημερομηνία'),84],[t('Κατηγορία'),90],[t('Περιγραφή'),146],[t('Ποσό'),62],[t('Πλήρωσε'),103]];
+  const head=()=>{ pg.drawRectangle({x:M,y:y-4,width:PW-2*M,height:RH,color:soft}); let cx=M;
+    C.forEach(([l,w],j)=>{ j===4?right(l,cx+w-4,y,{bold:true,size:9}):txt(l,cx+3,y,{bold:true,size:9}); cx+=w; }); y-=RH; };
+  const need=(h,hd)=>{ if(y-h<M+24){ pg=doc.addPage([PW,PH]); y=PH-M; if(hd) head(); } };
+  head();
+  rows.forEach(x=>{ need(RH,true);
+    const cells=[String(x.no), apXDay(x.date), x.cat||'—', (x.vendor||'—')+(x.photos.length?'':' ('+t('χωρίς φωτογραφία')+')'), apE(x.amount), x.payer||(x.unpaid?t('απλήρωτο'):'—')];
+    let cx=M; C.forEach(([l,w],j)=>{ const s=apXFit(R,cells[j],9,w-7); j===4?right(s,cx+w-4,y,{size:9}):txt(s,cx+3,y,{size:9}); cx+=w; });
+    pg.drawLine({start:{x:M,y:y-4},end:{x:PW-M,y:y-4},thickness:0.3,color:ink}); y-=RH; });
+  need(RH*2,false);
+  right(t('Σύνολο αποδείξεων: {x}',{x:apE(r2(rows.reduce((a,x)=>a+x.amount,0)))}),PW-M-103-4,y-4,{bold:true,size:10}); y-=RH*2;
+  const para=(title,list)=>{ if(!list.length) return; need(RH*2,false); txt(title,M,y,{bold:true,size:10}); y-=RH;
+    list.forEach(s=>{ need(RH,false); txt(apXFit(R,'• '+s,9,PW-2*M-6),M+6,y,{size:9}); y-=13; }); y-=6; };
+  para(t('Δεν μπήκαν — δοκίμασε ξανά ή άνοιξέ τες από τον φάκελο «Αποδείξεις» του Drive'),fails);
+  para(t('Σημειώσεις'),notes);
+}
+function apXFoot(G,e){ const ps=G.doc.getPages(), n=ps.length;
+  ps.forEach((p,i)=>{ p.drawText(apXFit(G.R,'e76 · '+(e.title||'')+' · '+t('σελίδα {a} από {b}',{a:i+1,b:n}),8,p.getWidth()-60),{x:30,y:14,size:8,font:G.R,color:G.L.rgb(0.25,0.25,0.25)}); }); }
+function apXHead(G,pg,j){ const {L,R,B}=G, PW=pg.getWidth(), PH=pg.getHeight(), x=j.x, w=L.rgb(1,1,1);
+  pg.drawRectangle({x:0,y:PH-52,width:PW,height:52,color:L.rgb(0.11,0.38,0.67)});
+  pg.drawText(apXFit(B,apXTag(j)+' · '+apXDay(x.date)+' · '+(x.cat||'—')+' · '+apE(x.amount),14,PW-60),{x:30,y:PH-25,size:14,font:B,color:w});
+  const sub=[x.vendor||'', x.payer?t('Πλήρωσε: {p}',{p:x.payer}):''].filter(Boolean).join(' · ');
+  if(sub) pg.drawText(apXFit(R,sub,10,PW-60),{x:30,y:PH-42,size:10,font:R,color:w}); }
+const apXBox=(w,h,cap)=>{ const aw=AP_XPW-60, ah=AP_XPH-64-30, s=Math.min(aw/w,ah/h,cap); return {x:(AP_XPW-w*s)/2, y:30+(ah-h*s)/2, width:w*s, height:h*s}; };
+async function apXPhoto(G,j){
+  const img=j.im.png?await G.doc.embedPng(j.im.bytes):await G.doc.embedJpg(j.im.bytes);
+  const pg=G.doc.addPage([AP_XPW,AP_XPH]); pg.drawImage(img,apXBox(img.width,img.height,1.5)); apXHead(G,pg,j);
+}
+async function apXPdfPages(G,j){
+  const idx=[...Array(Math.min(10,j.src.getPageCount())).keys()];
+  let emb=null; try{ emb=await G.doc.embedPdf(j.src,idx); }catch(_){ emb=null; }
+  if(emb){ emb.forEach(ep=>{ const pg=G.doc.addPage([AP_XPW,AP_XPH]); pg.drawPage(ep,apXBox(ep.width,ep.height,1)); apXHead(G,pg,j); }); return; }
+  (await G.doc.copyPages(j.src,idx)).forEach(p=>{ G.doc.addPage(p); p.drawText(apXTxt(apXTag(j)),{x:8,y:8,size:9,font:G.B,color:G.L.rgb(0.11,0.38,0.67)}); });
+}
+
+async function apXGo(e,X,b){
+  const rows=apXRows(X); if(!rows.length){ await uiNote(t('Καμία απόδειξη ακόμη.')); return; }
+  const kind=await uiChoose(t('Φάκελος αποδείξεων ({n}) — σε ποια μορφή;',{n:rows.length}),[
+    {v:'pdf',t:t('PDF — ένα αρχείο: σύνοψη και μία σελίδα ανά απόδειξη'),primary:true},
+    {v:'zip',t:t('ZIP — Σύνοψη και κάθε απόδειξη ως ξεχωριστό αρχείο')},{v:null,t:t('Άκυρο')}]);
+  if(!kind) return;
+  const old=b.textContent; b.disabled=true; b.setAttribute('aria-busy','true');
+  const say=s=>{ b.textContent=s; };
+  try{ await (kind==='zip'?apXZip:apXPdf)(e,X,rows,say); }
+  catch(err){ await uiNote(t('Η εξαγωγή δεν ολοκληρώθηκε: {x}',{x:(err&&err.message)||t('άγνωστο σφάλμα')})); }
+  finally{ b.disabled=false; b.removeAttribute('aria-busy'); b.textContent=old; }
+}
+async function apXPdf(e,X,rows,say){
+  say(t('Προετοιμασία…'));
+  const G=await apXDoc(); G.doc.setTitle(apXName(e,''));
+  const {jobs,fails}=await apXGet(e,rows,say), notes=[], late=[];
+  for(const [i,j] of jobs.entries()){ if(!j.f) continue; say(t('Σελίδες {i} από {n}…',{i:i+1,n:jobs.length}));
+    try{ if(/pdf/.test(j.f.mime)){ j.src=await G.L.PDFDocument.load(j.f.bytes,{ignoreEncryption:true}); const n=j.src.getPageCount();
+        if(!n) throw new Error('0'); if(n>10) notes.push(apXTag(j)+' — '+t('μπήκαν οι 10 πρώτες από {n} σελίδες — όλο το αρχείο επισυνάπτεται στο ZIP',{n})); }
+      else { j.im=await apXJpeg(j.f); if(!j.im) throw new Error('img'); } }
+    catch(_){ j.bad=true; fails.push(apXTag(j)+' — '+t('το αρχείο δεν μπαίνει στο PDF — επισυνάπτεται στο ZIP (βγάλε και το ZIP)')); } }
+  apXSummary(G,e,X,rows,fails,notes);
+  for(const j of jobs){ if(!j.f||j.bad) continue;
+    try{ if(j.src) await apXPdfPages(G,j); else await apXPhoto(G,j); }catch(_){ late.push(apXTag(j)); } }
+  apXFoot(G,e);
+  say(t('Αποθήκευση…'));
+  apSaveBlob(new Blob([await G.doc.save()],{type:'application/pdf'}),apXName(e,'.pdf'));
+  const bad=fails.length+late.length;
+  if(bad) await uiNote(t('Το PDF βγήκε, αλλά {n} αρχεία δεν μπήκαν — η σελίδα σύνοψης γράφει ποια.',{n:bad})+(late.length?' ('+late.join(', ')+')':''));
+}
+function apXCsv(e,X,rows,fails){
+  const T=AP2.derive.totals(X.st), r2=AP2.util.r2;
+  const L=[[e.title||'',apXRange(e)],[t('Μπήκαν'),apAmt(r2(T.income-T.refundable))],[t('Ξοδέψαμε'),apAmt(T.expenses)],[t('Αποτέλεσμα'),apAmt(T.free)],[],
+    [t('Α/Α'),t('Ημερομηνία'),t('Κατηγορία'),t('Περιγραφή'),t('Ποσό'),t('Πλήρωσε')]];
+  rows.forEach(x=>L.push([x.no,apXDay(x.date),x.cat,(x.vendor||'')+(x.photos.length?'':' ('+t('χωρίς φωτογραφία')+')'),apAmt(x.amount),x.payer||(x.unpaid?t('απλήρωτο'):'—')]));
+  if(fails.length){ L.push([]); L.push([t('Δεν μπήκαν')]); fails.forEach(s=>L.push([s])); }
+  return '﻿'+L.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+}
+async function apXZip(e,X,rows,say){
+  say(t('Προετοιμασία…'));
+  await apJs(AP_XLIB.zip); const JZ=await apXGlob('JSZip'); if(!JZ) throw new Error(t('Δεν φόρτωσε η βιβλιοθήκη ZIP'));
+  const {jobs,fails}=await apXGet(e,rows,say), Z=new JZ();
+  jobs.forEach(j=>{ if(j.f) Z.file(apXFile(j.x,j.k,AP_EXT[j.f.mime]||'.jpg'),j.f.bytes); });
+  say(t('Σύνοψη…'));
+  let sum=null; try{ const G=await apXDoc(); G.doc.setTitle(dv('Σύνοψη')); apXSummary(G,e,X,rows,fails,[]); apXFoot(G,e); sum=await G.doc.save(); }catch(_){ sum=null; }
+  if(sum) Z.file(dv('Σύνοψη')+'.pdf',sum); else Z.file(dv('Σύνοψη')+'.csv',apXCsv(e,X,rows,fails));
+  say(t('Συμπίεση…'));
+  apSaveBlob(await Z.generateAsync({type:'blob'}),apXName(e,'.zip'));
+  if(fails.length) await uiNote(t('Το ZIP βγήκε, αλλά {n} αρχεία δεν κατέβηκαν — η Σύνοψη γράφει ποια.',{n:fails.length}));
 }
 const DRA=Object.freeze({
   dlKids:(...a)=>dlKids(...a),             
@@ -27364,7 +27591,8 @@ function mineHTML(){
   const soon=all.filter(x=>x.d>=today&&x.d<=plus(60));
   const miss=all.filter(x=>x.d==='9999-12-31');
   const n=late.length+miss.length+soon.length;
-  if(!n)return '';
+  const mfa=mfaHomeLine();    
+  if(!n&&!mfa)return '';
   const days=d=>Math.abs(Math.round((new Date(d+'T12:00:00')-new Date())/864e5));
   const waiting=x=>x.vid&&(D.vpi||[]).some(i=>i.vehicle_id===x.vid&&i.kind===x.vkind&&!i.resolved_at&&!i.declined_at);
   const act=x=>x.vid
@@ -27381,10 +27609,10 @@ function mineHTML(){
       ${w?'':`<span class="dim" style="font-size:12px">${x.kind===dv('Ν.91(Ι)')&&x.d==='9999-12-31'?t('Το βγάζεις από την Αστυνομία και το ανεβάζεις εδώ.'):esc(x.todo)}</span>`}
       ${act(x)}</div>`};
   const hard=late.length+miss.length;
-  return `<div class="sec"><h3>Δικά σου</h3><span class="n">${n}</span></div>
+  return `<div class="sec"><h3>Δικά σου</h3><span class="n">${n+(mfa?1:0)}</span></div>
     <div class="card pad" style="border-left:3px solid var(--${hard?'bad':'warn'})">
       <div class="dim" style="font-size:12.5px;margin-bottom:6px">Δεν είναι του Συστήματος — είναι τα δικά σου χαρτιά.</div>
-      ${late.map(x=>line(x,'bad')).join('')}${miss.map(x=>line(x,'bad')).join('')}${soon.map(x=>line(x,'warn')).join('')}
+      ${mfa}${late.map(x=>line(x,'bad')).join('')}${miss.map(x=>line(x,'bad')).join('')}${soon.map(x=>line(x,'warn')).join('')}
       <div style="margin-top:11px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn sm" data-go="me">Η καρτέλα μου</button>
         ${
@@ -27451,6 +27679,7 @@ function bindDashLinks(){
     route(id); });
 }
 function bindToday(){
+  document.querySelectorAll('[data-mfaopen]').forEach(b=>b.onclick=()=>mfaOpen());    
   const it=todayItems();
   document.querySelectorAll('[data-todo]').forEach(b=>b.onclick=()=>{ const x=it[+b.dataset.todo]; if(!x)return;
     if(x.att){ MKPRE=x.att; SUBTAB.attend='put'; try{localStorage.setItem('e76:subtab',JSON.stringify(SUBTAB))}catch(e){} route('attend'); }
