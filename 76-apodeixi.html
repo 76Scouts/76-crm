@@ -10,7 +10,9 @@
 <!-- 20/11/2026 (Andreas): υποβολή απόδειξης για ΜΙΑ δράση από όσους δεν έχουν λογαριασμό e76 (μάγειρες, γονείς που βοηθούν).
      Αυτοτελής σελίδα: κανένας πόρος τρίτων. Το κλειδί έρχεται στο #t=… (δεν φτάνει ποτέ σε logs διακομιστή), διαβάζεται ΜΙΑ
      φορά και σβήνεται από τη γραμμή διευθύνσεων· στέλνεται μόνο στο σώμα του POST προς την edge function apod-public.
-     Δείχνει ΜΟΝΟ τίτλο και ημερομηνίες της δράσης — κανένα όνομα παιδιού, καμία λίστα, καμία άλλη απόδειξη. -->
+     Δείχνει ΜΟΝΟ τίτλο και ημερομηνίες της δράσης — κανένα όνομα παιδιού, καμία λίστα, καμία άλλη απόδειξη.
+     21/11/2026 (Andreas): σύνδεσμοι «μίας χρήσης» (apod-public v2 → once:true) — η σελίδα το λέει πάνω από τη φόρμα και μετά
+     την αποστολή ΔΕΝ δείχνει «Στείλτε κι άλλη απόδειξη»· αν ο σύνδεσμος χρησιμοποιήθηκε ήδη, δείχνει μόνο το μήνυμα. -->
 <style>
 :root{--ink:#0f172a;--ink2:#475569;--ink3:#64748b;--line:#e2e8f0;--card:#fff;--bg:#f6f7f9;
 --brand:#1e3a8a;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;--warnbg:#fef3c7;--warn:#78350f}
@@ -34,6 +36,7 @@ legend{font-size:14px;font-weight:600;padding:0}
 .opt{display:flex;gap:10px;align-items:center;font-weight:400;margin-top:6px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
 .opt input{width:18px;height:18px;margin:0}
 .warn{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13.5px;margin-top:14px}
+.once{border:1px solid #bfdbfe;background:#eff6ff;color:#1e3a8a;border-radius:10px;padding:10px 12px;font-size:13.5px;margin:0 0 14px}
 .pick{display:block;text-align:center;border:2px dashed #cbd5e1;border-radius:12px;padding:16px;margin-top:10px;cursor:pointer;font-weight:600}
 .pick small{display:block;font-weight:400;color:var(--ink3);font-size:12.5px;margin-top:2px}
 input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
@@ -95,7 +98,7 @@ async function call(init) {
   try { r = await fetch(FN, Object.assign({ method: 'POST', headers: H, referrerPolicy: 'no-referrer', cache: 'no-store' }, init)); }
   catch (e) { return { ok: false, error: 'Δεν υπάρχει σύνδεση στο διαδίκτυο. Δοκιμάστε ξανά.' }; }
   try { d = await r.json(); } catch (e) { d = {}; }
-  if (!r.ok || !d.ok) return { ok: false, error: d.error || 'Κάτι πήγε στραβά. Δοκιμάστε ξανά.' };
+  if (!r.ok || !d.ok) return { ok: false, used: d.used === true, error: d.error || 'Κάτι πήγε στραβά. Δοκιμάστε ξανά.' };
   return d;
 }
 
@@ -114,6 +117,7 @@ function form() {
     '<p class="sub">Στείλτε τη φωτογραφία της απόδειξης για ό,τι αγοράσατε.</p>' +
     '<div class="who"><div class="k">Δράση</div><div class="v">' + esc(INFO.title) + '</div>' +
       (dates ? '<div class="k" style="margin-top:6px">Ημερομηνίες</div><div class="v" style="font-size:15px">' + esc(dates) + '</div>' : '') + '</div>' +
+    (INFO.once ? '<div class="once">🔒 <b>Σύνδεσμος μίας χρήσης:</b> στέλνετε μία απόδειξη (έως 4 φωτογραφίες ή PDF) και μετά ο σύνδεσμος κλείνει.</div>' : '') +
     '<label for="nm">Το όνομά σας *</label><input type="text" id="nm" maxlength="80" autocomplete="name" value="' + esc(INFO.label || '') + '">' +
     '<label for="ti">Τι αγοράστηκε *</label><input type="text" id="ti" maxlength="120" placeholder="π.χ. Λαχανικά από τη λαϊκή">' +
     '<label for="am">Ποσό (€) *</label><input id="am" inputmode="decimal" maxlength="10" placeholder="π.χ. 23,50">' +
@@ -183,13 +187,15 @@ async function send() {
   files.forEach((f, i) => fd.append('file', f.blob, 'apodeixi-' + (i + 1)));
   const go = $('go'); go.disabled = true; go.innerHTML = '<span class="spin"></span>Γίνεται αποστολή…'; show('');
   const d = await call({ body: fd });
-  if (!d.ok) { go.disabled = false; go.textContent = 'Αποστολή'; return show(d.error); }
+  if (!d.ok) { if (d.used) return fail(d.error); go.disabled = false; go.textContent = 'Αποστολή'; return show(d.error); }
   files = [];
+  const once = d.once === true || INFO.once === true;
   $('body').innerHTML = '<div class="done"><div class="tick">✓</div><h1>Το λάβαμε — ευχαριστούμε!</h1>' +
     '<p class="sub" style="margin-bottom:4px">Αριθμός επιβεβαίωσης</p><div class="ref">' + esc(d.ref) + '</div>' +
     '<p class="sub">Κρατήστε τον αν χρειαστεί να ρωτήσετε τον Αρχηγό της δράσης.</p>' +
-    '<button class="alt" id="again">Στείλτε κι άλλη απόδειξη</button></div>';
-  $('again').onclick = form;
+    (once ? '<div class="once" style="margin-top:10px">Ο σύνδεσμος ήταν μίας χρήσης και έκλεισε. Αν έχετε κι άλλη απόδειξη, ζητήστε νέο σύνδεσμο από τον Αρχηγό της δράσης.</div>'
+          : '<button class="alt" id="again">Στείλτε κι άλλη απόδειξη</button>') + '</div>';
+  if (!once) $('again').onclick = form;
 }
 boot();
 </script>
