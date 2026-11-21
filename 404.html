@@ -348,7 +348,7 @@ input[aria-invalid=true]{border-color:var(--bad);background:var(--badbg)}
 .pn{cursor:pointer;border-bottom:1px dotted var(--line2)}
 .am{display:block;font-size:10.5px;color:var(--ink3);font-weight:400;letter-spacing:.03em;margin-top:1px}
 .am:before{content:'Α.Μ. '}
-.pn:hover{color:var(--acc);border-color:var(--acc)}
+.pn:hover,.pn:focus-visible{color:var(--acc);border-color:var(--acc)}
 .mkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
 .mk{border:1px solid var(--ctl);background:var(--card);border-radius:var(--rs);padding:9px 11px;cursor:pointer;text-align:left;font-size:13.5px;display:flex;align-items:center;gap:8px;transition:.1s}
 .mk:hover{border-color:var(--ink3)}
@@ -1531,15 +1531,16 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-21 11:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-21 12:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
 
 const isFile=location.protocol==='file:';
+let DEEP_P=null;    
 async function boot(){
   const h=location.hash||'', qs=new URLSearchParams(location.search);
-  if(/^[0-9a-f-]{36}$/i.test(qs.get('p')||'')){ try{ localStorage.setItem('e76:openp',JSON.stringify({id:qs.get('p'),at:Date.now()})) }catch(e){} }
+  if(/^[0-9a-f-]{36}$/i.test(qs.get('p')||'')){ DEEP_P={id:qs.get('p').toLowerCase(),at:Date.now()}; try{ localStorage.setItem('e76:openp',JSON.stringify(DEEP_P)) }catch(e){} }
   if(/type=recovery/.test(h)||qs.get('type')==='recovery')RECOVER=true;
   try{
     if(h.includes('access_token')){
@@ -1951,12 +1952,13 @@ function idleCheck(){
 if(typeof navigator!=='undefined'&&navigator.serviceWorker&&navigator.serviceWorker.addEventListener){
   navigator.serviceWorker.addEventListener('message',e=>{ const d=e.data||{};
     if(d.type!=='e76-nav'||typeof LOADED==='undefined'||!LOADED)return;
-    LAST_ACT=Date.now(); let seg='';
-    try{ seg=decodeURIComponent(new URL(d.url,location.href).pathname.split('/').pop()||''); }catch(x){}
+    LAST_ACT=Date.now(); let seg='', pid='';
+    try{ const nu=new URL(d.url,location.href); seg=decodeURIComponent(nu.pathname.split('/').pop()||''); pid=nu.searchParams.get('p')||''; }catch(x){}
     const go=()=>{ try{
       const m=seg&&!MOD[seg]?routeAliasRaw(seg):null; if(m&&typeof m[1]==='string')SUBTAB[m[0]]=m[1];
       route(seg&&(MOD[seg]||routeAlias(seg))?seg:homeRoute()); }catch(x){} };
-    go(); if(navigator.onLine){ try{ Promise.resolve(loadAll()).then(go).catch(()=>{}); }catch(x){} } });
+    const op=()=>{ if(pid)deepOpenId(pid); };
+    go(); if(navigator.onLine){ try{ Promise.resolve(loadAll()).then(go).catch(()=>{}).then(op); }catch(x){ op(); } } else op(); });
 }
 function idleReset(){
   const home=homeRoute();
@@ -1980,15 +1982,19 @@ if(typeof navigator!=='undefined'&&navigator.serviceWorker&&typeof location!=='u
   try{ window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }catch(e){}
 }
 function deepOpen(){ let o=null; try{ o=JSON.parse(localStorage.getItem('e76:openp')||'null'); localStorage.removeItem('e76:openp') }catch(e){}
-  try{ const u=new URL(location.href); if(u.searchParams.has('p')){ u.searchParams.delete('p'); history.replaceState(history.state,'',u.pathname+u.search) } }catch(e){}
+  o=o||DEEP_P; DEEP_P=null;
+  try{ const u=new URL(location.href); if(u.searchParams.has('p')){ u.searchParams.delete('p'); history.replaceState(history.state,'',u.pathname+u.search+u.hash) } }catch(e){}
   if(!o||!o.id||Date.now()-(o.at||0)>30*60000)return;
-  if((D.bh||[]).some(b=>b.id===o.id))openProfile(o.id); else toast(t('Δεν έχεις πρόσβαση σε αυτή την καρτέλα'));
+  deepOpenId(o.id);
+}
+function deepOpenId(id){ id=String(id||'').toLowerCase();
+  if(/^[0-9a-f-]{36}$/.test(id)&&(D.bh||[]).some(b=>b.id===id))openProfile(id); else toast(t('Δεν βρέθηκε ή δεν έχεις πρόσβαση σε αυτό το πρόσωπο.'));
 }
 const pfLink=id=>location.origin+APPBASE+'?p='+encodeURIComponent(id);
 function pfLinkBtn(p){ const f=$('dFiles'); if(!f||$('dLink'))return;
   f.insertAdjacentHTML('beforebegin',`<button class="btn gh sm" id="dLink" title="${esc(t('Αντιγραφή συνδέσμου προς αυτή την καρτέλα'))}" aria-label="${esc(t('Αντιγραφή συνδέσμου προς αυτή την καρτέλα'))}">🔗</button>`);
   $('dLink').onclick=()=>{ const u=pfLink(p.id);
-    (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast(t('Ο σύνδεσμος αντιγράφηκε')),async()=>{ await uiNote(u) }); };
+    (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast(t('Ο σύνδεσμος αντιγράφηκε')),async()=>{ await uiText(t('Αντίγραψε τον σύνδεσμο:'),u) }); };
   if((isAdminUI()||ME.platform_admin)&&p.id!==ME.person_id) Promise.resolve(sb.rpc('mfa_admin',{p_person:p.id})).then(({data})=>{
     if(!(data>0)||$('dMfa')||!$('dLink'))return;
     $('dLink').insertAdjacentHTML('afterend',`<button class="btn gh sm" id="dMfa" title="${esc(t('Μηδενισμός MFA (χάθηκε η συσκευή)'))}" aria-label="${esc(t('Μηδενισμός MFA (χάθηκε η συσκευή)'))}">🔐</button>`);
@@ -3258,6 +3264,11 @@ function paint(m){
     return r;
 }
 function a11yName(root){
+  (root||document).querySelectorAll('[data-p]:not([tabindex])').forEach(x=>{
+    if(x.matches('a[href],button,input,select,textarea,label,tr,td,th')||(x.closest&&x.closest('label'))||x.querySelector('a[href],button,input,select,textarea,[tabindex]'))return;
+    if(!(x.textContent||'').trim())return;
+    x.setAttribute('tabindex','0'); if(!x.hasAttribute('role'))x.setAttribute('role','button');
+  });
   (root||document).querySelectorAll('button:not([aria-label]),a[href]:not([aria-label]),[role="button"]:not([aria-label])').forEach(b=>{
     if((b.textContent||'').replace(/[\s\u00a0]/g,'').replace(/[^\p{L}\p{N}]/gu,'').length) return;
     const t=b.getAttribute('title'); if(t) b.setAttribute('aria-label',t.split(/ — | · /)[0]);
@@ -3274,6 +3285,10 @@ function a11yName(root){
     const t=f.getAttribute('placeholder')||f.getAttribute('title'); if(t) f.setAttribute('aria-label',t);
   });
 }
+function pnKey(e){ const x=e&&e.target;
+  if(!x||!x.matches||(e.key!=='Enter'&&e.key!==' ')||e.altKey||e.ctrlKey||e.metaKey||!x.matches('[data-p]:not(a):not(button):not(input):not(select):not(textarea)'))return false;
+  e.preventDefault(); if(!e.repeat)x.click(); return true; }
+if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('keydown',pnKey);
 if(typeof MutationObserver!=='undefined'){ let _a11yq=false;
   const mo=new MutationObserver(()=>{ if(_a11yq)return; _a11yq=true; requestAnimationFrame(()=>{ _a11yq=false; try{a11yName()}catch(e){} }); });
   const go=()=>{ try{ mo.observe(document.body,{childList:true,subtree:true}); a11yName(); }catch(e){} };
@@ -3712,6 +3727,15 @@ function latin(s,mails){
     if(!o)o=sg.map(v=>v[0]).join('');
     return w[0]!==w[0].toLowerCase()?o.charAt(0).toUpperCase()+o.slice(1):o; });
 }
+function latPick(fn,ln,mails){
+  const s=[fn,ln].map(x=>String(x||'').trim()).filter(x=>/\p{L}/u.test(x)).join(' ').replace(/\s+/g,' ');
+  if(!s)return {latin_name:null,latin_src:null};
+  if(!/[Ͱ-Ͽἀ-῿]/.test(s))return {latin_name:s,latin_src:'ok'};
+  const ms=(mails||[]).filter(Boolean), ls=ms.map(m=>String(m).split('@')[0].toLowerCase().replace(/[^a-z]/g,''));
+  const hit=(String(ln||'').match(/[Ͱ-Ͽἀ-῿]+/g)||[]).some(w=>w.length>=4&&ls.some(l=>latInMail(latSegs(w),l)));
+  return {latin_name:latin(s,ms),latin_src:hit?'email':'rule'};
+}
+const latMails=p=>[p&&p.email,...(p&&p.id?carersOfPerson(p.id).filter(x=>!carerRestricted(x)).map(x=>x.p.email):[])].filter(Boolean);
 const drw=$('drw');
 drw.querySelector('.bg').onclick=()=>drw.classList.remove('on');
 document.addEventListener('keydown',e=>{if(e.key==='Escape')drw.classList.remove('on')});
@@ -6148,7 +6172,7 @@ function wlImportUI(){
       $('wlGo').disabled=true;
       const rows=window.__WL.map(o=>({first_name:o.first_name,last_name:o.last_name,kind:'Μέλος',
         section:o.section,status:'Αναμονή',phone:o.phone||null,email:o.email||null,
-        special:o.note||null,father_name:o.parent_name||null}));
+        special:o.note||null,father_name:o.parent_name||null,...latPick(o.first_name,o.last_name,[o.email])}));    
       const {error}=await sb.from('badgeholders').insert(rows);
       if(error){$('wlGo').disabled=false;return toast('Σφάλμα: '+error.message)}
       document.getElementById('drw').classList.remove('on');
@@ -6243,7 +6267,7 @@ V.intake=()=>{
   $('inAdd').onclick=async()=>{
     const fn=$('inFn').value.trim(), ln=$('inLn').value.trim();
     if(!fn||!ln)return toast('Θέλει όνομα και επώνυμο');
-    const rec={first_name:fn,last_name:ln,kind:'Μέλος',section:INSEC,status:'Αναμονή',
+    const rec={first_name:fn,last_name:ln,kind:'Μέλος',section:INSEC,status:'Αναμονή',...latPick(fn,ln),
       member_role:INSEC==='Αγέλη'?'Λυκόπουλο':INSEC==='Ομάδα'?'Πρόσκοπος':'Ανιχνευτής'};
     const {data,error}=await sb.from('badgeholders').insert(rec).select().single();
     if(error)return toast('Σφάλμα: '+error.message);
@@ -9051,6 +9075,7 @@ V.mykids=()=>{
     missBy.map(x=>`<b>${esc(x.k.first_name)}:</b> ${x.m.map(r=>esc(r.label)).join(', ')}`).join('<br>')
       +`<br><span class="dim">${t('Τα ανεβάζετε από το κινητό (φωτογραφία) ή τα φέρνετε τυπωμένα στη συγκέντρωση.')}</span>`,
     go('kidhealth',t('Έντυπα & φόρμες'),missBy[0].k.id)));
+  if(!lensP){ const lt=latParentHTML(me,list); if(lt)todo.push(lt); }
 
   const card=({kid:p})=>{
     const y=myOf(p)||{};
@@ -9087,7 +9112,36 @@ V.mykids=()=>{
   document.querySelectorAll('[data-pgo]').forEach(b=>b.onclick=()=>{ if(b.dataset.pk)KID=b.dataset.pk; route(b.dataset.pgo); });
   document.querySelectorAll('[data-pe]').forEach(b=>b.onclick=()=>parentEdit(b.dataset.pe));
   if(openEv.length)kidActWire(list,$('view'));
+  latParentWire();
 };
+
+function latParentHTML(me,list){
+  const ps=[me,...list.map(x=>x.kid)].filter((p,i,a)=>p&&p.id&&a.findIndex(q=>q&&q.id===p.id)===i
+    &&p.latin_src!=='ok'&&/[Ͱ-Ͽἀ-῿]/.test((p.first_name||'')+(p.last_name||'')));
+  if(!ps.length)return '';
+  return `<div class="ptd act"><span class="ptdi">${ic('users',16)}</span><div style="flex:1;min-width:0">
+      <div class="ptdh">${esc(t('Ονόματα με λατινικά'))}</div>
+      <div class="ptds">${esc(t('Όπως στο διαβατήριο — για εισιτήρια, ασφάλειες και βεβαιώσεις. Ελέγξτε τα μία φορά.'))}</div>
+      ${ps.map(p=>{ const v=p.latin_name||latPick(p.first_name,p.last_name,latMails(p)).latin_name||'';
+        return `<div data-latp="${esc(p.id)}" data-latv="${esc(v)}" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">
+          <span style="flex:1 1 170px;min-width:0"><b>${esc(p.first_name||'')}</b> · ${esc(v)}</span>
+          <button class="btn sm p" data-latok>${esc(t('✓ Σωστό'))}</button><button class="btn sm" data-latfix>${esc(t('✎ Διόρθωση'))}</button></div>`; }).join('')}
+    </div></div>`;
+}
+function latParentWire(){
+  document.querySelectorAll('[data-latp]').forEach(r=>{
+    const bs=()=>r.querySelectorAll('button');
+    const save=async raw=>{ const v=String(raw||'').replace(/[’‘`´]/g,"'").replace(/\s+/g,' ').trim();
+      if(v.length<2||v.length>80||!/^[A-Za-z](?:[A-Za-z' -]*[A-Za-z])?$/.test(v))return toast(t('Γράψτε το όνομα με λατινικά γράμματα (A–Z), όπως στο διαβατήριο'));
+      bs().forEach(b=>b.disabled=true);
+      const {error}=await sb.rpc('latin_confirm',{p_person:r.dataset.latp,p_latin:v});
+      if(error){ bs().forEach(b=>b.disabled=false); return toast(t('Δεν αποθηκεύτηκε')+': '+error.message) }
+      const p=D.bh.find(x=>x.id===r.dataset.latp); if(p){ p.latin_name=v; p.latin_src='ok' }
+      saveCache(); toast(t('Ευχαριστούμε')); stay(); };
+    r.querySelector('[data-latok]').onclick=()=>save(r.dataset.latv);
+    r.querySelector('[data-latfix]').onclick=async()=>{ const v=await uiText(t('Όνομα με λατινικά (όπως στο διαβατήριο)'),r.dataset.latv,{ok:t('Αποθήκευση')}); if(v!=null)save(v); };
+  });
+}
 
 
 function loadOriented(file, cb){
@@ -10176,6 +10230,7 @@ function famDrawer(){
     try{
       const {data:kid,error:e1}=await sb.from('badgeholders').insert({
         first_name:kf,last_name:kl,kind:'Μέλος',section:$('ks').value,status:'Αναμονή',
+        ...latPick(kf,kl,ps.map(x=>x.em)),    
         member_role:$('ks').value==='Αγέλη'?'Λυκόπουλο':$('ks').value==='Ομάδα'?'Πρόσκοπος':'Ανιχνευτής'
       }).select().single();
       if(e1) throw e1;
@@ -10185,7 +10240,7 @@ function famDrawer(){
       for(const p of ps){
         const {data:par,error:e2}=await sb.from('badgeholders').insert({
           first_name:p.fn,last_name:p.ln,kind:'Γονέας',status:'Ενεργός',
-          email:p.em||null, phone:p.ph||null}).select().single();
+          email:p.em||null, phone:p.ph||null, ...latPick(p.fn,p.ln,[p.em])}).select().single();
         if(e2) throw e2;
         const full=['Μητέρα','Πατέρας','Κηδεμόνας'].includes(p.rel);
         await sb.from('care_links').insert({member_id:kid.id,carer_id:par.id,relation:p.rel,
@@ -28095,7 +28150,8 @@ function latReview(){
       <label>${esc(t('Ποιοι'))}<select id="lrK"><option value="">${esc(t('Όλοι'))}</option>${kinds.map(k=>`<option value="${esc(k)}">${esc(dv(k))}</option>`).join('')}</select></label>
       <label>${esc(t('Πηγή'))}<select id="lrS"><option value="">${esc(t('Όλα τα ανεπιβεβαίωτα'))}</option><option value="rule">${esc(KL.rule)}</option><option value="email">${esc(KL.email)}</option></select></label>
       <label>${esc(t('Αναζήτηση'))}<input id="lrQ" autocomplete="off"></label></div>
-      <div class="dim" style="font-size:12px;margin-top:6px">${esc(t('Γράψε το όνομα όπως στο διαβατήριο και πάτα ✓. Το ✓ χωρίς αλλαγή σημαίνει «σωστό».'))}</div></div>
+      <div class="dim" style="font-size:12px;margin-top:6px">${esc(t('Γράψε το όνομα όπως στο διαβατήριο και πάτα ✓. Το ✓ χωρίς αλλαγή σημαίνει «σωστό».'))}</div>
+      ${(n=>n?`<button class="btn sm" id="lrFill" style="margin-top:8px">${esc(t('Συμπλήρωση κενών ({n})',{n}))}</button>`:'')(latGap().length)}</div>
     <div class="dsec" id="lrL"></div>`;
   const draw=()=>{ const k=$('lrK').value, s=$('lrS').value, q=nameKey($('lrQ').value.trim()), all=latPend();
     const L=all.filter(p=>(!k||p.kind===k)&&(!s||(p.latin_src||'rule')===s)&&(!q||nameKey(nm(p)+' '+(p.latin_name||'')).includes(q))).sort(sortByName);
@@ -28114,6 +28170,17 @@ function latReview(){
         row.remove(); $('lrN').textContent=t('{n} ανεπιβεβαίωτα',{n:latPend().length}); };
       inp.onkeydown=e=>{ if(e.key==='Enter')b.click() }; }); };
   ['lrK','lrS'].forEach(i=>$(i).onchange=draw); $('lrQ').oninput=draw; draw(); $('drw').classList.add('on');
+  const fb=$('lrFill'); if(fb)fb.onclick=()=>latFill(fb);
+}
+const latGap=()=>D.bh.filter(p=>!p.latin_name&&[dv('Ενεργός'),dv('Αναμονή')].includes(p.status)&&latPick(p.first_name,p.last_name).latin_name);
+async function latFill(btn){
+  const L=latGap(); if(!L.length)return toast(t('Κανένα.'));
+  if(!await uiAsk(t('Συμπλήρωση λατινικών για {n} πρόσωπα που δεν έχουν; Θα φαίνονται ως ανεπιβεβαίωτα μέχρι να τα δει γονέας ή εσύ.',{n:L.length}),{ok:t('Συμπλήρωση')}))return;
+  btn.disabled=true; let n=0, bad=0;
+  for(const p of L){ const v=latPick(p.first_name,p.last_name,latMails(p));
+    const {error}=await sb.from('badgeholders').update(v).eq('id',p.id).is('latin_name',null);
+    if(error){ bad++; continue } Object.assign(p,v); n++; }
+  saveCache(); toast(t('Συμπληρώθηκαν {n}',{n})+(bad?' · '+t('δεν πέρασαν {n}',{n:bad}):'')); latReview();
 }
 function guardiansBody(){
   const secs=oneSec()?[oneSec()]:['Αγέλη','Ομάδα','Κοινότητα'];    
@@ -30506,7 +30573,7 @@ async function wlElevate(id){
     toast('Ο Α.Μ. '+am+' υπάρχει ήδη σε άλλη καρτέλα — δεν τον πέρασα.'); am=null; }
   const {data:p,error}=await sb.from('badgeholders')
     .insert({first_name:r.first_name, last_name:r.last_name, kind:'Μέλος', section:sec||null,
-             ...(am?{registry_no:am}:{})}).select().single();
+             ...(am?{registry_no:am}:{}), ...latPick(r.first_name,r.last_name,[r.applicant_email])}).select().single();
   if(error)return toast('Δεν δημιουργήθηκε: '+error.message);
   (D.bh=D.bh||[]).push(p);
 
@@ -30521,10 +30588,10 @@ async function wlElevate(id){
       await sb.from('care_links').insert({member_id:p.id, carer_id:hits[0].id, relation:'Πατέρας', source:'λίστα αναμονής'});
       msg+=' Δέθηκε με τον υπάρχοντα γονέα '+nm(hits[0])+' (έλεγξε αν είναι πατέρας ή μητέρα).';
     }else if(!hits.length){
+      const gFn=(r.applicant_name||'').split(' ').slice(1).join(' ')||r.applicant_name, gLn=(r.applicant_name||'').split(' ')[0]||'—';
       const {data:g}=await sb.from('badgeholders').insert({
-        first_name:(r.applicant_name||'').split(' ').slice(1).join(' ')||r.applicant_name,
-        last_name:(r.applicant_name||'').split(' ')[0]||'—',
-        kind:'Γονέας', phone:r.applicant_phone||null, email:r.applicant_email||null}).select().single();
+        first_name:gFn, last_name:gLn,
+        kind:'Γονέας', phone:r.applicant_phone||null, email:r.applicant_email||null, ...latPick(gFn,gLn,[r.applicant_email])}).select().single();
       if(g){(D.bh=D.bh||[]).push(g);
         await sb.from('care_links').insert({member_id:p.id, carer_id:g.id, relation:'Πατέρας', source:'λίστα αναμονής'});
         msg+=' Δημιουργήθηκε και ο γονέας — έλεγξε όνομα/επίθετο και σχέση.';}
