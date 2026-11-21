@@ -1531,7 +1531,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-21 09:33'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-21 10:06'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -20298,147 +20298,6 @@ async function efFormsLoad(e){
           ${p&&regMissing(p)?`<span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent" title="Η δράση συνήθως θέλει ολοκληρωμένη εγγραφή της χρονιάς">χωρίς εγγραφή ${esc(YEAR)}</span>`:''}</td></tr>`}).join('')}</tbody></table></div>`;
 }
 
-const VEN_ROLES=()=>[dv('Υπεύθυνος χώρου'),dv('Διευθυντής σχολείου'),dv('Αρχηγός Συστήματος'),dv('Κοινοτάρχης'),dv('Δήμαρχος'),dv('Ιερέας'),dv('Δασονόμος'),dv('Φύλακας')];
-function venContacts(v){
-  const c=Array.isArray(v&&v.contacts)?v.contacts.filter(x=>x&&(x.name||x.phone||x.role)):[];
-  if(c.length)return c;
-  return v&&(v.phone||v.contact)?[{name:v.contact||'',role:'',phone:v.phone||''}]:[];
-}
-const venContactLine=x=>[x.name,x.role?'('+x.role+')':'',x.phone?fphone(x.phone):''].filter(Boolean).join(' ');
-function venueLL(u){
-  u=String(u||'').trim(); if(!u)return null;
-  const num='(-?\\d{1,3}\\.\\d+)';
-  const pats=[new RegExp('!3d'+num+'!4d'+num), new RegExp('[?&#](?:q|query|ll|sll|destination|center|daddr|mlat)=(?:loc:)?'+num+'(?:,|%2C|\\s)+\\+?'+num),
-    new RegExp('@'+num+','+num), new RegExp('#map=\\d+/'+num+'/'+num), new RegExp('^'+num+'\\s*[, ]\\s*'+num+'$')];
-  for(const re of pats){ const m=u.match(re); if(!m)continue;
-    const la=+m[1], lo=+m[2]; if(Math.abs(la)<=90&&Math.abs(lo)<=180&&(la||lo))return [+la.toFixed(5),+lo.toFixed(5)]; }
-  return null;
-}
-const venueLLtxt=v=>{const ll=venueLL(v&&v.map_url); return ll?ll.join(', '):''};
-const venShortLink=u=>/^(https?:\/\/)?(maps\.app\.goo\.gl|goo\.gl\/maps)\//i.test(String(u||'').trim());
-function venMapNote(u){
-  const ll=venueLL(u);
-  if(ll)return `📍 ${ll.join(', ')} · <a href="https://www.google.com/maps?q=${ll.join(',')}" target="_blank" rel="noopener">${esc(t('άνοιγμα'))}</a>`;
-  if(venShortLink(u))return esc(t('Σύντομος σύνδεσμος: ανοίγει κανονικά, αλλά οι συντεταγμένες δεν φαίνονται μέσα του. Για να γραφτούν και στο Δελτίο, άνοιξέ τον και αντέγραψε τον πλήρη σύνδεσμο από τη γραμμή διευθύνσεων.'));
-  return u?esc(t('Δεν βρέθηκαν συντεταγμένες στον σύνδεσμο.')):'';
-}
-const venLooksPh=s=>!!s&&/^\+?[\d\s\-().]+$/.test(s)&&s.replace(/\D/g,'').length>=8;
-function venCBad(cs){
-  for(const x of cs){ const sw=venLooksPh(x.name)||venLooksPh(x.role);
-    if(x.phone&&!venLooksPh(x.phone))return t('Τηλέφωνο επικοινωνίας')+' «'+x.phone+'»: '+t('μόνο ψηφία, τουλάχιστον 8')+(sw?' — '+t('ανάποδα; Το όνομα μοιάζει με τηλέφωνο'):'');
-    if(sw)return t('Ανάποδα;')+' «'+(venLooksPh(x.name)?x.name:x.role)+'» '+t('μοιάζει με τηλέφωνο — γράψ’ το στη στήλη «Τηλέφωνο»'); }
-  return null;
-}
-function venCRow(x){
-  return `<div class="grow vnc" style="align-items:flex-end;margin-bottom:6px">
-    <label style="flex:2 1 150px">${esc(t('Όνομα'))}<input class="vnc_n" spellcheck="true" lang="el" value="${esc(x.name||'')}"></label>
-    <label style="flex:2 1 150px">${esc(t('Ρόλος'))}<input class="vnc_r" list="vnRoles" spellcheck="true" lang="el" value="${esc(x.role||'')}" placeholder="${esc(t('π.χ. Διευθυντής σχολείου'))}"></label>
-    <label style="flex:1 1 120px">${esc(t('Τηλέφωνο'))}<input class="vnc_p" type="tel" inputmode="tel" value="${esc(x.phone||'')}"></label>
-    <button type="button" class="btn gh sm vnc_x" title="${esc(t('Αφαίρεση'))}" aria-label="${esc(t('Αφαίρεση'))}">✕</button></div>`;
-}
-function venCWire(){
-  const box=$('vnCs'); if(!box)return;
-  const mark=()=>box.querySelectorAll('.vnc').forEach((r,i)=>{r.querySelector('.vnc_n').placeholder=i?'':t('υπεύθυνος');});
-  box.querySelectorAll('.vnc_x').forEach(b=>b.onclick=()=>{b.closest('.vnc').remove(); mark();});
-  mark();
-}
-const venCRead=()=>[...document.querySelectorAll('#vnCs .vnc')].map(r=>({name:r.querySelector('.vnc_n').value.trim(),
-  role:r.querySelector('.vnc_r').value.trim(), phone:r.querySelector('.vnc_p').value.trim()})).filter(x=>x.name||x.phone||x.role);
-
-const VEN_CAP_=()=>[['in',t('Εσωτερικά')],['cov',t('Εξωτερικά καλυμμένα')],['open',t('Εξωτερικά ακάλυπτα')]];
-const venCapVal=(v,k)=>{const c=v&&v.capacity_parts&&typeof v.capacity_parts==='object'?v.capacity_parts:{}; return c[k]};
-function venCapTxt(v){
-  return VEN_CAP_().map(([k,l])=>{const x=venCapVal(v,k); if(x==null)return '';
-    return l.toLowerCase()+' '+(x==='unl'?t('χωρίς όριο'):x===0?t('όχι'):x);}).filter(Boolean).join(' · ');
-}
-function venCapHTML(v){
-  return `<div style="font-size:12.5px;color:var(--ink2);margin:8px 0 4px"><b>${esc(t('Χωρητικότητα'))}</b> · ${esc(t('κενό = δεν το ξέρουμε · 0 = δεν υπάρχει'))}</div>
-    <div class="grow">${VEN_CAP_().map(([k,l])=>{const x=venCapVal(v,k), u=x==='unl';
-      return `<label style="flex:1 1 150px">${esc(l)}
-        <input id="vnCap_${k}" type="number" min="0" max="100000" inputmode="numeric" value="${u||x==null?'':esc(String(x))}"${u?' disabled':''}>
-        <span style="display:flex;gap:5px;align-items:center;font-size:12px;font-weight:400;margin-top:3px">
-          <input type="checkbox" id="vnCapU_${k}"${u?' checked':''} style="width:auto"> ${esc(t('χωρίς όριο · δεν προσδιορίζεται'))}</span></label>`;}).join('')}</div>`;
-}
-function venCapWire(){
-  VEN_CAP_().forEach(([k])=>{const u=$('vnCapU_'+k), n=$('vnCap_'+k); if(!u||!n)return;
-    u.onchange=()=>{ n.disabled=u.checked; if(u.checked)n.value=''; };});
-}
-function venCapRead(){
-  const o={};
-  for(const [k,l] of VEN_CAP_()){ if($('vnCapU_'+k).checked){o[k]='unl';continue}
-    const raw=$('vnCap_'+k).value.trim(); if(raw==='')continue;
-    const n=Math.round(+raw); if(!Number.isFinite(n)||n<0)return {err:l};
-    o[k]=n; }
-  return o;
-}
-
-function venueEdit(vid, backEvent){
-  const v=vid?(D.ven||[]).find(x=>x.id===vid):null;
-  const f=(k,l,ph,t)=>`<label>${l}<input id="vn_${k}" spellcheck="true" lang="el" value="${esc(v&&v[k]!=null?v[k]:'')}" placeholder="${esc(ph||'')}"${t?' type="'+t+'"':''}></label>`;
-  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
-      <div style="font-size:17px;font-weight:600">${v?esc(v.name):'Νέος χώρος'}</div>
-      <div class="dim" style="font-size:12.5px">ξαναχρησιμοποιείται σε κάθε δράση</div></div>
-      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
-    <div class="dsec">
-      ${f('name','Όνομα','π.χ. Πλατάνια')}
-      <div class="grow">${f('kind','Είδος','κατασκηνωτικός χώρος')}${f('area','Τοποθεσία / περιοχή','Τρόοδος')}</div>
-      <label>Χώρος του ΣΠΚ<select id="vn_spk_site"><option value="">όχι — ο χώρος δεν ανήκει στο ΣΠΚ</option>
-        ${DL.XOROI.map(x=>`<option${v&&v.spk_site===x?' selected':''}>${x}</option>`).join('')}</select></label>
-      ${f('sleep_place','Χώρος διανυκτέρευσης','π.χ. 8ο Σύστημα Αεροπροσκόπων Χανιών (κενό = το όνομα)')}
-      ${f('address','Διεύθυνση','')}
-      <div style="font-size:12.5px;color:var(--ink2);margin:8px 0 4px"><b>${esc(t('Άτομα επικοινωνίας'))}</b> · ${esc(t('ο πρώτος είναι ο υπεύθυνος και το τηλέφωνό του μπαίνει στο Δελτίο'))}</div>
-      <div id="vnCs">${(venContacts(v).length?venContacts(v):[{}]).map(venCRow).join('')}</div>
-      <datalist id="vnRoles">${VEN_ROLES().map(r=>`<option value="${esc(r)}">`).join('')}</datalist>
-      <button type="button" class="btn sm gh" id="vnCAdd" style="margin-bottom:8px">+ ${esc(t('Προσθήκη ατόμου'))}</button>
-      <label>Πληροφορίες ανεύρεσης<textarea id="vn_directions" rows="2" placeholder="${esc(t('πώς φτάνεις, σημεία αναφοράς'))}">${esc(v&&v.directions||'')}</textarea></label>
-      <div class="grow">${f('map_url',t('Σύνδεσμος χάρτη (οι συντεταγμένες βγαίνουν από εδώ)'),'https://maps…')}</div>
-      <div class="dim" id="vnLL" style="font-size:12.5px;margin:-4px 0 8px">${venMapNote(v&&v.map_url)}</div>
-      ${venCapHTML(v)}
-      <div style="font-size:12.5px;color:var(--ink2);margin:8px 0 2px"><b>Χρήσιμα τηλέφωνα</b> · όπου δεν εφαρμόζει γράψε «Δ/Ε»</div>
-      <div class="grow">${DL.PHV.map(([k,l])=>f(k,l,'')+f('nm_'+k.slice(3),t('— ποιου είναι'),DL.PHN[k]||'')).join('')}</div>
-      ${(()=>{const q=v?DL.PHV.map(([k,l])=>{const fl=dlPhFlag(v[k],v['nm_'+k.slice(3)]);return fl?`<span>${esc(l)} ${esc(fphone(v[k]))} ${fl}</span>`:''}).filter(Boolean):[];
-        return q.length?`<div style="font-size:12.5px;margin:-2px 0 8px;display:flex;flex-wrap:wrap;gap:3px 14px">${q.join('')}</div>`:''})()}
-      <div class="dim" style="font-size:12px;margin:-4px 0 8px">${t('Λεωφορεία: στον φάκελο της κάθε δράσης (αλλάζουν κάθε φορά). Επαρχιακός Έφορος: από το Οργανόγραμμα.')}</div>
-      <label>Σημειώσεις<textarea id="vn_notes" rows="3" placeholder="νερό, ρεύμα, πρόσβαση ασθενοφόρου, τι να προσέχεις">${esc(v&&v.notes||'')}</textarea></label>
-      <div style="margin-top:11px;display:flex;gap:8px">
-        <button class="btn p" id="vnSave">Αποθήκευση</button>
-        ${v?`<button class="btn gh" id="vnDel" style="color:var(--bad)">Διαγραφή</button>`:''}</div>
-    </div>`;
-  drw.classList.add('on');
-  venCWire(); venCapWire();
-  $('vnCAdd').onclick=()=>{ $('vnCs').insertAdjacentHTML('beforeend',venCRow({})); venCWire(); const r=$('vnCs').lastElementChild; r&&r.querySelector('.vnc_n').focus(); };
-  $('vn_map_url').oninput=()=>{ $('vnLL').innerHTML=venMapNote($('vn_map_url').value) };
-  $('vn_map_url').onchange=()=>{ const u=$('vn_map_url').value.trim();
-    if(u&&!/^https?:/i.test(u)&&venueLL(u)){ $('vn_map_url').value='https://www.google.com/maps?q='+venueLL(u).join(','); $('vnLL').innerHTML=venMapNote($('vn_map_url').value); } };
-  const back=()=>{ const ev=backEvent&&(D.ev||[]).find(x=>x.id===backEvent);
-    if(ev&&$('dlV'))dlRe(ev,'dlV'); else if(ROUTE==='efolder')V_efolder(); };
-  $('vnSave').onclick=async()=>{
-    const g=k=>{const el=$('vn_'+k); return el?(el.value||'').trim()||null:null};
-    const name=g('name'); if(!name)return toast('Θέλει όνομα');
-    const cs=venCRead(), lead=cs[0]||{};
-    if(cs.some(x=>!x.name&&!x.phone))return toast(t('Κάθε άτομο επικοινωνίας θέλει όνομα ή τηλέφωνο'));
-    const bad=venCBad(cs); if(bad)return toast(bad);
-    const cap=venCapRead(); if(cap.err)return toast(t('Χωρητικότητα')+' · '+cap.err+': '+t('βάλε αριθμό'));
-    const rec={name, kind:g('kind'), area:g('area'), address:g('address'), contacts:cs,
-      phone:(cs.find(x=>x.phone)||{}).phone||null, contact:lead.name?(lead.name+(lead.role?' ('+lead.role+')':'')):null, map_url:g('map_url'), spk_site:g('spk_site'), sleep_place:g('sleep_place'), directions:g('directions'),
-      capacity_parts:cap, notes:g('notes')};
-    DL.PHV.forEach(([k])=>{ rec[k]=g(k); rec['nm_'+k.slice(3)]=g('nm_'+k.slice(3)); });    
-    if(v){ const {error}=await sb.from('venues').update(rec).eq('id',v.id);
-      if(error)return toast('Δεν σώθηκε: '+error.message);
-      Object.assign(v,rec); saveCache(); drw.classList.remove('on'); toast('Αποθηκεύτηκε'); back(); }
-    else { const {data,error}=await sb.from('venues').insert(rec).select().single();
-      if(error)return toast('Δεν μπήκε: '+error.message);
-      (D.ven=D.ven||[]).push(data); saveCache(); drw.classList.remove('on'); toast('Αποθηκεύτηκε');
-      const ev=backEvent&&(D.ev||[]).find(x=>x.id===backEvent);
-      if(ev)await dlVenueAdd(ev,data.id); else back(); }
-  };
-  const dl=$('vnDel'); if(dl)dl.onclick=async()=>{
-    if(!await uiAsk('Διαγραφή του χώρου «'+v.name+'» από τον κατάλογο;'))return;
-    const {error}=await sb.from('venues').delete().eq('id',v.id);
-    if(error)return toast(error.code==='23503'?'Χρησιμοποιείται σε δράση — βγάλ’ τον πρώτα από εκεί.':'Δεν σβήστηκε: '+error.message);
-    D.ven=(D.ven||[]).filter(x=>x.id!==v.id); saveCache(); drw.classList.remove('on'); back();};
-}
-
 function busEdit(id,done){
   const b=id?(D.bus||[]).find(x=>x.id===id):null;
   const f=(k,l,ph)=>`<label>${l}<input id="bu_${k}" value="${esc(b&&b[k]!=null?b[k]:'')}" placeholder="${esc(ph||'')}"></label>`;
@@ -20965,16 +20824,21 @@ async function uploadLinks(reqCode){
       <button class="btn p sm" id="ulGo">Δημιουργία συνδέσμων</button></div>
     <div class="dsec" id="ulRes" style="border:0"></div>`;
   drw.classList.add('on');
-  $('ulGo').onclick=async()=>{
+  const ulRun=async(renew)=>{
     $('ulGo').disabled=true; $('ulGo').textContent='Δημιουργία…';
-    const {data,error}=await sb.rpc('mint_upload_tokens',{p_req:reqCode,p_year:yr,p_section:$('ulSec').value||null});
+    const {data,error}=await sb.rpc('mint_upload_tokens',{p_req:reqCode,p_year:yr,p_section:$('ulSec').value||null,p_renew:!!renew});
     $('ulGo').disabled=false; $('ulGo').textContent='Δημιουργία συνδέσμων';
     if(error)return toast('Σφάλμα: '+error.message);
-    const rows=(data||[]).filter(x=>x.token);
-    if(!rows.length)return $('ulRes').innerHTML='<div class="dim" style="font-size:13px">Δεν λείπει από κανέναν.</div>';
+    const rows=(data||[]).filter(x=>x.token), had=(data||[]).filter(x=>!x.token);
+    if(!rows.length&&!had.length)return $('ulRes').innerHTML='<div class="dim" style="font-size:13px">Δεν λείπει από κανέναν.</div>';
+    const hadHTML=had.length?`<div class="dim" style="font-size:12.5px;margin-bottom:10px">${esc(t('{n} παιδιά έχουν ήδη ενεργό σύνδεσμο από προηγούμενη δημιουργία. Για λόγους ασφάλειας ο σύνδεσμος δεν ξαναφαίνεται. Αν χάθηκε, φτιάξτε νέο — ο παλιός παύει αμέσως να ισχύει.',{n:had.length}))}
+        <div style="margin-top:6px"><button class="btn sm gh" id="ulRenew">${esc(t('Νέοι σύνδεσμοι για όσους είχαν ήδη'))}</button></div></div>`:'';
+    const wireRenew=()=>{const b=$('ulRenew'); if(!b)return;
+      b.onclick=()=>{ if(!b.dataset.sure){ b.dataset.sure='1'; b.textContent=t('Σίγουρα; Πάτα ξανά'); return; } ulRun(true); }; };
+    if(!rows.length){ $('ulRes').innerHTML=hadHTML; return wireRenew(); }
     const link=t=>UPBASE+'?t='+t;
     const per=rows.map(r=>({...r, url:link(r.token)}));
-    $('ulRes').innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    $('ulRes').innerHTML=hadHTML+`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
         <span class="pill">${per.length} σύνδεσμοι</span>
         <span class="sp"></span>
         <button class="btn sm" id="ulCsv">${ic('down',13)} CSV</button>
@@ -20988,7 +20852,9 @@ async function uploadLinks(reqCode){
     $('ulCsv').onclick=()=>{
       const rws=[['Παιδί','Σύνδεσμος']].concat(per.map(r=>[r.onoma,r.url]));
       csvSave(rws,`76-syndesmoi-${reqCode}-${YEAR}.csv`)};
+    wireRenew();
   };
+  $('ulGo').onclick=()=>ulRun(false);
 }
 
 function edYear(req){ return req&&req.cadence==='εφάπαξ'?null:YEAR; }
@@ -21271,6 +21137,147 @@ async function efRoleSync(e,r,was,v){
   else if(was===DL_FA&&!has(DL_FA)&&(e.fa_order||[]).includes(pid))await dlSet(e,{fa_order:(e.fa_order||[]).filter(id=>id!==pid)});
   if(v===DL_SFHR||was===DL_SFHR)V_efolder();
 }
+const VEN_ROLES=()=>[dv('Υπεύθυνος χώρου'),dv('Διευθυντής σχολείου'),dv('Αρχηγός Συστήματος'),dv('Κοινοτάρχης'),dv('Δήμαρχος'),dv('Ιερέας'),dv('Δασονόμος'),dv('Φύλακας')];
+function venContacts(v){
+  const c=Array.isArray(v&&v.contacts)?v.contacts.filter(x=>x&&(x.name||x.phone||x.role)):[];
+  if(c.length)return c;
+  return v&&(v.phone||v.contact)?[{name:v.contact||'',role:'',phone:v.phone||''}]:[];
+}
+const venContactLine=x=>[x.name,x.role?'('+x.role+')':'',x.phone?fphone(x.phone):''].filter(Boolean).join(' ');
+function venueLL(u){
+  u=String(u||'').trim(); if(!u)return null;
+  const num='(-?\\d{1,3}\\.\\d+)';
+  const pats=[new RegExp('!3d'+num+'!4d'+num), new RegExp('[?&#](?:q|query|ll|sll|destination|center|daddr|mlat)=(?:loc:)?'+num+'(?:,|%2C|\\s)+\\+?'+num),
+    new RegExp('@'+num+','+num), new RegExp('#map=\\d+/'+num+'/'+num), new RegExp('^'+num+'\\s*[, ]\\s*'+num+'$')];
+  for(const re of pats){ const m=u.match(re); if(!m)continue;
+    const la=+m[1], lo=+m[2]; if(Math.abs(la)<=90&&Math.abs(lo)<=180&&(la||lo))return [+la.toFixed(5),+lo.toFixed(5)]; }
+  return null;
+}
+const venueLLtxt=v=>{const ll=venueLL(v&&v.map_url); return ll?ll.join(', '):''};
+const venShortLink=u=>/^(https?:\/\/)?(maps\.app\.goo\.gl|goo\.gl\/maps)\//i.test(String(u||'').trim());
+function venMapNote(u){
+  const ll=venueLL(u);
+  if(ll)return `📍 ${ll.join(', ')} · <a href="https://www.google.com/maps?q=${ll.join(',')}" target="_blank" rel="noopener">${esc(t('άνοιγμα'))}</a>`;
+  if(venShortLink(u))return esc(t('Σύντομος σύνδεσμος: ανοίγει κανονικά, αλλά οι συντεταγμένες δεν φαίνονται μέσα του. Για να γραφτούν και στο Δελτίο, άνοιξέ τον και αντέγραψε τον πλήρη σύνδεσμο από τη γραμμή διευθύνσεων.'));
+  return u?esc(t('Δεν βρέθηκαν συντεταγμένες στον σύνδεσμο.')):'';
+}
+const venLooksPh=s=>!!s&&/^\+?[\d\s\-().]+$/.test(s)&&s.replace(/\D/g,'').length>=8;
+function venCBad(cs){
+  for(const x of cs){ const sw=venLooksPh(x.name)||venLooksPh(x.role);
+    if(x.phone&&!venLooksPh(x.phone))return t('Τηλέφωνο επικοινωνίας')+' «'+x.phone+'»: '+t('μόνο ψηφία, τουλάχιστον 8')+(sw?' — '+t('ανάποδα; Το όνομα μοιάζει με τηλέφωνο'):'');
+    if(sw)return t('Ανάποδα;')+' «'+(venLooksPh(x.name)?x.name:x.role)+'» '+t('μοιάζει με τηλέφωνο — γράψ’ το στη στήλη «Τηλέφωνο»'); }
+  return null;
+}
+function venCRow(x){
+  return `<div class="grow vnc" style="align-items:flex-end;margin-bottom:6px">
+    <label style="flex:2 1 150px">${esc(t('Όνομα'))}<input class="vnc_n" spellcheck="true" lang="el" value="${esc(x.name||'')}"></label>
+    <label style="flex:2 1 150px">${esc(t('Ρόλος'))}<input class="vnc_r" list="vnRoles" spellcheck="true" lang="el" value="${esc(x.role||'')}" placeholder="${esc(t('π.χ. Διευθυντής σχολείου'))}"></label>
+    <label style="flex:1 1 120px">${esc(t('Τηλέφωνο'))}<input class="vnc_p" type="tel" inputmode="tel" value="${esc(x.phone||'')}"></label>
+    <button type="button" class="btn gh sm vnc_x" title="${esc(t('Αφαίρεση'))}" aria-label="${esc(t('Αφαίρεση'))}">✕</button></div>`;
+}
+function venCWire(){
+  const box=$('vnCs'); if(!box)return;
+  const mark=()=>box.querySelectorAll('.vnc').forEach((r,i)=>{r.querySelector('.vnc_n').placeholder=i?'':t('υπεύθυνος');});
+  box.querySelectorAll('.vnc_x').forEach(b=>b.onclick=()=>{b.closest('.vnc').remove(); mark();});
+  mark();
+}
+const venCRead=()=>[...document.querySelectorAll('#vnCs .vnc')].map(r=>({name:r.querySelector('.vnc_n').value.trim(),
+  role:r.querySelector('.vnc_r').value.trim(), phone:r.querySelector('.vnc_p').value.trim()})).filter(x=>x.name||x.phone||x.role);
+
+const VEN_CAP_=()=>[['in',t('Εσωτερικά')],['cov',t('Εξωτερικά καλυμμένα')],['open',t('Εξωτερικά ακάλυπτα')]];
+const venCapVal=(v,k)=>{const c=v&&v.capacity_parts&&typeof v.capacity_parts==='object'?v.capacity_parts:{}; return c[k]};
+function venCapTxt(v){
+  return VEN_CAP_().map(([k,l])=>{const x=venCapVal(v,k); if(x==null)return '';
+    return l.toLowerCase()+' '+(x==='unl'?t('χωρίς όριο'):x===0?t('όχι'):x);}).filter(Boolean).join(' · ');
+}
+function venCapHTML(v){
+  return `<div style="font-size:12.5px;color:var(--ink2);margin:8px 0 4px"><b>${esc(t('Χωρητικότητα'))}</b> · ${esc(t('κενό = δεν το ξέρουμε · 0 = δεν υπάρχει'))}</div>
+    <div class="grow">${VEN_CAP_().map(([k,l])=>{const x=venCapVal(v,k), u=x==='unl';
+      return `<label style="flex:1 1 150px">${esc(l)}
+        <input id="vnCap_${k}" type="number" min="0" max="100000" inputmode="numeric" value="${u||x==null?'':esc(String(x))}"${u?' disabled':''}>
+        <span style="display:flex;gap:5px;align-items:center;font-size:12px;font-weight:400;margin-top:3px">
+          <input type="checkbox" id="vnCapU_${k}"${u?' checked':''} style="width:auto"> ${esc(t('χωρίς όριο · δεν προσδιορίζεται'))}</span></label>`;}).join('')}</div>`;
+}
+function venCapWire(){
+  VEN_CAP_().forEach(([k])=>{const u=$('vnCapU_'+k), n=$('vnCap_'+k); if(!u||!n)return;
+    u.onchange=()=>{ n.disabled=u.checked; if(u.checked)n.value=''; };});
+}
+function venCapRead(){
+  const o={};
+  for(const [k,l] of VEN_CAP_()){ if($('vnCapU_'+k).checked){o[k]='unl';continue}
+    const raw=$('vnCap_'+k).value.trim(); if(raw==='')continue;
+    const n=Math.round(+raw); if(!Number.isFinite(n)||n<0)return {err:l};
+    o[k]=n; }
+  return o;
+}
+
+function venueEdit(vid, backEvent){
+  const v=vid?(D.ven||[]).find(x=>x.id===vid):null;
+  const f=(k,l,ph,t)=>`<label>${l}<input id="vn_${k}" spellcheck="true" lang="el" value="${esc(v&&v[k]!=null?v[k]:'')}" placeholder="${esc(ph||'')}"${t?' type="'+t+'"':''}></label>`;
+  $('drwp').innerHTML=`<div class="dhead"><div style="flex:1">
+      <div style="font-size:17px;font-weight:600">${v?esc(v.name):'Νέος χώρος'}</div>
+      <div class="dim" style="font-size:12.5px">ξαναχρησιμοποιείται σε κάθε δράση</div></div>
+      <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec">
+      ${f('name','Όνομα','π.χ. Πλατάνια')}
+      <div class="grow">${f('kind','Είδος','κατασκηνωτικός χώρος')}${f('area','Τοποθεσία / περιοχή','Τρόοδος')}</div>
+      <label>Χώρος του ΣΠΚ<select id="vn_spk_site"><option value="">όχι — ο χώρος δεν ανήκει στο ΣΠΚ</option>
+        ${DL.XOROI.map(x=>`<option${v&&v.spk_site===x?' selected':''}>${x}</option>`).join('')}</select></label>
+      ${f('sleep_place','Χώρος διανυκτέρευσης','π.χ. 8ο Σύστημα Αεροπροσκόπων Χανιών (κενό = το όνομα)')}
+      ${f('address','Διεύθυνση','')}
+      <div style="font-size:12.5px;color:var(--ink2);margin:8px 0 4px"><b>${esc(t('Άτομα επικοινωνίας'))}</b> · ${esc(t('ο πρώτος είναι ο υπεύθυνος και το τηλέφωνό του μπαίνει στο Δελτίο'))}</div>
+      <div id="vnCs">${(venContacts(v).length?venContacts(v):[{}]).map(venCRow).join('')}</div>
+      <datalist id="vnRoles">${VEN_ROLES().map(r=>`<option value="${esc(r)}">`).join('')}</datalist>
+      <button type="button" class="btn sm gh" id="vnCAdd" style="margin-bottom:8px">+ ${esc(t('Προσθήκη ατόμου'))}</button>
+      <label>Πληροφορίες ανεύρεσης<textarea id="vn_directions" rows="2" placeholder="${esc(t('πώς φτάνεις, σημεία αναφοράς'))}">${esc(v&&v.directions||'')}</textarea></label>
+      <div class="grow">${f('map_url',t('Σύνδεσμος χάρτη (οι συντεταγμένες βγαίνουν από εδώ)'),'https://maps…')}</div>
+      <div class="dim" id="vnLL" style="font-size:12.5px;margin:-4px 0 8px">${venMapNote(v&&v.map_url)}</div>
+      ${venCapHTML(v)}
+      <div style="font-size:12.5px;color:var(--ink2);margin:8px 0 2px"><b>Χρήσιμα τηλέφωνα</b> · όπου δεν εφαρμόζει γράψε «Δ/Ε»</div>
+      <div class="grow">${DL.PHV.map(([k,l])=>f(k,l,'')+f('nm_'+k.slice(3),t('— ποιου είναι'),DL.PHN[k]||'')).join('')}</div>
+      ${(()=>{const q=v?DL.PHV.map(([k,l])=>{const fl=dlPhFlag(v[k],v['nm_'+k.slice(3)]);return fl?`<span>${esc(l)} ${esc(fphone(v[k]))} ${fl}</span>`:''}).filter(Boolean):[];
+        return q.length?`<div style="font-size:12.5px;margin:-2px 0 8px;display:flex;flex-wrap:wrap;gap:3px 14px">${q.join('')}</div>`:''})()}
+      <div class="dim" style="font-size:12px;margin:-4px 0 8px">${t('Λεωφορεία: στον φάκελο της κάθε δράσης (αλλάζουν κάθε φορά). Επαρχιακός Έφορος: από το Οργανόγραμμα.')}</div>
+      <label>Σημειώσεις<textarea id="vn_notes" rows="3" placeholder="νερό, ρεύμα, πρόσβαση ασθενοφόρου, τι να προσέχεις">${esc(v&&v.notes||'')}</textarea></label>
+      <div style="margin-top:11px;display:flex;gap:8px">
+        <button class="btn p" id="vnSave">Αποθήκευση</button>
+        ${v?`<button class="btn gh" id="vnDel" style="color:var(--bad)">Διαγραφή</button>`:''}</div>
+    </div>`;
+  drw.classList.add('on');
+  venCWire(); venCapWire();
+  $('vnCAdd').onclick=()=>{ $('vnCs').insertAdjacentHTML('beforeend',venCRow({})); venCWire(); const r=$('vnCs').lastElementChild; r&&r.querySelector('.vnc_n').focus(); };
+  $('vn_map_url').oninput=()=>{ $('vnLL').innerHTML=venMapNote($('vn_map_url').value) };
+  $('vn_map_url').onchange=()=>{ const u=$('vn_map_url').value.trim();
+    if(u&&!/^https?:/i.test(u)&&venueLL(u)){ $('vn_map_url').value='https://www.google.com/maps?q='+venueLL(u).join(','); $('vnLL').innerHTML=venMapNote($('vn_map_url').value); } };
+  const back=()=>{ const ev=backEvent&&(D.ev||[]).find(x=>x.id===backEvent);
+    if(ev&&$('dlV'))dlRe(ev,'dlV'); else if(ROUTE==='efolder')V_efolder(); };
+  $('vnSave').onclick=async()=>{
+    const g=k=>{const el=$('vn_'+k); return el?(el.value||'').trim()||null:null};
+    const name=g('name'); if(!name)return toast('Θέλει όνομα');
+    const cs=venCRead(), lead=cs[0]||{};
+    if(cs.some(x=>!x.name&&!x.phone))return toast(t('Κάθε άτομο επικοινωνίας θέλει όνομα ή τηλέφωνο'));
+    const bad=venCBad(cs); if(bad)return toast(bad);
+    const cap=venCapRead(); if(cap.err)return toast(t('Χωρητικότητα')+' · '+cap.err+': '+t('βάλε αριθμό'));
+    const rec={name, kind:g('kind'), area:g('area'), address:g('address'), contacts:cs,
+      phone:(cs.find(x=>x.phone)||{}).phone||null, contact:lead.name?(lead.name+(lead.role?' ('+lead.role+')':'')):null, map_url:g('map_url'), spk_site:g('spk_site'), sleep_place:g('sleep_place'), directions:g('directions'),
+      capacity_parts:cap, notes:g('notes')};
+    DL.PHV.forEach(([k])=>{ rec[k]=g(k); rec['nm_'+k.slice(3)]=g('nm_'+k.slice(3)); });    
+    if(v){ const {error}=await sb.from('venues').update(rec).eq('id',v.id);
+      if(error)return toast('Δεν σώθηκε: '+error.message);
+      Object.assign(v,rec); saveCache(); drw.classList.remove('on'); toast('Αποθηκεύτηκε'); back(); }
+    else { const {data,error}=await sb.from('venues').insert(rec).select().single();
+      if(error)return toast('Δεν μπήκε: '+error.message);
+      (D.ven=D.ven||[]).push(data); saveCache(); drw.classList.remove('on'); toast('Αποθηκεύτηκε');
+      const ev=backEvent&&(D.ev||[]).find(x=>x.id===backEvent);
+      if(ev)await dlVenueAdd(ev,data.id); else back(); }
+  };
+  const dl=$('vnDel'); if(dl)dl.onclick=async()=>{
+    if(!await uiAsk('Διαγραφή του χώρου «'+v.name+'» από τον κατάλογο;'))return;
+    const {error}=await sb.from('venues').delete().eq('id',v.id);
+    if(error)return toast(error.code==='23503'?'Χρησιμοποιείται σε δράση — βγάλ’ τον πρώτα από εκεί.':'Δεν σβήστηκε: '+error.message);
+    D.ven=(D.ven||[]).filter(x=>x.id!==v.id); saveCache(); drw.classList.remove('on'); back();};
+}
+
 const EFD_DECL=['επιβεβαιώνω την ηλεκτρονική δήλωση συμμετοχής που υποβλήθηκε στο smartespot.com/76life και συναινώ στη συμμετοχή του/της στη δράση, όπως περιγράφεται στην ανακοίνωση·',
   'βεβαιώνω ότι τα στοιχεία της δήλωσης, μαζί με τα στοιχεία υγείας και διατροφής, είναι αληθή και πλήρη, ώστε οι Βαθμοφόροι να εξασφαλίσουν ασφαλή και όσο το δυνατόν πληρέστερη συμμετοχή του/της·',
   'θα ενημερώσω τους Βαθμοφόρους για κάθε αλλαγή μέχρι την ημέρα της δράσης.'];
@@ -23238,7 +23245,7 @@ function gsHTML(e){
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
       <b style="font-size:12.5px">${t('Στιγμιότυπα')}</b>
       ${ed?`<button class="btn sm" data-gsst="egkrisi">${GS_ST.egkrisi}</button>`:''}
-      ${boss?`<button class="btn sm" data-gsst="teliko">${GS_ST.teliko}</button><button class="btn sm" data-gsst="apologismos">${GS_ST.apologismos}</button>`
+      ${boss?`<button class="btn sm" data-gsst="teliko">${GS_ST.teliko}</button>${lensRole()==='dev'?'':`<button class="btn sm" data-gsst="apologismos">${GS_ST.apologismos}</button>`}`
         :`<span class="dim" style="font-size:12px">${t('«Τελικό» και «Απολογισμός»: ο αρχηγός της δράσης ή ο Α.Σ.')}</span>`}</div>
     ${gsSignHTML(e)}
     ${snaps.length?`<ul style="margin:6px 0 0 18px;padding:0;font-size:13px">${snaps.map(row).join('')}</ul>`
@@ -24198,7 +24205,8 @@ async function apLoad(e){
   const staff=[...new Set(staffP.map(x=>x.name).filter(Boolean))];
   const ev=(a.data||[]).map(r=>({id:r.cid, seq:r.id, ts:r.at, who:r.by_person||'', type:r.type, data:r.data||{}}));
   const cats=[...new Set([...Object.keys(bud.cats), ...BD_X()])];
-  return APX[eid]={ev, st:AP2.ledger.replay(ev), edit:b.data===true, see:b.data===true||c.data===true, boss:bo.data===true, as:as.data===true, staffMe:sf.data===true,
+  const dev=lensRole()==='dev';    
+  return APX[eid]={ev, st:AP2.ledger.replay(ev), edit:!dev&&b.data===true, see:b.data===true||c.data===true, boss:!dev&&bo.data===true, as:!dev&&as.data===true, staffMe:!dev&&sf.data===true,
     mgrs:(m.data||[]).map(r=>r.person_id), cats, bud, staff, staffP, err:a.error||null};
 }
 
