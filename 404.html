@@ -1531,7 +1531,7 @@ const SUBS={
 const MOD={}; NAV.forEach(g=>g.items.forEach(m=>MOD[m.id]=m));
 MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'};
 
-const BUILD='2026-11-21 12:03'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-21 12:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4176,7 +4176,7 @@ async function openProfile(id){
       }
       return openProfile(p.id);
     }
-    const bh={phone:$('eP').value.trim()||null,email:$('eE').value.trim()||null}; if($('eL')){ const v=$('eL').value.trim()||null; if(v!==(p.latin_name||null))bh.latin_src='ok'; bh.latin_name=v; }
+    const bh={phone:$('eP').value.trim()||null,email:$('eE').value.trim()||null}; if($('eL')){ const L=pfLatinIn($('eL').value); if(!L){btn.disabled=false; btn.textContent=t('Αποθήκευση'); return toast(t('Γράψτε το όνομα με λατινικά γράμματα (A–Z), όπως στο διαβατήριο'))} const v=L.v; if(v===null)bh.latin_src=null; else if(v!==(p.latin_name||null))bh.latin_src='ok'; bh.latin_name=v; }
     if(!isMem&&$('eA'))bh.appointment=$('eA').value.trim()||null;
     Object.assign(p,bh);
     const myv=isMem&&$('eG')?{group_name:$('eG').value.trim()||null,
@@ -4193,6 +4193,10 @@ async function openProfile(id){
     }
     saveCache(); openProfile(p.id); stay();
   };
+}
+function pfLatinIn(raw){ const v=String(raw||'').replace(/[’‘`´]/g,"'").replace(/\s+/g,' ').trim();
+  if(!v)return {v:null};
+  return v.length<2||v.length>80||!/^[A-Za-z](?:[A-Za-z' -]*[A-Za-z])?$/.test(v)?null:{v};
 }
 function pfLatinUI(p){
   const st=[...document.querySelectorAll('#drwp .dsec h4')].find(h=>h.textContent===t('Στοιχεία'));
@@ -4271,6 +4275,24 @@ const RING={entoli:'#22c55e',anathesi:'#eab308',expired:'#ef4444',none:null,abov
 const RINGTXT_A=()=>t('Εντολή Διοίκησης από την Εφορεία (ΓΕ/ΕΕΛ)');
 const RINGTXT={entoli:'ενεργή Εντολή Διοίκησης',anathesi:'ενεργή Ανάθεση Καθηκόντων',expired:'έληξε',none:'δεν έχει αιτηθεί'};
 RINGTXT.above=RINGTXT_A();    
+function warrantPos(ap){
+  const a=String(ap||'').replace(/\s+/g,' ').trim();
+  if(!a||a==='-'||a==='—')return '';
+  if(/Έφορος|Εφόρου/.test(a))return dv('Εφόρου');
+  if(/^Αρχηγός Συστήματος/.test(a))return dv('ΑΣ');
+  if(/^Υπαρχηγός Συστήματος/.test(a))return dv('ΥΑΣ');
+  const S=({[dv('Αγέλης')]:dv('ΑΛ'),[dv('Ομάδας')]:dv('ΟΠ'),[dv('Κοινότητας')]:dv('ΚΑ')});
+  const m=/^(Αρχηγός|Υπαρχηγός|Βαθμοφόρος|P\/T|Δίκτυο) (Αγέλης|Ομάδας|Κοινότητας)/.exec(a);
+  if(m){ const sc=S[m[2]];
+    if(m[1]===dv('Αρχηγός'))return dv('Α')+sc;
+    if(m[1]===dv('Υπαρχηγός'))return dv('Υ')+sc;
+    return (m[1]===dv('Βαθμοφόρος')?dv('Βαθμοφόρος'):m[1])+' '+sc; }
+  if(/^Βαθμοφόρος Δικτύου/.test(a))return dv('Δικτύου');
+  if(/^Βαθμοφόρος Συστήματος/.test(a))return dv('Βαθμοφόρος')+' '+dv('ΑΣ');
+  return a;
+}
+const ringTxt=w=>{ const x=RINGTXT[w.k]||'', pos=w.rec?warrantPos(w.rec.appointment):'';
+  return pos&&w.k!=='above'&&w.k!=='none'?(w.k==='expired'?x+' ('+pos+')':x+' '+pos):x; };
 const CERTC={ok:'#27ae60',soon:'#f39c12',expired:'#e74c3c',none:'#c7ced6',na:'#c7ced6',hidden:'#e6e9ee',above:'#8e44ad'};    
 const CERTTXT={ok:'Ν.91(Ι) σε ισχύ',soon:'Ν.91(Ι) λήγει σύντομα',expired:'Ν.91(Ι) έληξε',none:'χωρίς Ν.91(Ι)',na:'Ν.91(Ι) — δεν απαιτείται ακόμη (ανήλικος)'};
 CERTTXT.above=t('Ν.91(Ι) — εξαιρείται: η Εντολή Διοίκησης εκδίδεται από την Εφορεία (ΓΕ/ΕΕΛ)');
@@ -4284,7 +4306,7 @@ function leaderDot(p, sec, yr){
   const cs=certState(p.id), tl=trainLevel(p.id,s2), w=warrantOf(p.id,yr);
   const ring=RING[w.k]?`box-shadow:0 0 0 2px ${RING[w.k]};`:'';
   const t=`${nm(p)} — ${certTxt(cs)}`
-    +` · ${TRTXT[tl]}${tl===1&&SEC_CODE[s2]?' (όχι '+SEC_CODE[s2]+')':''} · ${RINGTXT[w.k]}`;
+    +` · ${TRTXT[tl]}${tl===1&&SEC_CODE[s2]?' (όχι '+SEC_CODE[s2]+')':''} · ${ringTxt(w)}`;
   return `<span class="dot ldot" title="${esc(t)}" style="${ring}background:linear-gradient(90deg,${CERTC[cs.k]} 0 50%,${TRC[tl]} 50% 100%)"></span>`;
 }
 
@@ -4329,7 +4351,7 @@ function statusBar(p,mini){
     const cs=certState(p.id); push(CERTC[cs.k]==='#c7ced6'?SB_EMPTY:CERTC[cs.k],
       certTxt(cs));
     const tl=trainLevel(p.id); push(tl===0?SB_EMPTY:TRC[tl], TRTXT[tl]);
-    const w=warrantOf(p.id); push(RING[w.k]||SB_EMPTY, 'εντολή: '+RINGTXT[w.k]);
+    const w=warrantOf(p.id); push(RING[w.k]||SB_EMPTY, 'εντολή: '+ringTxt(w));
     push(inYear(p)?'#27ae60':coveredAbove(p)?'#8e44ad':SB_EMPTY, inYear(p)?'εγγεγραμμένος '+YEAR:coveredAbove(p)?t('εγγραφή από την Εφορεία')+' ('+p.commissioner_at+')':'χωρίς εγγραφή '+YEAR);    
   }
   return sbarDraw(segs,tips,mini,nm(p),sec);
@@ -9615,9 +9637,10 @@ function parentEdit(pid){
   $('peSave').onclick=async()=>{
     const v={home_address:$('pe_addr').value.trim()||null,home_phone:$('pe_hp').value.trim()||null,
       phone:$('pe_kp').value.trim()||null,email:$('pe_ke').value.trim()||null};
-    const {error}=await sb.from('badgeholders').update(v).eq('id',pid);
+    const {data,error}=await sb.rpc('guardian_contact_update',{p_person:pid,p_phone:v.phone,p_email:v.email,
+      p_home_phone:v.home_phone,p_home_address:v.home_address});
     if(error)return toast('Σφάλμα: '+error.message);
-    Object.assign(p,v); saveCache(); toast('Ευχαριστούμε'); drw.classList.remove('on'); stay();};
+    Object.assign(p,data&&typeof data==='object'?data:v); saveCache(); toast('Ευχαριστούμε'); drw.classList.remove('on'); stay();};
 }
 
 
@@ -31209,7 +31232,7 @@ function spkExportBody(){
       const R=[['Α.Μ.','Επώνυμο','Όνομα','Ιδιότητα','Τμήμα','Ν.91(Ι) λήξη','Εκπαίδευση','Εντολή']];
       led.forEach(p=>{const c=certState(p.id), tl=trainLevel(p.id), w=warrantOf(p.id);
         R.push([p.registry_no||'',p.last_name,p.first_name,ledLabel(p,true)||'',
-                secOf(p)||'',c.exp||'',TRTXT[tl]||'',RINGTXT[w.k]||''])});
+                secOf(p)||'',c.exp||'',TRTXT[tl]||'',ringTxt(w)||''])});
       exportRows(R,`SPK-katastasi-vathmoforwn-${yr}`,`Κατάσταση Βαθμοφόρων ${yr}`);
     }});
 }
