@@ -4,14 +4,14 @@
    εδώ: οι κλήσεις στη βάση δεν αποθηκεύονται ποτέ.
    · Σελίδα: πρώτα το δίκτυο (για να έρχεται πάντα η νέα έκδοση) — αν δεν
      απαντήσει σε 4 δευτερόλεπτα ή δεν υπάρχει σύνδεση, η αποθηκευμένη.
-   · Βιβλιοθήκη από CDN: από την αποθήκη, αν υπάρχει.
+   · Βιβλιοθήκη (lib/, ίδια προέλευση από 22/11): από την αποθήκη, αν υπάρχει.
    · Όλα τα υπόλοιπα: περνούν απευθείας, χωρίς αποθήκευση. */
 // 28/10: η βιβλιοθήκη ΚΛΕΙΔΩΘΗΚΕ σε έκδοση με έλεγχο ακεραιότητας (index.html) — το LIB πρέπει να
 // είναι ΑΚΡΙΒΩΣ το ίδιο URL, και η αποθήκευση με mode 'cors' (αλλιώς ο browser δεν μπορεί να ελέγξει
 // το hash και η εφαρμογή δεν ανοίγει χωρίς σήμα). Νέα έκδοση βιβλιοθήκης = αλλαγή ΚΑΙ εδώ.
-const SHELL = 'e76-shell-v2';
+const SHELL = 'e76-shell-v3';   // 22/11: η βιβλιοθήκη από το ίδιο το e.76.life (lib/), όχι από CDN
 const PAGE = new URL('./index.html', self.registration.scope).href;
-const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
+const LIB = new URL('./lib/supabase-js-2.118.0.umd.js', self.registration.scope).href;
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => Promise.all([
