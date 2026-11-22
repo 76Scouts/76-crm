@@ -1538,7 +1538,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-21 20:35'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-22 12:05'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -18847,6 +18847,7 @@ function irvRow(s){
 }
 async function fcPendingMount(){
   if(!isAdminUI())return;
+  irvFreeMount();    
   const {data,error}=await sb.from('form_submission')
     .select('id,person_id,form_name,form_kind,submitted_on,applied_note,payload')
     .is('applied_on',null).like('applied_note','Περιμένει έλεγχο%')
@@ -18874,6 +18875,40 @@ async function fcPendingMount(){
     const {error:e}=await sb.rpc('intake_review_reject',{p_sub:b.dataset.irvno,p_note:note||null});
     if(e)return toast('Δεν απορρίφθηκε: '+e.message);
     toast('Απορρίφθηκε'); stay()});
+}
+
+const IRV_SKIP_K=['form','form_kind','scout_year','am','onoma','epitheto'], IRV_SKIP_P=['ait_','ec1_','ec2_','ec3_','_'];
+function irvFreeFields(pl){
+  return Object.keys(pl||{}).filter(k=>!IRV_SKIP_K.includes(k)&&!IRV_SKIP_P.some(x=>k.startsWith(x))&&typeof pl[k]==='string'&&pl[k].trim().length>=15
+    &&!/^\[αφαιρέθηκε [0-9/]+\]$/.test(pl[k].trim()));
+}
+async function irvFreeMount(){
+  const since=new Date(Date.now()-60*864e5).toISOString();
+  const {data,error}=await sb.from('form_submission').select('id,form_name,submitted_on,payload')
+    .gte('submitted_on',since).order('submitted_on',{ascending:false}).limit(300);
+  const view=$('view'); if(!view||!view.querySelector('#fcNew,[data-fcedit]'))return;
+  if(error){console.warn('free text submissions:',error.code);return}
+  const rows=(data||[]).flatMap(s=>irvFreeFields(s.payload).map(k=>({s,k})));
+  const old=document.getElementById('irvFree'); if(old)old.remove();
+  if(!rows.length)return;
+  const box=document.createElement('details'); box.id='irvFree'; box.className='card'; box.style.marginBottom='16px';
+  box.innerHTML=`<summary style="cursor:pointer"><b>${t('Ελεύθερο κείμενο υποβολών')}</b> <span class="n">${rows.length}</span>
+      <span class="dim" style="font-size:12px"> · ${t('αφαίρεση τμήματος (μόνο Α.Σ.)')}</span></summary>
+    <div class="dim" style="font-size:12.5px;margin:6px 0">${t('Αν κάποιο κείμενο έχει στοιχεία υγείας ή στοιχεία άλλου παιδιού, αφαίρεσέ το μέσα σε 7 ημέρες και σβήσε το αντίστοιχο email. Αν δείχνει ανησυχία για την ασφάλεια παιδιού, ΜΗΝ το αφαιρέσεις — ακολουθεί η διαδικασία προστασίας παιδιού.')}</div>
+    <table style="font-size:12.5px;width:100%"><tbody>${rows.map((r,i)=>`<tr><td style="white-space:nowrap">${esc(r.s.form_name||'—')}<div class="dim" style="font-size:11.5px">${fdate(r.s.submitted_on)} · ${esc(r.k)}</div></td>
+      <td>${esc(r.s.payload[r.k])}</td><td><button class="btn gh sm" data-irvred="${i}">${t('Αφαίρεση…')}</button></td></tr>`).join('')}</tbody></table>`;
+  view.prepend(box);
+  box.querySelectorAll('[data-irvred]').forEach(b=>b.onclick=async()=>{
+    const r=rows[+b.dataset.irvred];
+    const why=await uiChoose(t('Γιατί αφαιρείται;'),[{v:dv('υγεία'),t:t('Στοιχεία υγείας'),primary:true},{v:dv('άλλο παιδί'),t:t('Στοιχεία άλλου παιδιού')},
+      {v:dv('τρίτο πρόσωπο'),t:t('Στοιχεία τρίτου')},{v:dv('άλλο'),t:t('Άλλο')}]);
+    if(!why)return;
+    const frag=await uiText(t('Επικόλλησε ΑΚΡΙΒΩΣ το κομμάτι που φεύγει.\n\nΆφησέ το κενό για να φύγει όλο το πεδίο.'),'',{ok:t('Συνέχεια')});
+    if(frag===null)return;
+    if(!await uiAsk(t('Επιβεβαιώνω ότι το κείμενο ΔΕΝ δείχνει ανησυχία για την ασφάλεια παιδιού.\n\nΗ αφαίρεση δεν αναιρείται. Στο ίχνος μένει μόνο ποιος, πότε, ποιο πεδίο και ο λόγος — όχι το κείμενο.'),{ok:t('Αφαίρεση'),danger:true}))return;
+    const {data:n,error:e}=await sb.rpc('form_submission_redact',{p_id:r.s.id,p_field:r.k,p_reason:why,p_fragment:frag.trim()||null,p_oxi_prostasia:true});
+    if(e)return toast(t('Δεν αφαιρέθηκε')+': '+e.message);
+    toast(t('Αφαιρέθηκε')+` (${n})`+' — '+t('σβήσε και το email')); stay()});
 }
 const FL={mine:null, at:0};
 const FLA={list:null, edit:null};
