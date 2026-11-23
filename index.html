@@ -1164,6 +1164,9 @@ const sriTag=s=>{ const h=LIB_SRI[s.getAttribute('src')||s.src]; if(h){ s.integr
 const SB_URL='https://cofiscmvdagizlchrian.supabase.co';
 const SB_KEY='sb_publishable_OvYhjMAqZ9ty6T2De2by-g_uJ6mnm50';
 const sb=supabase.createClient(SB_URL,SB_KEY);
+const FN_REGION='eu-west-2';
+const fnUrl=name=>SB_URL+'/functions/v1/'+name+'?forceFunctionRegion='+FN_REGION;
+const fnInvoke=(name,opts)=>sb.functions.invoke(name+'?forceFunctionRegion='+FN_REGION,opts);
 const SAVE_QUIET=new Set(['save_failures','sensitive_access_log','access_report_log','audit_log','app_events']);
 const SAVE_WHY={'42501':'δεν επιτρέπεται — δικαιώματα','23514':'η βάση απέρριψε την τιμή (έλεγχος)','23505':'υπάρχει ήδη',
   '23502':'λείπει υποχρεωτικό πεδίο','23503':'αναφέρεται σε κάτι που δεν υπάρχει','22P02':'λάθος μορφή τιμής',
@@ -1538,7 +1541,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-22 16:59'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-23 12:30'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -1643,7 +1646,7 @@ $('gbtn').onclick=async()=>{
       ({data,error}=await sb.auth.signInWithPassword({email:em.toLowerCase(),password:pw}));
     }else{
       try{
-        const r=await fetch(SB_URL+'/functions/v1/login-by-am',{method:'POST',
+        const r=await fetch(fnUrl('login-by-am'),{method:'POST',
           headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
           body:JSON.stringify({id:em,password:pw})});
         const j=await r.json();
@@ -9035,7 +9038,7 @@ async function pushTest(btn){
   if(btn)btn.disabled=true;
   try{
     const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch(SB_URL+'/functions/v1/push-send',{method:'POST',
+    const r=await fetch(fnUrl('push-send'),{method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
       body:JSON.stringify({test:true})});
     const j=await r.json().catch(()=>({}));
@@ -11565,7 +11568,7 @@ V.accounts=()=>{
     m.style.color='var(--ink2)'; m.textContent='Αποστολή σε '+ids.length+'…'; mg.disabled=true;
     try{
       const {data:{session}}=await sb.auth.getSession();
-      const r=await fetch(SB_URL+'/functions/v1/send-invite',{method:'POST',
+      const r=await fetch(fnUrl('send-invite'),{method:'POST',
         headers:{'Content-Type':'application/json','apikey':SB_KEY,
                  'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
         body:JSON.stringify({person_ids:ids})});
@@ -18088,7 +18091,7 @@ function certqBody(){
 
 async function n91mCall(body){
   const {data:{session}}=await sb.auth.getSession();
-  const r=await fetch(SB_URL+'/functions/v1/n91-reminder',{method:'POST',
+  const r=await fetch(fnUrl('n91-reminder'),{method:'POST',
     headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
     body:JSON.stringify(body)});
   let j={}; try{j=await r.json()}catch(x){}
@@ -18231,7 +18234,7 @@ const eyxCfg=()=>{ const r=(D.st||[]).find(x=>x.k==='eyxes'); return (r&&r.v)||{
 async function eyxCall(body){
   try{
     const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch(SB_URL+'/functions/v1/greetings',{method:'POST',
+    const r=await fetch(fnUrl('greetings'),{method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
       body:JSON.stringify(body)});
     let j={}; try{ j=await r.json() }catch(x){}
@@ -19479,7 +19482,7 @@ async function panSend(sel, allOn){
   const b=$('panGo'); b.disabled=true;
   try{
     const {data:{session}}=await sb.auth.getSession();
-    const r=await fetch(SB_URL+'/functions/v1/push-send',{method:'POST',
+    const r=await fetch(fnUrl('push-send'),{method:'POST',
       headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
       body:JSON.stringify(all?{kind:'anakoinosi',all:true,title,body,url:'./'}:{kind:'anakoinosi',person_ids:ids,title,body,url:'./'})});
     const j=await r.json().catch(()=>({}));
@@ -20310,7 +20313,7 @@ function gcalDetails(e, calKey){
 let GCAL_API=null;                                   
 async function gcalApi(){
   if(GCAL_API!==null)return GCAL_API;
-  try{ const {data,error}=await sb.functions.invoke('gcal-sync',{body:{op:'status'}});
+  try{ const {data,error}=await fnInvoke('gcal-sync',{body:{op:'status'}});
        GCAL_API=!error&&!!(data&&data.configured); }catch(e){ GCAL_API=false }
   return GCAL_API;
 }
@@ -20321,7 +20324,7 @@ const GCAL_WHY=[[/accessNotConfigured|SERVICE_DISABLED/,'το Google Calendar AP
   [/not_configured/,'δεν έχει μπει το κλειδί GCAL_SA_KEY'],[/404/,'το ημερολόγιο δεν βρέθηκε']];
 const gcalWhy=t=>{t=String(t||''); const m=GCAL_WHY.find(([re])=>re.test(t)); return m?m[1]:(t||'σφάλμα')};
 async function gcalCall(op, e, k, quiet){
-  const {data,error}=await sb.functions.invoke('gcal-sync',{body:{op, event_id:e.id, cal:k}});
+  const {data,error}=await fnInvoke('gcal-sync',{body:{op, event_id:e.id, cal:k}});
   if(error||!data||!data.ok){
     let why=data&&data.error;
     if(!why&&error&&error.context&&typeof error.context.json==='function'){ try{ why=(await error.context.json()).error }catch(x){} }
@@ -22296,7 +22299,7 @@ const todayCY=()=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ni
 const ntCan=()=>['admin','section_head'].includes(ME.role)||!!ME.platform_admin;
 async function ntCall(body){
   const {data:{session}}=await sb.auth.getSession();
-  const r=await fetch(SB_URL+'/functions/v1/notify-signup',{method:'POST',
+  const r=await fetch(fnUrl('notify-signup'),{method:'POST',
     headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+(session?session.access_token:SB_KEY)},
     body:JSON.stringify(body)});
   let j={}; try{j=await r.json()}catch(x){}
@@ -23247,7 +23250,7 @@ async function dlBuildIn(e,buf,o,g,SRV){
 async function dlCertImgs(e){
   const out=[];
   let res;
-  try{ res=await sb.functions.invoke('action-sheet',{body:{op:'certs',event_id:e.id}}) }catch(x){ out.err=t('δεν απάντησε ο server'); return out; }
+  try{ res=await fnInvoke('action-sheet',{body:{op:'certs',event_id:e.id}}) }catch(x){ out.err=t('δεν απάντησε ο server'); return out; }
   const {data,error}=res||{};
   if(error||!data||!data.ok){ out.err=(data&&data.error)||t('δεν δόθηκαν'); return out; }
   if(!(data.items||[]).length)return out;
@@ -23722,7 +23725,7 @@ const GS_WHY=[[/accessNotConfigured|SERVICE_DISABLED/,t('το Google Drive/Sheet
   [/google 404/,t('το αρχείο δεν βρέθηκε στο Drive — ίσως σβήστηκε οριστικά')],
   [/google 403/,t('ο λογαριασμός υπηρεσίας δεν έχει δικαίωμα στο Κοινόχρηστο Drive')]];
 async function gsCall(body){
-  const {data,error}=await sb.functions.invoke('action-sheet',{body});
+  const {data,error}=await fnInvoke('action-sheet',{body});
   if(!error&&data&&data.ok)return data;
   let why=data&&data.error;
   if(!why&&error&&error.context&&typeof error.context.json==='function'){ try{ why=(await error.context.json()).error }catch(x){} }
@@ -24824,7 +24827,7 @@ async function apUpload(e,files,name){
     const b=await apCrop(f); if(!b) continue;
     if((b.size||0)>AP_MAXB){ await uiNote(t('Το «{n}» είναι {x} MB — το όριο είναι 4 MB. Αν είναι PDF, βγάλε καλύτερα φωτογραφία της απόδειξης.',{n:f.name||'',x:(b.size/1048576).toFixed(1).replace('.',',')})); continue; }
     const mime=b.type||f.type||'image/jpeg';
-    const {data,error}=await sb.functions.invoke('action-sheet',{body:{op:'rcpt_up', event_id:e.id, b64:await apB64(b), mime, name}});
+    const {data,error}=await fnInvoke('action-sheet',{body:{op:'rcpt_up', event_id:e.id, b64:await apB64(b), mime, name}});
     if(error||!data||!data.ok){ await uiNote(t('Η φωτογραφία δεν ανέβηκε στο Drive: {x}',{x:(data&&data.error)||(error&&error.message)||''})); continue; }
     out.push('drive:'+data.file_id);
   }
@@ -24833,7 +24836,7 @@ async function apUpload(e,files,name){
 async function apShow(e,ref){
   const id=String(ref||'').replace(/^drive:/,''); if(!/^[A-Za-z0-9_-]{10,100}$/.test(id)){ if(/^https?:/.test(ref)) window.open(ref,'_blank','noopener'); return; }
   apToast(t('Φόρτωση φωτογραφίας…'));
-  const {data,error}=await sb.functions.invoke('action-sheet',{body:{op:'rcpt_get', event_id:e.id, file_id:id}});
+  const {data,error}=await fnInvoke('action-sheet',{body:{op:'rcpt_get', event_id:e.id, file_id:id}});
   if(error||!data||!data.ok){ await uiNote(t('Δεν άνοιξε: {x}',{x:(data&&data.error)||(error&&error.message)||''})); return; }
   const src='data:'+(data.mime||'image/jpeg')+';base64,'+data.b64;
   const ov=document.createElement('div'); ov.className='dlg noprint';
@@ -25557,7 +25560,7 @@ const apSafe=s=>String(s||'').replace(/[\\/:*?"<>|\n\r\t]+/g,' ').replace(/\s+/g
 const apAmt=x=>AP2.util.r2(x).toFixed(2).replace('.',',');
 async function apFetch(e,ref){
   const id=String(ref||'').replace(/^drive:/,''); if(!/^[A-Za-z0-9_-]{10,100}$/.test(id)) return null;
-  const {data,error}=await sb.functions.invoke('action-sheet',{body:{op:'rcpt_get', event_id:e.id, file_id:id}});
+  const {data,error}=await fnInvoke('action-sheet',{body:{op:'rcpt_get', event_id:e.id, file_id:id}});
   if(error||!data||!data.ok) return null;
   return {mime:data.mime||'image/jpeg', bytes:Uint8Array.from(atob(data.b64),c=>c.charCodeAt(0))};
 }
