@@ -1541,7 +1541,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-24 19:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-24 19:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -23770,7 +23770,8 @@ async function gsLoad(eid){
 async function gsReady(eid){ if(!GS[eid]) await gsLoad(eid); return GS[eid]; }             
 const gsKidsFinal=eid=>{ const r=GS[eid]&&GS[eid].row; return !!(r&&r.kids_final); };           
 const gsHasLive=eid=>{ const r=GS[eid]&&GS[eid].row; return !!(r&&r.file_id); };              
-const gsSyncApol=(e,x)=>gsSync(e,x,{only:['apol']});                                       
+const gsSyncApol=(e,x)=>gsSync(e,x,{only:['apol']});
+const gsKidsTxt=e=>{ let n=null; try{ n=dlKids(e).length }catch(x){} return n==null?'':' · '+(n===1?t('1 παιδί'):t('{n} παιδιά',{n})); };                                       
 
 function gsHTML(e){
   const s=GS[e.id], card=b=>`<div class="card pad" style="margin-bottom:13px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -23799,9 +23800,10 @@ function gsHTML(e){
       ${ed?`<button class="btn sm gh" id="gsName" title="${t('Όνομα αρχείου κατά το μοτίβο «Δελτίο Δράσης 76ης ΚΑ - Είδος Τίτλος - ηη.μμ.εεεε Τόπος» — τα στιγμιότυπα το παίρνουν κι αυτά')}">${t('Όνομα')}</button>`:''}
       ${isAdminUI()?`<button class="btn sm gh" id="gsRep" title="${t('Νέο αρχείο από το τρέχον πρότυπο του e76 — το σημερινό πάει στον κάδο του Drive')}">${t('Νέο από πρότυπο')}</button>`:''}
       ${ed?`<button class="btn sm" id="gsVis" title="${t('Ξαναγράφει στο ΙΔΙΟ αρχείο μόνο τα κελιά του e76 που άλλαξαν (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΠΙΣΤΟΠΟΙΗΤΙΚΑ…) — πρώτα σου δείχνει τι. Ό,τι γράψατε αλλού μένει.')}">${t('Ενημέρωση από το e76')}</button>`:''}
-      ${ed?(r.kids_final?`<span class="pill" style="font-size:11px">${t('τελικές συμμετοχές')}</span><button class="btn sm gh" id="gsFull" title="${t('Ξανά όλοι όσοι δικαιούνται να δηλώσουν, για τον προϋπολογισμό')}">${t('Πίσω σε όλη τη δύναμη')}</button>`
+      ${ed?(r.kids_final?`<span class="pill" style="font-size:11px">${t('τελικές συμμετοχές')}${gsKidsTxt(e)}</span><button class="btn sm gh" id="gsFull" title="${t('Ξανά όλοι όσοι δικαιούνται να δηλώσουν, για τον προϋπολογισμό')}">${t('Πίσω σε όλη τη δύναμη')}</button>`
         :`<button class="btn sm" id="gsFin" title="${t('Τώρα στις ΣΥΜΜΕΤΟΧΕΣ είναι όλη η δύναμη (για τον προϋπολογισμό). Με αυτό μένουν μόνο όσοι δήλωσαν.')}">${t('Πέρασε τις τελικές συμμετοχές')}</button>`):''}</div>
     <div class="dim" style="font-size:12px;margin-top:4px">${t('Φτιάχτηκε')} ${fdate(r.created_at)}${who(r.created_by)?' · '+esc(who(r.created_by)):''}. ${t('Δουλεύετε όλοι σε αυτό το αρχείο — όχι αντίγραφα, όχι κατέβασμα και ξανανέβασμα.')}</div>
+    ${r.kids_final&&(r.hand_areas||[]).includes('kids')?`<div style="font-size:12.5px;margin-top:6px;color:var(--bad)">⚠ ${t('Οι ανήλικοι είναι «με το χέρι»: οι αλλαγές στις συμμετοχές δεν περνούν στο Δελτίο. Ξεπάτησέ το στα «Φύλλα που γεμίζετε εσείς».')}</div>`:''}
     ${ed?gsHandHTML(r):''}
     ${warn}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
@@ -23958,10 +23960,10 @@ async function gsHandSet(e,k,x){
   if(error){ x.disabled=false; return toast(t('Δεν άλλαξε')+': '+error.message); }
   s.row.hand_areas=data||[]; gsDraw(e); }
 function gsHandHTML(r){
-  return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px"><b style="font-size:12.5px">${t('Με το χέρι')}</b>${GS_AREAS.map(([k,l])=>{
+  return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px"><b style="font-size:12.5px">${t('Φύλλα που γεμίζετε εσείς')}</b>${GS_AREAS.map(([k,l])=>{
     const on=(r.hand_areas||[]).includes(k);
     return `<button class="btn sm ${on?'p':'gh'}" data-gshand="${k}" aria-pressed="${on}" title="${esc(on?t('Το γεμίζετε με το χέρι — η «Ενημέρωση από το e76» δεν το αγγίζει. Πάτα για να το ξαναπάρει το e76.'):t('Πάτα αν θέλετε να το γεμίζετε με το χέρι — η «Ενημέρωση από το e76» δεν θα το αγγίζει.'))}">${on?'✋ ':''}${esc(l)}</button>`; }).join('')}
-    <span class="dim" style="font-size:11.5px">${t('η προειδοποίηση «το γράφει το e76» φεύγει με την επόμενη ενημέρωση')}</span></div>`;
+    <span class="dim" style="font-size:11.5px;flex-basis:100%">${t('Πατημένο (μπλε) = η «Ενημέρωση από το e76» το αφήνει όπως είναι στο αρχείο. Ξαναπάτα για να το γράφει πάλι το e76.')}</span></div>`;
 }
 async function gsSync(e,x,opt){
   const done=gsBusy(x,t('Διαβάζω το αρχείο…'));
@@ -23981,7 +23983,7 @@ async function gsSync(e,x,opt){
   const fin=!!opt&&opt.final!==undefined, kidsAll=fin?ch.filter(c=>c.area==='kids'):[];
   if(fin)kidsAll.forEach(c=>{ c.on=true; });
   const KIDS_NO=t('Δεν σημειώθηκαν οι τελικές συμμετοχές: το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» δεν γράφτηκε ολόκληρο. Πάτα ξανά το κουμπί και άφησέ το τσεκαρισμένο.');
-  const KIDS_HAND=fin&&hand.has('kids')?t('Το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» μένει «με το χέρι»: οι επόμενες «Ενημέρωση από το e76» δεν το ξαναγράφουν.'):'';
+  const KIDS_HAND=fin&&hand.has('kids')?t('Το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» μένει στα «Φύλλα που γεμίζετε εσείς»: οι επόμενες «Ενημέρωση από το e76» δεν το ξαναγράφουν. Ξεπάτησέ το εκεί αν θέλεις να περνούν οι αλλαγές στις συμμετοχές.'):'';
   let ch2=ch.filter(c=>!hand.has(c.area)||(fin&&c.area==='kids'));
   const cnt={}, hc={}; ch.forEach(c=>{ cnt[c.area]=(cnt[c.area]||0)+1; if(c.hand)hc[c.area]=(hc[c.area]||0)+1; });
   const avail=GS_AREAS.filter(([k])=>cnt[k]), only=opt&&opt.only?new Set(opt.only):null;    
