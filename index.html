@@ -1772,7 +1772,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-24 22:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-24 23:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -3599,7 +3599,8 @@ function navMiniWire(){
   if(typeof MutationObserver==='function')new MutationObserver(ini).observe(who,{childList:true,subtree:true,characterData:true});
 }
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',navMiniWire):navMiniWire();
-const csvCell=v=>{const s=v==null?'':String(v);return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+const csvCell=v=>{let s=v==null?'':String(v); if(typeof v!=='number'&&/^[=+\-@\t\r]/.test(s)&&!/^[+-]?\d[\d\s().]*$/.test(s))s="'"+s;
+  return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
 const csvText=rows=>'\ufeff'+rows.map(r=>r.map(csvCell).join(';')).join('\r\n');
 function csvSave(rows,name){ saveBlob(csvText(rows),'text/csv;charset=utf-8',name) }
 async function ssmlToXlsx(xml, fname, opt){
@@ -23828,7 +23829,8 @@ function xlRec(B,n,S){
   (B.recS=B.recS||{})[n]=S;
   const fmtOk=(sh,r,c,kind)=>{ const x=B.recS[sh].cell(r,c), code=B.fmtCode?B.fmtCode(x?XL.attr(x.attrs,'s'):null):'';
     return kind==='time'?/h/i.test(code):/^d{1,2}[\/.-]m{1,2}[\/.-]y{2,4}$/i.test(code.replace(/\\/g,'')); };
-  B.recDone=()=>{ B.rec=B.rec.filter(x=>'v' in x&&(!xlSame(x.old,x.v)||(x.kind&&typeof x.v==='number'&&!fmtOk(x.sh,x.r,x.c,x.kind)))); return B.rec };
+  const ghost=x=>typeof x.old==='string'&&x.v==null&&XL.norm(x.old)==='';
+  B.recDone=()=>{ B.rec=B.rec.filter(x=>'v' in x&&(!xlSame(x.old,x.v)||ghost(x)||(x.kind&&typeof x.v==='number'&&!fmtOk(x.sh,x.r,x.c,x.kind)))); return B.rec };
   return S;
 }
 function xlOwn(L){
