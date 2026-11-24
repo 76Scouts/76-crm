@@ -1541,7 +1541,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-23 12:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-24 11:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -5957,6 +5957,31 @@ function moneyParse(raw){
   return {ok:true, v:Math.round(Number(int+'.'+(dec||'0'))*100)/100};
 }
 const moneyShow=v=>v==null||v===''||!isFinite(Number(v))?'':String(Math.round(Number(v)*100)/100).replace('.',',');
+function sniffDelim(txt){
+  const line=(()=>{let q=false;for(let i=0;i<txt.length;i++){const c=txt[i];
+    if(c==='"'){if(q&&txt[i+1]==='"'){i++;continue}q=!q}
+    else if(c==='\n'&&!q)return txt.slice(0,i)}return txt})();
+  let best=',',bn=-1;
+  [',',';','\t'].forEach(d=>{let n=0,q=false;
+    for(let i=0;i<line.length;i++){const c=line[i];
+      if(c==='"'){if(q&&line[i+1]==='"'){i++;continue}q=!q}
+      else if(c===d&&!q)n++;}
+    if(n>bn){bn=n;best=d}});
+  return best;
+}
+function parseCSV(txt,delim){
+  txt=String(txt).replace(/^﻿/,'');
+  const D=delim||sniffDelim(txt);
+  const rows=[]; let f='',row=[],q=false;
+  for(let i=0;i<txt.length;i++){const c=txt[i];
+    if(q){ if(c==='"'){ if(txt[i+1]==='"'){f+='"';i++} else q=false } else f+=c }
+    else if(c==='"')q=true;
+    else if(c===D){row.push(f);f=''}
+    else if(c==='\n'){row.push(f);f='';rows.push(row);row=[]}
+    else if(c!=='\r')f+=c;}
+  if(f||row.length){row.push(f);rows.push(row)}
+  return rows.filter(r=>r.some(x=>String(x).trim()!==''));
+}
 
 const TR_UNIT={[dv('Αγέλη')]:dv('εξάδα'),[dv('Ομάδα')]:dv('ενωμοτία'),[dv('Κοινότητα')]:dv('όμιλος')};
 const SG_NAMECOL=[[[dv('κιτριν')],'#e3b100',[4]],[[dv('κοκκιν')],'#d93a3a',[8]],[[dv('πορτοκαλ')],'#f07a1a',[2]],
@@ -8322,7 +8347,7 @@ V.kidhealth=()=>{
     </div>`:''}`;
 
   wireDocs(V.kidhealth); wireKidTabs();
-  if(fam){ fwKids(true); fwLoad(mePid()); }
+  if(fam){ FORM.fwKids(true); FORM.fwLoad(mePid()); }
   sb.rpc('medical_freshness',{p_person:kid.id}).then(({data})=>{
     const el=$('mfBox'); if(!el)return;
     const m=Array.isArray(data)?data[0]:data;
@@ -12804,8 +12829,6 @@ function peerBoardHTML(B,opt){
       </div>` }).join('')||'<div class="dim pad">Κανένας.</div>'}`;
 }
 
-const ddmmyyyy = d => { if(!d) return '';
-  const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
 
 async function formUrl(base, p, kind, eventId){
   if(!prefillOn())return base;                  
@@ -16369,7 +16392,7 @@ function mhForms(p,row,go,pre){
   Promise.resolve(sb.rpc('open_forms',{p_person:p.id})).then(({data,error})=>{
     if(error)return fill(pre+row('book','',t('Οι φόρμες μου'),t('Δεν φόρτωσαν — άνοιξε τις φόρμες σου.'),go('myforms',t('Οι φόρμες μου'))));
     const f=(data||[]).filter(x=>need.includes(x.katastasi));
-    const kidP=formsByParents(p);    
+    const kidP=FORM.formsByParents(p);    
     fill(f.length?pre+row('book','warn',pln(f.length,t('φόρμα περιμένει'),t('φόρμες περιμένουν')),
         f.slice(0,4).map(x=>esc(x.title||'')).filter(Boolean).join('<br>')+(kidP?'<br><span class="dim">'+t('Τις συμπληρώνουν οι γονείς σου — θύμισέ τους.')+'</span>':''),
         go('myforms',kidP?t('Θύμισέ το στους γονείς μου'):t('Οι φόρμες μου'))):(pre||ok));
@@ -19118,7 +19141,11 @@ async function flSave(f, id){
 }
 const FORM=Object.freeze({
   flHomeMount:(...a)=>flHomeMount(...a),   
-  seImportPick:(...a)=>seImportPick(...a),  
+  seParse:(...a)=>seParse(...a),          
+  seQfWhen:(...a)=>seQfWhen(...a),        
+  fwKids:(...a)=>fwKids(...a),            
+  fwLoad:(...a)=>fwLoad(...a),            
+  formsByParents:(...a)=>formsByParents(...a),  
 });
 async function remDueBody(){
   $('view').innerHTML='<div class="card pad dim">Υπολογισμός…</div>';
@@ -20028,6 +20055,8 @@ function libEdit(r){
   if(B.querySelector('#lbWd'))B.querySelector('#lbWd').onclick=()=>st('withdrawn');
   if(B.querySelector('#lbRe'))B.querySelector('#lbRe').onclick=()=>st('published');
 }
+const ddmmyyyy = d => { if(!d) return '';
+  const s=String(d).slice(0,10).split('-'); return s.length===3?`${s[2]}/${s[1]}/${s[0]}`:''; };
 let CALLSEC='all', CALLONLY='', ENSEC='all', ENONLY='';
 const FLAGPUB=['Ιατρικό','Διατροφή','Ένας κηδεμόνας'];
 const FLAGNODETAIL=['Ένας κηδεμόνας'];
@@ -25989,7 +26018,7 @@ const DRA=Object.freeze({
   gsKidsFinal:(...a)=>gsKidsFinal(...a),   
   gsHasLive:(...a)=>gsHasLive(...a),       
   gsSyncApol:(...a)=>gsSyncApol(...a),     
-  certOn:(...a)=>certOn(...a),             
+  seImportPick:(...a)=>seImportPick(...a),  
 });
 const OIK=Object.freeze({
   bdHTML:(...a)=>bdHTML(...a),             
@@ -26701,31 +26730,6 @@ function consentForms(kids){
   const one=kids.slice().sort(sortByName).map(p=>[p]);    
   openPrint('Συγκαταθέσεις '+YEAR, one.map(page).join(''));
 }
-function sniffDelim(txt){
-  const line=(()=>{let q=false;for(let i=0;i<txt.length;i++){const c=txt[i];
-    if(c==='"'){if(q&&txt[i+1]==='"'){i++;continue}q=!q}
-    else if(c==='\n'&&!q)return txt.slice(0,i)}return txt})();
-  let best=',',bn=-1;
-  [',',';','\t'].forEach(d=>{let n=0,q=false;
-    for(let i=0;i<line.length;i++){const c=line[i];
-      if(c==='"'){if(q&&line[i+1]==='"'){i++;continue}q=!q}
-      else if(c===d&&!q)n++;}
-    if(n>bn){bn=n;best=d}});
-  return best;
-}
-function parseCSV(txt,delim){
-  txt=String(txt).replace(/^﻿/,'');
-  const D=delim||sniffDelim(txt);
-  const rows=[]; let f='',row=[],q=false;
-  for(let i=0;i<txt.length;i++){const c=txt[i];
-    if(q){ if(c==='"'){ if(txt[i+1]==='"'){f+='"';i++} else q=false } else f+=c }
-    else if(c==='"')q=true;
-    else if(c===D){row.push(f);f=''}
-    else if(c==='\n'){row.push(f);f='';rows.push(row);row=[]}
-    else if(c!=='\r')f+=c;}
-  if(f||row.length){row.push(f);rows.push(row)}
-  return rows.filter(r=>r.some(x=>String(x).trim()!==''));
-}
 const SEMAP={
   last:['Επίθετο'], first:['Όνομα'],
   blood:['Ομ. Αίματος','Ομάδα Αίματος'],
@@ -26825,9 +26829,9 @@ function seImport(eid,pool,after){
   const run=txt=>{
     let RW; try{RW=parseCSV(txt)}catch(err){return toast(t('Δεν διαβάστηκε:')+' '+err.message)}
     if(!RW.length||RW[0].filter(x=>String(x||'').trim()).length<2)return toast(t('Το αρχείο είναι άδειο ή χωρίς στήλες — στο Quform τίκαρε τις στήλες πριν την εξαγωγή (καμία δεν είναι προεπιλεγμένη).'));
-    let P; try{P=seParse(RW)}catch(err){return toast(t('Δεν διαβάστηκε:')+' '+err.message)}
+    let P; try{P=FORM.seParse(RW)}catch(err){return toast(t('Δεν διαβάστηκε:')+' '+err.message)}
     if(!P.rows.length)return toast('Καμία γραμμή');
-    const res=P.rows.map(r=>({...r,m:matchPerson(r.last+' '+r.first,pool),w:seQfWhen(r.dt)}));    
+    const res=P.rows.map(r=>({...r,m:matchPerson(r.last+' '+r.first,pool),w:FORM.seQfWhen(r.dt)}));    
     const ok=res.filter(r=>r.m), no=res.filter(r=>!r.m);
     const withMed=ok.filter(r=>Object.values(r.med).some(Boolean)).length;
     const withCt=ok.reduce((a,r)=>a+r.contacts.length,0);
@@ -27008,7 +27012,7 @@ function evParts(eid){
   const endD=e.end_date||e.event_date;
   const EROLES=[DL.KDEF,...DL.KATHD.filter(r=>r!==DL.KDEF)];    
   const geAt=id=>coveredAbove(D.bh.find(b=>b.id===id));
-  const certAt=id=>geAt(id)?'ge':DRA.certOn(id,dv('Ν91'),endD).k;
+  const certAt=id=>geAt(id)?'ge':certOn(id,dv('Ν91'),endD).k;
   const n91Why=k=>({none:'χωρίς Ν.91(Ι)',expired:'έληξε πριν τη δράση',pending:t('δεν έχει επιβεβαιωθεί από τον Α.Σ.'),nodate:t('χωρίς ημερομηνία λήξης'),
     hidden:t('δεν ελέγχθηκε — την ισχύ τη βλέπουν μόνο ο κάτοχος, ο Αρχηγός Τμήματός του και ο Α.Σ.'),ge:t('εξαιρείται — η Εντολή Διοίκησης εκδίδεται από την Εφορεία του (ΓΕ/ΕΕΛ)'),
     ok:'Ν.91(Ι) σε ισχύ τη μέρα της δράσης'})[k]||'χωρίς Ν.91(Ι)';
@@ -27129,6 +27133,7 @@ function evParts(eid){
   };
   draw();
 }
+
 
 const HQ='Σύστημα';    
 function calBody(){
@@ -31397,7 +31402,7 @@ V.missing=()=>tabView('missing',[
 V.imports=()=>tabView('imports',[
   {k:'es',   t:'Από e-Scouts',        i:'down', fn:()=>esimportBody(), d:'Α.Μ., τριπλότυπα, εντολές — με επικόλληση', nav:'esimport'},
   {k:'forms',t:'Ιστορικό φορμών',     i:'down', fn:()=>fimportBody(),  d:'ιατρικά προηγούμενων ετών από εξαγωγή φόρμας', nav:'fimport'},
-  {k:'se',   t:t('Από εξαγωγή φόρμας δράσης'), i:'down', fn:()=>FORM.seImportPick(), d:t('δηλώσεις, ιατρικά και επαφές από το CSV της φόρμας μιας δράσης (Smartespot)')}]);
+  {k:'se',   t:t('Από εξαγωγή φόρμας δράσης'), i:'down', fn:()=>DRA.seImportPick(), d:t('δηλώσεις, ιατρικά και επαφές από το CSV της φόρμας μιας δράσης (Smartespot)')}]);
 
 V.outputs=()=>tabView('outputs',[
   {k:'exp',    t:'Εξαγωγές',        i:'down',   fn:exportsBody,      d:'δεδομένα για εμάς — Excel/CSV'},
