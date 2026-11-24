@@ -1541,7 +1541,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-24 17:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-24 19:23'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -23978,17 +23978,23 @@ async function gsSync(e,x,opt){
   const areaOf=await gsAreaOf(R), hand=gsHand(e), skip=c=>hand.has(areaOf(c));
   const own=R.recAll?xlOwn(R.recAll.filter(c=>!hand.has(areaOf(c)))):R.own;    
   ch.forEach(c=>{ c.area=areaOf(c.v[0]); });
-  let ch2=ch.filter(c=>!hand.has(c.area));
+  const fin=!!opt&&opt.final!==undefined, kidsAll=fin?ch.filter(c=>c.area==='kids'):[];
+  if(fin)kidsAll.forEach(c=>{ c.on=true; });
+  const KIDS_NO=t('Δεν σημειώθηκαν οι τελικές συμμετοχές: το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» δεν γράφτηκε ολόκληρο. Πάτα ξανά το κουμπί και άφησέ το τσεκαρισμένο.');
+  const KIDS_HAND=fin&&hand.has('kids')?t('Το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» μένει «με το χέρι»: οι επόμενες «Ενημέρωση από το e76» δεν το ξαναγράφουν.'):'';
+  let ch2=ch.filter(c=>!hand.has(c.area)||(fin&&c.area==='kids'));
   const cnt={}, hc={}; ch.forEach(c=>{ cnt[c.area]=(cnt[c.area]||0)+1; if(c.hand)hc[c.area]=(hc[c.area]||0)+1; });
   const avail=GS_AREAS.filter(([k])=>cnt[k]), only=opt&&opt.only?new Set(opt.only):null;    
   if(only&&!avail.some(([k])=>only.has(k))){ done(); return toast(t('Το Δελτίο έχει ήδη ό,τι γράφει ο απολογισμός — δεν άλλαξε τίποτα.')); }
   if(avail.length>1||avail.some(([k])=>hand.has(k)||hc[k])){
     const ap=await uiChooseMulti(t('Ποια φύλλα να ενημερωθούν από το e76;')+'\n\n'+t('Ό,τι ξετσεκάρεις μένει όπως είναι στο αρχείο.')
         +(avail.some(([k])=>hand.has(k))?'\n'+t('Τα «με το χέρι» είναι ξετσεκαρισμένα — τα γεμίζετε εσείς.'):''),
-      avail.map(([k,l])=>({v:k,on:!hand.has(k)&&(!only||only.has(k)),t:l+' · '+cnt[k]+' '+t('αλλαγές')+(hc[k]?' · '+t('από αυτές {n} με το χέρι',{n:hc[k]}):'')+(hand.has(k)?' · ✋ '+t('όλο με το χέρι'):'')})),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
+      avail.map(([k,l])=>{ const force=fin&&k==='kids';
+        return {v:k,on:!hand.has(k)&&(!only||only.has(k))||force,t:l+' · '+cnt[k]+' '+t('αλλαγές')+(hc[k]?' · '+t('από αυτές {n} με το χέρι',{n:hc[k]}):'')
+          +(hand.has(k)?' · ✋ '+t('όλο με το χέρι'):'')+(force?' · '+t('για τις τελικές συμμετοχές γράφεται'):'')}; }),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
     if(!ap){ done(); return; }
     const on=new Set(ap); ch2=ch.filter(c=>on.has(c.area));
-    if(!ch2.length){ done(); return toast(t('Δεν διάλεξες κανένα φύλλο — δεν άλλαξε τίποτα.')); }
+    if(!ch2.length){ done(); return toast(t('Δεν διάλεξες κανένα φύλλο — δεν άλλαξε τίποτα.')+(kidsAll.length?' '+KIDS_NO:'')); }
   }
   if(!ch2.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own}); if(r.ok){ await gsFinalSet(e,opt); await gsMemSave(e,R,[],skip); } done();
     const sh=gsShareTxt(r.share), tx=t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'');
@@ -24002,7 +24008,8 @@ async function gsSync(e,x,opt){
   try{
     x.textContent=t('Γράφω…');
     const r=await gsCall({op:'sync',event_id:e.id,cells,dims,own}); if(!r.ok){ done(); return toast(t('Δεν γράφτηκε')+': '+r.why) }
-    await gsFinalSet(e,opt);
+    const kidsOk=!fin||kidsAll.every(c=>pick.includes(c.v));
+    if(kidsOk)await gsFinalSet(e,opt);
     await gsMemSave(e,R,all,skip);
     if(rm.length){ const q=await gsCall({op:'img',event_id:e.id,sheet:I.sheet,remove:rm}); if(!q.ok)bad.push(q.why); }
     for(const [i,a] of adds.entries()){ if(bad.length)break;
@@ -24015,7 +24022,7 @@ async function gsSync(e,x,opt){
     const v=r.visibility||{};
     await uiNote([t('Ενημερώθηκε το ζωντανό αρχείο.'),cells.length+' '+t('κελιά')+(adds.length?' · '+adds.length+' '+t('εικόνες'):''),
       v.error?t('Τα φύλλα δεν ρυθμίστηκαν')+' ('+gsWhy(v.error)+')':t('Φύλλα')+': '+v.shown+' '+t('ορατά')+' · '+v.hidden+' '+t('κρυφά'),
-      bad.length?t('Εικόνες')+': '+bad[0]:'', gsShareTxt(r.share)].filter(Boolean).join('\n\n'));
+      bad.length?t('Εικόνες')+': '+bad[0]:'', gsShareTxt(r.share), kidsOk?KIDS_HAND:KIDS_NO].filter(Boolean).join('\n\n'));
   }catch(err){ done(); toast(t('Δεν έγινε')+': '+(err.message||err)) }
 }
 function gsSignHTML(e){
@@ -26863,6 +26870,7 @@ function seImport(eid,pool,after){
       const n=((R&&R.inserted)||[]).length, nf=((R&&R.filled)||[]).length;
       const extra=[nf?t('συμπληρώθηκαν ημερομηνίες:')+' '+nf:'', R&&R.nodate?t('χωρίς ημερομηνία:')+' '+R.nodate:'', R&&R.qf_conflict?t('αριθμός καταχώρησης ήδη σε άλλο πρόσωπο:')+' '+R.qf_conflict:''].filter(Boolean).join(' · ');
       if(fill){ saveCache(); toast(extra||t('Τίποτα να συμπληρωθεί')); drw.classList.remove('on'); if(after)after(); return; }
+      let medFail=0;    
       if($('seMed').checked){
         const meds=pick.filter(r=>Object.values(r.med).some(Boolean)).map(r=>{
           const cur=(D.med||[]).find(m=>m.person_id===r.m.p.id)||{};
@@ -26870,7 +26878,8 @@ function seImport(eid,pool,after){
             conditions:r.med.conditions||cur.conditions||null, allergies:r.med.allergies||cur.allergies||null,
             medication:r.med.medication||cur.medication||null, dietary:r.med.dietary||cur.dietary||null,
             declared_by:'Smartespot', declared_at:new Date().toISOString(), valid_until:('20'+YEAR.slice(-2))+'-08-31'}});
-        if(meds.length){const {error}=await sb.from('person_medical').upsert(meds,{onConflict:'person_id'});
+        if(meds.length){let error=null; try{ ({error}=await sb.from('person_medical').upsert(meds,{onConflict:'person_id'})); }catch(x){ error=x||true; }
+          if(error)medFail=meds.length;
           if(!error){meds.forEach(m=>{const i=(D.med||[]).findIndex(x=>x.person_id===m.person_id); if(i>=0)D.med[i]=m; else D.med.push(m)})}}
       }
       if($('seCt').checked){
@@ -26885,7 +26894,14 @@ function seImport(eid,pool,after){
         if(rows.length){const {data,error}=await sb.from('emergency_contacts').insert(rows).select();
           if(!error)(data||[]).forEach(x=>D.ecs.push(x))}
       }
-      saveCache(); toast(n+' συμμετοχές · ιατρικά & επαφές ενημερώθηκαν'+(extra?' · '+extra:''));
+      saveCache();
+      if(medFail){    
+        const box=document.createElement('div'); box.setAttribute('role','alert');
+        box.style.cssText='margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--badbg);color:var(--bad);font-weight:600';
+        box.textContent=seMedFailMsg(medFail); const dp=$('drwp'); if(dp)dp.prepend(box);
+        toast(seMedFailMsg(medFail)); if(after)after(); return;
+      }
+      toast(n+' συμμετοχές · ιατρικά & επαφές ενημερώθηκαν'+(extra?' · '+extra:''));
       drw.classList.remove('on'); if(after)after();
     };
   };
@@ -26893,6 +26909,7 @@ function seImport(eid,pool,after){
   $('seF').onchange=ev=>{const f=ev.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>run(String(rd.result)); rd.readAsText(f,'utf-8')};
 }
 
+const seMedFailMsg=k=>k?k+' '+t('δηλώσεις έχουν ιατρικά που δεν πέρασαν — θέλει ενέργεια του Α.Σ.'):'';
 const sePaid=s=>/^(paid|πληρώθηκε|πληρωμένη|πληρωμένο)$/i.test(String(s||'').trim());
 function seImportRows(pick,qfF){
   return pick.map(r=>({person_id:r.m.p.id, declared_at:r.w.iso||null, order_no:r.ordn||null,
