@@ -1541,7 +1541,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-24 20:40'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-24 21:32'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -23968,52 +23968,52 @@ function gsHandHTML(r,e){
     <span class="dim" style="font-size:11.5px;flex-basis:100%">${t('Το e76 γεμίζει τις μπλε καρτέλες του αρχείου')} (${esc(GS_AREAS.map(a=>a[1]).join(', '))}). ${t('Οι πράσινες γεμίζονται πάντα με το χέρι.')}</span></div>`;
   return `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px">${sw}<span style="flex-basis:100%;height:0"></span>${GS_AREAS.map(([k,l])=>{
     const fill=!hand.includes(k);
-    return `<button class="btn sm ${fill?'p':'gh'}" data-gshand="${k}" aria-pressed="${fill}" title="${esc(fill?t('Το γεμίζει το e76 — πάτα για να το γεμίζετε εσείς με το χέρι.'):t('Το γεμίζετε εσείς με το χέρι — πάτα για να το ξαναγεμίζει το e76.'))}">${fill?'☑ ':'☐ '}${esc(l)}${fill?'':' · ✋ '+t('με το χέρι')}</button>`; }).join('')}
-    <span class="dim" style="font-size:11.5px;flex-basis:100%">${t('Τσεκαρισμένο = το γεμίζει το e76 (μπλε καρτέλα). Ξετσεκαρισμένο = το γεμίζετε εσείς με το χέρι (πράσινη καρτέλα): η «Ενημέρωση από το e76» το αφήνει όπως είναι. Οι υπόλοιπες καρτέλες είναι πράσινες πάντα.')}</span></div>`;
+    return `<button class="btn sm ${fill?'p':'gh gsHandOff'}"${fill?'':' style="border-style:dashed;opacity:.75"'} data-gshand="${k}" aria-pressed="${fill}" title="${esc(fill?t('Το γεμίζει το e76 — πάτα για να το γεμίζετε εσείς με το χέρι.'):t('Το γεμίζετε εσείς με το χέρι — πάτα για να το ξαναγεμίζει το e76.'))}">${fill?'':'✋ '}${esc(l)}</button>`; }).join('')}
+    <span class="dim" style="font-size:11.5px;flex-basis:100%">${t('Πατημένο (μπλε) = το γεμίζει το e76. ✋ = το γεμίζετε εσείς με το χέρι: η «Ενημέρωση από το e76» το αφήνει όπως είναι. Το χρώμα της καρτέλας στο αρχείο δεν αλλάζει.')}</span></div>`;
 }
 async function gsFillMode(e,some){
   const s=GS[e.id]; if(!s||!s.row)return;
   if(some){ s.fillSome=true; return gsDraw(e); }
-  if((s.row.hand_areas||[]).length&&!await uiAsk(t('Να τα ξαναγεμίζει όλα το e76;')+'\n\n'+t('Στην επόμενη «Ενημέρωση από το e76» όλα τα φύλλα του e76 προτείνονται ξανά, και οι καρτέλες τους γίνονται μπλε.'),{ok:t('Ναι'),cancel:t('Άκυρο')}))return;
+  if((s.row.hand_areas||[]).length&&!await uiAsk(t('Να τα ξαναγεμίζει όλα το e76;')+'\n\n'+t('Στην επόμενη «Ενημέρωση από το e76» όλα τα φύλλα του e76 προτείνονται ξανά.'),{ok:t('Ναι'),cancel:t('Άκυρο')}))return;
   const {data,error}=await sb.rpc('event_sheet_hand',{p_event:e.id,p_areas:[]});
   if(error)return toast(t('Δεν σημειώθηκε')+': '+error.message);
   s.row.hand_areas=data||[]; s.fillSome=false; gsDraw(e);
 }
 async function gsSync(e,x,opt){
+  const hand=gsHand(e), fin=!!opt&&opt.final!==undefined, only=opt&&opt.only?new Set(opt.only):null;
+  const KIDS_NO=t('Δεν σημειώθηκαν οι τελικές συμμετοχές: το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» δεν γράφτηκε ολόκληρο. Πάτα ξανά το κουμπί και άφησέ το τσεκαρισμένο.');
+  const KIDS_HAND=fin&&hand.has('kids')?t('Το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» μένει «με το χέρι»: οι επόμενες «Ενημέρωση από το e76» δεν το ξαναγράφουν. Τσέκαρέ το στο «Γέμισμα από το e76» αν θέλεις να περνούν οι αλλαγές στις συμμετοχές.'):'';
+  let chosen=only;
+  if(!only){
+    const ap=await uiChooseMulti(t('Ποια φύλλα να ενημερωθούν από το e76;')+'\n\n'+t('Ό,τι ξετσεκάρεις μένει όπως είναι στο αρχείο — μόνο γι’ αυτή τη φορά.')
+        +(GS_AREAS.some(([k])=>hand.has(k))?'\n'+t('✋ = το γεμίζετε εσείς («Γέμισμα από το e76: Μερικά») — έρχεται ξετσεκαρισμένο.'):''),
+      GS_AREAS.map(([k,l])=>{ const force=fin&&k==='kids';
+        return {v:k,on:!hand.has(k)&&(!only||only.has(k))||force,t:(hand.has(k)?'✋ ':'')+l+(force?' · '+t('για τις τελικές συμμετοχές γράφεται'):'')}; }),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
+    if(!ap)return;
+    if(!ap.length)return toast(t('Δεν διάλεξες κανένα φύλλο — δεν άλλαξε τίποτα.')+(fin?' '+KIDS_NO:''));
+    chosen=new Set(ap);
+  }
+  const people=chosen.has('staff')||chosen.has('kids');
   const done=gsBusy(x,t('Διαβάζω το αρχείο…'));
   let R,I;
   try{
     const p=await gsCall({op:'pull',event_id:e.id}); if(!p.ok){ done(); return toast(t('Δεν διαβάστηκε το αρχείο')+': '+p.why) }
     x.textContent=t('Συγκρίνω…');
-    R=await dlBuild(e,Uint8Array.from(atob(p.xlsx_b64),c=>c.charCodeAt(0)).buffer,{live:true,rec:true,...(opt&&opt.final!==undefined?{final:opt.final}:{}),...(opt&&opt.only?{only:opt.only}:{})});
-    let live=null; if(R.certs){ const L=await gsCall({op:'imglist',event_id:e.id,sheet:R.certs.name}); if(L.ok&&Array.isArray(L.items))live=L.items; }
-    I=R.certs?await gsImgPlan(R.B,R.certs,live):null;
+    R=await dlBuild(e,Uint8Array.from(atob(p.xlsx_b64),c=>c.charCodeAt(0)).buffer,{live:true,rec:true,...(opt&&opt.final!==undefined?{final:opt.final}:{}),...(people?{}:{only:[...chosen]})});
+    let live=null; if(R.certs&&chosen.has('certs')){ const L=await gsCall({op:'imglist',event_id:e.id,sheet:R.certs.name}); if(L.ok&&Array.isArray(L.items))live=L.items; }
+    I=R.certs&&chosen.has('certs')?await gsImgPlan(R.B,R.certs,live):null;
   }catch(err){ done(); return toast(t('Δεν έγινε')+': '+(err.message||err)) }
   const mem=((GS[e.id]||{}).row||{}).written||{};
   const ch=await gsSyncChoices(R,I,c=>gsIsHand(mem,c));
-  const areaOf=await gsAreaOf(R), hand=gsHand(e), skip=c=>hand.has(areaOf(c));
+  const areaOf=await gsAreaOf(R), skip=c=>hand.has(areaOf(c));
   const own=R.recAll?xlOwn(R.recAll.filter(c=>!hand.has(areaOf(c)))):R.own;    
   ch.forEach(c=>{ c.area=areaOf(c.v[0]); });
-  const fin=!!opt&&opt.final!==undefined, kidsAll=fin?ch.filter(c=>c.area==='kids'):[];
+  const kidsAll=fin?ch.filter(c=>c.area==='kids'):[];
   if(fin)kidsAll.forEach(c=>{ c.on=true; });
-  const KIDS_NO=t('Δεν σημειώθηκαν οι τελικές συμμετοχές: το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» δεν γράφτηκε ολόκληρο. Πάτα ξανά το κουμπί και άφησέ το τσεκαρισμένο.');
-  const KIDS_HAND=fin&&hand.has('kids')?t('Το φύλλο «ΣΥΜΜΕΤΟΧΕΣ — ανήλικοι» μένει «με το χέρι»: οι επόμενες «Ενημέρωση από το e76» δεν το ξαναγράφουν. Τσέκαρέ το στο «Γέμισμα από το e76» αν θέλεις να περνούν οι αλλαγές στις συμμετοχές.'):'';
-  let ch2=ch.filter(c=>!hand.has(c.area)||(fin&&c.area==='kids'));
-  const cnt={}, hc={}; ch.forEach(c=>{ cnt[c.area]=(cnt[c.area]||0)+1; if(c.hand)hc[c.area]=(hc[c.area]||0)+1; });
-  const avail=GS_AREAS.filter(([k])=>cnt[k]), only=opt&&opt.only?new Set(opt.only):null;    
-  if(only&&!avail.some(([k])=>only.has(k))){ done(); return toast(t('Το Δελτίο έχει ήδη ό,τι γράφει ο απολογισμός — δεν άλλαξε τίποτα.')); }
-  if(avail.length>1||avail.some(([k])=>hand.has(k)||hc[k])){
-    const ap=await uiChooseMulti(t('Ποια φύλλα να ενημερωθούν από το e76;')+'\n\n'+t('Ό,τι ξετσεκάρεις μένει όπως είναι στο αρχείο.')
-        +(avail.some(([k])=>hand.has(k))?'\n'+t('Τα «με το χέρι» είναι ξετσεκαρισμένα — τα γεμίζετε εσείς.'):''),
-      avail.map(([k,l])=>{ const force=fin&&k==='kids';
-        return {v:k,on:!hand.has(k)&&(!only||only.has(k))||force,t:l+' · '+cnt[k]+' '+t('αλλαγές')+(hc[k]?' · '+t('από αυτές {n} με το χέρι',{n:hc[k]}):'')
-          +(hand.has(k)?' · ✋ '+t('όλο με το χέρι'):'')+(force?' · '+t('για τις τελικές συμμετοχές γράφεται'):'')}; }),{ok:t('Συνέχεια'),cancel:t('Άκυρο')});
-    if(!ap){ done(); return; }
-    const on=new Set(ap); ch2=ch.filter(c=>on.has(c.area));
-    if(!ch2.length){ done(); return toast(t('Δεν διάλεξες κανένα φύλλο — δεν άλλαξε τίποτα.')+(kidsAll.length?' '+KIDS_NO:'')); }
-  }
-  if(!ch2.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own}); if(r.ok){ await gsFinalSet(e,opt); await gsMemSave(e,R,[],skip); } done();
-    const sh=gsShareTxt(r.share), tx=t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'');
+  const ch2=ch.filter(c=>chosen.has(c.area));
+  if(only&&!ch2.length){ done(); return toast(t('Το Δελτίο έχει ήδη ό,τι γράφει ο απολογισμός — δεν άλλαξε τίποτα.')); }
+  if(!ch2.length){ x.textContent=t('Φύλλα…'); const r=await gsCall({op:'sync',event_id:e.id,cells:[],own}); if(r.ok){ if(!kidsAll.length)await gsFinalSet(e,opt); await gsMemSave(e,R,[],skip); } done();
+    const sh=gsShareTxt(r.share), tx=t('Όλα ίδια με το e76 — δεν άλλαξε τίποτα.')+(r.ok&&r.visibility&&r.visibility.shown!=null?' '+t('Φύλλα')+': '+r.visibility.shown+' '+t('ορατά'):'')+(kidsAll.length?' '+KIDS_NO:'');
     if(sh)await uiNote(tx+'\n\n'+sh); else toast(tx); return; }
   const pick=await uiChooseMulti(t('Τι θα ξαναγραφτεί από το e76;')+'\n\n'+t('Μόνο κελιά που γράφει το e76 και ΑΛΛΑΞΑΝ. Ξετσέκαρε ό,τι θέλεις να μείνει όπως το έγραψε κάποιος στο αρχείο.')
     +(ch2.some(c=>c.hand)?'\n'+t('✋ = το άλλαξε κάποιος με το χέρι στο αρχείο — μένει ξετσεκαρισμένο· τσέκαρέ το μόνο αν θέλεις να το ξαναγράψει το e76.'):'')
