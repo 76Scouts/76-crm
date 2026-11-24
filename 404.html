@@ -1541,7 +1541,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-24 11:22'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-24 17:27'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -26835,7 +26835,7 @@ function seImport(eid,pool,after){
     const ok=res.filter(r=>r.m), no=res.filter(r=>!r.m);
     const withMed=ok.filter(r=>Object.values(r.med).some(Boolean)).length;
     const withCt=ok.reduce((a,r)=>a+r.contacts.length,0);
-    const paid=ok.filter(r=>/paid|πληρω/i.test(r.pstat)).length;
+    const paid=ok.filter(r=>sePaid(r.pstat)).length;
     $('seRes').innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
         <span class="pill" style="background:var(--okbg);border-color:transparent;color:var(--ok)">${ok.length} αντιστοιχήθηκαν</span>
         ${no.length?`<span class="pill" style="background:var(--warnbg);border-color:transparent;color:var(--warn)">${no.length} όχι</span>`:''}
@@ -26855,9 +26855,7 @@ function seImport(eid,pool,after){
       const pick=[...document.querySelectorAll('.sec2:checked')].map(c=>res[+c.dataset.i]);
       if(!pick.length)return toast('Τίποτα επιλεγμένο');
       const fill=!!(($('seFill')||{}).checked), qfF=String((($('seQf')||{}).value)||'').trim();
-      const rows=pick.map(r=>({person_id:r.m.p.id, declared_at:r.w.iso||null, order_no:r.ordn||null,
-        qf_entry:/^\d{1,10}$/.test(r.entry||'')?+r.entry:null, qf_form:/^\d{1,6}$/.test(qfF)?+qfF:null,
-        notes:[r.amount?'Ποσό '+r.amount+'€':'',r.pstat,r.ordn?'#'+r.ordn:'',/ναι/i.test(r.pt)?'Part-time':'',r.shirt?'Φανέλα '+r.shirt:''].filter(Boolean).join(' · ')||null}));
+      const rows=seImportRows(pick,qfF);
       const {data:R,error:rerr}=await sb.rpc('participations_quform_import',{p_event:eid,p_rows:rows,p_fill_only:fill});
       if(rerr)return toast('Σφάλμα: '+rerr.message);
       const up=x=>{ const i=(D.pa||[]).findIndex(y=>y.id===x.id); if(i>=0)Object.assign(D.pa[i],x); else (D.pa=D.pa||[]).push(x); };
@@ -26895,6 +26893,13 @@ function seImport(eid,pool,after){
   $('seF').onchange=ev=>{const f=ev.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>run(String(rd.result)); rd.readAsText(f,'utf-8')};
 }
 
+const sePaid=s=>/^(paid|πληρώθηκε|πληρωμένη|πληρωμένο)$/i.test(String(s||'').trim());
+function seImportRows(pick,qfF){
+  return pick.map(r=>({person_id:r.m.p.id, declared_at:r.w.iso||null, order_no:r.ordn||null,
+    qf_entry:/^\d{1,10}$/.test(r.entry||'')?+r.entry:null, qf_form:/^\d{1,6}$/.test(qfF)?+qfF:null,
+    paid:sePaid(r.pstat),
+    notes:[r.amount?'Ποσό '+r.amount+'€':'',r.pstat,r.ordn?'#'+r.ordn:'',/ναι/i.test(r.pt)?'Part-time':'',r.shirt?'Φανέλα '+r.shirt:''].filter(Boolean).join(' · ')||null}));
+}
 function pasteParts(eid,pool,after){
   const e=D.ev.find(x=>x.id===eid);
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Επικόλληση λίστας</div>
