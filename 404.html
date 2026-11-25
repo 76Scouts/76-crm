@@ -1254,6 +1254,35 @@ tr.argrow td{background:var(--bg2)}
 :root[data-look="pyli"]:not([data-menu="light"]){--xa-side-img:url(trifylli-soft.svg)}
 .navav.xa-tre{font-size:0;background:#1C61AC url(trifylli.svg) center/72% no-repeat}
 @media(prefers-reduced-motion:no-preference){.navav{transition:transform var(--xa-move) var(--xa-out),background-color var(--xa-fast)}.navav.xa-tre{transform:rotateY(360deg)}}
+:root{--k-out:cubic-bezier(.23,1,.32,1);--k-move:cubic-bezier(.77,0,.175,1);--k-in:200ms;--k-exit:160ms;--k-press:120ms}
+@media(prefers-reduced-motion:no-preference){
+  .btn,.tile,.nav,.yfo .yfm,.navmini{transition-property:transform,background-color,border-color,color,box-shadow,opacity;transition-duration:var(--k-press);transition-timing-function:var(--k-out)}
+  .btn:active:not(:disabled),.tile:active,.nav:active,.navmini:active{transform:scale(.97)}
+  .yfo:active .yfm{transform:scale(.97)}
+  .mkmenu,details[open]>.mkmorem,details[open]>.xbm{transform-origin:top right;animation:k-pop var(--k-in) var(--k-out)}
+  details[open]>.mkrestm{transform-origin:bottom right;animation:k-pop var(--k-in) var(--k-out)}
+  @keyframes k-pop{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:none}}
+  .dlg{animation:dlgf var(--k-in) var(--k-out)}
+  .dlgbox{animation:k-pop var(--k-in) var(--k-out)}
+  @media(max-width:560px){.dlgbox{animation:k-sheet 240ms var(--k-out)}}
+  @keyframes k-sheet{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+  .drw{transition:display var(--k-exit) allow-discrete,overlay var(--k-exit) allow-discrete}
+  .drw .pnl{animation:none;transition:transform var(--k-exit) var(--k-move),opacity var(--k-exit) ease-in;transform:translateX(32px);opacity:0}
+  .drw .bg{transition:opacity var(--k-exit) ease-in;opacity:0}
+  .drw.on .pnl{transform:none;opacity:1;transition-duration:var(--k-in),var(--k-in);transition-timing-function:var(--k-out),ease-out}
+  .drw.on .bg{opacity:1;transition-duration:var(--k-in)}
+  @starting-style{.drw.on .pnl{transform:translateX(32px);opacity:0}.drw.on .bg{opacity:0}}
+  .yfsw>i::after{transition:transform var(--k-in) var(--k-move),width var(--k-press) var(--k-out)}
+  .yfsw:active>i::after{width:18px}
+  .yfsw[aria-checked="true"]:active>i::after{transform:translateX(14px)}
+  .navmini svg{transition:transform 220ms var(--k-move)}
+  .navmini:active svg{filter:blur(.6px)}
+  .e76toast{animation:k-up var(--k-in) var(--k-out)}
+  .e76toast.ok{animation:k-up var(--k-in) var(--k-out),k-pulse 360ms var(--k-out) var(--k-in)}
+  .e76toast.bye{opacity:0;translate:0 8px;transition:opacity var(--k-exit) ease-in,translate var(--k-exit) ease-in}
+  @keyframes k-up{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
+  @keyframes k-pulse{0%{scale:1}40%{scale:1.04}100%{scale:1}}
+}
 </style>
 </head>
 <body>
@@ -1575,7 +1604,8 @@ const ic=(n,s=17)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="no
 const DENY_RX=/row-level security|permission denied|42501|δεν επιτρέπεται|δεν έχεις δικαίωμα|δεν υπογράφεις|μόνο ο Α\.Σ\.|μόνο ο διαχειριστής/i;
 function denyLog(m){ try{ if(typeof sb==='undefined'||!ME||!ME.person_id)return; if(!DENY_RX.test(String(m||'')))return;
   sb.rpc('log_denial',{p_screen:String((typeof ROUTE!=='undefined'&&ROUTE)||''), p_detail:String(m).slice(0,300)}).then(()=>{},()=>{}); }catch(e){} }
-function toast(m){denyLog(m);const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--side);color:#fff;padding:10px 16px;border-radius:22px;font-size:13.5px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.28)';document.body.appendChild(d);setTimeout(()=>d.remove(),2300)}
+function toast(m){denyLog(m);const d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--side);color:#fff;padding:10px 16px;border-radius:22px;font-size:13.5px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.28)';if(d.setAttribute)d.setAttribute('role','status');d.className='e76toast'+(/^(✓|✔)|Αποθηκε[υύ]τηκ|Στάλθηκ|Έγινε|Ενημερώθηκ|Σώθηκ/.test(String(m))?' ok':'');    
+  document.body.appendChild(d);setTimeout(()=>d.classList.add('bye'),2140);setTimeout(()=>d.remove(),2300)}
 const NAV=[
  {g:'Επισκόπηση', d:'Πού βρισκόμαστε αυτή τη στιγμή', items:[
    {id:'dash',t:'Πίνακας',i:'grid',s:'live'},
@@ -1772,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-24 23:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-25 09:19'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -24618,7 +24648,11 @@ function bdHTML(e){
   const s=BD[e.id]; if(!s)return `<div class="card pad dim" id="bdBox" data-ev="${esc(e.id)}">${t('Φόρτωση…')}</div>`;
   if(s.err)return `<div class="card pad" id="bdBox" data-ev="${esc(e.id)}">${t('Δεν φόρτωσε')}: ${esc(s.err.message||'')}</div>`;
   const X=bdCtx(e), F=X.full, Dd=X.dec, d=s.d, ed=DRA.gsCan(e), TF=bdTotals(F,d), TD=bdTotals(Dd,d), ro=ed?'':' disabled';
-  const two=(a,b)=>`<span class="bd-2"><b>${bdEur(a)}</b><span>${bdEur(b)}</span></span>`;
+  const fin=!!X.final, DIM='color:var(--ink3);font-weight:400',     dimF=fin?` style="${DIM}"`:'', dimD=fin?'':` style="${DIM}"`;
+  const two=(a,b)=>fin?`<span class="bd-2"><span${dimF}>${bdEur(a)}</span><b>${bdEur(b)}</b></span>`
+                      :`<span class="bd-2"><b>${bdEur(a)}</b><span${dimD}>${bdEur(b)}</span></span>`;
+  const hd=()=>fin?`<span class="bd-2 dim" style="font-size:11.5px"><span${dimF}>${t('όλοι')}</span><b data-bddeltio="dec">${t('δηλωμένοι')}<br>→ ${t('Δελτίο')}</b></span>`
+                  :`<span class="bd-2 dim" style="font-size:11.5px"><b data-bddeltio="full">${t('όλοι')}<br>→ ${t('Δελτίο')}</b><span${dimD}>${t('δηλωμένοι')}</span></span>`;
   const sel=(k,opts,v)=>`<select data-bd="${k}"${ro}>${opts.map(([a,b])=>`<option value="${a}"${a===v?' selected':''}>${esc(b)}</option>`).join('')}</select>`;
   const amt=(l,ld)=>l.calc?two(l.poso,ld.poso):'';
   const hasMeta=l=>!!(l.when||l.sup||l._meta);
@@ -24633,7 +24667,7 @@ function bdHTML(e){
            ${c.basis==='custom'?`<input data-bd="n" type="number" min="0" inputmode="numeric" value="${esc(String(c.n??''))}" style="width:60px"${ro}>`:''}
            ${c.basis==='omades'?`<input data-bd="g" type="number" min="1" inputmode="numeric" value="${esc(String(c.g??6))}" style="width:52px" title="${t('άτομα ανά ομάδα')}"${ro}>`:''}
            ${sel('pd',BD_PD(),c.pd||'no')}${btns(c,l)}<span class="bd-amt">${amt(l,ld)}</span>`
-        :`${btns(c,l)}<span class="bd-2 bd-amt"><input data-bd="poso" inputmode="decimal" value="${esc(moneyShow(l.poso))}" title="${t('όλοι')}"${ro}><input data-bd="poso_d" inputmode="decimal" value="${esc(moneyShow(l.poso_d))}" placeholder="${t('ίδιο')}" title="${t('δηλωμένοι — κενό = ίδιο ποσό')}"${ro}></span>`}
+        :`${btns(c,l)}<span class="bd-2 bd-amt"><input data-bd="poso" inputmode="decimal" value="${esc(moneyShow(l.poso))}" title="${t('όλοι')}"${dimF}${ro}><input data-bd="poso_d" inputmode="decimal" value="${esc(moneyShow(l.poso_d))}" placeholder="${t('ίδιο')}" title="${t('δηλωμένοι — κενό = ίδιο ποσό')}"${dimD}${ro}></span>`}
       ${hasMeta(l)?`<div class="bd-meta"><span class="dim">${t('Πότε')}</span><input data-bd="when" type="date" value="${esc(l.when||'')}"${ro}>
         <input data-bd="sup" value="${esc(l.sup||'')}" placeholder="${l.side==='esoda'?t('από ποιον'):t('από πού (κατάστημα / προμηθευτής)')}"${ro}></div>`:''}
       ${c?`<div class="dim" style="flex-basis:100%;font-size:11.5px">${t('όλοι')}: ${esc(bdFormula(F,l))} · ${t('δηλωμένοι')}: ${esc(bdFormula(Dd,l))}</div>`:''}</div>`; };
@@ -24669,9 +24703,10 @@ function bdHTML(e){
   return `<div id="bdBox" data-ev="${esc(e.id)}">${ew.map(w=>`<div class="card pad" style="border-left:3px solid var(--warn);margin-bottom:10px;font-size:13px">⚠ ${esc(w)}</div>`).join('')}
   <div class="card pad" style="margin-bottom:13px">
     <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>${t('Προϋπολογισμός')}</b>
-      <span class="pill">${X.final?t('Τελειοποίηση'):t('Σχεδιασμός')}</span><span class="sp"></span>
+      <span class="pill">${X.final?t('Τελειοποίηση'):t('Σχεδιασμός')} · ${t('στο Δελτίο')}: ${X.final?t('δηλωμένοι'):t('όλη η δύναμη')} (${pln(CN.kids.length,t('παιδί'),t('παιδιά'))})</span><span class="sp"></span>
       ${s.dirty?`<span class="dim" style="font-size:12px">${t('αλλαγές χωρίς αποθήκευση')}</span>`:''}
       ${ed?`<button class="btn sm p" id="bdSave"${s.dirty?'':' disabled'}>${t('Αποθήκευση')}</button>`:''}</div>
+    ${CN.fee?`<div data-bdcheck style="font-size:13px;margin-top:6px">${t('Στο Δελτίο τώρα')}: <b>${pln(CN.kids.length,t('παιδί'),t('παιδιά'))} × ${bdEur(CN.fee)} = ${bdEur(bdR(CN.kids.length*CN.fee))}</b> <span class="dim" style="font-size:12px">(${t('ίδιο με το κελί D13 του φύλλου ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ· αν διαφέρει, κάτι δεν συμφωνεί')})</span></div>`:''}
     <div class="dim" style="font-size:12.5px;margin-top:4px">${t('Σε σκέτο ποσό, το 2ο κουτί είναι για τους δηλωμένους (κενό = ίδιο).')} ${t('Κάθε ποσό δύο φορές')}: <b>${t('όλοι')}</b> (${pln(F.kids.length,t('παιδί'),t('παιδιά'))} ${t('που δικαιούνται')}) · ${t('δηλωμένοι')} (${pln(Dd.kids.length,t('παιδί'),t('παιδιά'))}).
       ${t('Σκέτο ποσό (π.χ. λεωφορείο) μένει ίδιο· «€ × άτομα» (π.χ. τροφοδοσία) αλλάζει.')} · ${pln(F.days.length,t('μέρα'),t('μέρες'))} / ${pln(F.nights,t('βράδυ'),t('βράδια'))}
       ${!F.fee?' · <b>'+t('δεν έχει μπει τίμημα στη δράση')+'</b>':''}</div>
@@ -24688,8 +24723,8 @@ function bdHTML(e){
       ${ed?`<button class="btn sm gh" id="bdSpAdd">+ ${t('ειδικό τίμημα')}</button>`:''}</div>
     ${spec}</div>
   <div class="bd-cols">
-    <div class="card pad"><div style="display:flex;align-items:baseline"><b style="color:var(--ok);flex:1">${t('ΕΣΟΔΑ')}</b><span class="bd-2 dim" style="font-size:11.5px"><b>${t('όλοι')}</b><span>${t('δηλωμένοι')}</span></span></div>${col('esoda')}</div>
-    <div class="card pad"><div style="display:flex;align-items:baseline"><b style="color:var(--warn);flex:1">${t('ΕΞΟΔΑ')}</b><span class="bd-2 dim" style="font-size:11.5px"><b>${t('όλοι')}</b><span>${t('δηλωμένοι')}</span></span></div>${col('exoda')}</div></div>
+    <div class="card pad"><div style="display:flex;align-items:baseline"><b style="color:var(--ok);flex:1">${t('ΕΣΟΔΑ')}</b>${hd()}</div>${col('esoda')}</div>
+    <div class="card pad"><div style="display:flex;align-items:baseline"><b style="color:var(--warn);flex:1">${t('ΕΞΟΔΑ')}</b>${hd()}</div>${col('exoda')}</div></div>
   <div class="card pad" style="margin-top:13px">
     ${row(t('Όλη η δύναμη'),F,TF,!X.final)}
     ${row(t('Δηλωμένοι (τελικές συμμετοχές)'),Dd,TD,X.final)}
@@ -25127,7 +25162,7 @@ const AP_MAXB=4*1048576;
 const AP_MEALS=()=>[dv('Πρωινό'),dv('Δεκατιανό'),dv('Γεύμα'),dv('Απογευματινό'),dv('Δείπνο')];
 const apE=n=>(Math.round((+n||0)*100)/100).toLocaleString('el-GR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 const apId=p=>(p||'x')+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-const apNum=v=>{ const x=parseFloat(String(v==null?'':v).replace(/\s/g,'').replace(',','.')); return isFinite(x)?Math.round(x*100)/100:NaN };
+const apNum=v=>{ const r=moneyParse(v); return r.ok&&!r.empty?r.v:NaN }, apMoneyMsg=v=>{ const r=moneyParse(v); return r.ok?'':r.msg };
 const apDay=d=>/^\d{4}-\d{2}-\d{2}/.test(String(d||''))?fshort(d):String(d||'—');
 function apToast(m){ try{ const d=document.createElement('div'); d.setAttribute('role','status'); d.textContent=m;
   d.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:9px 16px;border-radius:999px;z-index:300;font-size:13.5px';
@@ -25521,8 +25556,8 @@ function apExpFormWire(e,X){
   $('apSave').onclick=async()=>{
     const m=$('apMsg'), sel=$('apA').value, owe=sel==='__owe', unp=sel==='__unpaid';
     const rows=[...document.querySelectorAll('#apRcs .ap-rc')].map(r=>{ let keep=[]; try{ keep=JSON.parse(r.dataset.ph||'[]') }catch(x){}
-      return {id:r.dataset.rid, amt:apNum(r.querySelector('.ap-amt').value), files:r.querySelector('.ap-ph').files, keep}; });
-    if(rows.some(r=>isNaN(r.amt))){ m.style.color='var(--bad)'; m.textContent=t('Γράψε ποσό σε κάθε απόδειξη.'); return; }
+      const raw=r.querySelector('.ap-amt').value; return {id:r.dataset.rid, amt:apNum(raw), why:apMoneyMsg(raw), files:r.querySelector('.ap-ph').files, keep}; });
+    if(rows.some(r=>isNaN(r.amt))){ m.style.color='var(--bad)'; m.textContent=(rows.find(r=>isNaN(r.amt)&&r.why)||{}).why||t('Γράψε ποσό σε κάθε απόδειξη.'); return; }
     if(owe&&!$('apW').value.trim()){ m.style.color='var(--bad)'; m.textContent=t('Γράψε σε ποιον χρωστάμε.'); return; }
     if(!owe&&!unp&&!sel){ m.style.color='var(--bad)'; m.textContent=t('Διάλεξε από πού πληρώθηκε.'); return; }
     const covers=(F.covers||[]).filter(c=>c&&c.pid).map(c=>({pid:c.pid, a:Math.round((+c.a||0)*100)/100, manual:!!c.manual}));
@@ -25600,7 +25635,7 @@ function apSubWire(e,X,ro){
   us.onclick=async()=>{
     const m=$('apUM'), ti=$('apUT').value.trim(), a=apNum($('apUA').value), dd=$('apUD').value;
     if(!ti){ m.style.color='var(--bad)'; m.textContent=t('Γράψε τι αφορά.'); return; }
-    if($('apUA').value.trim()&&isNaN(a)){ m.style.color='var(--bad)'; m.textContent=t('Το ποσό δεν διαβάζεται.'); return; }
+    if($('apUA').value.trim()&&isNaN(a)){ m.style.color='var(--bad)'; m.textContent=apMoneyMsg($('apUA').value)||t('Το ποσό δεν διαβάζεται.'); return; }
     const pay=(document.querySelector('input[name=apUP]:checked')||{}).value||'me', payer=pay==='other'?$('apUW').value.trim():'';
     if(pay==='other'&&!payer){ m.style.color='var(--bad)'; m.textContent=t('Γράψε ποιος το πλήρωσε.'); return; }
     us.disabled=true; m.style.color=''; m.textContent=t('Υποβολή…');
@@ -25801,7 +25836,7 @@ function apWalWire(e,X,ro){
     $('apTC').onclick=()=>{ APFORM=null; apRender(e) };
     ts.onclick=async()=>{ const f=$('apTF').value, to=$('apTT').value, a=apNum($('apTA').value);
       if(!f||!to||f===to){ await uiNote(t('Διάλεξε δύο διαφορετικά πορτοφόλια.')); return; }
-      if(isNaN(a)||a<=0){ await uiNote(t('Γράψε ποσό.')); return; }
+      if(isNaN(a)||a<=0){ await uiNote(apMoneyMsg($('apTA').value)||t('Γράψε ποσό.')); return; }
       APFORM=null; apSend(e,[['transfer.add',{id:apId('t'), from:f, to, amount:a, date:$('apTD').value, note:$('apTN').value.trim()}]]); };
   }
 }
@@ -25833,7 +25868,7 @@ function apSrcWire(e,X,ro){
   const ss=$('apSS'); if(ss){
     $('apSC').onclick=()=>{ APFORM=null; apRender(e) };
     ss.onclick=async()=>{ const a=apNum($('apSA').value), k=$('apSK').value.trim();
-      if(isNaN(a)||!a){ await uiNote(t('Γράψε ποσό.')); return; }
+      if(isNaN(a)||!a){ await uiNote(apMoneyMsg($('apSA').value)||t('Γράψε ποσό.')); return; }
       APFORM=null; apSend(e,[['source.add',{id:apId('s'), kind:k, label:$('apSL').value.trim()||k, amount:a, date:$('apSD').value, account:$('apSW').value, refundable:$('apSR').checked}]]); };
   }
 }
