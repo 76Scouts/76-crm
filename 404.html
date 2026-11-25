@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-25 11:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-25 12:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -31683,7 +31683,8 @@ async function wlElevate(id){
 
 V.desk=()=>tabView('desk',[
   {k:'fam', t:'Οικογένειες',   i:'home',  fn:deskBody,     d:'παιδί, γονείς, κωδικός γονέα'},
-  {k:'kid', t:'Κωδικοί μελών', i:'users', fn:deskKidsBody, d:'δικός τους λογαριασμός, 14+'}]);
+  {k:'kid', t:'Κωδικοί μελών', i:'users', fn:deskKidsBody, d:'δικός τους λογαριασμός, 14+'},
+  ...(entKatIsAS()?[{k:'entypa', t:t('Έντυπα σε χαρτί'), i:'down', fn:entKatBody, d:t('κατάλογος παιδιών για το εργαλείο εντύπων')}]:[])]);
 
 const TRIAL_CIRC='2025/237';
 function trialSign(){
@@ -31730,6 +31731,41 @@ function trialWire(r){
   const c=$('trCopy'); if(c)c.onclick=()=>cp(trialNoteText(r),t('σημείωμα'));
   const m=$('trMark'); if(m)m.onclick=()=>save({trial_notice_at:new Date().toISOString(), trial_notice_by:ME.person_id||null});
   const u=$('trUndo'); if(u)u.onclick=async()=>{ if(await uiAsk(t('Να σβηστεί η καταγραφή ότι δόθηκε το σημείωμα;')))save({trial_notice_at:null, trial_notice_by:null}); };
+}
+const entKatIsAS=()=>(D.ph||[]).some(h=>h.person_id===ME.person_id&&!h.valid_to&&h.role_code==='AS');
+
+function entKatBody(){
+  if(!entKatIsAS()){ $('view').innerHTML=`<div class="card pad dim">${t('Μόνο ο Αρχηγός Συστήματος.')}</div>`; return; }
+  const yrs=[...new Set((D.my||[]).map(x=>x.scout_year).filter(Boolean))].sort().reverse();
+  if(!yrs.includes(YEAR))yrs.unshift(YEAR);
+  $('view').innerHTML=`<div class="card pad" style="max-width:640px">
+    <b>${t('Κατάλογος παιδιών για το εργαλείο εντύπων')}</b>
+    <div class="muted" style="margin-top:6px;font-size:13.5px;line-height:1.55">${t('Τέσσερα στοιχεία μόνο: ονοματεπώνυμο, Α.Μ., ημερομηνία γέννησης και κωδικός του e76 — για τα παιδιά της χρονιάς (ή ενός Τμήματος). Η εξαγωγή γράφεται στο ιστορικό: ποιος, πότε, πόσα παιδιά.')}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12.5px">${t('Χρονιά')}
+        <select id="ekY">${yrs.map(y=>`<option value="${esc(y)}"${y===YEAR?' selected':''}>${esc(y)}</option>`).join('')}</select></label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12.5px">${t('Τμήμα')}
+        <select id="ekS"><option value="">${t('όλα τα Τμήματα')}</option>${CT_SECS.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('')}</select></label>
+    </div>
+    <button class="btn p" id="ekGo" style="margin-top:12px">${ic('down',14)} ${t('Κατέβασε τον κατάλογο')}</button>
+    <div id="ekMsg" role="status" class="dim" style="font-size:12.5px;margin-top:8px"></div>
+    <div class="dim" style="font-size:12.5px;margin-top:10px;line-height:1.55">${t('Βάλ’ τον ως «κατάλογος-παιδιών.json» στον φάκελο «e76 έντυπα — ΕΞΩ» του Mac — όχι σε Έγγραφα, Γραφείο ή cloud. Μετά από 7 μέρες το εργαλείο δεν τον δέχεται· στο κλείσιμο της παρτίδας πάει στον Κάδο.')}</div>
+  </div>`;
+  entKatWire();
+}
+
+function entKatWire(){
+  const b=$('ekGo'), m=$('ekMsg'); if(!b)return;
+  b.onclick=async()=>{
+    b.disabled=true; m.style.color='var(--ink2)'; m.textContent=t('Ετοιμάζεται…');
+    const {data,error}=await sb.rpc('entypa_katalogos',{p_year:$('ekY').value, p_section:$('ekS').value||null});
+    b.disabled=false;
+    if(error){ m.style.color='var(--bad)'; m.textContent=error.message; return; }
+    const n=((data&&data.rows)||[]).length;
+    if(!n){ m.style.color='var(--warn)'; m.textContent=t('Κανένα παιδί σε αυτό το εύρος — δεν κατέβηκε αρχείο.'); return; }
+    saveBlob(JSON.stringify(data),'application/json',dv('κατάλογος-παιδιών.json'));
+    m.style.color='var(--ok)'; m.textContent=t('✓ Κατέβηκε: {n} παιδιά.',{n});
+  };
 }
 V.forms=()=>tabView('forms',[
   {k:'blank',t:'Κενά πρότυπα',       i:'book', fn:templatesBody, d:'τυπώνεις και συμπληρώνει άνθρωπος'},
