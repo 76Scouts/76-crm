@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-25 09:44'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-25 11:45'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -6546,6 +6546,22 @@ function evTag(e){
   const c=evCat(e); if(c==='argia')return ' · αργία';
   if(c==='ekso'){ const m=String((e.tags||[])[0]||'').split(':')[0]; return m==='ΕΠΑΡΧΙΑ'?' · Επαρχία':' · Γενική'; }
   return '';
+}
+
+function certOn(pid, code, onDate){
+  if(code===dv('Ν91')&&!n91Visible(pid)) return {k:'hidden'};    
+  const all=(D.pc||[]).filter(x=>x.person_id===pid&&x.type_code===code)
+    .sort((a,b)=>String(b.expires_on||'9999').localeCompare(String(a.expires_on||'9999')));
+  const c=all.find(x=>x.confirmed_on);
+  if(!c) return all.length ? {k:'pending', c:all[0]} : {k:'none'};
+  if(!c.expires_on){
+    if(c.no_expiry) return {k:'ok', c};
+    const t=ctype(code)||{};
+    const lixei = t.date_basis==='λήξη' || certAuto(t);
+    return lixei ? {k:'nodate', c} : {k:'ok', c};
+  }
+  const lim=(onDate&&code===dv('Ν91'))?syEndISO(onDate):onDate;    
+  return {k:((code===dv('Ν91')?n91Until(pid,c):c.expires_on)>=lim?'ok':'expired'), c};
 }
 const TR_UNIT={[dv('Αγέλη')]:dv('εξάδα'),[dv('Ομάδα')]:dv('ενωμοτία'),[dv('Κοινότητα')]:dv('όμιλος')};
 function trData(sec){
@@ -21078,22 +21094,6 @@ async function rhCandidates(e){ const {data,error}=await sb.rpc('rover_helper_ca
   if(error){ toast(error.message); return [] }
   return (data||[]).map(r=>({id:r.id,first_name:r.first_name,last_name:r.last_name,scout_name:r.scout_name,kind:dv('Μέλος'),section:dv('Κοινότητα'),_rh:e.id})); }
 
-function certOn(pid, code, onDate){
-  if(code===dv('Ν91')&&!n91Visible(pid)) return {k:'hidden'};    
-  const all=(D.pc||[]).filter(x=>x.person_id===pid&&x.type_code===code)
-    .sort((a,b)=>String(b.expires_on||'9999').localeCompare(String(a.expires_on||'9999')));
-  const c=all.find(x=>x.confirmed_on);
-  if(!c) return all.length ? {k:'pending', c:all[0]} : {k:'none'};
-  if(!c.expires_on){
-    if(c.no_expiry) return {k:'ok', c};
-    const t=ctype(code)||{};
-    const lixei = t.date_basis==='λήξη' || certAuto(t);
-    return lixei ? {k:'nodate', c} : {k:'ok', c};
-  }
-  const lim=(onDate&&code===dv('Ν91'))?syEndISO(onDate):onDate;    
-  return {k:((code===dv('Ν91')?n91Until(pid,c):c.expires_on)>=lim?'ok':'expired'), c};
-}
-
 function V_efolder(){
   const e=efEvent();
   if(!e){ $('view').innerHTML=`<div class="uc"><div class="ico">${ic('flag',26)}</div>
@@ -23278,7 +23278,7 @@ async function efGenikaWire(e){
   const g=await dlLoad(e.id); if(EFID!==e.id||!$('dlCk'))return;
   if(g.err){ $('dlCk').innerHTML=`<div class="card pad bgap">Δεν φόρτωσαν οι χώροι της δράσης: ${esc(g.err)}</div>` }
   ['dlCk','dlS1','dlV','dlS2','dlS3'].forEach(id=>dlDraw(id,e));
-  gsWire(e);
+  gsWire(e).then(()=>{ if(EFID===e.id)dlDraw('dlCk',e); });    
 }
 const DL_DRAW={dlCk:dlCkHTML, dlS1:dlS1HTML, dlV:dlVHTML, dlS2:dlS2HTML, dlS3:dlS3HTML};
 const DL_WIRE={dlCk:dlCkWire, dlS1:dlS1Wire, dlV:dlVWire, dlS2:dlS2Wire, dlS3:dlS3Wire};
@@ -23302,16 +23302,28 @@ function dlCkHTML(e,g){
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <b>Δελτίο Δράσης ΣΠΚ</b>
       <span class="pill" style="${bad.length?'background:var(--badbg);color:var(--bad);border-color:transparent':'background:var(--okbg);color:var(--ok);border-color:transparent'}">${bad.length?'λείπουν '+bad.length:'έτοιμο'}</span>
-      <span class="sp"></span>
-      <button class="btn sm p" id="dlXls">${ic('down',14)} ${t('Γέμισμα του Excel')}</button>
-      <button class="btn sm" id="dlXlsF">${t('με άλλο αρχείο…')}</button></div>
-    <div class="dim" style="font-size:12px;margin-top:4px">${t('Κατεβαίνει γεμάτο το Κοινό Έντυπο Δράσεων ΣΠΚ v1.3 (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΥΠΟΓΡΑΦΕΣ). «Με άλλο αρχείο»: διαλέγεις εσύ το αρχείο του ΣΠΚ (νεότερη έκδοση ή περσινό).')}</div>
+      <span class="sp"></span>${dlXlsBtns(e)}</div>
+    ${dlXlsTxt(e)}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px">
       <div><b style="font-size:12.5px">${t('1 · Νέα δράση')}</b>${lst(1)}</div>
       <div><b style="font-size:12.5px">${t('2 · Επιτελείο')}</b>${lst(2)}</div>
       <div><b style="font-size:12.5px">${t('3 · Πριν την υποβολή')}</b>${lst(3)}</div></div></div>`;
 }
-function dlCkWire(e,g){ $('dlXls').onclick=()=>dlExport(e); $('dlXlsF').onclick=()=>dlExport(e,true); }
+function dlXlsBtns(e){
+  if(!gsHasLive(e.id))return `<button class="btn sm p" id="dlXls">${ic('down',14)} ${t('Γέμισμα του Excel')}</button>
+      <button class="btn sm" id="dlXlsF">${t('με άλλο αρχείο…')}</button>`;
+  return `<button class="btn sm p" id="dlToLive">↓ ${t('Στο ζωντανό Δελτίο')}</button>
+      <button class="btn sm gh" id="dlXls" data-dlbackup>${ic('down',14)} ${t('Excel (εφεδρεία)')}</button>
+      <button class="btn sm gh" id="dlXlsF">${t('με άλλο αρχείο…')}</button>`;
+}
+function dlXlsTxt(e){
+  const d=x=>`<div class="dim" style="font-size:12px;margin-top:4px">${x}</div>`;
+  if(gsHasLive(e.id))return d(t('Το Δελτίο ζει στο Google Sheets (κάρτα από κάτω). Το Excel μόνο για αντίγραφο ή αν δεν δουλεύει το Sheets.'));
+  return d(t('Κατεβαίνει γεμάτο το Κοινό Έντυπο Δράσεων ΣΠΚ v1.3 (ΓΕΝΙΚΑ, ΣΥΜΜΕΤΟΧΕΣ, ΥΠΟΓΡΑΦΕΣ). «Με άλλο αρχείο»: διαλέγεις εσύ το αρχείο του ΣΠΚ (νεότερη έκδοση ή περσινό).'))
+    +(gsCan(e)?d(`<span data-dlhint>${t('Καλύτερα: ζωντανό Δελτίο στο Google Sheets (από κάτω) — ενημερώνεται από το e76 χωρίς κατέβασμα.')}</span>`):'');
+}
+function dlCkWire(e,g){ $('dlXls').onclick=()=>dlExport(e); $('dlXlsF').onclick=()=>dlExport(e,true);
+  const L=$('dlToLive'); if(L)L.onclick=()=>{ const b=$('gsLive'); if(b)b.scrollIntoView({behavior:'smooth',block:'start'}); }; }
 
 function dlS1HTML(e,g){
   const ro=dlRO(e), n=dlNights(e);
@@ -26501,7 +26513,6 @@ const DRA=Object.freeze({
   paStage:(...a)=>paStage(...a),           
   paWent:(...a)=>paWent(...a),             
   evNeedsDecl:(...a)=>evNeedsDecl(...a),   
-  certOn:(...a)=>certOn(...a),             
 });
 const OIK=Object.freeze({
   bdHTML:(...a)=>bdHTML(...a),             
@@ -29016,7 +29027,7 @@ V.leaders=()=>{
   wireVQ();
 };
 function leadFA(pid){
-  const today=todayISO(), f=DRA.certOn(pid,dv('ΠΡΩΤΕΣ_ΒΟΗΘΕΙΕΣ'),today), b=DRA.certOn(pid,'BLS',today);
+  const today=todayISO(), f=certOn(pid,dv('ΠΡΩΤΕΣ_ΒΟΗΘΕΙΕΣ'),today), b=certOn(pid,'BLS',today);
   const pill=(col,txt,tip)=>`<span class="pill" style="background:var(--${col}bg);border-color:transparent;color:var(--${col})"${tip?` title="${esc(tip)}"`:''}>${txt}</span>`;
   let h, y=false;
   if(f.k==='ok'){ y=true;
