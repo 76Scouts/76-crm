@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-25 14:31'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-25 14:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -21156,8 +21156,14 @@ function efApplicant(s,p){
   if(self)return `${esc(a)} <span class="pill" style="background:var(--warnbg);color:var(--warn);border-color:transparent">${t('κάτω των 16 — θέλει γονέα')}</span>`;
   return esc(a);
 }
+async function efFormMeta(e){
+  try{ const r=await sb.rpc('form_ypovoles_meta',{p_event:e.id}); if(!r.error&&Array.isArray(r.data))return r.data; }catch(x){}
+  return null;
+}
 async function efFormsLoad(e){
-  const {data,error}=await sb.from('form_submission')
+  const meta=await efFormMeta(e);
+  const {data,error}=meta?{data:meta.filter(s=>!s.is_test).sort((a,b)=>String(b.submitted_on||'').localeCompare(String(a.submitted_on||''))).slice(0,500),error:null}
+    :await sb.from('form_submission')
     .select('id,person_id,form_name,submitted_on,ait_onoma:payload->>ait_onoma,ait_epitheto:payload->>ait_epitheto')
     .eq('event_id',e.id).eq('is_test',false).order('submitted_on',{ascending:false}).limit(500);    
   const box=$('efForms'); if(!box)return;           
@@ -22273,7 +22279,9 @@ function efdDeclMap(parts,fsRows){
 }
 async function efdDecls(e,parts){
   let data=null, error=null;
-  try{ ({data,error}=await sb.from('form_submission').select('person_id,submitted_on').eq('event_id',e.id).is('rejected',null).not('person_id','is',null)); }
+  const meta=await efFormMeta(e);                      
+  if(meta)data=meta.filter(s=>!s.aporrifthike&&s.person_id).map(s=>({person_id:s.person_id,submitted_on:s.submitted_on}));
+  else try{ ({data,error}=await sb.from('form_submission').select('person_id,submitted_on').eq('event_id',e.id).is('rejected',null).not('person_id','is',null)); }
   catch(x){ error=x; }
   const out=efdDeclMap(parts||(typeof efPersons==='function'?efPersons(e.id):[]),error?[]:data);
   return error&&!out.size?null:out;
