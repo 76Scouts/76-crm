@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-25 14:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-25 16:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -13529,18 +13529,21 @@ let SGFROM=null;
 let SGSEC_SET=false;
 const sgSexOf=p=>/Κορίτσι|Γυναίκα/.test(p.sex||'')?'k':/Αγόρι|Ανδρας|Άνδρας/.test(p.sex||'')?'a':'';
 const sgStaffIds=g=>[...new Set([g.staff_id,...(g.staff_more||[])].filter(Boolean))];
+const sgGr=p=>{const g=(myOf(p)||{}).grade; return g?(typeof grN==='function'?grN(g):String(g)):''};
+const sgGrades=L=>{const ord=(typeof GRADES!=='undefined'?GRADES:[]).map(g=>typeof grN==='function'?grN(g):g), ix=g=>{const i=ord.indexOf(g); return i<0?99:i};
+  return [...new Set(L.map(sgGr).filter(Boolean))].sort((a,b)=>ix(a)-ix(b)||a.localeCompare(b,'el'));};
 function sgMini(list){
   if(!list.length)return '';
   const a=list.filter(p=>sgSexOf(p)==='a').length, k=list.filter(p=>sgSexOf(p)==='k').length;
-  const grOf=p=>(myOf(p)||{}).grade||'';
-  const G=(typeof GRADES!=='undefined'?GRADES:[]).map(g=>[g,list.filter(p=>grOf(p)===g).length]).filter(x=>x[1]);
+  const grOf=p=>sgGr(p);
+  const G=sgGrades(list).map(g=>[g,list.filter(p=>grOf(p)===g).length]).filter(x=>x[1]);
   return pln(a,t('αγόρι'),t('αγόρια'))+' · '+pln(k,t('κορίτσι'),t('κορίτσια'))+(G.length?' — '+G.map(([g,n])=>esc(g)+' '+n).join(' · '):'');
 }
 function sgBreakHTML(sgs,kids){
   const gOf=p=>(myOf(p)||{}).group_name||'';
-  const grOf=p=>(myOf(p)||{}).grade||'';
-  const G=(typeof GRADES!=='undefined'?GRADES:[]).filter(g=>kids.some(p=>grOf(p)===g));
-  const noGr=kids.some(p=>!grOf(p)||!G.includes(grOf(p)));
+  const grOf=p=>sgGr(p);
+  const G=sgGrades(kids);
+  const noGr=kids.some(p=>!grOf(p));
   const rowsOf=[...sgs.map(g=>({t:g.name,L:kids.filter(p=>gOf(p)===g.name)}))];
   const none=kids.filter(p=>!gOf(p)||!sgs.some(g=>g.name===gOf(p)));
   if(none.length)rowsOf.push({t:t('Χωρίς υποομάδα'),L:none,dim:true});
@@ -13548,7 +13551,7 @@ function sgBreakHTML(sgs,kids){
   const tr=(r,tot)=>`<tr${tot?' style="font-weight:600;border-top:2px solid var(--line)"':''}><td${r.dim?' class="dim"':''}>${esc(r.t)}</td>
     <td style="text-align:right">${n(r.L,p=>sgSexOf(p)==='a')}</td><td style="text-align:right">${n(r.L,p=>sgSexOf(p)==='k')}</td>
     ${G.map(g=>`<td style="text-align:right">${n(r.L,p=>grOf(p)===g)}</td>`).join('')}
-    ${noGr?`<td style="text-align:right">${n(r.L,p=>!grOf(p)||!G.includes(grOf(p)))}</td>`:''}
+    ${noGr?`<td style="text-align:right">${n(r.L,p=>!grOf(p))}</td>`:''}
     <td style="text-align:right"><b>${r.L.length}</b></td></tr>`;
   const unk=kids.filter(p=>!sgSexOf(p)).length;
   return `<div style="overflow:auto"><table style="font-size:12.5px"><thead><tr><th></th><th style="text-align:right">${t('Αγόρια')}</th><th style="text-align:right">${t('Κορίτσια')}</th>
@@ -19250,6 +19253,7 @@ V.formcat=async()=>{
         ${FCED===r.id?ed(r):''}`).join('')||'<tr><td colspan="5" class="dim">Καμία φόρμα ακόμη.</td></tr>'}</tbody></table></div>`;
   fcPendingMount();    
   flAdminMount();      
+  doraAdminMount();    
 
   const fcRoles=td=>{
     const all=[...td.querySelectorAll('.ffrole')], on=all.filter(i=>i.checked);
@@ -19601,6 +19605,70 @@ async function flSave(f, id){
   const {error}=id==='NEW'?await sb.from('form_links').insert(r.row):await sb.from('form_links').update(r.row).eq('id',id);
   if(error){ if(btn)btn.disabled=false; if(msg)msg.textContent=t('Δεν αποθηκεύτηκε:')+' '+(error.message||''); return; }
   FLA.edit=null; FL.mine=null; flAdminFill();
+}
+const DORA={open:false, q:''};
+async function doraAdminMount(){
+  if(!isAdminUI())return;
+  const [a,k,l]=await Promise.all([sb.rpc('dora_admin_arithmoi'),sb.rpc('dora_admin_kategories'),sb.rpc('dora_admin_lista')]);
+  const view=$('view'); if(!view||!view.querySelector('#fcNew,[data-fcedit]'))return;    
+  if(a.error||k.error||l.error){ if(/OXI_AS/.test(JSON.stringify([a.error,k.error,l.error])))return;
+    console.warn('dora admin:',(a.error||k.error||l.error).code); return; }
+  const n=(a.data||[])[0]||{synolo:0,diekdikimena:0,paradomena:0,eleuthera:0};
+  if(!n.synolo)return;                                    
+  const old=document.getElementById('doraBox'); if(old)old.remove();
+  const q=DORA.q.trim().toLowerCase();
+  const rows=(l.data||[]).filter(r=>!q||String(r.tag_no)===q||[r.onoma,r.kinito,r.kategoria].some(x=>String(x||'').toLowerCase().includes(q)));
+  const box=document.createElement('details'); box.id='doraBox'; box.className='card'; box.style.marginBottom='16px'; box.open=DORA.open;
+  box.ontoggle=()=>{DORA.open=box.open};
+  box.innerHTML=`<summary style="cursor:pointer"><b>${t('Δώρα 2026')}</b>
+      <span class="dim" style="font-size:12.5px"> · ${esc(t('{d} από {s} δεσμεύτηκαν · {p} δώρα ήρθαν · {e} ελεύθερες',{d:n.diekdikimena,s:n.synolo,p:n.paradomena,e:n.eleuthera}))}</span></summary>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">${(k.data||[]).map(c=>`<span class="pill" style="font-size:12px">${esc(c.kategoria)}: ${esc(t('{e} από {s} ελεύθερες',{e:c.eleuthera,s:c.synolo}))}</span>`).join('')}</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <input id="doraQ" placeholder="${esc(t('Αναζήτηση: αριθμός, όνομα, κινητό'))}" value="${esc(DORA.q)}" style="flex:1">
+      <button class="btn sm" id="doraNew">${t('+ Δέσμευση για κάποιον')}</button></div>
+    <div style="overflow:auto"><table style="font-size:13px;width:100%"><thead><tr><th>${t('Ετικέτα')}</th><th>${t('Κατηγορία')}</th><th>${t('Όνομα')}</th><th>${t('Κινητό')}</th><th>${t('Σημείωση')}</th><th>${t('Κατάσταση')}</th><th></th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td><b>${esc(r.tag_no)}</b><div class="dim" style="font-size:11px">${fdate(r.pote)}</div></td><td>${esc(r.kategoria)}</td>
+      <td>${esc(r.onoma||'—')}${r.email?`<div class="dim" style="font-size:11.5px">${esc(r.email)}</div>`:''}</td><td>${esc(r.kinito||'—')}</td>
+      <td style="max-width:220px">${esc(r.simeiosi||'')}</td>
+      <td>${r.paradothike?`<span style="color:var(--ok)">${t('Το δώρο ήρθε')} ${fdate(r.paradothike)}</span>`:t('Περιμένουμε το δώρο')}</td>
+      <td style="white-space:nowrap">${r.paradothike
+        ?`<button class="btn gh sm" data-dora="anairesi" data-tag="${r.tag_no}">${t('Αναίρεση')}</button>`
+        :`<button class="btn sm" data-dora="paradosi" data-tag="${r.tag_no}">${t('Το δώρο ήρθε')}</button>
+          <button class="btn gh sm" data-dora="diorthosi" data-tag="${r.tag_no}">${t('Διόρθωση')}</button>
+          <button class="btn gh sm" data-dora="akyrosi" data-tag="${r.tag_no}">${t('Ακύρωση')}</button>`}</td></tr>`).join('')
+      ||`<tr><td colspan="7" class="dim">${t('Καμία δέσμευση ακόμη.')}</td></tr>`}</tbody></table></div>`;
+  view.prepend(box);
+  const qi=$('doraQ'); qi.oninput=()=>{DORA.q=qi.value; clearTimeout(DORA.tq); DORA.tq=setTimeout(doraAdminMount,250)};
+  const ok=(e,msg)=>{ if(e)return toast(t('Δεν έγινε')+': '+(/OXI_AS/.test(e.message)?t('μόνο ο Α.Σ.'):e.message)); toast(msg); doraAdminMount(); };
+  $('doraNew').onclick=async()=>{
+    const cats=(k.data||[]).filter(c=>c.eleuthera>0);
+    if(!cats.length)return toast(t('Δεν έμεινε καμία ελεύθερη ετικέτα.'));
+    const cat=await uiChoose(t('Ποια κατηγορία;'),cats.map(c=>({v:c.kategoria,t:c.kategoria+' ('+c.eleuthera+')'})));
+    if(!cat)return;
+    const posa=parseInt(await uiText(t('Πόσες ετικέτες;'),'1',{ok:t('Συνέχεια')})||'0',10); if(!(posa>0))return;
+    const on=await uiText(t('Ονοματεπώνυμο δωρητή'),'',{ok:t('Συνέχεια')}); if(!on||!on.trim())return;
+    const kin=await uiText(t('Κινητό'),'',{ok:t('Συνέχεια')}); if(kin===null)return;
+    const sim=await uiText(t('Σημείωση (προαιρετικά)'),'',{ok:t('Δέσμευση')}); if(sim===null)return;
+    const {data,error}=await sb.rpc('dora_admin_xeirokiniti',{p_kategoria:cat,p_posa:posa,p_onoma:on.trim(),p_kinito:kin.trim(),p_email:null,p_simeiosi:sim.trim()||null});
+    if(error)return ok(error);
+    if(!(data||[]).length)return toast(t('Δεν βρέθηκαν τόσες ελεύθερες ετικέτες σε αυτή την κατηγορία.'));
+    ok(null,t('Ετικέτες')+': '+data.map(x=>x.tag_no).join(', '));
+  };
+  box.querySelectorAll('[data-dora]').forEach(b=>b.onclick=async()=>{
+    const tag=+b.dataset.tag, r=(l.data||[]).find(x=>x.tag_no===tag)||{};
+    if(b.dataset.dora==='paradosi'){ const {error}=await sb.rpc('dora_admin_paradothike',{p_tag:tag}); return ok(error,t('Το δώρο ήρθε')+' · '+tag); }
+    if(b.dataset.dora==='anairesi'){ const {error}=await sb.rpc('dora_admin_anairesi_paradosis',{p_tag:tag}); return ok(error,t('Αναιρέθηκε το «ήρθε»')+' · '+tag); }
+    if(b.dataset.dora==='akyrosi'){
+      if(!await uiAsk(t('Ακύρωση της ετικέτας {n};\n\nΗ ετικέτα ξαναγίνεται ελεύθερη και τα στοιχεία του δωρητή σβήνονται αμέσως. Δεν αναιρείται.',{n:tag}),{ok:t('Ακύρωση ετικέτας'),danger:true}))return;
+      const {error}=await sb.rpc('dora_admin_akyrosi',{p_tag:tag}); return ok(error,t('Ακυρώθηκε')+' · '+tag); }
+    if(b.dataset.dora==='diorthosi'){
+      const on=await uiText(t('Ονοματεπώνυμο'),r.onoma||'',{ok:t('Συνέχεια')}); if(on===null)return;
+      const kin=await uiText(t('Κινητό'),r.kinito||'',{ok:t('Συνέχεια')}); if(kin===null)return;
+      const em=await uiText(t('Email (κενό = σβήνεται)'),r.email||'',{ok:t('Συνέχεια')}); if(em===null)return;
+      const sim=await uiText(t('Σημείωση (κενό = σβήνεται)'),r.simeiosi||'',{ok:t('Αποθήκευση')}); if(sim===null)return;
+      const {error}=await sb.rpc('dora_admin_diorthosi',{p_tag:tag,p_onoma:on.trim()||null,p_kinito:kin.trim()||null,p_email:em.trim(),p_simeiosi:sim.trim()});
+      return ok(error,t('Διορθώθηκε')+' · '+tag); }
+  });
 }
 const FORM=Object.freeze({
   flHomeMount:(...a)=>flHomeMount(...a),   
