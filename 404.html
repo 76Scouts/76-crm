@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-25 16:12'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-25 16:55'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19626,6 +19626,9 @@ async function doraAdminMount(){
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
       <input id="doraQ" placeholder="${esc(t('Αναζήτηση: αριθμός, όνομα, κινητό'))}" value="${esc(DORA.q)}" style="flex:1">
       <button class="btn sm" id="doraNew">${t('+ Δέσμευση για κάποιον')}</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn gh sm" id="doraYpen">${t('Υπενθύμιση σε όσους δεν έφεραν')}</button>
+      <button class="btn gh sm" id="doraPalies">${t('Επιβεβαίωση στις παλιές δεσμεύσεις')}</button></div>
     <div style="overflow:auto"><table style="font-size:13px;width:100%"><thead><tr><th>${t('Ετικέτα')}</th><th>${t('Κατηγορία')}</th><th>${t('Όνομα')}</th><th>${t('Κινητό')}</th><th>${t('Σημείωση')}</th><th>${t('Κατάσταση')}</th><th></th></tr></thead>
     <tbody>${rows.map(r=>`<tr><td><b>${esc(r.tag_no)}</b><div class="dim" style="font-size:11px">${fdate(r.pote)}</div></td><td>${esc(r.kategoria)}</td>
       <td>${esc(r.onoma||'—')}${r.email?`<div class="dim" style="font-size:11.5px">${esc(r.email)}</div>`:''}</td><td>${esc(r.kinito||'—')}</td>
@@ -19654,9 +19657,20 @@ async function doraAdminMount(){
     if(!(data||[]).length)return toast(t('Δεν βρέθηκαν τόσες ελεύθερες ετικέτες σε αυτή την κατηγορία.'));
     ok(null,t('Ετικέτες')+': '+data.map(x=>x.tag_no).join(', '));
   };
+  const mazika=async(praxi,erotisi)=>{
+    if(!await uiAsk(erotisi,{ok:t('Αποστολή')}))return;
+    const {data,error}=await fnInvoke('dora-mail',{body:{praxi}});
+    if(error||!data||data.error)return toast(t('Δεν στάλθηκε')+': '+((data&&data.error)||(error&&error.message)||''));
+    toast(t('Στάλθηκαν {n}',{n:data.estalisan})+(data.apetyxan?' · '+t('απέτυχαν {n}',{n:data.apetyxan}):''));
+  };
+  $('doraYpen').onclick=()=>mazika('ypenthymisi',t('Υπενθύμιση σε όσους δεν έφεραν ακόμη το δώρο τους;\n\nΤο πολύ 2 υπενθυμίσεις ανά δέσμευση — όσοι πήραν ήδη 2 δεν παίρνουν άλλη.'));
+  $('doraPalies').onclick=()=>mazika('epivevaiosi_palies',t('Επιβεβαίωση σε όσους δεσμεύτηκαν με το παλιό κείμενο και έδωσαν email;\n\nΦεύγει μία φορά σε καθέναν, με τον αριθμό της ετικέτας και τις οδηγίες.'));
   box.querySelectorAll('[data-dora]').forEach(b=>b.onclick=async()=>{
     const tag=+b.dataset.tag, r=(l.data||[]).find(x=>x.tag_no===tag)||{};
-    if(b.dataset.dora==='paradosi'){ const {error}=await sb.rpc('dora_admin_paradothike',{p_tag:tag}); return ok(error,t('Το δώρο ήρθε')+' · '+tag); }
+    if(b.dataset.dora==='paradosi'){ const {error}=await sb.rpc('dora_admin_paradothike',{p_tag:tag});
+      if(!error){ const {data:m}=await fnInvoke('dora-mail',{body:{praxi:'efxaristo',tag}});    
+        if(m&&m.estalisan)toast(t('Στάλθηκε ευχαριστώ στον δωρητή')); }
+      return ok(error,t('Το δώρο ήρθε')+' · '+tag); }
     if(b.dataset.dora==='anairesi'){ const {error}=await sb.rpc('dora_admin_anairesi_paradosis',{p_tag:tag}); return ok(error,t('Αναιρέθηκε το «ήρθε»')+' · '+tag); }
     if(b.dataset.dora==='akyrosi'){
       if(!await uiAsk(t('Ακύρωση της ετικέτας {n};\n\nΗ ετικέτα ξαναγίνεται ελεύθερη και τα στοιχεία του δωρητή σβήνονται αμέσως. Δεν αναιρείται.',{n:tag}),{ok:t('Ακύρωση ετικέτας'),danger:true}))return;
