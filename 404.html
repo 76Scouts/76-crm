@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-26 20:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 00:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2456,10 +2456,11 @@ function banner(){
     ${navigator.onLine&&QUEUE.length?'<button class="btn sm" style="background:#fff;color:#000;border:0;padding:3px 9px" onclick="qFlush()">Συγχρονισμός</button>':''}`;
 }
 
-async function pageAll(table, cols, step=1000, cap=50000){
+async function pageAll(table, cols, step=1000, cap=50000, order=null){
   const out=[];
   for(let from=0; from<cap; from+=step){
-    const {data,error}=await sb.from(table).select(cols).range(from, from+step-1);
+    let q=sb.from(table).select(cols); if(order)q=q.order(order);
+    const {data,error}=await q.range(from, from+step-1);
     if(error)return {data:out.length?out:null, error};
     out.push(...(data||[]));
     if(!data||data.length<step)break;
@@ -2499,7 +2500,7 @@ async function loadAll(){
     sb.from('care_links').select('member_id').limit(0),
     sb.from('v_person_dob').select('person_id,dob').limit(2000),
     sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,arxigos_id,eidos_spk,tmima_spk,arrive_time,depart_time,return_time,release_time,transport,march_days,sail_days,sea_other,partners,dd_holder_id,sfh_id,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,signup_extended_to,signup_extended_announced,signup_closed_at,form_url,signup_opens,signup_closes,signup_note,signup_notify,signup_remind,invitees,gcal,prog_kind,stage,planned_reqs,est_count,info_url,fa_order,staff_order,parents_transport,no_folder').order('event_date').limit(3000),
-    sb.from('participations').select('id,person_id,event_id,status,role,role2,days,is_staff,paid,channel,declared_at,declared_by,qf_entry,qf_form,corrected_at,as_ok_at').limit(20000),    
+    pageAll('participations','id,person_id,event_id,status,role,role2,days,is_staff,paid,channel,declared_at,declared_by,qf_entry,qf_form,corrected_at,as_ok_at',1000,50000,'id'),        
     sb.from('v_medical_presence').select('*').limit(2000),
     sb.from('emergency_contacts').select('*').limit(3000),
     sb.from('trainings').select('person_id,type,code,date,section,body').limit(5000),
