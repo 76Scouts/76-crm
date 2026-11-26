@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 00:00'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 00:52'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -4929,12 +4929,14 @@ function lgdFill(el){
 }
 
 const PHOTO=new Map();
+const PHOTO_TTL=8*60e3, PHOTO_AT=new Map();
 async function ensurePhotos(paths){
-  const need=[...new Set(paths.filter(x=>x&&!/^https?:/.test(x)&&!PHOTO.has(x)))];
+  const now=Date.now();
+  const need=[...new Set(paths.filter(x=>x&&!/^https?:/.test(x)&&!(PHOTO.has(x)&&now-(PHOTO_AT.get(x)||0)<PHOTO_TTL)))];
   if(!need.length)return 0;
   let n=0;
   try{const {data}=await sb.storage.from('e76').createSignedUrls(need,600);
-    (data||[]).forEach(d=>{if(d.signedUrl){PHOTO.set(d.path,d.signedUrl);n++}});
+    (data||[]).forEach(d=>{if(d.signedUrl){PHOTO.set(d.path,d.signedUrl);PHOTO_AT.set(d.path,now);n++}});
   }catch(e){}
   return n;
 }
@@ -4946,11 +4948,15 @@ function photosSwap(){
     el.replaceWith(img);
   });
 }
+let PHOTO_R=null;
+function photoUrl(pp){ const u=PHOTO.get(pp); if(u&&Date.now()-(PHOTO_AT.get(pp)||0)<PHOTO_TTL)return u;
+  if(u&&!PHOTO_R)PHOTO_R=setTimeout(()=>{ PHOTO_R=null; ensurePhotos((D.pph||[]).map(x=>x.path).filter(Boolean)).then(n=>{if(n)photosSwap()}); },0);
+  return null; }
 const initialsOf=p=>((p.first_name||' ')[0]+(p.last_name||' ')[0]).toUpperCase();
 const photoOf=p=>((D.pph||[]).find(x=>x.person_id===(p&&p.id))||{}).path||'';
 function avatar(p,size,editable){
   const s=size||34, pp=photoOf(p);
-  const url=/^https?:/.test(pp)?pp:(pp?PHOTO.get(pp):null);
+  const url=/^https?:/.test(pp)?pp:(pp?photoUrl(pp):null);
   const inner=url?`<img class="ava" src="${url}" width="${s}" height="${s}" alt="">`
     :`<span class="avaph"${pp&&!/^https?:/.test(pp)?` data-ph="${esc(pp)}"`:''} style="width:${s}px;height:${s}px;font-size:${Math.round(s*.36)}px">${esc(initialsOf(p))}</span>`;
   return editable?`<span class="avawrap" id="avaBtn" title="Αλλαγή φωτογραφίας">${inner}<span class="avaedit">✎</span></span>`:inner;
@@ -20181,13 +20187,15 @@ async function annLoad(force){
   if(error)return ANN.list||[];
   ANN.list=data||[]; ANN.at=Date.now(); return ANN.list;
 }
+const ANN_TTL=8*60e3;
 async function annUrls(list){
-  const need=[...new Set(list.map(a=>a.cover_path).filter(p=>p&&p.startsWith('ann/')&&!ANN.urls[p]))];
+  const now=Date.now();
+  const need=[...new Set(list.map(a=>a.cover_path).filter(p=>p&&p.startsWith('ann/')&&!(ANN.urls[p]&&now-ANN.urls[p].at<ANN_TTL)))];
   if(!need.length)return;
   try{ const {data}=await sb.storage.from('e76').createSignedUrls(need,600);
-    (data||[]).forEach(x=>{ if(x.signedUrl)ANN.urls[x.path]=x.signedUrl; }); }catch(e){}
+    (data||[]).forEach(x=>{ if(x.signedUrl)ANN.urls[x.path]={u:x.signedUrl,at:now}; }); }catch(e){}
 }
-const annImg=a=>!a.cover_path?'':a.cover_path.startsWith('https://')?a.cover_path:(ANN.urls[a.cover_path]||'');
+const annImg=a=>!a.cover_path?'':a.cover_path.startsWith('https://')?a.cover_path:((u=>u&&Date.now()-u.at<ANN_TTL?u.u:'')(ANN.urls[a.cover_path]));
 function annMeta(a){
   const lab=ANN_LABELS().filter(x=>(a.labels||[]).includes(x.k)).map(x=>x.t);
   return [a.klimakio, (a.sections||[]).join(', '), fdate(a.at), ...lab].filter(Boolean).join(' · ');
@@ -20197,11 +20205,13 @@ function annPriPill(a){
   if(a.priority==='important')return `<span class="pill" style="background:var(--warnbg,#fff3e0);color:var(--warn,#b45309);border-color:transparent">${t('Σημαντική')}</span>`;
   return a.pinned?`<span class="pill">📌</span>`:'';
 }
+const ANN_PH=`<span style="width:52px;height:52px;border-radius:10px;background:var(--bg2,#eef2f7);flex:none;display:grid;place-items:center;font-size:20px">📣</span>`;
+function annImgErr(el){ try{ el.outerHTML=ANN_PH; }catch(e){} }
 function annRow(a){
   const img=annImg(a);
   return `<button type="button" data-ann="${a.id}" style="display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:10px 0;cursor:pointer;color:inherit;font:inherit">
-    ${img?`<img src="${esc(img)}" alt="" loading="lazy" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex:none">`
-         :`<span style="width:52px;height:52px;border-radius:10px;background:var(--bg2,#eef2f7);flex:none;display:grid;place-items:center;font-size:20px">📣</span>`}
+    ${img?`<img src="${esc(img)}" alt="" loading="lazy" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex:none" onerror="annImgErr(this)">`
+         :ANN_PH}
     <span style="flex:1;min-width:0">
       <span style="display:block;font-weight:${a.is_read?500:700};font-size:14px;line-height:1.35">${a.is_read?'':'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--acc,#2563eb);margin-right:6px;vertical-align:middle"></span>'}${esc(a.title)}</span>
       <span class="dim" style="display:block;font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(annMeta(a))}</span>
@@ -20272,6 +20282,7 @@ function annSignHTML(ev,a){
     <div data-evbtns="${ev.id}" style="display:flex;gap:6px;flex-wrap:wrap">${h}</div></div>`;
 }
 async function annOpen(a){
+  await annUrls([a]);    
   const img=annImg(a);
   const ev=a.event_id&&(D.ev||[]).find(e=>e.id===a.event_id);
   const S=annSheet(`${img?`<img src="${esc(img)}" alt="" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-bottom:12px">`:''}
