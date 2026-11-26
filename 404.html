@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-26 16:36'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-26 20:41'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19606,13 +19606,19 @@ async function flSave(f, id){
   if(error){ if(btn)btn.disabled=false; if(msg)msg.textContent=t('Δεν αποθηκεύτηκε:')+' '+(error.message||''); return; }
   FLA.edit=null; FL.mine=null; flAdminFill();
 }
-const DORA={open:false, q:'', sort:{k:'tag',d:1}, sel:new Set(), ghost:new Map(), busy:false, last:null};
+const DORA={open:false, q:'', sort:{k:'tag',d:1}, st:'all', cat:'', sel:new Set(), ghost:new Map(), busy:false, last:null};
+const DORA_LS='e76:dora:view';
+(function doraLoad(){ try{ const v=JSON.parse(localStorage.getItem(DORA_LS)||'{}');
+  if(v.sort&&['tag','kat','pote'].includes(v.sort.k)&&(v.sort.d===1||v.sort.d===-1))DORA.sort={k:v.sort.k,d:v.sort.d};
+  if(['all','wait','came'].includes(v.st))DORA.st=v.st; if(typeof v.cat==='string')DORA.cat=v.cat.slice(0,120); }catch(e){} })();
+function doraSave(){ try{ localStorage.setItem(DORA_LS,JSON.stringify({sort:DORA.sort,st:DORA.st,cat:DORA.cat})) }catch(e){} }
 const DORA_WIN=(()=>{ try{ return new URLSearchParams(location.search).get('dora')==='1' }catch(e){ return false } })();
 const doraWhen=d=>{ if(!d)return '—'; const x=new Date(d); return p2(x.getDate())+'/'+p2(x.getMonth()+1)+'/'+x.getFullYear()+' '+p2(x.getHours())+':'+p2(x.getMinutes()); };
 function doraRows(list){
   const q=DORA.q.trim().toLowerCase();
-  let rows=(list||[]).filter(r=>!q||String(r.tag_no)===q||[r.onoma,r.kinito,r.kategoria].some(x=>String(x||'').toLowerCase().includes(q)));
-  DORA.ghost.forEach((g,tag)=>{ if(!rows.some(r=>r.tag_no===tag)&&(!q||String(tag)===q||String(g.kategoria).toLowerCase().includes(q)))rows.push({tag_no:tag,kategoria:g.kategoria,pote:g.pote,ghost:true}); });
+  let rows=(list||[]).filter(r=>(!q||String(r.tag_no)===q||[r.onoma,r.kinito,r.kategoria].some(x=>String(x||'').toLowerCase().includes(q)))
+    &&(DORA.st==='all'||(DORA.st==='came')===!!r.paradothike)&&(!DORA.cat||r.kategoria===DORA.cat));
+  DORA.ghost.forEach((g,tag)=>{ if(!rows.some(r=>r.tag_no===tag)&&DORA.st!=='came'&&(!DORA.cat||g.kategoria===DORA.cat)&&(!q||String(tag)===q||String(g.kategoria).toLowerCase().includes(q)))rows.push({tag_no:tag,kategoria:g.kategoria,pote:g.pote,ghost:true}); });
   const {k,d}=DORA.sort, key=r=>k==='kat'?String(r.kategoria||''):k==='pote'?(r.pote?new Date(r.pote).getTime():0):r.tag_no;
   rows.sort((a,b)=>{ const x=key(a),y=key(b); const c=(typeof x==='number'?x-y:String(x).localeCompare(String(y),'el'))||a.tag_no-b.tag_no; return c*d; });
   return rows;
@@ -19631,6 +19637,7 @@ async function doraAdminMount(){
   const live=new Set((l.data||[]).map(r=>r.tag_no)); DORA.sel.forEach(x=>{ if(!live.has(x))DORA.sel.delete(x); });
   DORA.ghost.forEach((g,tag)=>{ if(live.has(tag))DORA.ghost.delete(tag); });      
   const rows=doraRows(l.data), byTag=new Map((l.data||[]).map(r=>[r.tag_no,r]));
+  DORA.sel.forEach(x=>{ if(!rows.some(r=>r.tag_no===x&&!r.ghost))DORA.sel.delete(x); });    
   const nsel=DORA.sel.size, allSel=rows.filter(r=>!r.ghost).length>0&&rows.filter(r=>!r.ghost).every(r=>DORA.sel.has(r.tag_no));
   const keep=document.getElementById('doraWrap'), sx=keep?keep.scrollLeft:0, sy=window.scrollY;
   const box=old||document.createElement('details'); box.id='doraBox'; box.className='card'; box.style.marginBottom='16px';
@@ -19641,6 +19648,8 @@ async function doraAdminMount(){
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">${(k.data||[]).map(c=>`<span class="pill" style="font-size:12px">${esc(c.kategoria)}: ${esc(t('{e} από {s} ελεύθερες',{e:c.eleuthera,s:c.synolo}))}</span>`).join('')}</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
       <input id="doraQ" placeholder="${esc(t('Αναζήτηση: αριθμός, όνομα, κινητό'))}" value="${esc(DORA.q)}" style="flex:1;min-width:200px">
+      <select id="doraSt" aria-label="${esc(t('Κατάσταση'))}" class="btn sm" style="width:auto"><option value="all"${DORA.st==='all'?' selected':''}>${esc(t('Όλες οι καταστάσεις'))}</option><option value="wait"${DORA.st==='wait'?' selected':''}>${esc(t('Περιμένουμε το δώρο'))}</option><option value="came"${DORA.st==='came'?' selected':''}>${esc(t('Το δώρο ήρθε'))}</option></select>
+      <select id="doraCat" aria-label="${esc(t('Κατηγορία'))}" class="btn sm" style="width:auto;max-width:260px"><option value="">${esc(t('Όλες οι κατηγορίες'))}</option>${(k.data||[]).map(c=>`<option value="${esc(c.kategoria)}"${DORA.cat===c.kategoria?' selected':''}>${esc(c.kategoria)}</option>`).join('')}</select>
       <button class="btn gh sm" id="doraRef">${t('Ανανέωση')}</button>
       ${DORA_WIN?'':`<button class="btn gh sm" id="doraWin">${t('Άνοιγμα σε νέο παράθυρο')}</button>`}
       <button class="btn sm" id="doraNew">${t('+ Δέσμευση για κάποιον')}</button></div>
@@ -19680,9 +19689,11 @@ async function doraAdminMount(){
   const re=()=>doraAdminMount();
   const qi=$('doraQ'); qi.oninput=()=>{DORA.q=qi.value; DORA.ghost.clear(); clearTimeout(DORA.tq); DORA.tq=setTimeout(re,250)};
   $('doraRef').onclick=()=>{ DORA.ghost.clear(); re(); };
+  $('doraSt').onchange=function(){ DORA.st=this.value; doraSave(); DORA.ghost.clear(); re(); };
+  $('doraCat').onchange=function(){ DORA.cat=this.value; doraSave(); DORA.ghost.clear(); re(); };
   const wb=$('doraWin'); if(wb)wb.onclick=()=>{ const u=(typeof APPBASE!=='undefined'?APPBASE:'/')+'formcat?pip=1&dora=1';
     const w=window.open(u,'e76dora','width=1360,height=860,menubar=no,toolbar=no'); if(!w)toast(t('Το πρόγραμμα περιήγησης μπλόκαρε το νέο παράθυρο.')); };
-  box.querySelectorAll('[data-dsort]').forEach(b=>b.onclick=()=>{ const kk=b.dataset.dsort; DORA.sort=DORA.sort.k===kk?{k:kk,d:-DORA.sort.d}:{k:kk,d:1}; re(); });
+  box.querySelectorAll('[data-dsort]').forEach(b=>b.onclick=()=>{ const kk=b.dataset.dsort; DORA.sort=DORA.sort.k===kk?{k:kk,d:-DORA.sort.d}:{k:kk,d:1}; doraSave(); re(); });
   box.querySelectorAll('[data-dsel]').forEach(c=>c.onclick=(ev)=>{ const tag=+c.dataset.dsel, vis=rows.filter(r=>!r.ghost).map(r=>r.tag_no);
     if(ev.shiftKey&&DORA.last!=null&&vis.includes(DORA.last)){ const i1=vis.indexOf(DORA.last), i2=vis.indexOf(tag);
       vis.slice(Math.min(i1,i2),Math.max(i1,i2)+1).forEach(x=>c.checked?DORA.sel.add(x):DORA.sel.delete(x)); }
