@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 11:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 12:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -19675,7 +19675,13 @@ function doraCss(){ if(document.getElementById('doraCss'))return; const st=docum
    +'#doraBox tbody,#doraBox tbody tr{display:block}#doraBox tbody tr{border:1px solid var(--line);border-radius:10px;margin:0 0 8px;padding:8px 10px;height:auto!important}'
    +'#doraBox tbody td{display:flex;gap:8px;padding:2px 0!important;border:0!important;white-space:normal!important;overflow:visible!important}'
    +'#doraBox tbody td:empty{display:none}'
-   +'#doraBox tbody td[data-l]::before{content:attr(data-l);min-width:92px;flex:none;color:var(--ink3);font-size:12px}#doraSortM{display:inline-block}}';
+   +'#doraBox tbody td[data-l]::before{content:attr(data-l);min-width:92px;flex:none;color:var(--ink3);font-size:12px}#doraSortM{display:inline-block}}'
+   +'@container dbox (max-width:700px){#doraBox tbody tr{display:grid!important;grid-template-columns:28px 1fr auto;gap:1px 8px;padding:6px 8px;margin:0 0 5px;font-size:12.5px;line-height:1.3}'
+   +'#doraBox tbody td[data-l]::before{display:none}#doraBox tbody td{grid-column:2/span 2;padding:0!important;display:block}'
+   +'#doraBox tbody td:nth-child(1){grid-column:1;grid-row:1/span 4}#doraBox tbody td:nth-child(2),#doraBox tbody td:nth-child(5){font-weight:700}'
+   +'#doraBox tbody td:nth-child(2){grid-column:2}#doraBox tbody td:nth-child(3){grid-column:3;text-align:right}'
+   +'#doraBox tbody td:nth-child(4),#doraBox tbody td:nth-child(7){color:var(--ink3);font-size:11.5px}'
+   +'#doraBox .btn.sm{padding:3px 8px;font-size:12px;min-height:0}#doraBox #doraBar{padding:4px 0}#doraBox .doraMore>summary{list-style:none;cursor:pointer}}';
   document.head.appendChild(st); }
 async function doraAdminMount(){
   doraCss();
@@ -19696,28 +19702,30 @@ async function doraAdminMount(){
   const keep=document.getElementById('doraWrap'), sx=keep?keep.scrollLeft:0, sy=window.scrollY;
   const box=old||document.createElement('details'); box.id='doraBox'; box.className='card'; box.style.marginBottom='16px';
   if(!old){ box.open=DORA_WIN||DORA.open; box.ontoggle=()=>{ if(!DORA_WIN)DORA.open=box.open }; }
-  const col=(w)=>`<col style="width:${w}">`;
+  const MOB=window.innerWidth<=700, col=(w)=>`<col style="width:${w}">`;
   box.innerHTML=`<summary style="cursor:pointer"><b>${t('Δώρα 2026')}</b>
       <span class="dim" style="font-size:12.5px"> · ${esc(t('{d} από {s} δεσμεύτηκαν · {p} δώρα ήρθαν · {e} ελεύθερες',{d:n.diekdikimena,s:n.synolo,p:n.paradomena,e:n.eleuthera}))}</span></summary>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0">${(k.data||[]).map(c=>`<span class="pill" style="font-size:12px">${esc(c.kategoria)}: ${esc(t('{e} από {s} ελεύθερες',{e:c.eleuthera,s:c.synolo}))}</span>`).join('')}</div>
+    <div id="doraBar" style="position:sticky;top:0;z-index:3;background:var(--card);padding:6px 0;margin-bottom:8px">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
       <input id="doraQ" class="dfil${DORA.q.trim()?' on':''}" placeholder="${esc(t('Αναζήτηση: αριθμός, όνομα, κινητό'))}" value="${esc(DORA.q)}" style="flex:1;min-width:200px">
       <select id="doraSt" aria-label="${esc(t('Κατάσταση'))}" class="btn sm dfil${DORA.st!=='all'?' on':''}" style="width:auto"><option value="all"${DORA.st==='all'?' selected':''}>${esc(t('Όλες οι καταστάσεις'))}</option><option value="wait"${DORA.st==='wait'?' selected':''}>${esc(t('Περιμένουμε το δώρο'))}</option><option value="came"${DORA.st==='came'?' selected':''}>${esc(t('Το δώρο ήρθε'))}</option></select>
       <select id="doraCat" aria-label="${esc(t('Κατηγορία'))}" class="btn sm dfil${DORA.cat?' on':''}" style="width:auto;max-width:260px"><option value="">${esc(t('Όλες οι κατηγορίες'))}</option>${(k.data||[]).map(c=>`<option value="${esc(c.kategoria)}"${DORA.cat===c.kategoria?' selected':''}>${esc(c.kategoria)}</option>`).join('')}</select>
       <select id="doraSortM" aria-label="${esc(t('Ταξινόμηση'))}" class="btn sm" style="width:auto">${[['tag',t('Ετικέτα')],['kat',t('Κατηγορία')],['pote',t('Ημερομηνία')]].flatMap(o=>[[o[0],1,o[1]+' ▲'],[o[0],-1,o[1]+' ▼']]).map(o=>`<option value="${o[0]}:${o[1]}"${DORA.sort.k===o[0]&&DORA.sort.d===o[1]?' selected':''}>${esc(o[2])}</option>`).join('')}</select>
+      <details class="doraMore"${MOB?'':' open'} style="display:inline-block"><summary class="btn gh sm">${t('Ενέργειες')}</summary>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
       <button class="btn gh sm" id="doraRef">${t('Ανανέωση')}</button>
       ${DORA_WIN?'':`<button class="btn gh sm" id="doraWin">${t('Άνοιγμα σε νέο παράθυρο')}</button>`}
-      <button class="btn sm" id="doraNew">${t('+ Δέσμευση για κάποιον')}</button></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="btn sm" id="doraNew">${t('+ Δέσμευση για κάποιον')}</button>
       <button class="btn gh sm" id="doraSyn">${t('Στείλε μου τη σύνοψη')}</button>
       <button class="btn gh sm" id="doraYpen">${t('Υπενθύμιση σε όσους δεν έφεραν')}</button>
-      <button class="btn gh sm" id="doraPalies">${t('Επιβεβαίωση στις παλιές δεσμεύσεις')}</button></div>
+      <button class="btn gh sm" id="doraPalies">${t('Επιβεβαίωση στις παλιές δεσμεύσεις')}</button></div></details></div>
     ${(DORA.st!=='all'||DORA.cat||DORA.q.trim())?`<div style="margin:0 0 8px;font-size:13px"><b>${esc(t('Εμφανίζονται {x} από {y}',{x:rows.filter(r=>!r.ghost).length,y:(l.data||[]).length}))}</b> <button class="btn gh sm" id="doraClr">${t('Καθαρισμός φίλτρων')}</button></div>`:''}
-    <div id="doraBulk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;min-height:40px;position:sticky;top:0;background:var(--card);z-index:3">
+    <div id="doraBulk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;min-height:40px">
       <span style="font-size:13px;min-width:130px"><b>${nsel}</b> ${t('επιλεγμένες')}</span>
       <button class="btn sm" id="doraBulkOk" ${nsel?'':'disabled'}>${t('Το δώρο ήρθε')} (${nsel})</button>
       <button class="btn gh sm" id="doraBulkCancel" ${nsel?'':'disabled'}>${t('Ακύρωση ετικετών')} (${nsel})</button>
-      <button class="btn gh sm" id="doraBulkClear" ${nsel?'':'disabled'}>${t('Καθαρισμός επιλογής')}</button></div>
+      <button class="btn gh sm" id="doraBulkClear" ${nsel?'':'disabled'}>${t('Καθαρισμός επιλογής')}</button></div></div>
     <div id="doraWrap" style="overflow:auto"><table style="font-size:13px;width:100%;table-layout:fixed">
       <colgroup>${col('34px')}${col('64px')}${col('170px')}${col('112px')}<col>${col('112px')}${col('90px')}${col('120px')}${col('230px')}</colgroup>
       <thead><tr><th><input type="checkbox" id="doraAll" ${allSel?'checked':''} aria-label="${esc(t('Επιλογή όλων'))}"></th>${doraTh('tag',t('Ετικέτα'))}${doraTh('kat',t('Κατηγορία'))}${doraTh('pote',t('Ημερομηνία και ώρα'))}<th>${t('Όνομα')}</th><th>${t('Κινητό')}</th><th>${t('Σημείωση')}</th><th>${t('Κατάσταση')}</th><th></th></tr></thead>
