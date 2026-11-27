@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 15:09'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 16:56'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2685,6 +2685,20 @@ async function loadAll(){
   $('yr').onchange=e=>{YEAR=e.target.value;route(ROUTE)};
 }
 
+const R1={
+  bh : ()=>sb.from('badgeholders').select('*'),
+  gr : ()=>sb.from('grants').select('*').order('valid_to',{ascending:false}).limit(500),
+  inv: ()=>sb.from('invitations').select('*').limit(2000),
+  ac : ()=>sb.from('v_accounts').select('*'),
+  ph : ()=>sb.from('person_hats').select('*').limit(2000),
+  wl : ()=>sb.from('waitlist').select('*'),
+  wlct:()=>sb.from('waitlist_contact').select('*'),
+};
+async function reload1(...keys){
+  for(const k of keys){ const {data,error}=await R1[k]();
+    if(error)console.warn('reload1',k,error); else if(data)D[k]=data }
+  saveCache();
+}
 let PERSONAS=[], PA=null, PICKING=false;    
 const NAV_SELF=['myhome','me','myprog','myatt','myforms'];    
 const NAV_MEMBER=[...NAV_SELF,'progKA'];
@@ -6577,6 +6591,38 @@ function certOn(pid, code, onDate){
   const lim=(onDate&&code===dv('Ν91'))?syEndISO(onDate):onDate;    
   return {k:((code===dv('Ν91')?n91Until(pid,c):c.expires_on)>=lim?'ok':'expired'), c};
 }
+const secForGrade=g=>{
+  const cfg=(D.sc||[]).find(s=>(s.grades||[]).map(grN).includes(grN(g)));
+  if(cfg&&cfg.active!==false)return cfg.section;
+  const i=GRADES.indexOf(grN(g)); if(i<0)return null;
+  if(i<=1)return ((D.sc||[]).find(s=>s.section==='Μικρή Αγέλη')||{}).active?'Μικρή Αγέλη':'Αγέλη';
+  if(i<=4)return 'Αγέλη'; if(i<=8)return 'Ομάδα'; return 'Κοινότητα'};
+const nextGrade=g=>{const i=GRADES.indexOf(grN(g)); return i<0?null:(i>=GRADES.length-1?'ΑΠΟΦΟΙΤΗΣΗ':GRADES[i+1])};
+const nextYear=y=>{const m=/^(\d{4})-(\d{2})$/.exec(y||''); if(!m)return null; const a=+m[1]+1; return a+'-'+String(a+1).slice(2)};
+function addMonths(iso,m){
+  const d=new Date(iso+'T00:00:00'); const day=d.getDate();
+  d.setMonth(d.getMonth()+m);
+  if(d.getDate()<day) d.setDate(0);           
+  return isoLocal(d);
+}
+function tsvRows(txt){
+  const t=(txt||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  if(!t.trim()) return null;
+  const rows=[]; let row=[], cell='', q=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){ if(c==='"'){ if(t[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c==='"') q=true;
+    else if(c==='\t'){ row.push(cell); cell=''; }
+    else if(c==='\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
+    else cell+=c;
+  }
+  if(cell!==''||row.length){ row.push(cell); rows.push(row); }
+  if(rows.length<2) return null;
+  const head=rows[0].map(h=>h.trim());
+  return rows.slice(1).filter(r=>r.some(c=>c.trim()!==''))
+    .map(r=>{const o={}; head.forEach((h,i)=>{ if(h) o[h]=(r[i]||'').trim(); }); return o;});
+}
 const TR_UNIT={[dv('Αγέλη')]:dv('εξάδα'),[dv('Ομάδα')]:dv('ενωμοτία'),[dv('Κοινότητα')]:dv('όμιλος')};
 function trData(sec){
   const ses=D.ss.filter(s=>s.section===sec&&s.scout_year===YEAR&&sesDone(s)&&sesCount(s).marked)
@@ -6762,6 +6808,7 @@ function posCode(pos, sec, net){
   return net==='ενεργό' ? base+'-Δ' : base;
 }
 let SY=null, SYFROM=null, DRAFT={};
+function syReset(){ SY=null; SYFROM=null; }
 let DRAGON=false; try{DRAGON=!!localStorage.getItem('e76:dragon')}catch(e){}
 let STFIL=''; try{STFIL=localStorage.getItem('e76:stfil')||''}catch(e){}
 let PARKOPEN={};  try{PARKOPEN=JSON.parse(localStorage.getItem('e76:park')||'{}')}catch(e){PARKOPEN={}}
@@ -6774,6 +6821,9 @@ function loadDraft(){
   if(fixed){try{localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}catch(e){}}
 }
 function saveDraft(){localStorage.setItem(draftKey(),JSON.stringify(DRAFT))}
+const DIOIK=Object.freeze({
+  syReset:(...a)=>syReset(...a),             
+});
 let INSEC='Αγέλη';
 const WL_FIELDS=[
   ['first_name','Όνομα',/ονομα|first|fname/i],
@@ -8905,7 +8955,7 @@ V.kidhealth=()=>{
       ${
 ''}
       <div class="pdocs" style="margin-top:10px">${
-        reqs.map(r=>docRowHTML(kid,r,true)).join('')||'<div class="dim">—</div>'}${docOrphansHTML(kid)}</div>
+        reqs.map(r=>EGG.docRowHTML(kid,r,true)).join('')||'<div class="dim">—</div>'}${EGG.docOrphansHTML(kid)}</div>
     </div>
 
     <div class="card pad" style="margin-bottom:14px">
@@ -8928,7 +8978,7 @@ V.kidhealth=()=>{
       }).join('')||'<div class="dim">—</div>'}</div>
     </div>`:''}`;
 
-  wireDocs(V.kidhealth); wireKidTabs();
+  EGG.wireDocs(V.kidhealth); wireKidTabs();
   if(fam){ FORM.fwKids(true); FORM.fwLoad(mePid()); }
   sb.rpc('medical_freshness',{p_person:kid.id}).then(({data})=>{
     const el=$('mfBox'); if(!el)return;
@@ -9450,6 +9500,25 @@ function docRowHTML(p,r,explain){
   </div>`;
 }
 
+function edYear(req){ return req&&req.cadence==='εφάπαξ'?null:YEAR; }
+function edHas(p,req){
+  const rows=(D.ed||[]).filter(x=>x.person_id===p.id&&x.req_code===req.code);
+  if(req.cadence==='ετήσιο')return rows.find(x=>x.scout_year===YEAR);
+  return rows.sort((a,b)=>String(b.received_on||'').localeCompare(String(a.received_on||''))
+    ||String(b.scout_year||'').localeCompare(String(a.scout_year||'')))[0];
+}
+function edHasFile(p,req){ return !!docFileOf(edHas(p,req)); }
+function edFileOpen(p,req){ const d=docFileOf(edHas(p,req)); if(!d)return false; docOpen(d.path); return true; }
+async function edReceive(p,req){
+  const rec={person_id:p.id,req_code:req.code,scout_year:edYear(req),received_on:todayISO()};
+  const {data,error}=await sb.from('enrollment_docs').insert(rec).select().single();
+  if(error)return error.message; (D.ed=D.ed||[]).push(data); return null;
+}
+async function edUnreceive(p,req){
+  const cur=edHas(p,req); if(!cur)return null;
+  const {error}=await sb.from('enrollment_docs').delete().eq('id',cur.id);
+  if(error)return error.message; D.ed=(D.ed||[]).filter(x=>x.id!==cur.id); return null;
+}
 
 V.myprofile=()=>{
   const me=meRec(); if(!me)return $('view').innerHTML=noKids();
@@ -9682,243 +9751,7 @@ function wireDocs(after){
 }
 
 
-function loadOriented(file, cb){
-  if(window.createImageBitmap){
-    try{
-      createImageBitmap(file,{imageOrientation:'from-image'}).then(function(b){ cb(b); }).catch(fallback);
-      return;
-    }catch(err){   }
-  }
-  fallback();
-  function fallback(){
-    var fr=new FileReader();
-    fr.onload=function(){ var img=new Image(); img.onload=function(){ cb(img); }; img.src=fr.result; };
-    fr.readAsDataURL(file);
-  }
-}
-
-function fitCanvas(src, maxDim){
-  var w=src.width, h=src.height, sc=Math.min(1, maxDim/Math.max(w,h));
-  var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc));
-  var cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
-  var ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch); ctx.drawImage(src,0,0,cw,ch);
-  return cv;
-}
-
-function enhanceCanvas(cv){
-  var ctx=cv.getContext('2d'), img=ctx.getImageData(0,0,cv.width,cv.height), d=img.data, i, c, v;
-  for(i=0;i<d.length;i+=4){ for(c=0;c<3;c++){ v=(d[i+c]-128)*1.18+128+6; d[i+c]= v<0?0:(v>255?255:v); } }
-  ctx.putImageData(img,0,0);
-}
-
-function solve8(A,b){
-  var n=8,i,r,c,p,t,f,piv,x=new Array(n);
-  for(i=0;i<n;i++){
-    p=i; for(r=i+1;r<n;r++){ if(Math.abs(A[r][i])>Math.abs(A[p][i])) p=r; }
-    if(p!==i){ t=A[p];A[p]=A[i];A[i]=t; t=b[p];b[p]=b[i];b[i]=t; }
-    piv=A[i][i]||1e-9;
-    for(r=0;r<n;r++){ if(r===i) continue; f=A[r][i]/piv; for(c=i;c<n;c++){ A[r][c]-=f*A[i][c]; } b[r]-=f*b[i]; }
-  }
-  for(i=0;i<n;i++) x[i]=b[i]/(A[i][i]||1e-9);
-  return x;
-}
-function homographyOutToSrc(src, W, H){
-  var dst=[[0,0],[W,0],[W,H],[0,H]], A=[], b=[], i, U,V,X,Y;
-  for(i=0;i<4;i++){
-    U=dst[i][0]; V=dst[i][1]; X=src[i][0]; Y=src[i][1];
-    A.push([U,V,1,0,0,0,-U*X,-V*X]); b.push(X);
-    A.push([0,0,0,U,V,1,-U*Y,-V*Y]); b.push(Y);
-  }
-  return solve8(A,b);  
-}
-function dist(p,q){ var dx=p[0]-q[0], dy=p[1]-q[1]; return Math.sqrt(dx*dx+dy*dy); }
-
-function warpCanvas(work, corners){
-  var TL=corners[0],TR=corners[1],BR=corners[2],BL=corners[3];
-  var W=Math.round(Math.max(dist(TL,TR),dist(BL,BR)));
-  var H=Math.round(Math.max(dist(TL,BL),dist(TR,BR)));
-  W=Math.max(1,W); H=Math.max(1,H);
-  var m=Math.max(W,H); if(m>1600){ var s=1600/m; W=Math.max(1,Math.round(W*s)); H=Math.max(1,Math.round(H*s)); }
-  var h=homographyOutToSrc([[TL[0],TL[1]],[TR[0],TR[1]],[BR[0],BR[1]],[BL[0],BL[1]]], W, H);
-  var a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];
-  var sctx=work.getContext('2d'), sw=work.width, sh=work.height;
-  var sd=sctx.getImageData(0,0,sw,sh).data;
-  var out=document.createElement('canvas'); out.width=W; out.height=H;
-  var octx=out.getContext('2d'), oimg=octx.createImageData(W,H), od=oimg.data;
-  var u,v,den,sx,sy,oi=0;
-  for(v=0;v<H;v++){
-    for(u=0;u<W;u++){
-      den=g*u+hh*v+1; sx=(a*u+b*v+c)/den; sy=(d*u+e*v+f)/den;
-      sampleBilinear(sd,sw,sh,sx,sy,od,oi); oi+=4;
-    }
-  }
-  octx.putImageData(oimg,0,0);
-  return out;
-}
-function sampleBilinear(sd,sw,sh,x,y,od,oi){
-  if(x<0||y<0||x>sw-1||y>sh-1){ od[oi]=255;od[oi+1]=255;od[oi+2]=255;od[oi+3]=255; return; }
-  var x0=Math.floor(x),y0=Math.floor(y),x1=Math.min(x0+1,sw-1),y1=Math.min(y0+1,sh-1),fx=x-x0,fy=y-y0,c,i00,i10,i01,i11,top,bot;
-  for(c=0;c<3;c++){
-    i00=(y0*sw+x0)*4+c; i10=(y0*sw+x1)*4+c; i01=(y1*sw+x0)*4+c; i11=(y1*sw+x1)*4+c;
-    top=sd[i00]*(1-fx)+sd[i10]*fx; bot=sd[i01]*(1-fx)+sd[i11]*fx;
-    od[oi+c]=top*(1-fy)+bot*fy;
-  }
-  od[oi+3]=255;
-}
-
-var _cropWork=null, _cropCorners=null, _cropDone=null, _cropDrag=-1;
-function cropDraw(){
-  var cv=$('cropCanvas'), ctx=cv.getContext('2d');
-  ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(_cropWork,0,0);
-  ctx.lineWidth=Math.max(2, cv.width*0.004); ctx.strokeStyle='#1b56a8';
-  ctx.beginPath();
-  ctx.moveTo(_cropCorners[0][0],_cropCorners[0][1]);
-  for(var i=1;i<4;i++) ctx.lineTo(_cropCorners[i][0],_cropCorners[i][1]);
-  ctx.closePath(); ctx.stroke();
-  var rad=Math.max(10, cv.width*0.02);
-  for(i=0;i<4;i++){
-    ctx.beginPath(); ctx.arc(_cropCorners[i][0],_cropCorners[i][1],rad,0,6.2832);
-    ctx.fillStyle='rgba(255,255,255,.9)'; ctx.fill(); ctx.lineWidth=Math.max(2,cv.width*0.005); ctx.strokeStyle='#1b56a8'; ctx.stroke();
-  }
-}
-function cropPt(e){
-  var cv=$('cropCanvas'), r=cv.getBoundingClientRect();
-  return [ (e.clientX-r.left)*(cv.width/r.width), (e.clientY-r.top)*(cv.height/r.height) ];
-}
-function openCrop(work, onDone){
-  if(!cropWire()){ toast('Ο σαρωτής δεν φορτώθηκε.'); onDone&&onDone(null); return; }
-  _cropWork=work; _cropDone=onDone;
-  var iw=work.width, ih=work.height;
-  _cropCorners=[[iw*0.08,ih*0.08],[iw*0.92,ih*0.08],[iw*0.92,ih*0.92],[iw*0.08,ih*0.92]];
-  var cv=$('cropCanvas'); cv.width=iw; cv.height=ih;
-  cropDraw();
-  $('cropOverlay').classList.add('show');
-}
-var _cropWired=false;
-function cropWire(){
-  if(_cropWired) return true;
-  var cv=$('cropCanvas');
-  if(!cv){ console.warn('cropCanvas: δεν βρέθηκε'); return false; }
-  _cropWired=true;
-  cv.addEventListener('pointerdown', function(e){
-    e.preventDefault();
-    var p=cropPt(e), best=-1, bd=1e9, thr=Math.max(cv.width,cv.height)*0.06;
-    for(var i=0;i<4;i++){ var dd=dist(p,_cropCorners[i]); if(dd<bd){ bd=dd; best=i; } }
-    if(bd<=thr){ _cropDrag=best; try{ cv.setPointerCapture(e.pointerId); }catch(x){} }
-  });
-  cv.addEventListener('pointermove', function(e){
-    if(_cropDrag<0) return; e.preventDefault();
-    var p=cropPt(e);
-    p[0]=Math.max(0,Math.min(cv.width,p[0])); p[1]=Math.max(0,Math.min(cv.height,p[1]));
-    _cropCorners[_cropDrag]=p; cropDraw();
-  });
-  function up(){ _cropDrag=-1; }
-  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-
-  function finish(mode){
-    $('cropOverlay').classList.remove('show');
-    var corners=_cropCorners.map(function(c){ return [c[0],c[1]]; }), work=_cropWork, done=_cropDone;
-    _cropDone=null;
-    if(!done) return;
-    if(mode==='cancel'){ done(null); return; }
-    $('cropBusy').classList.add('show');
-    setTimeout(function(){
-      try{
-        var out = (mode==='crop') ? warpCanvas(work, corners) : work;   
-        enhanceCanvas(out);
-        $('cropBusy').classList.remove('show');
-        done(out);
-      }catch(err){
-        $('cropBusy').classList.remove('show');
-        console.error('crop:', err);
-        toast('Δεν έγινε η σάρωση: '+(err&&err.message||err));
-        done(null);
-      }
-    }, 30);
-  }
-  if($('cropApply'))$('cropApply').addEventListener('click', function(){ finish('crop'); });
-  if($('cropNo'))$('cropNo').addEventListener('click', function(){ finish('nocrop'); });
-  if($('cropCancel'))$('cropCancel').addEventListener('click', function(){ finish('cancel'); });
-  return true;
-}
-
-function processImage(file, cb){
-  loadOriented(file, function(src){
-    var work=fitCanvas(src, 1500);
-    openCrop(work, function(res){ cb(res); });    
-  });
-}
-function scanToFile(file, baseName){
-  return new Promise(resolve=>{
-    if(!/^image\//.test(file.type))return resolve(file);       
-    processImage(file, out=>{
-      if(!out)return resolve(null);                             
-      out.toBlob(b=>resolve(new File([b],(baseName||'scan')+'.jpg',{type:'image/jpeg'})),
-                 'image/jpeg', 0.82);
-    });
-  });
-}
-
 function docCanReplace(r,e){ return !!e && r.cadence==='ετήσιο'; }
-
-let _pdfjs=null;
-function pdfLib(){
-  if(_pdfjs)return _pdfjs;
-  const B='lib/pdfjs-3.11.174/';
-  _pdfjs=new Promise((res,rej)=>{
-    const s=document.createElement('script');
-    s.src=B+'pdf.min.js'; sriTag(s);
-    s.onload=()=>{ const L=window.pdfjsLib;
-      if(!L)return rej(new Error('Ο αναγνώστης PDF δεν ξεκίνησε'));
-      L.GlobalWorkerOptions.workerSrc=B+'pdf.worker.min.js'; res(L); };
-    s.onerror=()=>{ _pdfjs=null; rej(new Error('Δεν φόρτωσε ο αναγνώστης PDF')); };
-    document.head.appendChild(s);
-  });
-  return _pdfjs;
-}
-const PDFMAX=30;
-async function pdfThumbs(file, onEach){
-  if(!pdIsPdf(file)){ const P=await pdfPageCanvas(file,1,260); onEach(1,P.cv.toDataURL('image/jpeg',0.7),P.cv); return {pages:1,shown:1} }
-  const L=await pdfLib();
-  const buf=await file.arrayBuffer();
-  const doc=await L.getDocument({data:new Uint8Array(buf)}).promise;
-  const n=Math.min(doc.numPages, PDFMAX);
-  for(let i=1;i<=n;i++){
-    const pg=await doc.getPage(i);
-    const v0=pg.getViewport({scale:1});
-    const sc=Math.min(1.6, 260/Math.max(1,v0.width));
-    const v=pg.getViewport({scale:sc});
-    const cv=document.createElement('canvas');
-    cv.width=Math.round(v.width); cv.height=Math.round(v.height);
-    await pg.render({canvasContext:cv.getContext('2d'), viewport:v}).promise;
-    onEach(i, cv.toDataURL('image/jpeg',0.7), cv);
-  }
-  return {pages:doc.numPages, shown:n};
-}
-
-let _pdflib=null;
-function pdfWriteLib(){
-  if(_pdflib)return _pdflib;
-  _pdflib=new Promise((res,rej)=>{
-    const s=document.createElement('script');
-    s.src='lib/pdf-lib-1.17.1.min.js'; sriTag(s);
-    s.onload=()=>{ const L=window.PDFLib;
-      if(!L)return rej(new Error('Ο συντάκτης PDF δεν ξεκίνησε'));
-      res(L); };
-    s.onerror=()=>{ _pdflib=null; rej(new Error('Δεν φόρτωσε ο συντάκτης PDF')); };
-    document.head.appendChild(s);
-  });
-  return _pdflib;
-}
-async function pdfSplit(file, pages, name){
-  const L=await pdfWriteLib();
-  const src=await L.PDFDocument.load(await file.arrayBuffer());
-  const out=await L.PDFDocument.create();
-  const cp=await out.copyPages(src, pages.map(n=>n-1));
-  cp.forEach(p=>out.addPage(p));
-  const bytes=await out.save();
-  return new File([bytes], name, {type:'application/pdf'});
-}
 
 function pdfAssign(file, reqs, preCode, kids, preKid){
   const KIDS=(kids||[]).filter(Boolean);
@@ -10126,6 +9959,242 @@ function parentUpload(pid, only){
       drw.classList.remove('on'); V.mykids();
     }catch(e){toast('Σφάλμα: '+(e.message||e))}};
 }
+
+function loadOriented(file, cb){
+  if(window.createImageBitmap){
+    try{
+      createImageBitmap(file,{imageOrientation:'from-image'}).then(function(b){ cb(b); }).catch(fallback);
+      return;
+    }catch(err){   }
+  }
+  fallback();
+  function fallback(){
+    var fr=new FileReader();
+    fr.onload=function(){ var img=new Image(); img.onload=function(){ cb(img); }; img.src=fr.result; };
+    fr.readAsDataURL(file);
+  }
+}
+
+function fitCanvas(src, maxDim){
+  var w=src.width, h=src.height, sc=Math.min(1, maxDim/Math.max(w,h));
+  var cw=Math.max(1,Math.round(w*sc)), ch=Math.max(1,Math.round(h*sc));
+  var cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
+  var ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch); ctx.drawImage(src,0,0,cw,ch);
+  return cv;
+}
+
+function enhanceCanvas(cv){
+  var ctx=cv.getContext('2d'), img=ctx.getImageData(0,0,cv.width,cv.height), d=img.data, i, c, v;
+  for(i=0;i<d.length;i+=4){ for(c=0;c<3;c++){ v=(d[i+c]-128)*1.18+128+6; d[i+c]= v<0?0:(v>255?255:v); } }
+  ctx.putImageData(img,0,0);
+}
+
+function solve8(A,b){
+  var n=8,i,r,c,p,t,f,piv,x=new Array(n);
+  for(i=0;i<n;i++){
+    p=i; for(r=i+1;r<n;r++){ if(Math.abs(A[r][i])>Math.abs(A[p][i])) p=r; }
+    if(p!==i){ t=A[p];A[p]=A[i];A[i]=t; t=b[p];b[p]=b[i];b[i]=t; }
+    piv=A[i][i]||1e-9;
+    for(r=0;r<n;r++){ if(r===i) continue; f=A[r][i]/piv; for(c=i;c<n;c++){ A[r][c]-=f*A[i][c]; } b[r]-=f*b[i]; }
+  }
+  for(i=0;i<n;i++) x[i]=b[i]/(A[i][i]||1e-9);
+  return x;
+}
+function homographyOutToSrc(src, W, H){
+  var dst=[[0,0],[W,0],[W,H],[0,H]], A=[], b=[], i, U,V,X,Y;
+  for(i=0;i<4;i++){
+    U=dst[i][0]; V=dst[i][1]; X=src[i][0]; Y=src[i][1];
+    A.push([U,V,1,0,0,0,-U*X,-V*X]); b.push(X);
+    A.push([0,0,0,U,V,1,-U*Y,-V*Y]); b.push(Y);
+  }
+  return solve8(A,b);  
+}
+function dist(p,q){ var dx=p[0]-q[0], dy=p[1]-q[1]; return Math.sqrt(dx*dx+dy*dy); }
+
+function warpCanvas(work, corners){
+  var TL=corners[0],TR=corners[1],BR=corners[2],BL=corners[3];
+  var W=Math.round(Math.max(dist(TL,TR),dist(BL,BR)));
+  var H=Math.round(Math.max(dist(TL,BL),dist(TR,BR)));
+  W=Math.max(1,W); H=Math.max(1,H);
+  var m=Math.max(W,H); if(m>1600){ var s=1600/m; W=Math.max(1,Math.round(W*s)); H=Math.max(1,Math.round(H*s)); }
+  var h=homographyOutToSrc([[TL[0],TL[1]],[TR[0],TR[1]],[BR[0],BR[1]],[BL[0],BL[1]]], W, H);
+  var a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];
+  var sctx=work.getContext('2d'), sw=work.width, sh=work.height;
+  var sd=sctx.getImageData(0,0,sw,sh).data;
+  var out=document.createElement('canvas'); out.width=W; out.height=H;
+  var octx=out.getContext('2d'), oimg=octx.createImageData(W,H), od=oimg.data;
+  var u,v,den,sx,sy,oi=0;
+  for(v=0;v<H;v++){
+    for(u=0;u<W;u++){
+      den=g*u+hh*v+1; sx=(a*u+b*v+c)/den; sy=(d*u+e*v+f)/den;
+      sampleBilinear(sd,sw,sh,sx,sy,od,oi); oi+=4;
+    }
+  }
+  octx.putImageData(oimg,0,0);
+  return out;
+}
+function sampleBilinear(sd,sw,sh,x,y,od,oi){
+  if(x<0||y<0||x>sw-1||y>sh-1){ od[oi]=255;od[oi+1]=255;od[oi+2]=255;od[oi+3]=255; return; }
+  var x0=Math.floor(x),y0=Math.floor(y),x1=Math.min(x0+1,sw-1),y1=Math.min(y0+1,sh-1),fx=x-x0,fy=y-y0,c,i00,i10,i01,i11,top,bot;
+  for(c=0;c<3;c++){
+    i00=(y0*sw+x0)*4+c; i10=(y0*sw+x1)*4+c; i01=(y1*sw+x0)*4+c; i11=(y1*sw+x1)*4+c;
+    top=sd[i00]*(1-fx)+sd[i10]*fx; bot=sd[i01]*(1-fx)+sd[i11]*fx;
+    od[oi+c]=top*(1-fy)+bot*fy;
+  }
+  od[oi+3]=255;
+}
+
+var _cropWork=null, _cropCorners=null, _cropDone=null, _cropDrag=-1;
+function cropDraw(){
+  var cv=$('cropCanvas'), ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(_cropWork,0,0);
+  ctx.lineWidth=Math.max(2, cv.width*0.004); ctx.strokeStyle='#1b56a8';
+  ctx.beginPath();
+  ctx.moveTo(_cropCorners[0][0],_cropCorners[0][1]);
+  for(var i=1;i<4;i++) ctx.lineTo(_cropCorners[i][0],_cropCorners[i][1]);
+  ctx.closePath(); ctx.stroke();
+  var rad=Math.max(10, cv.width*0.02);
+  for(i=0;i<4;i++){
+    ctx.beginPath(); ctx.arc(_cropCorners[i][0],_cropCorners[i][1],rad,0,6.2832);
+    ctx.fillStyle='rgba(255,255,255,.9)'; ctx.fill(); ctx.lineWidth=Math.max(2,cv.width*0.005); ctx.strokeStyle='#1b56a8'; ctx.stroke();
+  }
+}
+function cropPt(e){
+  var cv=$('cropCanvas'), r=cv.getBoundingClientRect();
+  return [ (e.clientX-r.left)*(cv.width/r.width), (e.clientY-r.top)*(cv.height/r.height) ];
+}
+function openCrop(work, onDone){
+  if(!cropWire()){ toast('Ο σαρωτής δεν φορτώθηκε.'); onDone&&onDone(null); return; }
+  _cropWork=work; _cropDone=onDone;
+  var iw=work.width, ih=work.height;
+  _cropCorners=[[iw*0.08,ih*0.08],[iw*0.92,ih*0.08],[iw*0.92,ih*0.92],[iw*0.08,ih*0.92]];
+  var cv=$('cropCanvas'); cv.width=iw; cv.height=ih;
+  cropDraw();
+  $('cropOverlay').classList.add('show');
+}
+var _cropWired=false;
+function cropWire(){
+  if(_cropWired) return true;
+  var cv=$('cropCanvas');
+  if(!cv){ console.warn('cropCanvas: δεν βρέθηκε'); return false; }
+  _cropWired=true;
+  cv.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    var p=cropPt(e), best=-1, bd=1e9, thr=Math.max(cv.width,cv.height)*0.06;
+    for(var i=0;i<4;i++){ var dd=dist(p,_cropCorners[i]); if(dd<bd){ bd=dd; best=i; } }
+    if(bd<=thr){ _cropDrag=best; try{ cv.setPointerCapture(e.pointerId); }catch(x){} }
+  });
+  cv.addEventListener('pointermove', function(e){
+    if(_cropDrag<0) return; e.preventDefault();
+    var p=cropPt(e);
+    p[0]=Math.max(0,Math.min(cv.width,p[0])); p[1]=Math.max(0,Math.min(cv.height,p[1]));
+    _cropCorners[_cropDrag]=p; cropDraw();
+  });
+  function up(){ _cropDrag=-1; }
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+
+  function finish(mode){
+    $('cropOverlay').classList.remove('show');
+    var corners=_cropCorners.map(function(c){ return [c[0],c[1]]; }), work=_cropWork, done=_cropDone;
+    _cropDone=null;
+    if(!done) return;
+    if(mode==='cancel'){ done(null); return; }
+    $('cropBusy').classList.add('show');
+    setTimeout(function(){
+      try{
+        var out = (mode==='crop') ? warpCanvas(work, corners) : work;   
+        enhanceCanvas(out);
+        $('cropBusy').classList.remove('show');
+        done(out);
+      }catch(err){
+        $('cropBusy').classList.remove('show');
+        console.error('crop:', err);
+        toast('Δεν έγινε η σάρωση: '+(err&&err.message||err));
+        done(null);
+      }
+    }, 30);
+  }
+  if($('cropApply'))$('cropApply').addEventListener('click', function(){ finish('crop'); });
+  if($('cropNo'))$('cropNo').addEventListener('click', function(){ finish('nocrop'); });
+  if($('cropCancel'))$('cropCancel').addEventListener('click', function(){ finish('cancel'); });
+  return true;
+}
+
+function processImage(file, cb){
+  loadOriented(file, function(src){
+    var work=fitCanvas(src, 1500);
+    openCrop(work, function(res){ cb(res); });    
+  });
+}
+function scanToFile(file, baseName){
+  return new Promise(resolve=>{
+    if(!/^image\//.test(file.type))return resolve(file);       
+    processImage(file, out=>{
+      if(!out)return resolve(null);                             
+      out.toBlob(b=>resolve(new File([b],(baseName||'scan')+'.jpg',{type:'image/jpeg'})),
+                 'image/jpeg', 0.82);
+    });
+  });
+}
+let _pdfjs=null;
+function pdfLib(){
+  if(_pdfjs)return _pdfjs;
+  const B='lib/pdfjs-3.11.174/';
+  _pdfjs=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=B+'pdf.min.js'; sriTag(s);
+    s.onload=()=>{ const L=window.pdfjsLib;
+      if(!L)return rej(new Error('Ο αναγνώστης PDF δεν ξεκίνησε'));
+      L.GlobalWorkerOptions.workerSrc=B+'pdf.worker.min.js'; res(L); };
+    s.onerror=()=>{ _pdfjs=null; rej(new Error('Δεν φόρτωσε ο αναγνώστης PDF')); };
+    document.head.appendChild(s);
+  });
+  return _pdfjs;
+}
+const PDFMAX=30;
+async function pdfThumbs(file, onEach){
+  if(!pdIsPdf(file)){ const P=await pdfPageCanvas(file,1,260); onEach(1,P.cv.toDataURL('image/jpeg',0.7),P.cv); return {pages:1,shown:1} }
+  const L=await pdfLib();
+  const buf=await file.arrayBuffer();
+  const doc=await L.getDocument({data:new Uint8Array(buf)}).promise;
+  const n=Math.min(doc.numPages, PDFMAX);
+  for(let i=1;i<=n;i++){
+    const pg=await doc.getPage(i);
+    const v0=pg.getViewport({scale:1});
+    const sc=Math.min(1.6, 260/Math.max(1,v0.width));
+    const v=pg.getViewport({scale:sc});
+    const cv=document.createElement('canvas');
+    cv.width=Math.round(v.width); cv.height=Math.round(v.height);
+    await pg.render({canvasContext:cv.getContext('2d'), viewport:v}).promise;
+    onEach(i, cv.toDataURL('image/jpeg',0.7), cv);
+  }
+  return {pages:doc.numPages, shown:n};
+}
+
+let _pdflib=null;
+function pdfWriteLib(){
+  if(_pdflib)return _pdflib;
+  _pdflib=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='lib/pdf-lib-1.17.1.min.js'; sriTag(s);
+    s.onload=()=>{ const L=window.PDFLib;
+      if(!L)return rej(new Error('Ο συντάκτης PDF δεν ξεκίνησε'));
+      res(L); };
+    s.onerror=()=>{ _pdflib=null; rej(new Error('Δεν φόρτωσε ο συντάκτης PDF')); };
+    document.head.appendChild(s);
+  });
+  return _pdflib;
+}
+async function pdfSplit(file, pages, name){
+  const L=await pdfWriteLib();
+  const src=await L.PDFDocument.load(await file.arrayBuffer());
+  const out=await L.PDFDocument.create();
+  const cp=await out.copyPages(src, pages.map(n=>n-1));
+  cp.forEach(p=>out.addPage(p));
+  const bytes=await out.save();
+  return new File([bytes], name, {type:'application/pdf'});
+}
+
 async function pdfPageCount(file){
   try{
     const L=await pdfLib();
@@ -10171,7 +10240,7 @@ V.mykids=()=>{
   const esKids=list.filter(({kid:k})=>{const y=(D.my||[]).find(x=>x.person_id===k.id&&x.scout_year===YEAR&&!x.voided_at); return y&&y.pay_method===FORM.PAY_ES});
   if(!owe&&esKids.length)todo.push(row('card','',`${t('Πληρωμή εγγραφής')} ${esc(YEAR)} · ${esKids.map(({kid:k})=>esc(k.first_name)).join(', ')}`,
     t('Με τον σύνδεσμο πληρωμής JCC που σας ήρθε με email από το e-Scouts. Αν πληρώσατε, δεν χρειάζεται τίποτα — θα φανεί εδώ μόλις επιβεβαιωθεί.'),go('myfees',t('Τι οφείλω'))));
-  const missBy=list.map(({kid:k})=>({k,m:reqs.filter(r=>!docState(k,r).ok)})).filter(x=>x.m.length);
+  const missBy=list.map(({kid:k})=>({k,m:reqs.filter(r=>!EGG.docState(k,r).ok)})).filter(x=>x.m.length);
   const nMiss=missBy.reduce((a,x)=>a+x.m.length,0);
   if(nMiss)todo.push(row('shield','',`${pln(nMiss,t('έντυπο λείπει'),t('έντυπα λείπουν'))}`,
     missBy.map(x=>`<b>${esc(x.k.first_name)}:</b> ${x.m.map(r=>esc(r.label)).join(', ')}`).join('<br>')
@@ -10182,7 +10251,7 @@ V.mykids=()=>{
   const card=({kid:p})=>{
     const y=myOf(p)||{};
     const fl=(D.mf||[]).filter(f=>f.person_id===p.id&&['Ιατρικό','Διατροφή'].includes(f.kind));
-    const miss=reqs.filter(r=>!docState(p,r).ok);
+    const miss=reqs.filter(r=>!EGG.docState(p,r).ok);
     const ses=D.ss.filter(s=>s.section===secOf(p)&&s.scout_year===YEAR);
     const att=D.att.filter(a=>a.person_id===p.id&&ses.some(s=>s.id===a.session_id));
     const pres=att.filter(a=>attPres(a.status)).length;    
@@ -10615,7 +10684,7 @@ function accessBody(){
             ${stel?'<span class="dim" style="font-size:11.5px;margin-left:6px">στέλεχος · μέλος</span>':''}
             ${who.length?' '+who.map(p=>`<span class="pn" data-p="${p.id}" style="font-size:13px">${pn(p)}</span>`).join(', ')
                         :' <span class="dim" style="font-size:12px">— κενό —</span>'}
-            <span class="dim" style="font-size:11px;margin-left:8px">${(r.caps||[]).map(c=>capT(c)).join(' · ')}</span>
+            <span class="dim" style="font-size:11px;margin-left:8px">${(r.caps||[]).map(c=>EGG.capT(c)).join(' · ')}</span>
           </div>`+draw(r.code,d+1)}).join('');
         return draw('',0)})()}
     </div>
@@ -10626,7 +10695,7 @@ function accessBody(){
         if(!g.length)return '<div class="dim" style="font-size:12.5px">Κανείς — ο καθένας έχει ό,τι του δίνει ο ρόλος του. <button class="btn sm" data-go="access" data-vtabgo="grants" style="margin-left:8px">Δώσε παραχώρηση</button></div>';
         return g.map(x=>{const p=D.bh.find(b=>b.id===x.person_id);
           return `<div style="padding:5px 0;border-bottom:1px solid var(--line)">
-            ${p?pnm(p):'—'} <span class="dim">· ${esc(capT(x.capability))} ${x.can_write?'(γράφει)':'(βλέπει)'}
+            ${p?pnm(p):'—'} <span class="dim">· ${esc(EGG.capT(x.capability))} ${x.can_write?'(γράφει)':'(βλέπει)'}
             · ${esc(x.scope_value||'ΟΛΑ')} · ως ${fdate(x.valid_to)}</span></div>`}).join('')
           +'<button class="btn sm" data-go="access" data-vtabgo="grants" style="margin-top:10px">Διαχείριση παραχωρήσεων</button>'})()}
     </div>
@@ -11334,24 +11403,6 @@ V.fimport=()=>{
   };
 };
 
-function tsvRows(txt){
-  const t=(txt||'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  if(!t.trim()) return null;
-  const rows=[]; let row=[], cell='', q=false;
-  for(let i=0;i<t.length;i++){
-    const c=t[i];
-    if(q){ if(c==='"'){ if(t[i+1]==='"'){cell+='"';i++;} else q=false; } else cell+=c; }
-    else if(c==='"') q=true;
-    else if(c==='\t'){ row.push(cell); cell=''; }
-    else if(c==='\n'){ row.push(cell); rows.push(row); row=[]; cell=''; }
-    else cell+=c;
-  }
-  if(cell!==''||row.length){ row.push(cell); rows.push(row); }
-  if(rows.length<2) return null;
-  const head=rows[0].map(h=>h.trim());
-  return rows.slice(1).filter(r=>r.some(c=>c.trim()!==''))
-    .map(r=>{const o={}; head.forEach((h,i)=>{ if(h) o[h]=(r[i]||'').trim(); }); return o;});
-}
 
 let ES_NOAM=[];
 function esStatusPill(x,cur){
@@ -11660,7 +11711,7 @@ function expiryItems(){
 
   (D.gr||[]).filter(g=>!g.revoked_at&&g.valid_to).forEach(g=>{
     const p=D.bh.find(x=>x.id===g.person_id);
-    add(g.valid_to,'Παραχώρηση',p,'Πρόσβαση: '+capT(g.capability),'Λήγει μόνη της — ανανέωσε αν χρειάζεται','grants')});
+    add(g.valid_to,'Παραχώρηση',p,'Πρόσβαση: '+EGG.capT(g.capability),'Λήγει μόνη της — ανανέωσε αν χρειάζεται','grants')});
 
   (D.inv||[]).filter(i=>!i.used_on&&!i.revoked_on).forEach(i=>{
     const p=D.bh.find(x=>x.id===i.person_id);
@@ -14047,7 +14098,8 @@ const CAPS=[
  {k:'finance',   t:'Χρέωση & ταμείο',       d:'Ποσά εγγραφών, πληρωμές'},
  {k:'certs',     t:t('Πιστοποιητικά ικανότητας'), d:t('Χαρτιά Πρώτων Βοηθειών, BLS, άδειας οδήγησης — για δελτία δράσης. Όχι Ν.91')},
  {k:'waitlist',  t:'Λίστα αναμονής',        d:'Παιδιά εκτός μητρώου — δώσ’ το μόνο στην επιτροπή'},
- {k:'admin',     t:'Διαχείριση',            d:'Ρόλοι, πρότυπα, ρυθμίσεις — μόνο ο Α.Σ. το δίνει'}
+ {k:'admin',     t:'Διαχείριση',            d:'Ρόλοι, πρότυπα, ρυθμίσεις — μόνο ο Α.Σ. το δίνει'},
+ {k:'consent_sig', t:t('Υπογραφή συγκατάθεσης ενός παιδιού'), d:t('Μόνο ανάγνωση, ένα παιδί άλλου Τμήματος, ως 30 ημέρες — μόνο ο Α.Σ.')}
 ];
 const capT=k=>(CAPS.find(c=>c.k===k)||{}).t||k;
 function grantsBody(){
@@ -14078,10 +14130,11 @@ function grantsBody(){
     <div class="grow">
      <label>Σε ποιον${ppHTML('gPer','')}</label>
      <label>Τι<select id="gCap">${CAPS.map(c=>`<option value="${c.k}">${esc(c.t)}</option>`).join('')}</select></label>
-     <label>Επίπεδο<select id="gRw"><option value="0">Μόνο να βλέπει</option><option value="1">Να βλέπει και να γράφει</option></select></label>
+     <label>${t('Επίπεδο')}<select id="gRw"><option value="0">${t('Μόνο να βλέπει')}</option><option value="1">${t('Να βλέπει και να γράφει')}</option></select></label>
     </div>
     <div class="grow">
-     <label>Πού<select id="gSec">${secs.map(s=>`<option value="${s}">${s}</option>`).join('')}<option value="ΟΛΑ">ΟΛΑ (μόνο ο Α.Σ.)</option></select></label>
+     <label id="gKidL" style="display:none">${t('Ποιο παιδί')}${ppHTML('gKid','')}</label>
+     <label id="gSecL">${t('Πού')}<select id="gSec">${secs.map(s=>`<option value="${s}">${s}</option>`).join('')}<option value="ΟΛΑ">ΟΛΑ (μόνο ο Α.Σ.)</option></select></label>
      <label>Μέχρι<input type="date" id="gTo" value="${isoLocal(new Date(new Date().getFullYear()+(new Date().getMonth()>=8?1:0),7,31))}"></label>
      <label style="flex:2;min-width:220px">Γιατί<input id="gWhy" placeholder="π.χ. καλύπτει την Ομάδα όσο λείπει ο υπαρχηγός"></label>
     </div>
@@ -14109,13 +14162,30 @@ function grantsBody(){
 
   const msg=t=>{const m=$('gMsg'); if(m)m.textContent=t};
   ppWire('gPer',cands);
-  if(hs){ [...$('gCap').options].forEach(o=>{ if(o.value==='admin')o.remove() }); [...$('gSec').options].forEach(o=>{ if(o.value!==hs)o.remove() }); }
+  if(hs){ [...$('gCap').options].forEach(o=>{ if(o.value==='admin'||o.value==='consent_sig')o.remove() }); [...$('gSec').options].forEach(o=>{ if(o.value!==hs)o.remove() }); }
+  const SIG_MAX_DAYS=30, sigTo=d=>isoLocal(new Date(Date.now()+d*864e5));
+  ppWire('gKid',D.bh.filter(p=>(p.kind||'')==='Μέλος'&&p.status==='Ενεργός').sort(sortByName));
+  $('gCap').onchange=()=>{ const sig=$('gCap').value==='consent_sig';
+    $('gKidL').style.display=sig?'':'none'; $('gSecL').style.display=sig?'none':'';
+    $('gRw').value='0'; $('gRw').disabled=sig;
+    $('gTo').value=sig?sigTo(7):isoLocal(new Date(new Date().getFullYear()+(new Date().getMonth()>=8?1:0),7,31));
+    $('gTo').max=sig?sigTo(SIG_MAX_DAYS):''; };
   $('gAdd').onclick=async()=>{
     const pid=$('gPer').value, cap=$('gCap').value, sec=$('gSec').value,
           to=$('gTo').value, why=$('gWhy').value.trim(), rw=$('gRw').value==='1';
     if(!pid)return msg('Διάλεξε σε ποιον.');
     if(!to)  return msg('Βάλε ημερομηνία λήξης.');
     if(!why) return msg('Γράψε τον λόγο — θα τον διαβάσεις σε έξι μήνες.');
+    if(cap==='consent_sig'){
+      const kid=$('gKid').value;
+      if(!kid)return msg(t('Διάλεξε ποιο παιδί.'));
+      if(to>sigTo(SIG_MAX_DAYS))return msg(t('Ως 30 ημέρες από σήμερα.'));
+      msg('…');
+      const {error}=await sb.from('grants').insert({person_id:pid,capability:cap,can_write:false,
+        scope_level:'person', scope_value:kid, valid_to:to, reason:why, granted_by:ME.person_id||null});
+      if(error)return msg(t('Δεν έγινε: ')+error.message);
+      await reload1('gr'); return route('grants');
+    }
     msg('…');
     const {error}=await sb.from('grants').insert({person_id:pid,capability:cap,can_write:rw,
       scope_level:sec==='ΟΛΑ'?'ΟΛΑ':'section', scope_value:sec==='ΟΛΑ'?null:sec,
@@ -16584,7 +16654,7 @@ V.reg=()=>{
     document.querySelectorAll('[data-tr]').forEach(i=>i.onchange=async()=>{
       const x=rows.find(r=>r.p.id===i.dataset.tr); x.r.triptycho_no=i.value.trim()||null;
       await upMY(x.p.id,{triptycho_no:x.r.triptycho_no}); toast('Αποθηκεύτηκε');});
-    document.querySelectorAll('[data-vd]').forEach(b=>b.onclick=()=>voidReg(b.dataset.vd));
+    document.querySelectorAll('[data-vd]').forEach(b=>b.onclick=()=>EGG.voidReg(b.dataset.vd));
   };
   const upMY=async(pid,v)=>{
     try{const {error}=await sb.from('member_year').update(v).eq('person_id',pid).eq('scout_year',YEAR); if(error)throw error; saveCache()}
@@ -17328,13 +17398,6 @@ function wireSaAdmin(){
   });
 }
 
-const secForGrade=g=>{
-  const cfg=(D.sc||[]).find(s=>(s.grades||[]).map(grN).includes(grN(g)));
-  if(cfg&&cfg.active!==false)return cfg.section;
-  const i=GRADES.indexOf(grN(g)); if(i<0)return null;
-  if(i<=1)return ((D.sc||[]).find(s=>s.section==='Μικρή Αγέλη')||{}).active?'Μικρή Αγέλη':'Αγέλη';
-  if(i<=4)return 'Αγέλη'; if(i<=8)return 'Ομάδα'; return 'Κοινότητα'};
-const nextGrade=g=>{const i=GRADES.indexOf(grN(g)); return i<0?null:(i>=GRADES.length-1?'ΑΠΟΦΟΙΤΗΣΗ':GRADES[i+1])};
 const RO_GP=()=>[[dv('στρατός'),t('Στρατός')],[dv('σπουδές'),t('Σπουδές')],['7th form','7th form'],[dv('τίποτα'),t('Τίποτα (κενό έτος, δουλειά κ.ά.)')]];
 const roGSecs=()=>[dv('Μικρή Αγέλη'),dv('Αγέλη'),dv('Ομάδα'),dv('Κοινότητα')].filter((s,i)=>i||((D.sc||[]).find(c=>c.section===s)||{}).active);
 const roGPlaces=()=>roGSecs().map(s=>[s,s]).concat([['Δίκτυο',t('Μόνο Δίκτυο (ΥΑΛ κατηγορίας Δικτύου)')],[dv('φεύγει'),t('Φεύγει (αρχείο)')]]);
@@ -17383,7 +17446,6 @@ async function roGradApply(grads,NY,tag){
     n.push(pid); }
   return n.length;
 }
-const nextYear=y=>{const m=/^(\d{4})-(\d{2})$/.exec(y||''); if(!m)return null; const a=+m[1]+1; return a+'-'+String(a+1).slice(2)};
 
 V.rollover=()=>{
   const NY=nextYear(YEAR);
@@ -17533,7 +17595,7 @@ V.rollover=()=>{
       }
       await roGradApply(grads,NY,tag);    
       const y=$('yr'); if(![...y.options].some(o=>o.value===NY)){const o=document.createElement('option');o.textContent=NY;y.appendChild(o)}
-      YEAR=NY; y.value=NY; SY=null; SYFROM=null;
+      YEAR=NY; y.value=NY; DIOIK.syReset();
       saveCache(); toast(`Ολοκληρώθηκε · ${pln(rows.length,'εγγραφή','εγγραφές')} · η εφαρμογή δείχνει πλέον ${NY}`);
       S.step=1; save(); route(ROUTE);
     }catch(e){toast('Σφάλμα: '+(e.message||e))}
@@ -17654,7 +17716,7 @@ function issuesBody(){
    {g:'Περιμένουν εσένα',items:[
     {t:'Παιδιά στη λίστα που έχουν την ηλικία',
      w:'Είναι Γ΄ Δημοτικού και πάνω και κανείς δεν τους τηλεφώνησε.',s:'warn',goto:'waitlist',
-     l:(D.wl||[]).filter(r=>r.outcome==='Αναμονή'&&(wlGrade(r)||0)>=3)
+     l:(D.wl||[]).filter(r=>r.outcome==='Αναμονή'&&(EGG.wlGrade(r)||0)>=3)
        .map(r=>({id:null,first_name:r.first_name,last_name:r.last_name,section:r.section}))},
     {t:'Είπαν ναι και δεν γράφτηκαν',
      w:'Υποσχέθηκαν συμμετοχή — αν δεν τους ξαναπάρεις, χάνονται.',s:'bad',goto:'waitlist',
@@ -17809,12 +17871,6 @@ function issRowsHTML(it){
     </select>`}</div>`).join('');
 }
 
-function addMonths(iso,m){
-  const d=new Date(iso+'T00:00:00'); const day=d.getDate();
-  d.setMonth(d.getMonth()+m);
-  if(d.getDate()<day) d.setDate(0);           
-  return isoLocal(d);
-}
 const legalDoc=code=>(D.legal||[]).filter(x=>x.code===code)
   .sort((a,b)=>b.version-a.version)[0]||null;
 const legalLive=code=>(D.legal||[]).filter(x=>x.code===code&&x.status==='δημοσιευμένο')
@@ -20873,9 +20929,16 @@ async function medForm(id){
   const p=D.bh.find(x=>x.id===id);
   const m=await getMedical(id,'καρτέλα ιατρικού'); if(!m)return;
   const cs=(D.ecs||[]).filter(x=>x.person_id===id);
+  const exei=!!(m&&m.person_id), dDil=m&&m.declared_at?ddmmyyyy(String(m.declared_at).slice(0,10)):'';
+  const pigi=exei&&(m.source_form||m.source_entry)?' · '+esc(m.source_form||'')+(m.source_entry?' · Entry '+esc(m.source_entry):''):'';
+  const pill=(c,x)=>`<span class="pill" style="background:var(--${c}bg);border-color:transparent;color:var(--${c})">${x}</span>`;
+  const katastasi=!exei?pill('warn',t('Δεν υπάρχει δήλωση'))
+    :m.xoris_evrimata?pill('ok',t('Δηλώθηκε χωρίς ευρήματα'))+` <span class="dim" style="font-size:12.5px">${dDil}${pigi}</span>`
+    :pill('ok',t('Δήλωση'))+` <span class="dim" style="font-size:12.5px">${dDil}${pigi}</span>`;
   const f=(k,l,v,ph='')=>`<label style="font-size:12px;color:var(--ink3);display:block;margin-bottom:9px">${l}<input id="m_${k}" value="${esc(v||'')}" placeholder="${esc(ph)}"></label>`;
-  $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1"><div style="font-size:17px;font-weight:600">${pn(p)}</div><div class="dim" style="font-size:12.5px">Ιατρικό δελτίο</div></div>
+  $('drwp').innerHTML=`<div class="dhead">${sdot(secOf(p))}<div style="flex:1"><div style="font-size:17px;font-weight:600">${pn(p)}</div><div class="dim" style="font-size:12.5px">${t('Ιατρικό δελτίο')}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
+    <div class="dsec" id="medKatastasi" style="padding-bottom:4px">${katastasi}</div>
     <div class="dsec">
       ${f('blood','Ομάδα αίματος',m.blood_type,'π.χ. Ο+')}
       ${tetLine(m)}
@@ -20899,7 +20962,11 @@ async function medForm(id){
         Τα ιατρικά τα γράφει <b>η φόρμα</b>, όχι αυτή η οθόνη — έτσι υπάρχει μία πηγή.
         ${ME.role==='admin'?'Ως Α.Σ. μπορείς να διορθώσεις λάθος καταχώρηση.'
                            :'Αν κάτι είναι λάθος, ζήτησε νέα υποβολή ή πες το στον Α.Σ.'}</div>
-      ${ME.role==='admin'?`<button class="btn p" id="mSaveAll" style="width:100%;justify-content:center">Διόρθωση</button>`:''}
+      ${ME.role==='admin'?`<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:9px">
+          <input type="checkbox" id="m_xe"${m.xoris_evrimata?' checked':''} style="width:auto"> ${t('Δηλώθηκε χωρίς ευρήματα (όλα «Όχι»)')}</label>
+        ${f('da',t('Ημερομηνία δήλωσης (ΕΕΕΕ-ΜΜ-ΗΗ)'),m.declared_at?String(m.declared_at).slice(0,10):'','2026-11-28')}
+        ${f('se',t('Entry ID της φόρμας (μόνο αριθμός)'),m.source_entry,'12345')}
+        <button class="btn p" id="mSaveAll" style="width:100%;justify-content:center">Διόρθωση</button>`:''}
     </div>`;
   drw.classList.add('on');
   if($('mSaveAll'))$('mSaveAll').onclick=async()=>{
@@ -20907,7 +20974,9 @@ async function medForm(id){
       conditions:$('m_cond').value.trim()||null,medication:$('m_med').value.trim()||null,dietary:$('m_diet').value.trim()||null,
       doctor_name:$('m_doc').value.trim()||null,doctor_phone:$('m_docp').value.trim()||null,
       valid_until:/^\d{4}-\d{2}-\d{2}$/.test($('m_vu').value.trim())?$('m_vu').value.trim():null,
-      declared_by:ME.email,declared_at:new Date().toISOString()};
+      xoris_evrimata:$('m_xe').checked,
+      source_entry:/^\d{1,12}$/.test($('m_se').value.trim())?$('m_se').value.trim():null,
+      declared_by:ME.email,declared_at:/^\d{4}-\d{2}-\d{2}$/.test($('m_da').value.trim())?$('m_da').value.trim():new Date().toISOString()};
     const {error}=await sb.from('person_medical').upsert(rec,{onConflict:'person_id'});
     if(error)return toast('Σφάλμα: '+error.message);
     const saved=(await getMedical(id,'έλεγχος μετά τη διόρθωση'))||rec;
@@ -20917,6 +20986,7 @@ async function medForm(id){
     const MEDGR={allergies:'Αλλεργίες',conditions:'Παθήσεις',medication:'Φαρμακευτική αγωγή',
       dietary:'Διατροφή',blood_type:'Ομάδα αίματος',doctor_name:'Ιατρός',
       doctor_phone:'Τηλέφωνο γιατρού',valid_until:'Ισχύει έως'};
+    if(rec.xoris_evrimata&&!saved.xoris_evrimata)toast(t('Η ένδειξη «χωρίς ευρήματα» δεν κρατήθηκε: το δελτίο έχει εύρημα.'));
     const kept=Object.keys(MEDGR).filter(k=>!rec[k]&&saved[k]);
     if(kept.length){
       toast('Κρατήθηκαν: '+kept.map(k=>MEDGR[k]).join(', '));
@@ -21935,7 +22005,7 @@ V.mails=()=>{
 const UPBASE='https://e.76.life/anevasma.html';
 async function uploadLinks(reqCode){
   const req=(D.dr||[]).find(r=>r.code===reqCode)||{label:reqCode,cadence:'ετήσιο'};
-  const yr=edYear(req);
+  const yr=EGG.edYear(req);
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Σύνδεσμοι ανεβάσματος</div>
       <div class="dim" style="font-size:12.5px">${esc(req.label)}${yr?' · '+esc(yr):''}</div></div>
       <button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">✕</button></div>
@@ -21978,31 +22048,24 @@ async function uploadLinks(reqCode){
   $('ulGo').onclick=()=>ulRun(false);
 }
 
-function edYear(req){ return req&&req.cadence==='εφάπαξ'?null:YEAR; }
-function edHas(p,req){
-  const rows=(D.ed||[]).filter(x=>x.person_id===p.id&&x.req_code===req.code);
-  if(req.cadence==='ετήσιο')return rows.find(x=>x.scout_year===YEAR);
-  return rows.sort((a,b)=>String(b.received_on||'').localeCompare(String(a.received_on||''))
-    ||String(b.scout_year||'').localeCompare(String(a.scout_year||'')))[0];
-}
 function enrollBody(){
   if(oneSec())ENSEC='all';    
   const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0));
   let kids=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός');
   if(ENSEC!=='all')kids=kids.filter(p=>secOf(p)===ENSEC);
   kids.sort(sortByName);
-  const miss=p=>reqs.filter(r=>!edHas(p,r)).length;
+  const miss=p=>reqs.filter(r=>!EGG.edHas(p,r)).length;
   if(ENONLY==='miss')kids=kids.filter(p=>miss(p)>0);
   const all=D.bh.filter(p=>(p.kind||'')==='Μέλος'&&inYear(p)&&p.status==='Ενεργός'&&(ENSEC==='all'||secOf(p)===ENSEC));
-  const per=reqs.map(r=>({r,n:all.filter(p=>edHas(p,r)).length}));
+  const per=reqs.map(r=>({r,n:all.filter(p=>EGG.edHas(p,r)).length}));
   const chip=(v,t)=>`<button class="btn sm${ENSEC===v?' p':' gh'}" data-es="${v}">${t}</button>`;
-  const cell=(p,r)=>{const h=edHas(p,r);
-    const doc=h&&h.document_id?(D.doc||[]).find(d=>d.id===h.document_id):null;
-    const t=!h?'Λείπει':(doc?('Ανέβηκε αρχείο'+(h.notes?' — '+h.notes:'')+' · κλικ για άνοιγμα')
+  const cell=(p,r)=>{const h=EGG.edHas(p,r);
+    const file=!!h&&EGG.edHasFile(p,r);
+    const t=!h?'Λείπει':(file?('Ανέβηκε αρχείο'+(h.notes?' — '+h.notes:'')+' · κλικ για άνοιγμα')
                             :('Παραλήφθηκε '+(h.received_on?fdate(h.received_on):'')));
     return `<td style="text-align:center">
-      <button class="edb${h?' on':''}${doc?' hasfile':''}" data-ed="${p.id}" data-rc="${r.code}"
-        ${doc?`data-fdoc="${doc.id}"`:''} title="${esc(t)}">${h?(doc?'📎':'✓'):'—'}</button></td>`};
+      <button class="edb${h?' on':''}${file?' hasfile':''}" data-ed="${p.id}" data-rc="${r.code}"
+        ${file?'data-fdoc="1"':''} title="${esc(t)}">${h?(file?'📎':'✓'):'—'}</button></td>`};
   $('view').innerHTML=`<div class="card pad" style="margin-bottom:14px">
       <b>Πιστοποιητικά εγγραφής ${esc(YEAR)}</b>
       <div class="muted" style="margin-top:5px;font-size:13.5px">Τι έχει φέρει το κάθε παιδί. Το πιστοποιητικό γεννήσεως ζητείται μία φορά· τα υπόλοιπα κάθε χρονιά.</div>
@@ -22033,19 +22096,13 @@ function enrollBody(){
   $('enDesk').onclick=()=>deskSheet(kids);
   $('enCons').onclick=()=>consentForms(kids);
   $('enCsv').onclick=()=>{
-    const rows=[['Α.Μ.','Παιδί','Τμήμα',...reqs.map(r=>r.label)]].concat(kids.map(p=>[p.registry_no,nm(p),secOf(p),...reqs.map(r=>edHas(p,r)?'ΝΑΙ':'')]));
+    const rows=[['Α.Μ.','Παιδί','Τμήμα',...reqs.map(r=>r.label)]].concat(kids.map(p=>[p.registry_no,nm(p),secOf(p),...reqs.map(r=>EGG.edHas(p,r)?'ΝΑΙ':'')]));
     csvSave(rows,`76-fakelos-eggrafis-${YEAR}.csv`)};
   document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=async()=>{
-    if(b.dataset.fdoc){ const d=(D.doc||[]).find(x=>x.id===b.dataset.fdoc);
-      if(d)return docOpen(d.path); }
     const pid=b.dataset.ed, code=b.dataset.rc, req=reqs.find(r=>r.code===code), p=D.bh.find(x=>x.id===pid);
-    const cur=edHas(p,req);
-    if(cur){const {error}=await sb.from('enrollment_docs').delete().eq('id',cur.id);
-      if(error)return toast('Σφάλμα: '+error.message);
-      D.ed=(D.ed||[]).filter(x=>x.id!==cur.id);}
-    else{const rec={person_id:pid,req_code:code,scout_year:edYear(req),received_on:todayISO()};
-      const {data,error}=await sb.from('enrollment_docs').insert(rec).select().single();
-      if(error)return toast('Σφάλμα: '+error.message); (D.ed=D.ed||[]).push(data);}
+    if(b.dataset.fdoc&&EGG.edFileOpen(p,req))return;    
+    const err=EGG.edHas(p,req)?await EGG.edUnreceive(p,req):await EGG.edReceive(p,req);
+    if(err)return toast('Σφάλμα: '+err);
     saveCache(); stay();});
 };
 
@@ -23010,7 +23067,7 @@ function attWlRows(wl, year, secOf){
     .map(r=>{ const ln=/\p{L}/u.test(r.last_name||'')?r.last_name:'';    
       return {n:`${ln} ${r.first_name||''}`.trim(), section:r.section||secOf(r), miss:!ln}; });
 }
-function attWlSec(r){ const g=wlG(r).g; return g>=1&&g<=12?secForGrade(WLGR[g-1]):null; }
+function attWlSec(r){ const g=EGG.wlG(r).g; return g>=1&&g<=12?secForGrade(EGG.WLGR[g-1]):null; }
 function attRegisterHTML(sec, only, by){
   return attSheetsHTML(attSheets(sec,{bh:D.bh, my:D.my, ss:D.ss, year:YEAR, only, by, wl:attWlRows(D.wl, YEAR, attWlSec)}), (t,s)=>letterhead(t,'Προσκοπική περίοδος '+YEAR+(s?' · '+s:'')));
 }
@@ -27597,6 +27654,78 @@ function seDatesHTML(ok,cols){
   return (cols.dt<0?box(t('Το CSV δεν έχει στήλη «Date» — καμία ημερομηνία δήλωσης δεν θα γραφτεί.')):nd.length?box(`<b>${t('Χωρίς ημερομηνία δήλωσης:')} ${nd.length}</b> — ${Object.entries(why).map(([k,v])=>esc(k)+' ('+v+')').join(' · ')}. ${t('Μένουν κενές· δεν μπαίνει ποτέ ημερομηνία εισαγωγής.')}`):'')
     +(cols.entry<0?box(t('Το CSV δεν έχει στήλη «Entry ID» — ο αριθμός καταχώρησης (για διορθώσεις) δεν θα γραφτεί.')):ne?box(t('Χωρίς αριθμό καταχώρησης:')+' '+ne):'');
 }
+function seMedErr(c){
+  const M={xoris_xarti:t('Η φόρμα δεν έχει ορισμό ιατρικών στη βάση — δεν γράφονται ιατρικά από αυτό το αρχείο.'),
+    csv_keno:t('Το αρχείο δεν έχει γραμμές.'), drasi:t('Η δράση δεν έχει ημερομηνίες.'),
+    kefalida:t('Η κεφαλίδα του αρχείου δεν είναι της φόρμας που έγραψες — άλλες στήλες ή άλλη σειρά. Έλεγξε τον αριθμό φόρμας και ότι τίκαρες τις ίδιες στήλες.'),
+    lathos_stili:t('Στήλες με απαράδεκτο περιεχόμενο — το αρχείο δεν φαίνεται εξαγωγή αυτής της φόρμας.'),
+    entry_id:t('Άκυρος αριθμός καταχώρησης σε γραμμή του αρχείου.'), diplo_entry:t('Ο ίδιος αριθμός καταχώρησης υπάρχει δύο φορές.'),
+    sha:t('Το αρχείο άλλαξε μετά την προεπισκόπηση — διάλεξέ το ξανά.'),
+    den_grafei:t('Δεν γράφτηκε τίποτα: υπάρχουν διπλές συμμετοχές ή ημέρες που δεν ταιριάζουν. Δες τα πλήθη της προεπισκόπησης.'),
+    '42501':t('Δεν επιτρέπεται — μόνο ο Α.Σ. με Ν.91 σε ισχύ.'), client:t('Η κλήση δεν ολοκληρώθηκε.'),
+    den_vrethike:t('Δεν βρέθηκε η εκτέλεση.'), idi_epanaferthike:t('Η εκτέλεση έχει ήδη επανέλθει.'),
+    stigmiotypo_svistike:t('Το στιγμιότυπο έχει σβηστεί (πέρασαν 30 ημέρες) — δεν γίνεται επαναφορά.')};
+  return M[c]||t('Η βάση δεν δέχτηκε το αρχείο.');
+}
+async function seMedCall(eid,qf,RW,sha){
+  try{ const {data,error}=await sb.rpc('medical_apo_forma',{p_event:eid,p_form:Number(qf),p_csv:RW,p_sha:sha||null});
+    if(error)return {err:String(error.code||'rpc').replace(/[^\w]/g,'').slice(0,24)};
+    if(!data||data.error)return {err:String((data&&data.error)||'client').replace(/[^\w]/g,'').slice(0,24)};
+    return {ok:data};
+  }catch(x){ return {err:'client'}; }
+}
+async function seMedRevert(id){
+  try{ const {data,error}=await sb.rpc('medical_apo_forma_epanafora',{p_ektelesi:id});
+    if(error)return {err:String(error.code||'rpc').replace(/[^\w]/g,'').slice(0,24)};
+    if(!data||data.error)return {err:String((data&&data.error)||'client').replace(/[^\w]/g,'').slice(0,24)};
+    return {ok:data};
+  }catch(x){ return {err:'client'}; }
+}
+function seMedPills(x){
+  const pill=(n,l,w)=>n?`<span class="pill"${w?' style="background:var(--warnbg);border-color:transparent;color:var(--warn)"':''}>${n} ${l}</span>`:'';
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${[
+    pill(x.paidia,t('παιδιά')), pill(x.new,t('νέα')), pill(x.updates,t('ενημερώσεις')), pill(x.fields,t('πεδία')),
+    pill(x.sygkrousi,t('συγκρούσεις'),1), pill(x.xoris_evrimata,t('χωρίς ευρήματα')), pill(x.diples_symmetoxes,t('διπλές συμμετοχές'),1),
+    pill(x.xoris_imerominia,t('χωρίς ημερομηνία'),1), pill(x.neoteri_dilosi,t('με νεότερη δήλωση')), pill(x.anairiasta,t('ακυρωμένες'))].join('')}</div>`;
+}
+const SE_MED_WHY=['anairiasta','diples_symmetoxes','xoris_imerominia','neoteri_dilosi'];
+function seMedSum(x){
+  const n=v=>(Number.isInteger(v)&&v>=0)?v:0, o=x&&typeof x==='object'?x:{};
+  const why=SE_MED_WHY.map(k=>[k,n(o[k])]), out=why.reduce((a,r)=>a+r[1],0), inn=n(o.new)+n(o.updates), staff=n(o.epiteleio), sub=n(o.grammes);
+  return {sub, in:inn, out, staff, why, kids:n(o.children_sygkrousi), fields:n(o.sygkrousi), ok:sub===inn+out+staff}; }
+function seMedTriptych(x){
+  if(!x||typeof x!=='object'||!Number.isInteger(x.grammes))return '';
+  const S=seMedSum(x), L={anairiasta:t('καμία συμμετοχή της δράσης με αυτόν τον αριθμό καταχώρησης'), diples_symmetoxes:t('ο αριθμός καταχώρησης σε περισσότερες συμμετοχές'),
+    xoris_imerominia:t('χωρίς ημερομηνία δήλωσης'), neoteri_dilosi:t('υπάρχει νεότερη δήλωση')};
+  const big=(n,l)=>`<div style="flex:1;min-width:90px"><div style="font-size:24px;font-weight:600;line-height:1.1">${n}</div><div class="dim" style="font-size:12.5px">${esc(l)}</div></div>`;
+  const why=S.why.filter(r=>r[1]>0).map(r=>`<div class="dim" style="font-size:12.5px">${r[1]} · ${esc(L[r[0]])}</div>`).join('');
+  return `<div role="group" aria-label="${esc(t('Συμφωνία εισαγωγής'))}" style="margin-bottom:10px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${big(S.sub,t('υποβλήθηκαν'))}${big(S.in,t('μπήκαν'))}${big(S.out,t('δεν ταίριαξαν'))}</div>
+    ${why?`<div style="margin:6px 0 0 2px">${why}</div>`:''}
+    ${S.staff?`<div class="dim" style="font-size:12.5px;margin:4px 0 0 2px">${S.staff} · ${esc(t('επιτελείο — εκτός από αυτή την εισαγωγή'))}</div>`:''}
+    ${S.kids?`<div style="font-size:13px;margin-top:6px;color:var(--warn)">${S.kids} ${esc(plu(S.kids,t('παιδί'),t('παιδιά')))} ${esc(t('με σύγκρουση'))}, ${S.fields} ${esc(plu(S.fields,t('πεδίο'),t('πεδία')))}</div>`:''}
+    ${S.ok?'':`<div role="alert" style="margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--badbg);color:var(--bad);font-weight:600">${esc(t('Το άθροισμα δεν βγαίνει — μη γράψεις, πες το στον Τεχνικό.'))} ${S.sub} ≠ ${S.in+S.out+S.staff}</div>`}</div>`;
+}
+function seMedHTML(x){
+  if(!x)return '';
+  const head=`<div class="sec"><h3 style="font-size:13.5px">${t('Ιατρικά από τη φόρμα — προεπισκόπηση (χωρίς τιμές)')}</h3></div>`;
+  if(x.idi)return head+`<div class="dim" style="font-size:12.5px;margin-bottom:8px">${t('Αυτό το αρχείο έχει ήδη καταχωριστεί — τα ιατρικά δεν ξαναγράφονται.')}</div>`;
+  const KAT={neo:t('νέο'),enimerosi:t('ενημέρωση'),diplo:t('διπλή συμμετοχή'),anairiasto:t('ακυρωμένη'),xoris_imerominia:t('χωρίς ημερομηνία'),neoteri:t('υπάρχει νεότερη')};
+  const rows=(x.lista||[]).map(r=>{ const p=(D.bh||[]).find(b=>b.id===r.person_id);
+    return `<div class="kv"><b style="flex:1">${p?esc(nm(p)):esc(t('(χωρίς πρόσωπο)'))}</b><span class="dim" style="font-size:11px">Entry ${esc(String(r.entry))} · ${KAT[r.katastasi]||''}${r.pedia!=null?' · '+r.pedia+' '+t('πεδία'):''}${r.sygkrousi?' · '+t('σύγκρουση'):''}${r.xoris_evrimata?' · '+t('χωρίς ευρήματα'):''}</span></div>`; }).join('');
+  return head+seMedTriptych(x)+seMedPills(x)+`<div style="max-height:200px;overflow:auto;margin-bottom:8px">${rows}</div>`;
+}
+function seMedDoneShow(x){
+  const box=$('seRes'); if(!box)return;
+  box.innerHTML=`<div role="status" style="padding:10px 12px;border-radius:10px;background:var(--okbg);color:var(--ok);font-weight:600;margin-bottom:10px">${t('Τα ιατρικά γράφτηκαν από τη βάση.')}</div>`
+    +seMedTriptych(x)+seMedPills(x)
+    +(isAdminUI()&&x.ektelesi?`<button class="btn sm" id="seMedRev" data-ekt="${esc(String(x.ektelesi))}">${t('Επαναφορά εκτέλεσης')}</button><div id="seMedRevOut" class="dim" style="font-size:12.5px;margin-top:8px"></div>`:'')
+    +`<div style="margin-top:10px"><button class="btn gh sm" onclick="document.getElementById('drw').classList.remove('on')">${t('Κλείσιμο')}</button></div>`;
+  const b=$('seMedRev'); if(b)b.onclick=async()=>{
+    if(!await uiAsk(t('Να επανέλθουν τα ιατρικά αυτής της εκτέλεσης; Ό,τι άλλαξε στο μεταξύ δεν πατιέται.')))return;
+    const r=await seMedRevert(Number(b.dataset.ekt)); const o=$('seMedRevOut'); if(!o)return;
+    o.textContent=r.err?seMedErr(r.err):t('Επανήλθαν')+' '+(r.ok.gyrisan||0)+' · '+t('σβήστηκαν')+' '+(r.ok.svistikan||0)+' · '+t('άλλαξαν στο μεταξύ και δεν πατήθηκαν')+' '+(r.ok.allaxan_sto_metaxy||0); };
+}
 function seImport(eid,pool,after){
   const e=D.ev.find(x=>x.id===eid);
   $('drwp').innerHTML=`<div class="dhead"><div style="flex:1"><div style="font-size:17px;font-weight:600">Εισαγωγή από Smartespot</div>
@@ -27628,16 +27757,30 @@ function seImport(eid,pool,after){
       ${ok.map(r=>`<label class="kv" style="cursor:pointer"><input type="checkbox" class="sec2" data-i="${res.indexOf(r)}" checked style="width:auto;margin-right:7px">
         <b style="flex:1">${pn(r.m.p)}</b>
         <span class="dim" style="font-size:11px">${[r.med.allergies?'αλλ.':'',r.med.medication?'φαρμ.':'',r.contacts.length?r.contacts.length+' επαφ.':'',r.amount?r.amount+'€':''].filter(Boolean).join(' · ')||'—'}${r.w.iso?'':' · '+t('χωρίς ημ.')}</span></label>`).join('')}
-      ${no.length?`<div style="margin-top:9px;font-size:12px;color:var(--warn)">Δεν βρέθηκαν στο μητρώο</div>
+      ${no.length?`<div style="margin-top:9px;font-size:12px;color:var(--warn)">${t('Δεν βρέθηκαν στο μητρώο')}</div>
         ${no.map(r=>`<div class="dim" style="font-size:12.5px;padding:2px 0">${esc(r.name)}</div>`).join('')}`:''}</div>
-      <label style="font-size:12.5px;display:flex;gap:7px;align-items:center;margin-bottom:6px"><input type="checkbox" id="seMed" checked style="width:auto">Ενημέρωση ιατρικών δελτίων</label>
-      <label style="font-size:12.5px;display:flex;gap:7px;align-items:center;margin-bottom:10px"><input type="checkbox" id="seCt" checked style="width:auto">Προσθήκη επαφών έκτακτης ανάγκης</label>
-      <button class="btn p" id="seApply" style="width:100%;justify-content:center">Εισαγωγή</button>
-      <div class="dim" style="font-size:11.5px;margin-top:8px">Τα ιατρικά γράφονται με ισχύ ${YEAR.slice(-2)}· ό,τι είναι «Όχι» αγνοείται. Δεν σβήνεται τίποτα υπάρχον χωρίς νέα τιμή.</div>`;
+      <label style="font-size:12.5px;display:flex;gap:7px;align-items:center;margin-bottom:6px"><input type="checkbox" id="seMed" checked style="width:auto">${t('Ενημέρωση ιατρικών δελτίων')}</label>
+      <label style="font-size:12.5px;display:flex;gap:7px;align-items:center;margin-bottom:10px"><input type="checkbox" id="seCt" checked style="width:auto">${t('Προσθήκη επαφών έκτακτης ανάγκης')}</label>
+      <button class="btn p" id="seApply" style="width:100%;justify-content:center">${t('Εισαγωγή')}</button>
+      <div class="dim" style="font-size:11.5px;margin-top:8px">${t('Τα ιατρικά γράφονται από τη βάση, με έλεγχο ανά παιδί· ό,τι είναι «Όχι» δεν πατά «Ναι» ή κείμενο. Ο Α.Σ. μπορεί να επαναφέρει την εκτέλεση για 30 ημέρες.')}</div>`;
     { const a=$('seApply'); if(a&&a.insertAdjacentHTML)a.insertAdjacentHTML('beforebegin',seDatesHTML(ok,P.cols)); }    
+    { const a=$('seApply'); if(a&&a.insertAdjacentHTML)a.insertAdjacentHTML('beforebegin','<div id="seMed2" style="margin-bottom:10px"></div>'); }
+    let MED=null;    
+    const seMedPrev=async()=>{ const box=$('seMed2'); if(!box)return; MED=null;
+      if(!($('seMed')||{}).checked){ box.innerHTML=''; return; }
+      const qf=String((($('seQf')||{}).value)||'').trim();
+      const warn=m=>`<div role="alert" style="padding:8px 10px;border-radius:10px;background:var(--warnbg);color:var(--warn);font-size:12.5px">${esc(m)}</div>`;
+      if(!/^\d{1,6}$/.test(qf)){ box.innerHTML=warn(t('Για τα ιατρικά γράψε τον αριθμό φόρμας Quform (π.χ. 127) και πάτα ξανά «Ανάλυση».')); return; }
+      box.innerHTML='<div class="dim">…</div>';
+      const r=await seMedCall(eid,qf,RW,null);
+      if(r.err){ box.innerHTML=warn(seMedErr(r.err)); return; }
+      MED={sha:r.ok.sha,qf,x:r.ok}; box.innerHTML=seMedHTML(r.ok); };
+    { const c=$('seMed'); if(c)c.onchange=seMedPrev; } seMedPrev();
     $('seApply').onclick=async()=>{
       const pick=[...document.querySelectorAll('.sec2:checked')].map(c=>res[+c.dataset.i]);
       if(!pick.length)return toast('Τίποτα επιλεγμένο');
+      const wantMed=!!($('seMed')||{}).checked;    
+      if(wantMed&&!(MED&&MED.sha))return toast(t('Τα ιατρικά θέλουν προεπισκόπηση: γράψε τον αριθμό φόρμας και πάτα ξανά «Ανάλυση» — ή ξετίκαρε τα ιατρικά.'));
       const fill=!!(($('seFill')||{}).checked), qfF=String((($('seQf')||{}).value)||'').trim();
       const rows=seImportRows(pick,qfF);
       const {data:R,error:rerr}=await sb.rpc('participations_quform_import',{p_event:eid,p_rows:rows,p_fill_only:fill});
@@ -27647,17 +27790,13 @@ function seImport(eid,pool,after){
       const n=((R&&R.inserted)||[]).length, nf=((R&&R.filled)||[]).length;
       const extra=[nf?t('συμπληρώθηκαν ημερομηνίες:')+' '+nf:'', R&&R.nodate?t('χωρίς ημερομηνία:')+' '+R.nodate:'', R&&R.qf_conflict?t('αριθμός καταχώρησης ήδη σε άλλο πρόσωπο:')+' '+R.qf_conflict:''].filter(Boolean).join(' · ');
       if(fill){ saveCache(); toast(extra||t('Τίποτα να συμπληρωθεί')); drw.classList.remove('on'); if(after)after(); return; }
-      let medFail=0;    
-      if($('seMed').checked){
-        const meds=pick.filter(r=>Object.values(r.med).some(Boolean)).map(r=>{
-          const cur=(D.med||[]).find(m=>m.person_id===r.m.p.id)||{};
-          return {person_id:r.m.p.id, blood_type:r.med.blood_type||cur.blood_type||null,
-            conditions:r.med.conditions||cur.conditions||null, allergies:r.med.allergies||cur.allergies||null,
-            medication:r.med.medication||cur.medication||null, dietary:r.med.dietary||cur.dietary||null,
-            declared_by:'Smartespot', declared_at:new Date().toISOString(), valid_until:('20'+YEAR.slice(-2))+'-08-31'}});
-        if(meds.length){let error=null; try{ ({error}=await sb.from('person_medical').upsert(meds,{onConflict:'person_id'})); }catch(x){ error=x||true; }
-          if(error)medFail=meds.length;
-          if(!error){meds.forEach(m=>{const i=(D.med||[]).findIndex(x=>x.person_id===m.person_id); if(i>=0)D.med[i]=m; else D.med.push(m)})}}
+      let medDone=null;    
+      if(wantMed&&!MED.x.idi){
+        const w=await seMedCall(eid,MED.qf,RW,MED.sha);
+        if(w.err){ const m=seMedErr(w.err), box=document.createElement('div'); box.setAttribute('role','alert');
+          box.style.cssText='margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--badbg);color:var(--bad);font-weight:600';
+          box.textContent=m; const dp=$('drwp'); if(dp)dp.prepend(box); toast(m); if(after)after(); return; }
+        medDone=w.ok;
       }
       if($('seCt').checked){
         const rows=[];
@@ -27672,13 +27811,9 @@ function seImport(eid,pool,after){
           if(!error)(data||[]).forEach(x=>D.ecs.push(x))}
       }
       saveCache();
-      if(medFail){    
-        const box=document.createElement('div'); box.setAttribute('role','alert');
-        box.style.cssText='margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--badbg);color:var(--bad);font-weight:600';
-        box.textContent=seMedFailMsg(medFail); const dp=$('drwp'); if(dp)dp.prepend(box);
-        toast(seMedFailMsg(medFail)); if(after)after(); return;
-      }
-      toast(n+' συμμετοχές · ιατρικά & επαφές ενημερώθηκαν'+(extra?' · '+extra:''));
+      RW=null; { const f1=$('seF'); if(f1)f1.value=''; const f2=$('seT'); if(f2)f2.value=''; }    
+      if(medDone){ seMedDoneShow(medDone); toast(t('Τα ιατρικά γράφτηκαν')+(extra?' · '+extra:'')); if(after)after(); return; }
+      toast(n+' '+t('συμμετοχές')+(wantMed&&MED.x.idi?' · '+t('τα ιατρικά του αρχείου είχαν ήδη καταχωριστεί'):'')+' · '+t('επαφές ενημερώθηκαν')+(extra?' · '+extra:''));
       drw.classList.remove('on'); if(after)after();
     };
   };
@@ -27686,7 +27821,6 @@ function seImport(eid,pool,after){
   $('seF').onchange=ev=>{const f=ev.target.files[0]; if(!f)return; const rd=new FileReader(); rd.onload=()=>run(String(rd.result)); rd.readAsText(f,'utf-8')};
 }
 
-const seMedFailMsg=k=>k?k+' '+t('δηλώσεις έχουν ιατρικά που δεν πέρασαν — θέλει ενέργεια του Α.Σ.'):'';
 const sePaid=s=>/^(paid|πληρώθηκε|πληρωμένη|πληρωμένο)$/i.test(String(s||'').trim());
 function seImportRows(pick,qfF){
   return pick.map(r=>({person_id:r.m.p.id, declared_at:r.w.iso||null, order_no:r.ordn||null,
@@ -29103,7 +29237,7 @@ function towerHTML(o){
     const gap=ss.filter(x=>x!==last&&(x.session_date||'')<=today&&!had.has(x.id)).length;
     const pr=att.filter(a=>attPres(a.status)).length;    
     const rk=risk.filter(r=>r.sec===s).length;
-    const miss=reqs.length&&typeof edHas==='function'?kids.filter(p=>reqs.some(r=>!edHas(p,r))).length:0;
+    const miss=reqs.length&&typeof EGG.edHas==='function'?kids.filter(p=>reqs.some(r=>!EGG.edHas(p,r))).length:0;
     const evs=(D.ev||[]).filter(e=>!e.hidden&&evStage(e)==='published'&&(e.event_date||'')>=today&&evSecs(e).includes(s)&&typeof signupOpen==='function'&&signupOpen(e));
     const nd=evs.reduce((n,e)=>n+(D.pa||[]).filter(x=>x.event_id===e.id&&!/κυρ/i.test(x.status||'')).length,0);
     return `<div class="card" style="overflow:hidden">
@@ -30583,7 +30717,7 @@ function xmMiss(){
   const reqs=(D.dr||[]).filter(r=>r.active!==false).sort((a,b)=>(a.seq||0)-(b.seq||0)), today=XM_ISO();
   const head=[t('Α.Μ.'),t('Επώνυμο'),t('Όνομα'),t('Τμήμα'),t('Υποομάδα')].concat(reqs.map(r=>r.label),[t('Ιατρική δήλωση'),t('Επαφή έκτακτης ανάγκης'),t('Email γονέα'),t('Εγγραφή εξοφλήθηκε'),t('Λείπουν')]);
   const rows=[head].concat(xmKids(xmSecs()).map(p=>{
-    const docs=reqs.map(r=>edHas(p,r)?'✓':t('λείπει'));
+    const docs=reqs.map(r=>EGG.edHas(p,r)?'✓':t('λείπει'));
     const m=(D.med||[]).find(x=>x.person_id===p.id), med=!m?t('λείπει'):(m.valid_until&&m.valid_until<today?t('έληξε'):'✓');
     const ec=(D.ecs||[]).some(e=>e.person_id===p.id)?'✓':t('λείπει');
     const g=gOf(p.registry_no)||{}, mail=(g.father_email||g.mother_email)?'✓':t('λείπει');
@@ -31291,20 +31425,6 @@ const wlHit=(r,q)=>{ if(!q)return true;
       || digits(b).includes(digits(q)) && digits(q).length>=3; };
 let WLPATCH=()=>{};
 
-const R1={
-  bh : ()=>sb.from('badgeholders').select('*'),
-  gr : ()=>sb.from('grants').select('*').order('valid_to',{ascending:false}).limit(500),
-  inv: ()=>sb.from('invitations').select('*').limit(2000),
-  ac : ()=>sb.from('v_accounts').select('*'),
-  ph : ()=>sb.from('person_hats').select('*').limit(2000),
-  wl : ()=>sb.from('waitlist').select('*'),
-  wlct:()=>sb.from('waitlist_contact').select('*'),
-};
-async function reload1(...keys){
-  for(const k of keys){ const {data,error}=await R1[k]();
-    if(error)console.warn('reload1',k,error); else if(data)D[k]=data }
-  saveCache();
-}
 
 const WL_OUTCOME=[
   {v:'Αναμονή',          k:'open'},
@@ -32057,6 +32177,25 @@ function entKatWire(){
     m.style.color='var(--ok)'; m.textContent=t('✓ Κατέβηκε: {n} παιδιά.',{n});
   };
 }
+const EGG=Object.freeze({
+  docState:(...a)=>docState(...a),           
+  docRowHTML:(...a)=>docRowHTML(...a),       
+  docOrphansHTML:(...a)=>docOrphansHTML(...a),  
+  wireDocs:(...a)=>wireDocs(...a),           
+  edHas:(...a)=>edHas(...a),                 
+  edYear:(...a)=>edYear(...a),               
+  edHasFile:(...a)=>edHasFile(...a),         
+  edFileOpen:(...a)=>edFileOpen(...a),       
+  edReceive:(...a)=>edReceive(...a),         
+  edUnreceive:(...a)=>edUnreceive(...a),     
+  voidReg:(...a)=>voidReg(...a),             
+  capT:(...a)=>capT(...a),                   
+  wlGrade:(...a)=>wlGrade(...a),             
+  mysysBody:(...a)=>mysysBody(...a),         
+  grantsBody:(...a)=>grantsBody(...a),       
+  get WLGR(){ return WLGR },                 
+  wlG:(...a)=>wlG(...a),                     
+});
 V.forms=()=>tabView('forms',[
   {k:'blank',t:'Κενά πρότυπα',       i:'book', fn:templatesBody, d:'τυπώνεις και συμπληρώνει άνθρωπος'},
   {k:'filled',t:'Συμπληρωμένα',      i:'book', fn:formsBody,     d:'με τα δικά μας δεδομένα, έτοιμα για υπογραφή'},
@@ -33996,12 +34135,12 @@ V.guardians=()=>tabView('guardians',[
   {k:'call', t:'Ποιον καλώ',     i:'msg',  fn:callsBody,     d:'σημάνσεις και κανόνες πριν σηκώσεις'}]);
 V.mysys=()=>{ const st={k:'sta', t:'Κατάσταση', i:'shield', fn:devBody, d:'υγεία βάσης και εκδόσεις'}, isDev=!!PA&&PA.k==='dev';
   return tabView('mysys',[...(isDev?[st]:[]),
-  {k:'sys', t:'Το Σύστημά μου',   i:'home',   fn:mysysBody,    d:'επωνυμία, έδρα, τμήματα, τάξεις'},
+  {k:'sys', t:'Το Σύστημά μου',   i:'home',   fn:EGG.mysysBody,    d:'επωνυμία, έδρα, τμήματα, τάξεις'},
   {k:'app', t:'Εφαρμογή',          i:'cog',    fn:settingsBody, d:'όρια, κατώφλια, προεπιλογές'}]); };
 V.settings=()=>V.mysys(); V.dev=()=>V.mysys();
 V.access=()=>tabView('access',[
   {k:'roles', t:'Ρόλοι',         i:'shield', fn:accessBody,       d:'μόνιμη πρόσβαση ανά λογαριασμό', nav:'roles'},
-  {k:'grants',t:'Παραχωρήσεις',  i:'lock',   fn:grantsBody,       d:'προσωρινά, με ημερομηνία λήξης', nav:'grants'},    
+  {k:'grants',t:'Παραχωρήσεις',  i:'lock',   fn:EGG.grantsBody,       d:'προσωρινά, με ημερομηνία λήξης', nav:'grants'},    
   {k:'labels',t:'Πρώτοι Βοηθοί',  i:'shield', fn:labelsBody,       d:'ποιος βλέπει ιατρικά ως Πρώτος Βοηθός — και για ποιο τμήμα', nav:'progfix'},
   {k:'matrix',t:'Πίνακας',       i:'lock',   fn:()=>matrixBody(), d:'ποιος διαβάζει και ποιος γράφει τι — από τις πολιτικές της βάσης', nav:'matrix'},
   {k:'viewas',t:'Δες ως',        i:'users',  fn:()=>viewasBody(), d:'άνοιξε την εφαρμογή όπως τη βλέπει άλλος — από τη βάση', nav:'viewas'},
