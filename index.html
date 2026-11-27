@@ -1834,7 +1834,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 18:10'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 20:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22718,6 +22718,7 @@ function efDocs(e,parts){
       <button class="btn sm p" id="efdSign" style="margin-top:7px">${ic('down',14)} ${t('Λήψη PDF')}</button><div id="efdUnm"></div></div>
     ${b('efdAll',t('Όλοι — επικοινωνία και συμμετοχή'),t('Όπως το παλιό «Όλοι»: συμμετοχή Full / Part, φανέλα, κηδεμόνες με τηλέφωνα — και το επιτελείο. Χωρίς ιατρικά.'))}
     ${b('efdLead','Για τους βαθμοφόρους','Ανά ενωμοτία / εξάδα: λίστα κλήσεων της δράσης και τι να προσέξουμε.')}
+    ${b('efdTeam',t('Α4 ανά υπεύθυνο εξάδας / ενωμοτίας / ομίλου'),t('Μία σελίδα ανά ομάδα, με χρώμα: τηλέφωνα κλήσης και τι να προσέξουμε (αλλεργίες, διατροφή) — για να δοθεί στον υπεύθυνο της ομάδας.'))}
     ${b('efdKit','Κουζίνα','Μόνο διατροφή — η κουζίνα δεν βλέπει ιατρικά.')}
     ${b('efdFa','Πρώτες βοήθειες','Ομάδα αίματος, αντιτετανικό και ιατρικά — μόνο για τον υπεύθυνο υγείας.')}
     ${efdtOwnerKind(e)===dv('Σύστημα')?'':(()=>{ const X=!!efdtSecW(e).xlsx; return `<div style="padding:9px 0;border-top:1px solid var(--line)">
@@ -22741,6 +22742,8 @@ function efDocsWire(e,parts){
   on('efdFa',x=>efdFirstAid(e,parts,x));
   on('efdLeadD',x=>efdLeadersPdf(e,parts,x));
   on('efdKitD',x=>efdKitchenPdf(e,parts,x));
+  on('efdTeamD',x=>efdTeamPdf(e,parts,x));    
+  on('efdTeam',x=>efdTeamPdf(e,parts,x));
   on('efdFaD',x=>efdFirstAidPdf(e,parts,x));
   on('efdStd',x=>efdStdFill(e,parts,x));
   efdsWire(e);    
@@ -22850,7 +22853,7 @@ async function efdPdf(e,name,docTitle,sections,landscape){
   const png=async f=>{ try{ return f?await doc.embedPng(await espBytes(f)):null }catch(_){ return null } };
   const im1=await png(EFD_LOGO[efdSec(e)]), im2=await png('logo-systima.png');
   doc.setTitle(name); doc.setCreator('e76'); doc.setProducer('e76');
-  const P=EDP, PW=landscape?841.89:595.28, PH=landscape?595.28:841.89, W=PW-P.ML-P.MR, K=rgb(0,0,0), ZB=rgb(0.922,0.922,0.922);
+  const P=EDP, PW=landscape?841.89:595.28, PH=landscape?595.28:841.89, W=PW-P.ML-P.MR, PDFRGB=rgb, K=rgb(0,0,0), ZB=rgb(0.922,0.922,0.922);
   const tw=(s,f,z)=>f.widthOfTextAtSize(s,z);
   const wrap=(s,f,z,max)=>{ const out=[]; String(s==null?'':s).split('\n').forEach(par=>{ let ln='';
     par.split(/\s+/).filter(Boolean).forEach(w=>{ const c=ln?ln+' '+w:w;
@@ -22874,7 +22877,8 @@ async function efdPdf(e,name,docTitle,sections,landscape){
     const thead=()=>{ const hl=S.cols.map((c,i)=>wrap(c.h,B,P.Z,CW[i]-2*P.PAD)), h=Math.max(...hl.map(l=>l.length))*P.LH+2*P.PAD;
       const top=y; hl.forEach((ls,i)=>ls.forEach((s,k)=>pg.drawText(s,{x:CX[i]+CW[i]/2-tw(s,B,P.Z)/2,y:top-P.PAD-P.Z-k*P.LH+1,size:P.Z,font:B,color:K})));
       rule(top); rule(top-h,1.4); CX.forEach(x=>pg.drawLine({start:{x,y:top},end:{x,y:top-h},thickness:0.6,color:K})); y=top-h; };
-    const titleBlock=()=>{ if(S.h){ pg.drawText(S.h,{x:P.ML,y:y-12,size:12,font:B,color:K}); y-=20; }
+    const titleBlock=()=>{ if(S.color){ pg.drawRectangle({x:P.ML,y:y-9,width:W,height:9,color:PDFRGB(S.color[0],S.color[1],S.color[2])}); y-=14; }    
+      if(S.h){ pg.drawText(S.h,{x:P.ML,y:y-12,size:12,font:B,color:K}); y-=20; }
       (S.intro?wrap(S.intro,R,10.5,W):[]).forEach(s=>{ pg.drawText(s,{x:P.ML,y:y-11,size:10.5,font:R,color:K}); y-=14; }); if(S.intro)y-=4; };
     if(y-60<P.MB)head();
     titleBlock();
@@ -22929,6 +22933,52 @@ function efdLeadersPdf(e,parts,btn){ return edpRun(btn,async()=>{
     rows:leds.map(x=>[edpWho(x),x.pa.role||'',ctFmt(MEL.ctCallNo(x.p.id)||x.p.phone||'')])});
   if(r.no)S[S.length-1].after=edpNoTxt(r.no);
   await efdPdf(e,edpName(e,t('Για βαθμοφόρους')),t('Για τους βαθμοφόρους'),S,true);
+}); }
+function efdWatch(m){
+  if(!m)return '';
+  const L=[], add=(on,lbl,txt)=>{ if(on)L.push(lbl+(txt?': '+txt:'')); };
+  add(m.allergy_food,t('Αλλεργία τροφών'),m.allergy_food_txt);
+  add(m.allergy_drugs,t('Αλλεργία φαρμάκων'),m.allergy_drugs_txt);
+  add(m.allergy_other,t('Άλλη αλλεργία'),m.allergy_other_txt);
+  add(m.dietary_yes||(!!m.dietary&&m.dietary_yes!==false),t('Διατροφή'),m.dietary);
+  add(m.fasting,t('Νηστεύει'));
+  add(m.eats_amount&&!/^ικανοποιητ/i.test(m.eats_amount),t('Τρώει'),m.eats_amount);
+  if(m.chronic||m.on_medication||m.mental||m.recent_illness||m.other_medical||m.mobility)L.push(t('Δες Πρώτες βοήθειες'));
+  if(m.fears_dark||m.sleep_talks||m.sleep_wets||m.night_toilet||m.sleep_other)L.push(t('Ύπνος: ρώτησε τον αρχηγό δράσης'));
+  return L.join('\n');
+}
+const EFD_TEAM_COL=[[/^μαυρ/,[0.15,0.15,0.15]],[/^ασπρ/,[0.78,0.78,0.78]],[/^γαλαζ/,[0.25,0.55,0.85]],[/^πρασιν/,[0.25,0.65,0.35]],
+  [/^πορτοκαλ/,[0.95,0.55,0.12]],[/^κοκκιν/,[0.85,0.2,0.2]],[/^κιτριν/,[0.95,0.8,0.15]],[/^(μωβ|μοβ|βιολετ)/,[0.5,0.3,0.65]],
+  [/^ροζ/,[0.9,0.5,0.7]],[/^καφε/,[0.5,0.32,0.18]],[/^γκρι/,[0.5,0.5,0.5]]];
+function efdTeamColor(name){
+  const k=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const h=EFD_TEAM_COL.find(([re])=>re.test(k)); return h?h[1].slice():[0.55,0.55,0.55];
+}
+function efdTeamSheets(e,kids,med){
+  const secs=[...new Set(kids.map(x=>secOf(x.p)||e.section||''))].sort((a,b)=>String(a).localeCompare(String(b),'el'));
+  const out=[]; const NONE=dv('— χωρίς υποομάδα');
+  secs.forEach(sec=>{
+    const gs={}; kids.filter(x=>(secOf(x.p)||e.section||'')===sec).forEach(x=>{ const g=efdGrp(x.p)||NONE; (gs[g]=gs[g]||[]).push(x); });
+    MEL.sgSortGroups(sec,Object.keys(gs)).forEach(g=>{
+      const rec=(D.sg||[]).find(z=>z.section===sec&&z.scout_year===YEAR&&z.name===g&&z.active!==false);
+      const roles=MEL.sgRoles(sec), cols=['leader_id','second_id','third_id'];
+      const roleOf=id=>{ const i=rec?cols.findIndex(c=>rec[c]===id):-1; const r=i>=0?roles.find(([s])=>s===i+1):null; return r?r[1]:''; };
+      const list=gs[g].slice().sort((a,b)=>MEL.sgKidSort(sec)(a.p,b.p));
+      const staff=rec?[...new Set([rec.staff_id,...(rec.staff_more||[])].filter(Boolean))].map(id=>(D.bh||[]).find(b=>b.id===id)).filter(Boolean):[];
+      out.push({newPage:out.length>0,h:g===NONE?t('Χωρίς εξάδα / ενωμοτία')+' · '+sec:g+' · '+sec,color:efdTeamColor(g===NONE?'':g),
+        intro:staff.length?t('Υπεύθυνος')+': '+staff.map(p=>[p.first_name,p.last_name].filter(Boolean).join(' ')+(ctFmt(MEL.ctCallNo(p.id)||p.phone||'')?' · '+ctFmt(MEL.ctCallNo(p.id)||p.phone||''):'')).join(' · '):'',
+        cols:[{h:t('Α/Α'),w:4,c:1},{h:t('Παιδί'),w:24},{h:t('Τηλέφωνα κλήσης (για τη δράση)'),w:36},{h:t('Τι να προσέξουμε'),w:36}],
+        rows:list.map((x,i)=>[String(i+1),{...edpWho(x),sub:[roleOf(x.p.id),x.p.shirt_size?t('Φανέλα')+': '+x.p.shirt_size:''].filter(Boolean).join(' · ')},
+          efdGuards(x.p,e.id).map((l,k)=>(k+1)+'. '+l).join('\n')||t('— κανένα τηλέφωνο —'),efdWatch(med[x.p.id])||'—'])});
+    });
+  });
+  return out;
+}
+function efdTeamPdf(e,parts,btn){ return edpRun(btn,async()=>{
+  const r=await efdPrep(e,parts,'kids',dv('φάκελος δράσης · Α4 υπευθύνων ομάδας'),btn); if(!r)return;
+  const S=efdTeamSheets(e,r.list.filter(x=>!(typeof efHelper==='function'&&efHelper(x))),r.med);
+  if(r.no&&S.length)S[S.length-1].after=edpNoTxt(r.no);
+  await efdPdf(e,edpName(e,t('Α4 υπευθύνων ομάδας')),t('Α4 ανά υπεύθυνο εξάδας / ενωμοτίας / ομίλου'),S,false);
 }); }
 function efdKitchenPdf(e,parts,btn){ return edpRun(btn,async()=>{
   const r=await efdPrep(e,parts,'all',dv('φάκελος δράσης · κουζίνα'),btn); if(!r)return;
@@ -27850,6 +27900,8 @@ function seMedErr(c){
     sha:t('Το αρχείο άλλαξε μετά την προεπισκόπηση — διάλεξέ το ξανά.'),
     den_grafei:t('Δεν γράφτηκε τίποτα: υπάρχουν διπλές συμμετοχές ή ημέρες που δεν ταιριάζουν. Δες τα πλήθη της προεπισκόπησης.'),
     '42501':t('Δεν επιτρέπεται — μόνο ο Α.Σ. με Ν.91 σε ισχύ.'), client:t('Η κλήση δεν ολοκληρώθηκε.'),
+    xoris_proepiskopisi:t('Δεν έγινε προεπισκόπηση ιατρικών (γράψε τον αριθμό φόρμας και πάτα «Ανάλυση»).'),
+    xoris_arithmos:t('Δεν γράφτηκε αριθμός φόρμας Quform.'),
     den_vrethike:t('Δεν βρέθηκε η εκτέλεση.'), idi_epanaferthike:t('Η εκτέλεση έχει ήδη επανέλθει.'),
     stigmiotypo_svistike:t('Το στιγμιότυπο έχει σβηστεί (πέρασαν 30 ημέρες) — δεν γίνεται επαναφορά.')};
   return M[c]||t('Η βάση δεν δέχτηκε το αρχείο.');
@@ -27867,6 +27919,19 @@ async function seMedRevert(id){
     if(!data||data.error)return {err:String((data&&data.error)||'client').replace(/[^\w]/g,'').slice(0,24)};
     return {ok:data};
   }catch(x){ return {err:'client'}; }
+}
+function seMedPlan(wantMed,MED,medErr){
+  if(!wantMed)return {write:false,skip:null};
+  if(MED&&MED.sha)return {write:!(MED.x&&MED.x.idi),skip:null};
+  const c=String(medErr||'').replace(/[^\w]/g,'').slice(0,24);
+  return {write:false,skip:c||'xoris_proepiskopisi'};
+}
+function seMedSkipNote(c){
+  if(!c)return '';
+  return t('Τα ιατρικά δεν γράφτηκαν.')+' '+seMedErr(c);
+}
+function seMedPrevWarn(c){
+  return seMedErr(c)+' '+t('Οι συμμετοχές και οι επαφές θα γραφτούν κανονικά· τα ιατρικά όχι.');
 }
 function seMedPills(x){
   const pill=(n,l,w)=>n?`<span class="pill"${w?' style="background:var(--warnbg);border-color:transparent;color:var(--warn)"':''}>${n} ${l}</span>`:'';
@@ -27952,22 +28017,22 @@ function seImport(eid,pool,after){
       <div class="dim" style="font-size:11.5px;margin-top:8px">${t('Τα ιατρικά γράφονται από τη βάση, με έλεγχο ανά παιδί· ό,τι είναι «Όχι» δεν πατά «Ναι» ή κείμενο. Ο Α.Σ. μπορεί να επαναφέρει την εκτέλεση για 30 ημέρες.')}</div>`;
     { const a=$('seApply'); if(a&&a.insertAdjacentHTML)a.insertAdjacentHTML('beforebegin',seDatesHTML(ok,P.cols)); }    
     { const a=$('seApply'); if(a&&a.insertAdjacentHTML)a.insertAdjacentHTML('beforebegin','<div id="seMed2" style="margin-bottom:10px"></div>'); }
-    let MED=null;    
-    const seMedPrev=async()=>{ const box=$('seMed2'); if(!box)return; MED=null;
+    let MED=null, MED_ERR=null;    
+    const seMedPrev=async()=>{ const box=$('seMed2'); if(!box)return; MED=null; MED_ERR=null;
       if(!($('seMed')||{}).checked){ box.innerHTML=''; return; }
       const qf=String((($('seQf')||{}).value)||'').trim();
       const warn=m=>`<div role="alert" style="padding:8px 10px;border-radius:10px;background:var(--warnbg);color:var(--warn);font-size:12.5px">${esc(m)}</div>`;
-      if(!/^\d{1,6}$/.test(qf)){ box.innerHTML=warn(t('Για τα ιατρικά γράψε τον αριθμό φόρμας Quform (π.χ. 127) και πάτα ξανά «Ανάλυση».')); return; }
+      if(!/^\d{1,6}$/.test(qf)){ MED_ERR='xoris_arithmos'; box.innerHTML=warn(t('Για τα ιατρικά γράψε τον αριθμό φόρμας Quform (π.χ. 127) και πάτα ξανά «Ανάλυση».')+' '+t('Οι συμμετοχές και οι επαφές θα γραφτούν κανονικά· τα ιατρικά όχι.')); return; }
       box.innerHTML='<div class="dim">…</div>';
       const r=await seMedCall(eid,qf,RW,null);
-      if(r.err){ box.innerHTML=warn(seMedErr(r.err)); return; }
+      if(r.err){ MED_ERR=r.err; box.innerHTML=warn(seMedPrevWarn(r.err)); return; }
       MED={sha:r.ok.sha,qf,x:r.ok}; box.innerHTML=seMedHTML(r.ok); };
     { const c=$('seMed'); if(c)c.onchange=seMedPrev; } seMedPrev();
     $('seApply').onclick=async()=>{
       const pick=[...document.querySelectorAll('.sec2:checked')].map(c=>res[+c.dataset.i]);
       if(!pick.length)return toast('Τίποτα επιλεγμένο');
       const wantMed=!!($('seMed')||{}).checked;    
-      if(wantMed&&!(MED&&MED.sha))return toast(t('Τα ιατρικά θέλουν προεπισκόπηση: γράψε τον αριθμό φόρμας και πάτα ξανά «Ανάλυση» — ή ξετίκαρε τα ιατρικά.'));
+      const plan=seMedPlan(wantMed,MED,MED_ERR); let medSkip=plan.skip;    
       const fill=!!(($('seFill')||{}).checked), qfF=String((($('seQf')||{}).value)||'').trim();
       const rows=seImportRows(pick,qfF);
       const {data:R,error:rerr}=await sb.rpc('participations_quform_import',{p_event:eid,p_rows:rows,p_fill_only:fill});
@@ -27978,12 +28043,9 @@ function seImport(eid,pool,after){
       const extra=[nf?t('συμπληρώθηκαν ημερομηνίες:')+' '+nf:'', R&&R.nodate?t('χωρίς ημερομηνία:')+' '+R.nodate:'', R&&R.qf_conflict?t('αριθμός καταχώρησης ήδη σε άλλο πρόσωπο:')+' '+R.qf_conflict:''].filter(Boolean).join(' · ');
       if(fill){ saveCache(); toast(extra||t('Τίποτα να συμπληρωθεί')); drw.classList.remove('on'); if(after)after(); return; }
       let medDone=null;    
-      if(wantMed&&!MED.x.idi){
+      if(plan.write){
         const w=await seMedCall(eid,MED.qf,RW,MED.sha);
-        if(w.err){ const m=seMedErr(w.err), box=document.createElement('div'); box.setAttribute('role','alert');
-          box.style.cssText='margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--badbg);color:var(--bad);font-weight:600';
-          box.textContent=m; const dp=$('drwp'); if(dp)dp.prepend(box); toast(m); if(after)after(); return; }
-        medDone=w.ok;
+        if(w.err)medSkip=w.err; else medDone=w.ok;    
       }
       if($('seCt').checked){
         const rows=[];
@@ -27999,6 +28061,11 @@ function seImport(eid,pool,after){
       }
       saveCache();
       RW=null; { const f1=$('seF'); if(f1)f1.value=''; const f2=$('seT'); if(f2)f2.value=''; }    
+      if(medSkip){    
+        const m=seMedSkipNote(medSkip), box=document.createElement('div'); box.setAttribute('role','alert');
+        box.style.cssText='margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--badbg);color:var(--bad);font-weight:600';
+        box.textContent=n+' '+t('συμμετοχές')+' · '+t('επαφές ενημερώθηκαν')+'. '+m; const dp=$('drwp'); if(dp)dp.prepend(box);
+        toast(m); if(after)after(); return; }
       if(medDone){ seMedDoneShow(medDone); toast(t('Τα ιατρικά γράφτηκαν')+(extra?' · '+extra:'')); if(after)after(); return; }
       toast(n+' '+t('συμμετοχές')+(wantMed&&MED.x.idi?' · '+t('τα ιατρικά του αρχείου είχαν ήδη καταχωριστεί'):'')+' · '+t('επαφές ενημερώθηκαν')+(extra?' · '+extra:''));
       drw.classList.remove('on'); if(after)after();
