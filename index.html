@@ -1834,7 +1834,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 20:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 21:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22719,6 +22719,8 @@ function efDocs(e,parts){
     ${b('efdAll',t('Όλοι — επικοινωνία και συμμετοχή'),t('Όπως το παλιό «Όλοι»: συμμετοχή Full / Part, φανέλα, κηδεμόνες με τηλέφωνα — και το επιτελείο. Χωρίς ιατρικά.'))}
     ${b('efdLead','Για τους βαθμοφόρους','Ανά ενωμοτία / εξάδα: λίστα κλήσεων της δράσης και τι να προσέξουμε.')}
     ${b('efdTeam',t('Α4 ανά υπεύθυνο εξάδας / ενωμοτίας / ομίλου'),t('Μία σελίδα ανά ομάδα, με χρώμα: τηλέφωνα κλήσης και τι να προσέξουμε (αλλεργίες, διατροφή) — για να δοθεί στον υπεύθυνο της ομάδας.'))}
+    <div style="display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)"><div style="flex:1;min-width:0"><b style="font-size:13.5px">${t('Excel — οι έξι λίστες (ZIP)')}</b><div class="dim" style="font-size:12px;margin-top:2px">${t('Όλοι, Διατροφή, Ύπνος, Ιατρικά Γενικά, Ιατρικά Ειδικά, Διάφορα — ξεχωριστά αρχεία, με το Επιτελείο πρώτο και έλεγχο πεδίων.')}</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sm p" id="efdXlsD">${ic('down',14)} ${t('Λήψη Excel')}</button></div></div>
     ${b('efdStaff',t('Επιτελείο'),t('Μία λίστα: πρώτα οι ανιχνευτές-βοηθοί, μετά οι βαθμοφόροι — με τηλέφωνο, συμμετοχή και διατροφή.'))}
     ${b('efdKit','Κουζίνα','Μόνο διατροφή — η κουζίνα δεν βλέπει ιατρικά.')}
     ${b('efdFa',t('Του πρώτου βοηθού'),t('Ομάδα αίματος, αντιτετανικό, ιατρικά και θέματα ύπνου — μόνο για τον υπεύθυνο υγείας.'))}
@@ -22743,6 +22745,7 @@ function efDocsWire(e,parts){
   on('efdFa',x=>efdFirstAid(e,parts,x));
   on('efdLeadD',x=>efdLeadersPdf(e,parts,x));
   on('efdKitD',x=>efdKitchenPdf(e,parts,x));
+  on('efdXlsD',x=>efdListsXlsx(e,parts,x));    
   on('efdStaffD',x=>efdStaffPdf(e,parts,x));    
   on('efdTeamD',x=>efdTeamPdf(e,parts,x));    
   on('efdTeam',x=>efdTeamPdf(e,parts,x));
@@ -22905,8 +22908,8 @@ async function efdPdf(e,name,docTitle,sections,landscape){
 const edpName=(e,what)=>efdCaps(efdTitle(e))+' - '+what;
 const edpNoTxt=n=>n?t('Προσοχή:')+' '+t('για')+' '+n+' '+(n===1?t('άτομο'):t('άτομα'))+' '+t('δεν δόθηκαν στοιχεία υγείας (δικαίωμα ή Ν.91) — ρώτησε τον Α.Σ.'):'';
 const edpWho=x=>({s:[x.p.last_name,x.p.first_name].filter(Boolean).join(' '),b:true});
-async function edpRun(btn,fn){ const lbl=btn?btn.innerHTML:''; if(btn)btn.disabled=true;
-  try{ await fn(); toast(t('Κατέβηκε το PDF')); }catch(err){ console.warn('edp',err); toast(t('Δεν βγήκε το PDF:')+' '+((err&&err.message)||err)); }
+async function edpRun(btn,fn,msg){ const lbl=btn?btn.innerHTML:''; if(btn)btn.disabled=true;
+  try{ await fn(); toast(msg||t('Κατέβηκε το PDF')); }catch(err){ console.warn('edp',err); toast(t('Δεν βγήκε το PDF:')+' '+((err&&err.message)||err)); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=lbl; } } }
 
 function efdAllSheets(e,d){
@@ -23029,8 +23032,12 @@ function efdKitchenSheets(e,list,med,k,l,noTxt){
       +(main.length?'':'\n'+t('Κανείς δεν δήλωσε κάτι για τη διατροφή.')),
     cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Ονοματεπώνυμο'),w:22},{h:t('Διατροφή'),w:73}],
     rows:main.map((y,i)=>[String(i+1),nm(y),y.d.join('\n')])}];
-  if(eats.length)S.push({h:t('Πόσο τρώνε (λιγότερο / περισσότερο)'),cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Ονοματεπώνυμο'),w:22},{h:t('Πόσο τρώει'),w:73}],
-    rows:eats.map((y,i)=>[String(i+1),nm(y),y.d.map(z=>z.replace(/^Τρώει:\s*/,'')).join('\n')])});
+  if(eats.length){
+    const nmS=y=>[y.x.p.last_name,y.x.p.first_name].filter(Boolean).join(' '), less=[], more=[], other=[];
+    eats.forEach(y=>{ const z=y.d.join(' '); (/λιγ/i.test(z)?less:/περισσ|πολύ/i.test(z)?more:other).push(nmS(y)); });
+    const cs=[[t('Τρώει λιγότερο'),less],[t('Τρώει περισσότερο'),more]].concat(other.length?[[t('Τρώει — άλλο'),other]]:[]), w=Math.floor(100/cs.length);
+    S.push({h:t('Πόσο τρώνε'),cols:cs.map(c=>({h:c[0],w})),rows:Array.from({length:Math.max(...cs.map(c=>c[1].length))},(_,k)=>cs.map(c=>c[1][k]||''))});
+  }
   if(noTxt)S[S.length-1].after=noTxt;
   return S;
 }
@@ -23056,6 +23063,81 @@ function efdFirstAidPdf(e,parts,btn){ return edpRun(btn,async()=>{
   const S=efdFirstAidSheets(e,r.list,r.med); S[S.length-1].after=edpNoTxt(r.no);
   await efdPdf(e,edpName(e,t('Του πρώτου βοηθού')),t('Του πρώτου βοηθού — ιατρικά'),S,false);
 }); }
+const efdYN=v=>v?t('Ναι'):t('Όχι');
+function efdListTables(e,g,med){
+  const M=x=>med[x.p.id]||{}, hs=(g.helpers||[]).slice().sort((a,b)=>sortByName(a.p,b.p)), ls=(g.leds||[]).slice().sort(dlStaffCmp(e)), staff=hs.concat(ls);
+  const kids=(g.kids||[]).slice().sort((a,b)=>sortByName(a.p,b.p));
+  const col=(h,w,c)=>({h,w,c});
+  const NM=[col(t('Α/Α'),5,1),col(t('Επίθετο'),18),col(t('Όνομα'),14)];
+  const any=(m,ks)=>ks.some(k=>!!m[k]);
+  const medSpecKeys=['chronic','on_medication','allergy_drugs','allergy_other','mental','recent_illness','other_medical','mobility'];
+  const defs=[
+    {key:'all',title:t('Όλοι'),landscape:true,cols:NM.concat([col(t('Καθήκον'),18),col(t('Συμμετοχή'),16),col(t('Φανέλα'),8,1),col(t('Δικό του τηλέφωνο'),15),
+        ...[1,2,3].flatMap(k=>[col(t('Κηδεμόνας ')+k,22),col(t('Τηλέφωνο ')+k,15),col('Email '+k,26)])]),
+      has:null,cells:(x,m,st)=>{ const g3=MEL.callListOf(x.p,e.id).filter(l=>l.n&&l.t!=='self').slice(0,3);
+        return [[x.pa.role,x.pa.role2].filter(Boolean).join(' · '),efdPartTxt(e,x.pa).s,x.p.shirt_size||'',st?ctFmt(MEL.ctCallNo(x.p.id)||x.p.phone||''):'',
+          ...[0,1,2].flatMap(k=>{ const l=g3[k]; return l?[[l.rel,l.name].filter(Boolean).join(' · '),ctFmt(l.n),l.mail||'']:['','','']; })]; }},
+    {key:'diet',title:t('Διατροφή'),landscape:true,cols:NM.concat([col(t('Αλλεργίες - Τροφές;'),12,1),col(t('Αλλεργίες - Τροφές'),28),col(t('Πόσο τρώει'),16),col(t('Νηστεύει'),10,1),col(t('Διαιτητικές;'),12,1),col(t('Διαιτητικές'),28)]),
+      has:m=>efdMed(m).diet.length>0,cells:(x,m)=>[efdYN(m.allergy_food),m.allergy_food_txt||'',m.eats_amount||'',m.fasting?t('Ναι'):'',efdYN(m.dietary_yes||(!!m.dietary&&m.dietary_yes!==false)),m.dietary||'']},
+    {key:'sleep',title:t('Ύπνος'),landscape:true,cols:NM.concat([col(t('Σκοτάδι'),10,1),col(t('Μιλά (Ύπνος)'),12,1),col(t('Ουρεί (Ύπνος)'),12,1),col(t('Τουαλέτα Βράδυ;'),12,1),col(t('Τουαλέτα Βράδυ'),22),col(t('Άλλο (Ύπνος)'),12,1),col(t('Άλλο Ύπνου'),28)]),
+      has:m=>efdMed(m).sleep.length>0,cells:(x,m)=>[efdYN(m.fears_dark),efdYN(m.sleep_talks),efdYN(m.sleep_wets),efdYN(m.night_toilet),m.night_toilet_txt||'',efdYN(m.sleep_other),m.sleep_other_txt||'']},
+    {key:'medgen',title:t('Ιατρικά Γενικά'),landscape:false,cols:NM.concat([col(t('Ομ. Αίματος'),12,1),col(t('Αντιτετανικό;'),14,1),col(t('Αντίτ. μέχρι'),14,1)]),
+      has:null,cells:(x,m)=>[m.blood_type||'',m.tetanus===false?t('Όχι'):m.tetanus===true?t('Ναι'):'',m.tetanus_until?fdate(m.tetanus_until):'']},
+    {key:'medspec',title:t('Ιατρικά Ειδικά'),landscape:true,cols:NM.concat([col(t('Χρόνιες παθήσεις;'),11,1),col(t('Παθήσεις'),24),col(t('Ψυχικές;'),9,1),col(t('Ψυχικές'),24),col(t('Φάρμ. Αγωγή;'),10,1),col(t('Φάρμακα'),24),
+        col(t('Αλλεργίες - Φάρμακα;'),11,1),col(t('Αλλεργίες - Φάρμακα'),22),col(t('Αλλεργίες - Άλλο;'),11,1),col(t('Αλλεργίες - Άλλο'),22),col(t('Πρόσφατο πρόβλημα;'),11,1),col(t('Πρόσφατο πρόβλημα'),22),col(t('Άλλα Ιατρικά;'),10,1),col(t('Άλλα Ιατρικά'),24),col(t('Κινητικότητα'),20)]),
+      has:m=>any(m,medSpecKeys),cells:(x,m)=>[efdYN(m.chronic),m.conditions||'',efdYN(m.mental),m.mental_txt||'',efdYN(m.on_medication),m.medication||'',efdYN(m.allergy_drugs),m.allergy_drugs_txt||'',
+        efdYN(m.allergy_other),m.allergy_other_txt||'',efdYN(m.recent_illness),m.recent_illness_txt||'',efdYN(m.other_medical),m.notes||'',m.mobility||'']},
+    {key:'misc',title:t('Διάφορα'),landscape:false,cols:NM.concat([col(t('Μέγεθος Φανέλας'),12,1),col(t('Πρώτη Κατασκήνωση'),14,1),col(t('Κουράζεται;'),12,1),col(t('Οξύθυμος'),12,1),col(t('Δυσκοιλιότητα'),14,1)]),
+      has:m=>efdMed(m).misc.length>0,cells:(x,m)=>[x.p.shirt_size||'',efdYN(m.first_camp),efdYN(m.tires),efdYN(m.irritable),efdYN(m.constipation)]}];
+  const out={};
+  defs.forEach(d=>{
+    const build=(list,st)=>list.filter(x=>!d.has||d.has(M(x))).map((x,i)=>({cells:[String(i+1),x.p.last_name||'',x.p.first_name||'',...d.cells(x,M(x),st)]}));
+    const rows=[]; const s1=build(staff,true);
+    if(s1.length){ rows.push({sec:t('Επιτελείο')}); rows.push(...s1); }
+    rows.push({sec:t('Μέλη')}); rows.push(...build(kids,false));
+    out[d.key]={title:d.title,landscape:d.landscape,cols:d.cols,rows};
+  });
+  return out;
+}
+const EFD_FIELDS=()=>[['blood_type',t('Ομ. αίματος')],['tetanus',t('Αντιτετανικό')],['allergy_food',t('Αλλεργίες τροφών')],['eats_amount',t('Πόσο τρώει')],['dietary',t('Διατροφή')],['chronic',t('Χρόνιες παθήσεις')],
+  ['on_medication',t('Φαρμακευτική αγωγή')],['allergy_drugs',t('Αλλεργίες φαρμάκων')],['allergy_other',t('Άλλες αλλεργίες')],['mental',t('Ψυχικές')],['fears_dark',t('Φοβάται το σκοτάδι')],['sleep_wets',t('Ουρεί στον ύπνο')],['first_camp',t('Πρώτη κατασκήνωση')],['tires',t('Κουράζεται')]];
+function efdFieldCheck(list,med){
+  const W=[], recs=list.map(x=>med[x.p.id]).filter(Boolean), no=list.length-recs.length;
+  if(no)W.push(t('Για')+' '+no+' '+(no===1?t('άτομο'):t('άτομα'))+' '+t('δεν δόθηκαν στοιχεία υγείας (δικαίωμα ή Ν.91) — τα κελιά τους θα είναι κενά.'));
+  if(!recs.length)W.push(t('Δεν διαβάστηκε κανένα στοιχείο υγείας — ΜΗΝ εκτυπωθεί χωρίς έλεγχο.'));
+  else EFD_FIELDS().forEach(([k,l])=>{ if(recs.every(m=>m[k]===undefined||m[k]===null))W.push(t('Το πεδίο')+' «'+l+'» '+t('δεν υπάρχει σε κανένα άτομο — έλεγξε τη φόρμα πριν την εκτύπωση.')); });
+  return W;
+}
+const efdXSafe=v=>typeof v==='string'&&/^[=@]/.test(v)?"'"+v:v;
+function efdXlsxBook(X,T,W,e){
+  const wb=new X.Workbook(); wb.creator='e76'; const ws=wb.addWorksheet(String(T.title).slice(0,31),{pageSetup:{orientation:T.landscape?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9}});
+  const nc=T.cols.length; ws.columns=T.cols.map(c=>({width:c.w||14}));
+  let r=1; const bar=(txt,bold,fill,color)=>{ const row=ws.getRow(r++); row.getCell(1).value=efdXSafe(txt); ws.mergeCells(row.number,1,row.number,nc);
+    row.getCell(1).font={bold:!!bold,size:bold?12:10,color:color?{argb:color}:undefined}; if(fill)row.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:fill}}; };
+  if(W.length){ bar(t('ΛΑΘΟΣ ΠΕΔΙΑ — ΝΑ ΜΗΝ ΕΚΤΥΠΩΘΕΙ ΧΩΡΙΣ ΕΛΕΓΧΟ!'),true,'FFFFC7CE','FF9C0006'); W.forEach(w=>bar(w,false,'FFFFC7CE','FF9C0006')); }
+  bar(T.title+' — '+(e.title||'')+(e.event_date?' · '+efdWhen(e):''),true);
+  const h=ws.getRow(r++); T.cols.forEach((c,i)=>{ const cell=h.getCell(i+1); cell.value=c.h; cell.font={bold:true}; cell.alignment={wrapText:true,vertical:'middle',horizontal:c.c?'center':'left'};
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEBEBEB'}}; cell.border={bottom:{style:'thin'}}; });
+  const hdr=h.number; ws.views=[{state:'frozen',ySplit:hdr}];
+  T.rows.forEach(x=>{ if(x.sec){ bar(x.sec,true,'FFD9D9D9'); return; }
+    const row=ws.getRow(r++); x.cells.forEach((v,i)=>{ const cell=row.getCell(i+1); cell.value=efdXSafe(v); cell.alignment={wrapText:true,vertical:'top',horizontal:T.cols[i]&&T.cols[i].c?'center':'left'}; }); });
+  if(ws.pageSetup)ws.pageSetup.printTitlesRow=hdr+':'+hdr;
+  return wb;
+}
+async function efdListsXlsx(e,parts,btn){ return edpRun(btn,async()=>{
+  const live=parts.filter(x=>efdLive(x.pa)), isH=x=>typeof efHelper==='function'&&efHelper(x);
+  const helpers=live.filter(x=>isH(x)), leds=efdLeds(parts), kids=efdKids(parts).filter(x=>!isH(x));
+  const everyone=[...new Map(helpers.concat(leds,kids).map(x=>[x.p.id,x])).values()]; if(!everyone.length)throw new Error(t('Κανένας δηλωμένος ακόμα'));
+  const r=await efdMedMany(everyone.map(x=>x.p.id),dv('φάκελος δράσης · λίστες Excel'),(i,n)=>{ if(btn)btn.textContent=t('Ιατρικά')+' '+i+'/'+n+'…'; },e.id);
+  const T=efdListTables(e,{kids,helpers,leds},r.med), W=efdFieldCheck(everyone,r.med);
+  await Promise.all([loadScript('lib/exceljs-4.4.0.min.js'),loadScript('lib/jszip-3.10.1.min.js')]);
+  const zip=new JSZip();
+  for(const k of Object.keys(T)){ const wb=efdXlsxBook(ExcelJS,T[k],k==='all'?W.filter(w=>!/Ομ\. αίματος|Αντιτετανικό/.test(w)):W,e);
+    zip.file(edpName(e,T[k].title)+'.xlsx',await wb.xlsx.writeBuffer()); }
+  const blob=await zip.generateAsync({type:'blob'}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=edpName(e,t('Λίστες Excel'))+'.zip';
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },5000);
+  if(W.length)toast(t('Προσοχή:')+' '+W[0]+(W.length>1?' (+'+(W.length-1)+')':''));
+},t('Κατέβηκε το ZIP με τα Excel')); }
 const ATT_COLS=17;    
 const attKey=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
   .replace(/ς/g,'σ').split(/[\s\-]+/).filter(Boolean).sort().join(' ');
