@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 01:13'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 10:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2458,8 +2458,9 @@ function banner(){
 
 async function pageAll(table, cols, step=1000, cap=50000, order=null){
   const out=[];
+  const ords=!order?[]:Array.isArray(order)?order:[order];
   for(let from=0; from<cap; from+=step){
-    let q=sb.from(table).select(cols); if(order)q=q.order(order);
+    let q=sb.from(table).select(cols); for(const o of ords)q=Array.isArray(o)?q.order(...o):q.order(o);
     const {data,error}=await q.range(from, from+step-1);
     if(error)return {data:out.length?out:null, error};
     out.push(...(data||[]));
@@ -2498,7 +2499,7 @@ async function loadAll(){
     pageAll('attendance','session_id,person_id,status'),
     sb.from('certifications').select('person_id,sexoxarto_date,sexoxarto_expiry').limit(2000),
     sb.from('care_links').select('member_id').limit(0),
-    sb.from('v_person_dob').select('person_id,dob').limit(2000),
+    pageAll('v_person_dob','person_id,dob',1000,50000,'person_id'),    
     sb.from('events').select('id,title,event_date,end_date,type,section,scout_year,place,arxigos_id,eidos_spk,tmima_spk,arrive_time,depart_time,return_time,release_time,transport,march_days,sail_days,sea_other,partners,dd_holder_id,sfh_id,notes,fee,nights,tags,bold,hours,sat_slot,ext_id,print_off,hidden,owner_section,klimakio_id,source,signup_extended_to,signup_extended_announced,signup_closed_at,form_url,signup_opens,signup_closes,signup_note,signup_notify,signup_remind,invitees,gcal,prog_kind,stage,planned_reqs,est_count,info_url,fa_order,staff_order,parents_transport,no_folder').order('event_date').limit(3000),
     pageAll('participations','id,person_id,event_id,status,role,role2,days,is_staff,paid,channel,declared_at,declared_by,qf_entry,qf_form,corrected_at,as_ok_at',1000,50000,'id'),        
     sb.from('v_medical_presence').select('*').limit(2000),
@@ -2511,10 +2512,10 @@ async function loadAll(){
     sb.from('reports').select('*').limit(2000),
     sb.from('org_roles').select('*').order('seq'),
     sb.from('person_hats').select('*').limit(2000),
-    sb.from('service_history').select('*').limit(3000),
+    pageAll('service_history','*',1000,50000,'id'),    
     sb.from('honors').select('*').limit(500),
     sb.from('person_emails').select('*').limit(2000),
-    sb.from('documents').select('*').order('uploaded_at',{ascending:false}).limit(4000),
+    pageAll('documents','*',1000,50000,[['uploaded_at',{ascending:false}],'id']),    
     sb.from('person_certificates').select('*').limit(4000),
     sb.from('certificate_types').select('*'),
     sb.from('vehicles').select('*').limit(500),
@@ -2547,7 +2548,7 @@ async function loadAll(){
     sb.from('synod_decision').select('*').limit(3000),
     sb.from('ka_progress').select('*').limit(3000),
     sb.from('ka_signature').select('*').limit(3000),
-    sb.from('requirement_catalog').select('*,progression_catalog!stage_catalog_id(label,ordinal)').limit(1000),
+    pageAll('requirement_catalog','*,progression_catalog!stage_catalog_id(label,ordinal)',1000,50000,'id'),    
     sb.from('progression_catalog').select('*').limit(500),
     sb.from('member_progress').select('id,person_id,label,item_kind,date,catalog_id,date_approx,date_source,via,date_precision,decision_id').limit(20000),
     sb.from('member_requirement').select('id,person_id,requirement_id,date,date_approx,scout_year,via,awarded_by,self_declared,date_precision,pigi,kane_signed,synod_id,group_key').limit(20000),

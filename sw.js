@@ -58,12 +58,14 @@ self.addEventListener('fetch', e => {
 
 /* ══ ΕΙΔΟΠΟΙΗΣΕΙΣ (28/10) ══ Τις στέλνει η push-send· το κείμενο είναι σύντομο και χωρίς ευαίσθητα —
    τα στοιχεία τα βλέπει ο χρήστης μέσα στην e76, αφού συνδεθεί. Πάτημα = άνοιγμα της e76 στη σωστή οθόνη. */
+/* 27/11 (Andreas: «η ειδοποίηση για τα Δώρα με πάει στην αρχική»): η βάση στέλνει url «./» για το είδος «forma»
+   (νέα δέσμευση Δώρων). Εδώ το πάμε στην οθόνη φορμών (formcat), όπου ζει η διαχείριση των Δώρων. */
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'e76', body: e.data ? e.data.text() : '' }; }
   e.waitUntil(self.registration.showNotification(d.title || 'e76', {
     body: d.body || '', tag: d.tag || 'e76', icon: 'icon-192.png', badge: 'icon-192.png',
-    data: { url: d.url || './' } }));
+    data: { url: (d.url && d.url !== './') ? d.url : (d.tag === 'forma' ? './formcat' : './') } }));
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
