@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 12:21'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 14:54'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -5181,6 +5181,9 @@ const validTxt=m=>!m?'':(m%12===0
 function addDays(iso,n){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return isoLocal(d); }
 const motFreeTill=v=>{const y=+((v||{}).year)||0; return y>=1990?(y+3)+'-12-31':null;};
 const motFree=(v,onDate)=>{const u=motFreeTill(v); return !!u&&String(onDate||todayISO())<=u;};
+function certTypeLabel(ct){ return ct&&ct.code===dv('Ν91') ? ct.name+' · '+t('ή Λευκό Ποινικό Μητρώο') : ((ct&&ct.name)||''); }
+function certPoinikoMsg(){ return t('Το λευκό ποινικό μητρώο καταχωρείται ως Ν.91 (ίδια ισχύς) — άλλαξα τον τύπο. Έλεγξε και ξαναπάτα το κουμπί.'); }
+function certIsPoiniko(code,label){ return code===dv('ΑΛΛΟ') && /ποινικ|μητρ[ωώ]ο|criminal|record/i.test(String(label||'')); }
 function certAuto(t){ return !!t && (t.date_basis==='κυκλοφορία' || (t.date_basis!=='λήξη' && !!t.validity_months)); }
 function certExpiry(t, issued){
   if(!t||!issued) return {exp:null};
@@ -5391,7 +5394,7 @@ function certsHTML(p){
     ${old.length?`<div class="dim" style="font-size:11.5px;margin-top:6px">＋ ${old.length} ${esc(old.length===1?t('παλιό'):t('παλιά'))} — ${esc(t('στα «Παλιά & Άλλα Αρχεία»'))}</div>`:''}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--acc)">＋ Νέο πιστοποιητικό</summary>
       <div style="display:grid;gap:7px;margin-top:9px">
-        <select id="pcType">${certTypesFor(p).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')
+        <select id="pcType">${certTypesFor(p).map(t=>`<option value="${esc(t.code)}">${esc(certTypeLabel(t))}</option>`).join('')
           ||'<option value="">— κανένα διαθέσιμο —</option>'}</select>
         ${ ''}
         <div role="note" style="font-size:13px;line-height:1.5;padding:8px 10px;border-radius:var(--rs);background:var(--warnbg);color:var(--warn);border:1px solid var(--warn)">
@@ -5484,22 +5487,22 @@ function wireCerts(p,after){
     $('pcLabel').placeholder=ct.label_hint||'Περιγραφή (προαιρετικά)';
     if(!$('pcLabelL'))document.body.insertAdjacentHTML('beforeend','<datalist id="pcLabelL"></datalist>');
     $('pcLabelL').innerHTML=ct.code===dv('Ν91')?[t('Λευκό Ποινικό Μητρώο — '),t('Αντίστοιχο πιστοποιητικό — ')].map(x=>`<option value="${esc(x)}">`).join(''):'';
-    const byExp=ct.date_basis==='λήξη', auto=certAuto(t);
+    const byExp=ct.date_basis==='λήξη', auto=certAuto(ct);
     $('pcIssL').textContent = byExp?'Ημ. έκδοσης (προαιρετικά)':'Ημ. έκδοσης';
     $('pcOvL').style.display = auto?'flex':'none';
     ex.disabled=false;
     if(auto&&!ov.checked){
-      const ce=certExpiry(t, iss.value); ex.value = ce.exp||'';
+      const ce=certExpiry(ct, iss.value); ex.value = ce.exp||'';
       $('pcExpW').style.display='none';
-      $('pcHint').innerHTML = 'Η λήξη υπολογίζεται αυτόματα: <b>'+esc(certRuleTxt(t))+'</b> ('+esc(ct.name)+').'
+      $('pcHint').innerHTML = 'Η λήξη υπολογίζεται αυτόματα: <b>'+esc(certRuleTxt(ct))+'</b> ('+esc(ct.name)+').'
         + (iss.value ? ' Λήγει <b>'+esc(fdate(ex.value))+'</b>'+(ce.approx?' (περίπου — η προθεσμία δεν έχει ανακοινωθεί ακόμη)':'')+'.' : ' Γράψε την ημερομηνία έκδοσης.');
     }else{
       $('pcExpW').style.display='flex';
-      if(auto&&ov.checked&&!ex.value&&iss.value) ex.value=certExpiry(t, iss.value).exp||'';
+      if(auto&&ov.checked&&!ex.value&&iss.value) ex.value=certExpiry(ct, iss.value).exp||'';
       $('pcExpL').textContent = auto ? 'Ημ. λήξης · όπως γράφει το χαρτί' : 'Ημ. λήξης';
       $('pcHint').textContent = byExp
         ? 'Γράψε τη λήξη που τυπώνει το χαρτί.'
-        : auto ? 'Γράφεις τη λήξη του χαρτιού αντί για την αυτόματη ('+certRuleTxt(t)+').'
+        : auto ? 'Γράφεις τη λήξη του χαρτιού αντί για την αυτόματη ('+certRuleTxt(ct)+').'
                : 'Αυτός ο τύπος δεν έχει σταθερή διάρκεια — γράψε ό,τι λέει το χαρτί.';
     }
   };
@@ -5514,6 +5517,7 @@ function wireCerts(p,after){
     $('pcIss').oninput=upd; $('pcIss').onchange=upd; $('pcOv').onchange=upd; upd(); }
   const ad=$('pcAdd'); if(ad)ad.onclick=async()=>{
     const t=ctype($('pcType').value);
+    if(certIsPoiniko(t.code,$('pcLabel').value)){ $('pcType').value=dv('Ν91'); $('pcType').onchange(); return toast(certPoinikoMsg()); }
     let exp=$('pcExp').value||null, iss=$('pcIss').value||null;
     const autoExp=certAuto(t)&&!$('pcOv').checked;
     if(autoExp)exp=iss?certExpiry(t,iss).exp:null;
@@ -15978,7 +15982,7 @@ function mePieces(){
         ${
 ''}
         <label>Τι<select id="cT">${(D.ct||[]).filter(t=>!VEH_TYPES.includes(t.code))
-          .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(t=>`<option value="${esc(t.code)}">${esc(t.name)}</option>`).join('')}</select></label>
+          .sort((a,b)=>(a.seq||0)-(b.seq||0)).map(t=>`<option value="${esc(t.code)}">${esc(certTypeLabel(t))}</option>`).join('')}</select></label>
         <label>Λεπτομέρεια<input id="cL" placeholder="π.χ. κατηγορία B"></label>
         <label>Εκδόθηκε<input type="date" id="cI"></label>
         <label>Λήγει<input type="date" id="cE"></label>
@@ -16097,6 +16101,7 @@ function mePieces(){
     if(f)Promise.resolve(ocrAssist(f,{box:$('cOcr'),type:ctype($('cT').value),person:p,fill:{iss:$('cI'),exp:$('cE')}})).then(x=>{cOcr=x}).catch(()=>{}); };
   const ca=$('cAdd'); if(ca)ca.onclick=async()=>{
     const type=$('cT').value, lab=$('cL').value.trim(), iss=$('cI').value, exp=$('cE').value, f=$('cF').files[0];
+    if(certIsPoiniko(type,lab)){ $('cT').value=dv('Ν91'); return cm(certPoinikoMsg()); }
     if(!exp&&!iss)return cm('Βάλε τουλάχιστον μία ημερομηνία.');
     if(!dateSane(iss)||!dateSane(exp))return cm('Η ημερομηνία δεν φαίνεται σωστή — έλεγξε τη χρονιά.');
     if(!f&&!await uiAsk('Χωρίς αρχείο δεν μπορεί να επιβεβαιωθεί — θα μείνει σε εκκρεμότητα.\n\nΝα συνεχίσω;'))return;
