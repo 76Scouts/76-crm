@@ -1802,7 +1802,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 10:53'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 11:43'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -2047,6 +2047,8 @@ function mfaNagShow(){ if(!MFA_NAG||$('mfaNag'))return; const a=$('app'); if(!a)
   d.innerHTML=`<span>🔐 ${esc(t('Ενεργοποίησε τον δεύτερο παράγοντα (MFA) ως τις {d} — {n} μέρες ακόμη.',{d:fdate(MFA_NAG.dl),n:MFA_NAG.days}))}</span>
     <button class="btn p sm" id="mfaNagGo">${esc(t('Ενεργοποίηση'))}</button><button class="btn gh sm" id="mfaNagX" aria-label="${esc(t('Κλείσιμο'))}">✕</button>`;
   document.body.appendChild(d);
+  const rm=d.remove.bind(d); d.remove=()=>{ rm(); document.body.style.paddingBottom=''; };
+  document.body.style.paddingBottom=((d.offsetHeight||48)+28)+'px';
   $('mfaNagX').onclick=()=>d.remove();
   $('mfaNagGo').onclick=()=>{ d.remove(); mfaOpen(); };
 }
@@ -13140,6 +13142,34 @@ function ovStatus(pid){
   return {t:nx.st.label, n:nx.n, tot:nx.tot, ready:nx.tot>0&&nx.n===nx.tot, nx};
 }
 
+const ovPrintable=()=>PSEC===dv('Αγέλη')||PSEC===dv('Ομάδα');
+const ovMissing=pid=>{ const nx=nextStep(pid,PSEC); if(!nx)return [];
+  return stageReqs(PSEC,nx.st).filter(r=>!r.parent_id&&!(r.rule&&r.rule.auto)&&!reqDone(pid,r.id)); };
+const OV_TD='border:1px solid currentColor;padding:5px 6px;font-size:11px;vertical-align:top';
+function ovSheetHTML(g,kids){
+  const ks=kids.filter(k=>ovGroup(k)===g);
+  const head=`${esc(subgOf(PSEC))}: ${esc(g||t('χωρίς'))}`;
+  return `<div class="fpage" style="min-height:auto">${letterhead(t('Φύλλο προόδου')+' · '+(SECWORD[PSEC]||PSEC), head)}
+    <div style="font-size:11px;margin:6px 0 8px">${t('Ημερομηνία')}: ____________ &nbsp; ${t('Εξέτασε')}: ______________________</div>
+    <table style="width:100%;border-collapse:collapse">
+      <tr><th style="${OV_TD};text-align:left">${t('Όνομα')}</th><th style="${OV_TD};text-align:left">${t('Στάδιο')}</th>
+        <th style="${OV_TD};text-align:left">${t('Λείπουν (κωδικοί)')}</th><th style="${OV_TD};width:28%;text-align:left">${t('Πέρασε σήμερα')}</th></tr>
+      ${ks.map(k=>{ const s=ovStatus(k.id), m=ovMissing(k.id);
+        return `<tr><td style="${OV_TD}">${esc(nm(k))}</td><td style="${OV_TD}">${esc(s.t)}${s.tot?' · '+s.n+'/'+s.tot:''}</td>
+          <td style="${OV_TD}">${m.map(r=>esc(String(reqNo(r))) ).join(', ')||(s.ready?t('έτοιμος για απονομή'):'—')}</td><td style="${OV_TD}">&nbsp;</td></tr>`}).join('')}
+    </table></div>`;
+}
+function ovReadyHTML(kids){
+  const rows=kids.map(k=>({k,s:ovStatus(k.id)})).filter(x=>x.s.ready)
+    .sort((a,b)=>ovGroup(a.k).localeCompare(ovGroup(b.k),'el')||nm(a.k).localeCompare(nm(b.k),'el'));
+  return `<div class="fpage" style="min-height:auto">${letterhead(t('Έτοιμοι για απονομή')+' · '+(SECWORD[PSEC]||PSEC), fdate(todayISO()))}
+    ${rows.length?`<table style="width:100%;border-collapse:collapse">
+      <tr><th style="${OV_TD};text-align:left">${t('Όνομα')}</th><th style="${OV_TD};text-align:left">${esc(subgOf(PSEC))}</th>
+        <th style="${OV_TD};text-align:left">${t('Απονομή')}</th></tr>
+      ${rows.map(x=>`<tr><td style="${OV_TD}">${esc(nm(x.k))}</td><td style="${OV_TD}">${esc(ovGroup(x.k)||'—')}</td><td style="${OV_TD}">${esc(x.s.t)}</td></tr>`).join('')}
+    </table>`:`<p style="font-size:12px">${t('Κανείς δεν είναι έτοιμος για απονομή.')}</p>`}</div>`;
+}
+
 function overviewBody(){
   const kids=opKids(), koin=PSEC==='Κοινότητα';
   const groups=[...new Set(kids.map(ovGroup))].sort((a,b)=>(a?0:1)-(b?0:1)||a.localeCompare(b,'el'));
@@ -13167,6 +13197,9 @@ function overviewBody(){
       <div class="muted" style="font-size:12.5px;margin-top:5px">Πού βρίσκεται ο καθένας ανά ${esc(subgOf(PSEC).toLowerCase())}, ποιοι είναι έτοιμοι για απονομή και τι περιμένει.
         ${koin?'Στην Κοινότητα δεν μετράμε ποσοστά — φαίνεται πού βρίσκεται ο καθένας.':''}</div></div>
     ${queues}
+    ${ovPrintable()?`<div class="card pad" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="dim" style="font-size:12.5px;flex:1;min-width:200px">${t('Για το Σάββατο: «Φύλλο» σε κάθε ομάδα παιδιών, με ό,τι λείπει στον καθένα· και η λίστα για την τελετή.')}</span>
+      <button class="btn sm" id="ovReadyPrint">${t('Λίστα απονομών')}</button></div>`:''}
     ${groups.map(g=>ovCard(g,kids)).join('')||'<div class="uc"><h3>Κανένα ενεργό μέλος</h3></div>'}
     <div class="sec"><h3>Απαίτηση → ποιοι</h3></div>
     <div class="card pad" style="margin-bottom:12px">
@@ -13177,6 +13210,8 @@ function overviewBody(){
     ${isAdminUI()?ovAdminHTML(kids):''}`;
 
   document.querySelectorAll('[data-ovgo]').forEach(b=>b.onclick=()=>ovGoto(b.dataset.ovgo,b.dataset.ovm||null));
+  document.querySelectorAll('[data-ovprint]').forEach(b=>b.onclick=()=>openPrint(t('Φύλλο προόδου')+' · '+(b.dataset.ovprint||''), ovSheetHTML(b.dataset.ovprint,kids)));
+  if($('ovReadyPrint'))$('ovReadyPrint').onclick=()=>openPrint(t('Έτοιμοι για απονομή'), ovReadyHTML(kids));
   $('ovReq').onchange=e=>{OVREQ=e.target.value; $('ovWho').innerHTML=ovWhoHTML(kids)};
   awWire(kids);
 }
@@ -13270,7 +13305,8 @@ function ovCard(g,kids){
     return `<div class="card pad" data-ovg="${esc(g)}" style="margin-bottom:10px">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <b style="font-size:14px">${esc(g||'Χωρίς '+subgOf(PSEC).toLowerCase())}</b><span class="dim" style="font-size:12px">${ks.length}</span>
-        <span class="sp"></span>${Object.entries(by).map(([t,n])=>`<span class="pill" style="font-size:11px">${esc(t)} · ${n}</span>`).join('')}</div>
+        <span class="sp"></span>${Object.entries(by).map(([t,n])=>`<span class="pill" style="font-size:11px">${esc(t)} · ${n}</span>`).join('')}
+        ${ovPrintable()?`<button class="btn sm gh" data-ovprint="${esc(g)}" title="${esc(t('Φύλλο για εκτύπωση'))}">${t('Φύλλο')}</button>`:''}</div>
       ${ready.length?`<div style="margin-top:7px;font-size:12.5px"><b style="color:var(--ok)">Έτοιμοι για απονομή:</b>
         ${ready.map(x=>`${pn(x.k)} <span class="dim">(${esc(x.s.t)})</span>${awRecUI()?` <button class="btn sm" data-awrec="${x.k.id}" data-cat="${x.s.nx.st.id}">Απονομή</button>`:''}`).join(', ')}${koin?' <span class="dim">— περνούν από Σύνοδο (Σύνοδος › Απονομές)</span>':''}</div>`:''}
       <div style="margin-top:6px">${st.map(x=>`<div class="kv" style="padding:3px 0;font-size:12.5px;border-top:1px solid var(--line)">
@@ -18928,7 +18964,7 @@ V.reads=async()=>{
   const vis=rows.filter(hit);
   const denied=rows.filter(r=>!r.allowed).length;
   const readers=new Set(rows.map(r=>r.reader_id).filter(Boolean)).size;
-  const people=new Set(rows.map(r=>r.person_id)).size;
+  const people=new Set(rows.map(r=>r.person_id).filter(Boolean)).size;    
   $('view').innerHTML=`
     <div class="card pad" style="margin-bottom:14px">
       <b>Ποιος διάβασε τι</b>
@@ -18961,7 +18997,7 @@ V.reads=async()=>{
         return `<tr${r.allowed?'':' style="background:var(--badbg)"'}>
         <td class="dim" style="white-space:nowrap;font-size:12.5px">${esc(String(r.at).slice(0,16).replace('T',' '))}</td>
         <td>${r.reader_id?`<span class="pn" data-p="${r.reader_id}">${esc(who(r.reader_id))}</span>`:'<span class="dim">—</span>'}</td>
-        <td><span class="pn" data-p="${r.person_id}">${esc(who(r.person_id))}</span></td>
+        <td>${r.person_id?`<span class="pn" data-p="${r.person_id}">${esc(who(r.person_id))}</span>`:'<span class="dim">—</span>'}</td>
         <td><span class="pill"${c?` style="background:var(--${c}bg);color:var(--${c});border-color:transparent"`:''}>${esc(r.kind)}</span>
           ${r.allowed?'':'<span class="pill" style="background:var(--badbg);color:var(--bad);border-color:transparent">άρνηση</span>'}</td>
         <td class="dim" style="font-size:12.5px">${esc(r.purpose||'—')}</td></tr>`}).join('')
