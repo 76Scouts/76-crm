@@ -1834,7 +1834,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 20:20'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-27 20:47'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22687,10 +22687,10 @@ async function efdKitchen(e,parts,btn){
       :'<div>Κανείς δεν δήλωσε κάτι για τη διατροφή.</div>')+efdNo(r.no),false);
 }
 async function efdFirstAid(e,parts,btn){
-  const w=efdWin('Πρώτες βοήθειες — '+(e.title||'')); if(!w)return;
-  const r=await efdPrep(e,parts,'all','φάκελος δράσης · πρώτες βοήθειες',btn); if(!r){w.close();return}
+  const w=efdWin(t('Του πρώτου βοηθού')+' — '+(e.title||'')); if(!w)return;
+  const r=await efdPrep(e,parts,'all',dv('φάκελος δράσης · του πρώτου βοηθού'),btn); if(!r){w.close();return}
   const rows=r.list.map(x=>({x,m:r.med[x.p.id]||{},d:efdMed(r.med[x.p.id]).med})).sort((a,b)=>sortByName(a.x.p,b.x.p));
-  efdPage(w,'Πρώτες βοήθειες — '+(e.title||''),efdHead(e,'Πρώτες βοήθειες')
+  efdPage(w,t('Του πρώτου βοηθού')+' — '+(e.title||''),efdHead(e,t('Του πρώτου βοηθού'))
     +`<table><thead><tr><th style="width:4%">Α/Α</th><th style="width:24%">Ονοματεπώνυμο</th><th style="width:8%">Ομ. αίματος</th><th style="width:12%">Αντιτετανικό</th><th>Ιατρικά</th></tr></thead><tbody>${rows.map((y,i)=>
       `<tr><td class="c">${i+1}</td><td><b>${esc(y.x.p.last_name||'')}</b> ${esc(y.x.p.first_name||'')}${isLed(y.x.p)?' <span class="k">(βαθμοφόρος)</span>':''}</td>
        <td class="c">${esc(y.m.blood_type||'—')}</td><td class="sm">${y.m.tetanus===false?'ΟΧΙ':y.m.tetanus_until?esc(fdate(y.m.tetanus_until)):'—'}</td>
@@ -22719,8 +22719,9 @@ function efDocs(e,parts){
     ${b('efdAll',t('Όλοι — επικοινωνία και συμμετοχή'),t('Όπως το παλιό «Όλοι»: συμμετοχή Full / Part, φανέλα, κηδεμόνες με τηλέφωνα — και το επιτελείο. Χωρίς ιατρικά.'))}
     ${b('efdLead','Για τους βαθμοφόρους','Ανά ενωμοτία / εξάδα: λίστα κλήσεων της δράσης και τι να προσέξουμε.')}
     ${b('efdTeam',t('Α4 ανά υπεύθυνο εξάδας / ενωμοτίας / ομίλου'),t('Μία σελίδα ανά ομάδα, με χρώμα: τηλέφωνα κλήσης και τι να προσέξουμε (αλλεργίες, διατροφή) — για να δοθεί στον υπεύθυνο της ομάδας.'))}
+    ${b('efdStaff',t('Επιτελείο'),t('Μία λίστα: πρώτα οι ανιχνευτές-βοηθοί, μετά οι βαθμοφόροι — με τηλέφωνο, συμμετοχή και διατροφή.'))}
     ${b('efdKit','Κουζίνα','Μόνο διατροφή — η κουζίνα δεν βλέπει ιατρικά.')}
-    ${b('efdFa','Πρώτες βοήθειες','Ομάδα αίματος, αντιτετανικό και ιατρικά — μόνο για τον υπεύθυνο υγείας.')}
+    ${b('efdFa',t('Του πρώτου βοηθού'),t('Ομάδα αίματος, αντιτετανικό, ιατρικά και θέματα ύπνου — μόνο για τον υπεύθυνο υγείας.'))}
     ${efdtOwnerKind(e)===dv('Σύστημα')?'':(()=>{ const X=!!efdtSecW(e).xlsx; return `<div style="padding:9px 0;border-top:1px solid var(--line)">
       <b style="font-size:13.5px">${t('Για Επαρχία / ΓΕ')}</b>
       <div class="dim" style="font-size:12px;margin-top:2px">${X?t('Η δήλωση συμμετοχής στο Excel του Κλάδου Ανιχνευτών (Ονοματεπώνυμο · Τάξη · Αριθμός Μητρώου).')
@@ -22742,6 +22743,7 @@ function efDocsWire(e,parts){
   on('efdFa',x=>efdFirstAid(e,parts,x));
   on('efdLeadD',x=>efdLeadersPdf(e,parts,x));
   on('efdKitD',x=>efdKitchenPdf(e,parts,x));
+  on('efdStaffD',x=>efdStaffPdf(e,parts,x));    
   on('efdTeamD',x=>efdTeamPdf(e,parts,x));    
   on('efdTeam',x=>efdTeamPdf(e,parts,x));
   on('efdFaD',x=>efdFirstAidPdf(e,parts,x));
@@ -22907,31 +22909,54 @@ async function edpRun(btn,fn){ const lbl=btn?btn.innerHTML:''; if(btn)btn.disabl
   try{ await fn(); toast(t('Κατέβηκε το PDF')); }catch(err){ console.warn('edp',err); toast(t('Δεν βγήκε το PDF:')+' '+((err&&err.message)||err)); }
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=lbl; } } }
 
+function efdAllSheets(e,d){
+  const S=[{h:'',intro:pln(d.rows.length,'συμμετέχων','συμμετέχοντες')+(d.sum?' · '+d.sum:''),
+    cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Επίθετο'),w:12},{h:t('Όνομα'),w:10},{h:t('Συμμετοχή'),w:12},{h:t('Φανέλα'),w:6,c:1},{h:t('Κηδεμόνας 1'),w:18},{h:t('Κηδεμόνας 2'),w:18},{h:t('Κηδεμόνας 3'),w:19}],
+    rows:d.rows.map((r,i)=>[String(i+1),{s:r.x.p.last_name||'',b:true},r.x.p.first_name||'',r.part.full?r.part.s:{s:r.part.s,b:true},r.shirt,r.g[0]||'',r.g[1]||'',r.g[2]||''])}];
+  if(d.staff.length)S.push({newPage:true,h:t('Επιτελείο της δράσης'),cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Όνομα'),w:28},{h:t('Καθήκον'),w:30},{h:t('Συμμετοχή'),w:20},{h:t('Τηλέφωνο'),w:17}],
+    rows:d.staff.map((x,i)=>[String(i+1),edpWho(x),[x.pa.role,x.pa.role2].filter(Boolean).join(' · '),efdPartTxt(e,x.pa).s,ctFmt(MEL.ctCallNo(x.p.id)||x.p.phone||'')])});
+  return S;
+}
 function efdAllPdf(e,parts,btn){ return edpRun(btn,async()=>{
   const d=efdAllData(e,parts); if(!d.rows.length&&!d.staff.length)throw new Error(t('Κανένας δηλωμένος ακόμα'));
-  const S=[{h:'',intro:pln(d.rows.length,'συμμετέχων','συμμετέχοντες')+(d.sum?' · '+d.sum:''),
-    cols:[{h:t('Α/Α'),w:3,c:1},{h:t('Επίθετο'),w:11},{h:t('Όνομα'),w:10},{h:t('Συμμετοχή'),w:17},{h:t('Φανέλα'),w:6,c:1},{h:t('Κηδεμόνας 1'),w:18},{h:t('Κηδεμόνας 2'),w:18},{h:t('Κηδεμόνας 3'),w:17}],
-    rows:d.rows.map((r,i)=>[String(i+1),{s:r.x.p.last_name||'',b:true},r.x.p.first_name||'',r.part.full?r.part.s:{s:r.part.s,b:true},r.shirt,r.g[0]||'',r.g[1]||'',r.g[2]||''])}];
-  if(d.staff.length)S.push({h:t('Επιτελείο της δράσης'),cols:[{h:t('Όνομα'),w:30},{h:t('Καθήκον'),w:30},{h:t('Συμμετοχή'),w:20},{h:t('Τηλέφωνο'),w:20}],
-    rows:d.staff.map(x=>[edpWho(x),[x.pa.role,x.pa.role2].filter(Boolean).join(' · '),efdPartTxt(e,x.pa).s,ctFmt(MEL.ctCallNo(x.p.id)||x.p.phone||'')])});
-  await efdPdf(e,edpName(e,t('Όλοι')),t('Όλοι — επικοινωνία και συμμετοχή'),S,true);
+  await efdPdf(e,edpName(e,t('Όλοι')),t('Όλοι — επικοινωνία και συμμετοχή'),efdAllSheets(e,d),true);
 }); }
+const efdSecOrder=()=>[dv('Μικρή Αγέλη'),dv('Αγέλη'),dv('Ομάδα'),dv('Κοινότητα'),dv('Δίκτυο')];
+function efdLeadRows(e,list,med){
+  return list.map((x,i)=>{ const md=med[x.p.id]||{}, m=efdMed(med[x.p.id]);
+    const all=m.med.concat(m.diet.filter(d=>!/^Αλλεργία τροφών/.test(d)),m.sleep,m.misc);
+    const calls=MEL.callListOf(x.p,e.id).filter(l=>l.n&&l.t!=='self').slice(0,3)
+      .map((l,k)=>(k+1)+'. '+[l.name,l.rel,ctFmt(l.n)].filter(Boolean).join(' · ')+(l.ev?' · '+t('για τη δράση'):'')).join('\n');
+    return [String(i+1),{...edpWho(x),sub:[x.p.shirt_size?t('Φανέλα')+': '+x.p.shirt_size:'',md.blood_type?t('Ομ. αίματος')+': '+md.blood_type:''].filter(Boolean).join('\n')},
+      calls||t('— κανένα τηλέφωνο —'),all.join('\n')||'—']; });
+}
+function efdLeadSheets(e,kids,helpers,leds,med){
+  const ord=efdSecOrder(), secOfX=x=>secOf(x.p)||e.section||'';
+  const secs=[...new Set(kids.map(secOfX))].sort((a,b)=>{ const i=ord.indexOf(a), j=ord.indexOf(b); return (i<0?99:i)-(j<0?99:j)||String(a).localeCompare(String(b),'el'); });
+  const cols=[{h:t('Α/Α'),w:5,c:1},{h:t('Μέλος'),w:20},{h:t('Λίστα κλήσεων (για τη δράση)'),w:34},{h:t('Τι να προσέξουμε'),w:41}];
+  const NONE=dv('— χωρίς υποομάδα'), S=[];
+  secs.forEach(sec=>{
+    const gs={}; kids.filter(x=>secOfX(x)===sec).forEach(x=>{ const g=efdGrp(x.p)||NONE; (gs[g]=gs[g]||[]).push(x); });
+    MEL.sgSortGroups(sec,Object.keys(gs)).forEach(g=>{
+      const list=gs[g].slice().sort((a,b)=>MEL.sgKidSort(sec)(a.p,b.p));
+      S.push({newPage:S.length>0,h:(g===NONE?t('Χωρίς εξάδα / ενωμοτία / όμιλο'):g)+(secs.length>1?' · '+sec:''),color:efdTeamColor(g===NONE?'':g),cols,rows:efdLeadRows(e,list,med)});
+    });
+  });
+  const ls=leds.slice().sort(dlStaffCmp(e));
+  if(ls.length)S.push({newPage:S.length>0,h:t('Βαθμοφόροι της δράσης'),cols:[{h:t('Όνομα'),w:40},{h:t('Ρόλος'),w:35},{h:t('Τηλέφωνο'),w:25}],
+    rows:ls.map(x=>[edpWho(x),x.pa.role||'',ctFmt(MEL.ctCallNo(x.p.id)||x.p.phone||'')])});
+  if(helpers.length)S.push({newPage:S.length>0,h:t('Άλλα μέλη δράσης — βοηθοί δράσης'),
+    cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Όνομα'),w:20},{h:t('Δικό τους τηλέφωνο'),w:16},{h:t('Γονείς / κηδεμόνες'),w:27},{h:t('Τι να προσέξουμε'),w:32}],
+    rows:helpers.slice().sort((a,b)=>sortByName(a.p,b.p)).map((x,i)=>{ const m=efdMed(med[x.p.id]);
+      return [String(i+1),edpWho(x),ctFmt(MEL.ctCallNo(x.p.id)||x.p.phone||'')||'—',efdGuards(x.p,e.id).join('\n')||t('— κανένα τηλέφωνο —'),
+        m.med.concat(m.diet.filter(d=>!/^Αλλεργία τροφών/.test(d)),m.sleep,m.misc).join('\n')||'—']; })});
+  return S;
+}
 function efdLeadersPdf(e,parts,btn){ return edpRun(btn,async()=>{
   const r=await efdPrep(e,parts,'kids',dv('φάκελος δράσης · για βαθμοφόρους'),btn); if(!r)return;
-  const by={}; r.list.forEach(x=>{const g=efdGrp(x.p)||'—';(by[g]=by[g]||[]).push(x)});
-  const keys=Object.keys(by).sort((a,b)=>a==='—'?1:b==='—'?-1:a.localeCompare(b,'el'));
-  const cols=[{h:t('Α/Α'),w:4,c:1},{h:t('Μέλος'),w:22},{h:t('Λίστα κλήσεων (για τη δράση)'),w:34},{h:t('Τι να προσέξουμε'),w:40}];
-  const S=keys.map((g,gi)=>({newPage:gi>0,h:g!=='—'?g:(keys.length>1?t('Χωρίς ενωμοτία/εξάδα'):''),cols,
-    rows:by[g].sort((a,b)=>sortByName(a.p,b.p)).map((x,i)=>{ const md=r.med[x.p.id]||{}, m=efdMed(r.med[x.p.id]);
-      const all=m.med.concat(m.diet.filter(d=>!/^Αλλεργία τροφών/.test(d)),m.sleep,m.misc);
-      const calls=MEL.callListOf(x.p,e.id).filter(l=>l.n&&l.t!=='self').slice(0,3)
-        .map((l,k)=>(k+1)+'. '+[l.name,l.rel,ctFmt(l.n)].filter(Boolean).join(' · ')+(l.ev?' · '+t('για τη δράση'):'')).join('\n');
-      return [String(i+1),{...edpWho(x),sub:[x.p.shirt_size?t('Φανέλα')+': '+x.p.shirt_size:'',md.blood_type?t('Ομ. αίματος')+': '+md.blood_type:''].filter(Boolean).join('\n')},
-        calls||t('— κανένα τηλέφωνο —'),all.join('\n')||'—']; })}));
-  const leds=efdLeds(parts).sort((a,b)=>sortByName(a.p,b.p));
-  if(leds.length)S.push({h:t('Βαθμοφόροι της δράσης'),cols:[{h:t('Όνομα'),w:40},{h:t('Ρόλος'),w:35},{h:t('Τηλέφωνο'),w:25}],
-    rows:leds.map(x=>[edpWho(x),x.pa.role||'',ctFmt(MEL.ctCallNo(x.p.id)||x.p.phone||'')])});
-  if(r.no)S[S.length-1].after=edpNoTxt(r.no);
+  const isH=x=>typeof efHelper==='function'&&efHelper(x);
+  const S=efdLeadSheets(e,r.list.filter(x=>!isH(x)),r.list.filter(isH),efdLeds(parts),r.med);
+  if(r.no&&S.length)S[S.length-1].after=edpNoTxt(r.no);
   await efdPdf(e,edpName(e,t('Για βαθμοφόρους')),t('Για τους βαθμοφόρους'),S,true);
 }); }
 function efdWatch(m){
@@ -22943,7 +22968,7 @@ function efdWatch(m){
   add(m.dietary_yes||(!!m.dietary&&m.dietary_yes!==false),t('Διατροφή'),m.dietary);
   add(m.fasting,t('Νηστεύει'));
   add(m.eats_amount&&!/^ικανοποιητ/i.test(m.eats_amount),t('Τρώει'),m.eats_amount);
-  if(m.chronic||m.on_medication||m.mental||m.recent_illness||m.other_medical||m.mobility)L.push(t('Δες Πρώτες βοήθειες'));
+  if(m.chronic||m.on_medication||m.mental||m.recent_illness||m.other_medical||m.mobility)L.push(t('Δες το φύλλο του πρώτου βοηθού'));
   if(m.fears_dark||m.sleep_talks||m.sleep_wets||m.night_toilet||m.sleep_other)L.push(t('Ύπνος: ρώτησε τον αρχηγό δράσης'));
   return L.join('\n');
 }
@@ -22967,7 +22992,7 @@ function efdTeamSheets(e,kids,med){
       const staff=rec?[...new Set([rec.staff_id,...(rec.staff_more||[])].filter(Boolean))].map(id=>(D.bh||[]).find(b=>b.id===id)).filter(Boolean):[];
       out.push({newPage:out.length>0,h:g===NONE?t('Χωρίς εξάδα / ενωμοτία')+' · '+sec:g+' · '+sec,color:efdTeamColor(g===NONE?'':g),
         intro:staff.length?t('Υπεύθυνος')+': '+staff.map(p=>[p.first_name,p.last_name].filter(Boolean).join(' ')+(ctFmt(MEL.ctCallNo(p.id)||p.phone||'')?' · '+ctFmt(MEL.ctCallNo(p.id)||p.phone||''):'')).join(' · '):'',
-        cols:[{h:t('Α/Α'),w:4,c:1},{h:t('Παιδί'),w:24},{h:t('Τηλέφωνα κλήσης (για τη δράση)'),w:36},{h:t('Τι να προσέξουμε'),w:36}],
+        cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Παιδί'),w:17},{h:t('Τηλέφωνα κλήσης (για τη δράση)'),w:37},{h:t('Τι να προσέξουμε'),w:41}],
         rows:list.map((x,i)=>[String(i+1),{...edpWho(x),sub:[roleOf(x.p.id),x.p.shirt_size?t('Φανέλα')+': '+x.p.shirt_size:''].filter(Boolean).join(' · ')},
           efdGuards(x.p,e.id).map((l,k)=>(k+1)+'. '+l).join('\n')||t('— κανένα τηλέφωνο —'),efdWatch(med[x.p.id])||'—'])});
     });
@@ -22980,25 +23005,56 @@ function efdTeamPdf(e,parts,btn){ return edpRun(btn,async()=>{
   if(r.no&&S.length)S[S.length-1].after=edpNoTxt(r.no);
   await efdPdf(e,edpName(e,t('Α4 υπευθύνων ομάδας')),t('Α4 ανά υπεύθυνο εξάδας / ενωμοτίας / ομίλου'),S,false);
 }); }
+function efdStaffSheet(e,helpers,leds,med){
+  const hs=helpers.slice().sort((a,b)=>sortByName(a.p,b.p)), all=hs.concat(leds);
+  if(!all.length)return [];
+  return [{h:'',intro:t('Επιτελείο')+': '+pln(hs.length,t('ανιχνευτής-βοηθός'),t('ανιχνευτές-βοηθοί'))+' · '+pln(leds.length,t('βαθμοφόρος'),t('βαθμοφόροι')),
+    cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Όνομα'),w:24},{h:t('Καθήκον'),w:22},{h:t('Συμμετοχή'),w:16},{h:t('Τηλέφωνο'),w:14},{h:t('Διατροφή / τι να προσέξουμε'),w:30}],
+    rows:all.map((x,i)=>[String(i+1),edpWho(x),[x.pa.role,x.pa.role2].filter(Boolean).join(' · ')||(hs.includes(x)?t('Ανιχνευτής-βοηθός'):''),efdPartTxt(e,x.pa).s,
+      ctFmt(MEL.ctCallNo(x.p.id)||x.p.phone||''),efdWatch(med[x.p.id])||'—'])}];
+}
+function efdStaffPdf(e,parts,btn){ return edpRun(btn,async()=>{
+  const live=parts.filter(x=>efdLive(x.pa)), helpers=live.filter(efHelper), leds=efdLeds(parts);
+  const ids=[...new Set(helpers.concat(leds).map(x=>x.p.id))]; if(!ids.length)throw new Error(t('Κανένας δηλωμένος ακόμα'));
+  const r=await efdMedMany(ids,dv('φάκελος δράσης · λίστα επιτελείου'),(i,n)=>{ if(btn)btn.textContent=t('Ιατρικά')+' '+i+'/'+n+'…'; },e.id);
+  const S=efdStaffSheet(e,helpers,leds,r.med); if(r.no&&S.length)S[0].after=edpNoTxt(r.no);
+  await efdPdf(e,edpName(e,t('Επιτελείο')),t('Επιτελείο της δράσης'),S,true);
+}); }
+function efdKitchenSheets(e,list,med,k,l,noTxt){
+  const rows=list.map(x=>({x,d:efdMed(med[x.p.id]).diet})).sort((a,b)=>sortByName(a.x.p,b.x.p));
+  const main=rows.map(y=>({x:y.x,d:y.d.filter(s=>!/^Τρώει/.test(s))})).filter(y=>y.d.length);
+  const eats=rows.map(y=>({x:y.x,d:y.d.filter(s=>/^Τρώει/.test(s))})).filter(y=>y.d.length);
+  const nm=y=>({...edpWho(y.x),sub:isLed(y.x.p)?t('(βαθμοφόρος)'):''});
+  const S=[{intro:t('Σύνολο')+': '+(k+l)+' ('+t('μέλη')+' '+k+' · '+t('βαθμοφόροι')+' '+l+') · '+t('με κάτι να προσέξουμε')+': '+main.length
+      +(main.length?'':'\n'+t('Κανείς δεν δήλωσε κάτι για τη διατροφή.')),
+    cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Ονοματεπώνυμο'),w:22},{h:t('Διατροφή'),w:73}],
+    rows:main.map((y,i)=>[String(i+1),nm(y),y.d.join('\n')])}];
+  if(eats.length)S.push({h:t('Πόσο τρώνε (λιγότερο / περισσότερο)'),cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Ονοματεπώνυμο'),w:22},{h:t('Πόσο τρώει'),w:73}],
+    rows:eats.map((y,i)=>[String(i+1),nm(y),y.d.map(z=>z.replace(/^Τρώει:\s*/,'')).join('\n')])});
+  if(noTxt)S[S.length-1].after=noTxt;
+  return S;
+}
 function efdKitchenPdf(e,parts,btn){ return edpRun(btn,async()=>{
   const r=await efdPrep(e,parts,'all',dv('φάκελος δράσης · κουζίνα'),btn); if(!r)return;
-  const rows=r.list.map(x=>({x,d:efdMed(r.med[x.p.id]).diet})).filter(y=>y.d.length).sort((a,b)=>sortByName(a.x.p,b.x.p));
-  const k=efdKids(parts).length, l=efdLeds(parts).length;
-  await efdPdf(e,edpName(e,t('Κουζίνα')),t('Κουζίνα — διατροφή'),[{
-    intro:t('Σύνολο')+': '+(k+l)+' ('+t('μέλη')+' '+k+' · '+t('βαθμοφόροι')+' '+l+') · '+t('με κάτι να προσέξουμε')+': '+rows.length
-      +(rows.length?'':'\n'+t('Κανείς δεν δήλωσε κάτι για τη διατροφή.')),
-    cols:[{h:t('Α/Α'),w:6,c:1},{h:t('Ονοματεπώνυμο'),w:32},{h:t('Διατροφή'),w:62}],
-    rows:rows.map((y,i)=>[String(i+1),{...edpWho(y.x),sub:isLed(y.x.p)?t('(βαθμοφόρος)'):''},y.d.join('\n')]),
-    after:edpNoTxt(r.no)}],false);
+  await efdPdf(e,edpName(e,t('Κουζίνα')),t('Κουζίνα — διατροφή'),efdKitchenSheets(e,r.list,r.med,efdKids(parts).length,efdLeds(parts).length,edpNoTxt(r.no)),false);
 }); }
+function efdFirstAidSheets(e,list,med){
+  const L=list.slice().sort((a,b)=>sortByName(a.p,b.p)), M=x=>med[x.p.id]||{}, sub=x=>isLed(x.p)?t('(βαθμοφόρος)'):'';
+  const tet=m=>m.tetanus===false?t('ΟΧΙ'):m.tetanus===true?t('Ναι'):'—';
+  const S=[{h:t('Γενικά'),cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Επίθετο'),w:27},{h:t('Όνομα'),w:22},{h:t('Ομ. αίματος'),w:14,c:1},{h:t('Αντιτετανικό'),w:15,c:1},{h:t('Ισχύει μέχρι'),w:17,c:1}],
+    rows:L.map((x,i)=>[String(i+1),{s:x.p.last_name||'',b:true,sub:sub(x)},x.p.first_name||'',M(x).blood_type||'—',tet(M(x)),M(x).tetanus_until?fdate(M(x).tetanus_until):'—'])}];
+  const spec=L.map(x=>({x,d:efdMed(med[x.p.id]).med.filter(z=>!/^Αντιτετανικό|^Αλλεργία τροφών/.test(z))})).filter(y=>y.d.length);
+  S.push({newPage:true,h:t('Ιατρικά — όσοι έχουν κάτι να προσέξουμε'),intro:t('Σύνολο')+': '+spec.length,cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Ονοματεπώνυμο'),w:28},{h:t('Ιατρικά'),w:67}],
+    rows:spec.map((y,i)=>[String(i+1),{...edpWho(y.x),sub:sub(y.x)},y.d.join('\n')])});
+  const chk=L.map(x=>{ const m=efdMed(med[x.p.id]); return {x,sl:m.sleep,ms:m.misc}; }).filter(y=>y.sl.length||y.ms.length);
+  S.push({newPage:true,h:t('Θέματα που πρέπει να ελέγξουμε (ύπνος · διάφορα)'),intro:t('Σύνολο')+': '+chk.length,cols:[{h:t('Α/Α'),w:5,c:1},{h:t('Ονοματεπώνυμο'),w:28},{h:t('Ύπνος'),w:33},{h:t('Διάφορα'),w:34}],
+    rows:chk.map((y,i)=>[String(i+1),{...edpWho(y.x),sub:sub(y.x)},y.sl.join('\n')||'—',y.ms.join('\n')||'—'])});
+  return S;
+}
 function efdFirstAidPdf(e,parts,btn){ return edpRun(btn,async()=>{
-  const r=await efdPrep(e,parts,'all',dv('φάκελος δράσης · πρώτες βοήθειες'),btn); if(!r)return;
-  const rows=r.list.map(x=>({x,m:r.med[x.p.id]||{},d:efdMed(r.med[x.p.id]).med})).sort((a,b)=>sortByName(a.x.p,b.x.p));
-  await efdPdf(e,edpName(e,t('Πρώτες βοήθειες')),t('Πρώτες βοήθειες'),[{
-    cols:[{h:t('Α/Α'),w:4,c:1},{h:t('Ονοματεπώνυμο'),w:24},{h:t('Ομ. αίματος'),w:8,c:1},{h:t('Αντιτετανικό'),w:12,c:1},{h:t('Ιατρικά'),w:52}],
-    rows:rows.map((y,i)=>[String(i+1),{...edpWho(y.x),sub:isLed(y.x.p)?t('(βαθμοφόρος)'):''},y.m.blood_type||'—',
-      y.m.tetanus===false?t('ΟΧΙ'):y.m.tetanus_until?fdate(y.m.tetanus_until):'—',y.d.filter(s=>!/^Αντιτετανικό/.test(s)).join('\n')||'—']),
-    after:edpNoTxt(r.no)}],true);
+  const r=await efdPrep(e,parts,'all',dv('φάκελος δράσης · του πρώτου βοηθού'),btn); if(!r)return;
+  const S=efdFirstAidSheets(e,r.list,r.med); S[S.length-1].after=edpNoTxt(r.no);
+  await efdPdf(e,edpName(e,t('Του πρώτου βοηθού')),t('Του πρώτου βοηθού — ιατρικά'),S,false);
 }); }
 const ATT_COLS=17;    
 const attKey=n=>String(n||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
