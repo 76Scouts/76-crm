@@ -1834,7 +1834,7 @@ MOD.efolder={id:'efolder',t:dv('Φάκελος δράσης'),i:'flag',s:'live'}
 
 const V={};
 
-const BUILD='2026-11-27 21:39'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
+const BUILD='2026-11-28 10:15'; let DIAG=[], WHO=null, LOADMS=0, LOADED=false, CUT=[];
 let ADTQ='', ADTHIT=null, ADTT=null; let ME={email:null}, D={bh:[],my:[],ss:[],att:[],cert:[],gu:[],sen:[],ev:[],pa:[],med:[],ecs:[],tr:[],st:[],rt:[],rq:[],rs:[],rp:[],or:[],ph:[],sh:[],ho:[],pe:[],doc:[],pc:[],ct:[],veh:[],vl:[],vi:[],mf:[],dr:[],ed:[],ft:[],ci:[],ho2:[],sg:[],cl:[],pr:[],sc:[]}, YEAR=curScoutYear(), ROUTE='dash', CONTACTED={};
 try{CONTACTED=JSON.parse(localStorage.getItem('e76:contacted')||'{}')}catch(e){}
 let CALLLOG={}; try{CALLLOG=JSON.parse(localStorage.getItem('e76:calllog')||'{}')}catch(e){}
@@ -22717,6 +22717,7 @@ function efDocs(e,parts){
       <div class="dim" style="font-size:12px">${t('«Δικαιούχοι» όσο οι δηλώσεις είναι ανοιχτές — κενή ημερομηνία για όσους δεν δήλωσαν ακόμη, να τη γράψεις με το χέρι. «Μόνο δηλωμένοι» όταν κλείσουν. Σταθερή αλφαβητική σειρά, ώρα κατάστασης στον υπότιτλο, 3 κενές γραμμές. Χωρίς πληρωμές, ιατρικά και τηλέφωνα.')}</div>
       <button class="btn sm p" id="efdSign" style="margin-top:7px">${ic('down',14)} ${t('Λήψη PDF')}</button><div id="efdUnm"></div></div>
     ${b('efdAll',t('Όλοι — επικοινωνία και συμμετοχή'),t('Όπως το παλιό «Όλοι»: συμμετοχή Full / Part, φανέλα, κηδεμόνες με τηλέφωνα — και το επιτελείο. Χωρίς ιατρικά.'))}
+    ${b('efdAtt',t('Παρουσιολόγιο'),t('Μία σελίδα, δύο στήλες ονομάτων: κουτάκι «Ήρθε» και σημείωση για όσους είναι Part-time. Χωρίς τηλέφωνα και ιατρικά.'))}
     ${b('efdLead','Για τους βαθμοφόρους','Ανά ενωμοτία / εξάδα: λίστα κλήσεων της δράσης και τι να προσέξουμε.')}
     ${b('efdTeam',t('Α4 ανά υπεύθυνο εξάδας / ενωμοτίας / ομίλου'),t('Μία σελίδα ανά ομάδα, με χρώμα: τηλέφωνα κλήσης και τι να προσέξουμε (αλλεργίες, διατροφή) — για να δοθεί στον υπεύθυνο της ομάδας.'))}
     <div style="display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)"><div style="flex:1;min-width:0"><b style="font-size:13.5px">${t('Excel — οι έξι λίστες (ZIP)')}</b><div class="dim" style="font-size:12px;margin-top:2px">${t('Όλοι, Διατροφή, Ύπνος, Ιατρικά Γενικά, Ιατρικά Ειδικά, Διάφορα — ξεχωριστά αρχεία, με το Επιτελείο πρώτο και έλεγχο πεδίων.')}</div></div>
@@ -22740,6 +22741,8 @@ function efDocsWire(e,parts){
   efdUnmFill(e,'efdUnm');
   on('efdAll',()=>efdAll(e,parts));
   on('efdAllD',x=>efdAllPdf(e,parts,x));
+  on('efdAttD',x=>efdAttendPdf(e,parts,x));    
+  on('efdAtt',x=>efdAttendPdf(e,parts,x));
   on('efdLead',x=>efdLeaders(e,parts,x));
   on('efdKit',x=>efdKitchen(e,parts,x));
   on('efdFa',x=>efdFirstAid(e,parts,x));
@@ -22849,6 +22852,11 @@ function espHead(G,U){
   };
 }
 const EDP={ML:28,MR:28,MT:26,MB:40,LOGO:50,PAD:4,LH:11.2,Z:9.5};
+function edpSegs(s,bold){ s=String(s==null?'':s); const out=[]; let i=0;
+  s.replace(/\+?\d[\d ]{6,}\d/g,(m,off)=>{ if(m.replace(/\D/g,'').length<8||/^\d{1,2} \d{1,2} \d{2,4}$/.test(m))return m;
+    if(off>i)out.push({s:s.slice(i,off),b:bold}); out.push({s:m,b:true}); i=off+m.length; return m; });
+  if(i<s.length)out.push({s:s.slice(i),b:bold}); return out.length?out:[{s:'',b:bold}]; }
+const edpHasPh=s=>edpSegs(s,false).some(g=>g.b);
 const edpCell=c=>c==null?{s:''}:typeof c==='object'?c:{s:String(c)};
 async function efdPdf(e,name,docTitle,sections,landscape){
   const [L,fk]=await Promise.all([pdfWriteLib(),espFontkit()]);
@@ -22873,15 +22881,17 @@ async function efdPdf(e,name,docTitle,sections,landscape){
     const ctr=(s,yy,f,z)=>{ let zz=z; const max=W-2*P.LOGO-24; while(zz>8&&tw(s,f,zz)>max)zz-=0.25; pg.drawText(s,{x:PW/2-tw(s,f,zz)/2,y:yy,size:zz,font:f,color:K}); };
     ctr(docTitle,top-20,B,15); ctr(sub,top-37,R,11);
     y=top-P.LOGO-12; };
-  const rule=(yy,th)=>pg.drawLine({start:{x:P.ML,y:yy},end:{x:PW-P.MR,y:yy},thickness:th||0.6,color:K});
+  let runs=null, LINE=0;    
+  const rule=(yy,th)=>(runs||[[P.ML,PW-P.MR]]).forEach(([a,b])=>pg.drawLine({start:{x:a,y:yy},end:{x:b,y:yy},thickness:LINE||th||0.6,color:K}));
   sections.forEach((S,si)=>{
     if(!pg||(S.newPage&&si>0))head();
     const CW=S.cols.map(c=>W*c.w/S.cols.reduce((a,x)=>a+x.w,0)), CX=CW.reduce((a,w,i)=>(a.push(a[i]+w),a),[P.ML]);
+    LINE=S.line||0; runs=[]; { let x0=null; S.cols.forEach((c,i)=>{ if(c.gap)return; if(x0==null)x0=CX[i]; if(i===S.cols.length-1||S.cols[i+1].gap){ runs.push([x0,CX[i+1]]); x0=null; } }); }
     const cellLines=(c,i,f)=>{ const C=edpCell(c), m=CW[i]-2*P.PAD;
-      return wrap(C.s,C.b?B:R,P.Z,m).map(s=>({s,f:C.b?B:R})).concat(C.sub?wrap(C.sub,R,P.Z-1,m).map(s=>({s,f:R,z:P.Z-1})):[]); };
+      return wrap(C.s,(C.b||edpHasPh(C.s))?B:R,P.Z,m).map(s=>({s,f:C.b?B:R,box:C.box})).concat(C.sub?wrap(C.sub,R,P.Z-1,m).map(s=>({s,f:R,z:P.Z-1})):[]); };
     const thead=()=>{ const hl=S.cols.map((c,i)=>wrap(c.h,B,P.Z,CW[i]-2*P.PAD)), h=Math.max(...hl.map(l=>l.length))*P.LH+2*P.PAD;
       const top=y; hl.forEach((ls,i)=>ls.forEach((s,k)=>pg.drawText(s,{x:CX[i]+CW[i]/2-tw(s,B,P.Z)/2,y:top-P.PAD-P.Z-k*P.LH+1,size:P.Z,font:B,color:K})));
-      rule(top); rule(top-h,1.4); CX.forEach(x=>pg.drawLine({start:{x,y:top},end:{x,y:top-h},thickness:0.6,color:K})); y=top-h; };
+      rule(top); rule(top-h,1.4); CX.forEach(x=>pg.drawLine({start:{x,y:top},end:{x,y:top-h},thickness:LINE||0.6,color:K})); y=top-h; };
     const titleBlock=()=>{ if(S.color){ pg.drawRectangle({x:P.ML,y:y-9,width:W,height:9,color:PDFRGB(S.color[0],S.color[1],S.color[2])}); y-=14; }    
       if(S.h){ pg.drawText(S.h,{x:P.ML,y:y-12,size:12,font:B,color:K}); y-=20; }
       (S.intro?wrap(S.intro,R,10.5,W):[]).forEach(s=>{ pg.drawText(s,{x:P.ML,y:y-11,size:10.5,font:R,color:K}); y-=14; }); if(S.intro)y-=4; };
@@ -22892,10 +22902,13 @@ async function efdPdf(e,name,docTitle,sections,landscape){
       const L2=r.map((c,i)=>cellLines(c,i)), h=Math.max(1,...L2.map(l=>l.length))*P.LH+2*P.PAD;
       if(y-h<P.MB){ head(); if(S.h){ pg.drawText(S.h+' '+t('(συνέχεια)'),{x:P.ML,y:y-12,size:12,font:B,color:K}); y-=20; } thead(); }
       const top=y, bot=y-h;
-      if(ri%2===1)pg.drawRectangle({x:P.ML,y:bot,width:W,height:h-0.6,color:ZB});
-      L2.forEach((ls,i)=>{ const c=S.cols[i]; ls.forEach((l,k)=>{ const z=l.z||P.Z, x=c.c?CX[i]+CW[i]/2-tw(l.s,l.f,z)/2:CX[i]+P.PAD;
-        pg.drawText(l.s,{x,y:top-P.PAD-P.Z-k*P.LH+1,size:z,font:l.f,color:K}); }); });
-      rule(bot); CX.forEach(x=>pg.drawLine({start:{x,y:top},end:{x,y:bot},thickness:0.6,color:K})); y=bot;
+      if(ri%2===1)runs.forEach(([a,b])=>pg.drawRectangle({x:a,y:bot,width:b-a,height:h-0.6,color:ZB}));
+      L2.forEach((ls,i)=>{ const c=S.cols[i]; const bx=edpCell(r[i]).box;
+        if(bx){ const q=10; pg.drawRectangle({x:CX[i]+CW[i]/2-q/2,y:(top+bot)/2-q/2,width:q,height:q,borderColor:K,borderWidth:0.8}); }    
+        ls.forEach((l,k)=>{ const z=l.z||P.Z, G=l.f===B?[{s:l.s,b:true}]:edpSegs(l.s,false), fo=g=>g.b?B:R, w=G.reduce((a,g)=>a+tw(g.s,fo(g),z),0);
+        let x=c.c?CX[i]+CW[i]/2-w/2:CX[i]+P.PAD;
+        G.forEach(g=>{ if(g.s)pg.drawText(g.s,{x,y:top-P.PAD-P.Z-k*P.LH+1,size:z,font:fo(g),color:K}); x+=tw(g.s,fo(g),z); }); }); });
+      rule(bot); CX.forEach(x=>pg.drawLine({start:{x,y:top},end:{x,y:bot},thickness:LINE||0.6,color:K})); y=bot;
     });
     (S.after?wrap(S.after,R,10,W):[]).forEach((s,k)=>{ if(y-16<P.MB)head(); pg.drawText(s,{x:P.ML,y:y-(k?12:16),size:10,font:R,color:K}); y-=(k?12:16); });
     y-=10;
@@ -22923,6 +22936,22 @@ function efdAllSheets(e,d){
 function efdAllPdf(e,parts,btn){ return edpRun(btn,async()=>{
   const d=efdAllData(e,parts); if(!d.rows.length&&!d.staff.length)throw new Error(t('Κανένας δηλωμένος ακόμα'));
   await efdPdf(e,edpName(e,t('Όλοι')),t('Όλοι — επικοινωνία και συμμετοχή'),efdAllSheets(e,d),true);
+}); }
+const efdAttCols=()=>{ const h=[{h:t('Α/Α'),w:6,c:1},{h:t('Όνομα'),w:22},{h:t('Ήρθε'),w:6,c:1},{h:t('Σημείωση'),w:16}]; return h.concat([{h:'',w:2,gap:1}],h.map(c=>Object.assign({},c))); };    
+function efdAttRows(items){
+  const half=Math.ceil(items.length/2), rows=[], cell=(x,n)=>x?[String(n),{s:x.name,b:true},{s:'',box:1},x.note]:['','','',''];
+  for(let i=0;i<half;i++)rows.push(cell(items[i],i+1).concat([''],cell(items[i+half],i+half+1)));
+  return rows; }
+function efdAttendSheets(e,d){
+  const nm=x=>[x.p.last_name,x.p.first_name].filter(Boolean).join(' '), nt=pt=>pt.full?'':pt.s;
+  const S=[];
+  if(d.staff.length)S.push({h:t('Επιτελείο'),line:0.7,cols:efdAttCols(),rows:efdAttRows(d.staff.map(x=>({name:nm(x),note:nt(efdPartTxt(e,x.pa))})))});
+  S.push({h:t('Μέλη'),line:0.7,intro:pln(d.rows.length,t('συμμετέχων'),t('συμμετέχοντες'))+' · '+t('Ήρθε: σημάδι στο κουτάκι· Σημείωση: ό,τι δηλώθηκε για όσους δεν είναι Full.'),
+    cols:efdAttCols(),rows:efdAttRows(d.rows.map(r=>({name:nm(r.x),note:nt(r.part)})))});
+  return S; }
+function efdAttendPdf(e,parts,btn){ return edpRun(btn,async()=>{
+  const d=efdAllData(e,parts); if(!d.rows.length&&!d.staff.length)throw new Error(t('Κανένας δηλωμένος ακόμα'));
+  await efdPdf(e,edpName(e,t('Παρουσιολόγιο')),t('Παρουσιολόγιο'),efdAttendSheets(e,d),false);
 }); }
 const efdSecOrder=()=>[dv('Μικρή Αγέλη'),dv('Αγέλη'),dv('Ομάδα'),dv('Κοινότητα'),dv('Δίκτυο')];
 function efdLeadRows(e,list,med){
